@@ -1273,7 +1273,7 @@ git commit -m "feat(hooks): block committing .env files and API keys; add hook s
 
 **Interfaces:**
 - Consumes: `tools/hooks/test-hooks.sh`, the uv workspace, `uv.lock`.
-- Produces: required checks `hooks`, `python`, `secrets` on pushes to `main` and on pull requests.
+- Produces: checks `hooks`, `python`, `secrets` on every branch push (and on manual dispatch).
 
 - [ ] **Step 1: Create the workflow**
 
@@ -1283,8 +1283,7 @@ name: ci
 
 on:
   push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
