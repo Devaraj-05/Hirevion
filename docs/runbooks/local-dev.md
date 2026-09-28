@@ -46,6 +46,51 @@ fixes for common problems.
 The application sites (`app.`, `candidate.`, `api.`, `ws.`, `eye.`) point at ports 3000, 5174, 8000
 and 8001 on your PC; they answer once later sub-projects start those apps.
 
+## Desktop app (`ai-interviewer-desktop`)
+
+The candidate app is Tauri 2: a React webview (`src/`) plus Rust (`src-tauri/`), which also
+holds the native crates in `src-tauri/crates/`.
+
+1. `pnpm install` once at the repo root.
+2. `pnpm --filter @hirevion/ai-interviewer-desktop tauri dev` starts Vite on port 1420 and opens
+   the app. Webview changes reload instantly; Rust changes rebuild the app. The first Rust build
+   takes about six minutes.
+3. Before committing, run the checks CI runs: `pnpm lint`, `pnpm typecheck` and `pnpm test` at the
+   repo root, then in `ai-interviewer-desktop/src-tauri`: `cargo fmt --all --check`,
+   `cargo clippy --workspace --all-targets -- -D warnings` and `cargo test --workspace`.
+
+`rust-toolchain.toml` pins the Rust version; rustup installs it automatically on first use.
+`cargo deny check` (with `cargo-deny` installed) checks licences and advisories the way CI does.
+
+### Screen-capture benchmark
+
+`crates/recorder/examples/capture_bench.rs` records every display into 10-second H.264 MP4
+segments and reports CPU, bytes per minute and timings. Run it from
+`ai-interviewer-desktop/src-tauri`:
+
+```
+cargo run --release -p hv-recorder --example capture_bench -- --seconds 60 --out ..\spike-results\capture
+```
+
+The defaults are the ADR-0006 settings: constant quality 50 and one keyframe per segment. Add
+`--vbr --bitrate 1500000` to compare with a variable bit rate, `--software` to force the
+software encoder, `--primary-only` for one display, and see the file header for the rest.
+Segments go to `display-<n>/<seq>.mp4`, with a `manifest.jsonl` (frames, bytes, SHA-256) next
+to them. `spike-results/` is gitignored because the recordings show your screen; delete the
+videos when you're done.
+
+For numbers you can compare between runs, put the same thing on screen each time:
+`examples/activity.html` simulates a coding interview (`?static=1` for a still screen). Open it
+in a separate Edge guest window, which never signs in or syncs, and don't use the PC during
+the run:
+
+```
+"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --user-data-dir=%TEMP%\edge-bench --guest --start-maximized --app=file:///D:/Deva/Hirevion/ai-interviewer-desktop/src-tauri/crates/recorder/examples/activity.html
+```
+
+The ignored hardware test records three seconds of the primary display:
+`cargo test -p hv-recorder --test capture_smoke -- --ignored`.
+
 ## Testing the third-eye camera from a phone
 
 1. Put the phone on the same Wi-Fi as this PC.

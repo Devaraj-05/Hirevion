@@ -1,0 +1,258 @@
+<!doctype html>
+<!--
+  Repeatable screen content for capture_bench (SP-00d): a coding interview in progress.
+  A code editor types steadily and scrolls, a terminal prints test output every 20 seconds,
+  a timer ticks and an "AI voice" orb pulses. Add ?static=1 for a still screen.
+  Open it maximised in a separate Edge profile (see docs/runbooks/local-dev.md).
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Capture activity</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: "Segoe UI", system-ui, sans-serif;
+      }
+      body {
+        margin: 0;
+        height: 100vh;
+        display: grid;
+        grid-template-rows: 3rem 1fr 12rem;
+        background: #1e1e1e;
+        color: #d4d4d4;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        padding: 0 1.5rem;
+        background: #252526;
+        font-size: 1.1rem;
+      }
+      .orb {
+        width: 1.8rem;
+        height: 1.8rem;
+        border-radius: 50%;
+        background: radial-gradient(circle, #6cf 0%, #36f 60%, #123 100%);
+        animation: pulse 1.2s ease-in-out infinite;
+      }
+      @keyframes pulse {
+        50% {
+          transform: scale(1.35);
+          filter: brightness(1.4);
+        }
+      }
+      main {
+        overflow: hidden;
+        font: 15px/1.5 Consolas, "Cascadia Mono", monospace;
+        padding: 0.5rem 0;
+      }
+      pre {
+        margin: 0;
+        counter-reset: line;
+      }
+      .line {
+        display: block;
+        padding-left: 4.5rem;
+        position: relative;
+        white-space: pre;
+      }
+      .line::before {
+        counter-increment: line;
+        content: counter(line);
+        position: absolute;
+        left: 0;
+        width: 3.5rem;
+        text-align: right;
+        color: #858585;
+      }
+      .kw { color: #569cd6; }
+      .fn { color: #dcdcaa; }
+      .str { color: #ce9178; }
+      .num { color: #b5cea8; }
+      .com { color: #6a9955; }
+      .caret {
+        display: inline-block;
+        width: 2px;
+        height: 1.1em;
+        background: #aeafad;
+        vertical-align: text-bottom;
+        animation: blink 1s steps(1) infinite;
+      }
+      @keyframes blink {
+        50% { opacity: 0; }
+      }
+      footer {
+        background: #181818;
+        border-top: 1px solid #333;
+        font: 14px/1.45 Consolas, monospace;
+        padding: 0.5rem 1rem;
+        overflow: hidden;
+      }
+      .pass { color: #89d185; }
+      .static .orb,
+      .static .caret {
+        animation: none;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="orb" aria-hidden="true"></div>
+      <strong>Hirevion AI Interview</strong>
+      <span>Question 4 of 9: design a connection pool</span>
+      <span id="timer" style="margin-left: auto">00:00</span>
+    </header>
+    <main id="editor"><pre id="code"></pre></main>
+    <footer id="terminal"></footer>
+    <script>
+      const SOURCE = `# Connection pool with bounded size, acquire timeout and health checks.
+import threading
+import time
+from contextlib import contextmanager
+
+
+class PoolExhausted(Exception):
+    """Raised when no connection frees up before the acquire timeout."""
+
+
+class ConnectionPool:
+    def __init__(self, factory, size=10, acquire_timeout=0.5, max_lifetime=300):
+        self._factory = factory
+        self._size = size
+        self._acquire_timeout = acquire_timeout
+        self._max_lifetime = max_lifetime
+        self._idle = []
+        self._in_use = 0
+        self._lock = threading.Condition()
+
+    @contextmanager
+    def connection(self):
+        conn = self.acquire()
+        try:
+            yield conn
+        finally:
+            self.release(conn)
+
+    def acquire(self):
+        deadline = time.monotonic() + self._acquire_timeout
+        with self._lock:
+            while True:
+                while self._idle:
+                    conn, created = self._idle.pop()
+                    if time.monotonic() - created < self._max_lifetime and conn.ping():
+                        self._in_use += 1
+                        return conn
+                    conn.close()
+                if self._in_use < self._size:
+                    self._in_use += 1
+                    return self._factory()
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise PoolExhausted(f"all {self._size} connections busy")
+                self._lock.wait(remaining)
+
+    def release(self, conn):
+        with self._lock:
+            self._in_use -= 1
+            self._idle.append((conn, time.monotonic()))
+            self._lock.notify()
+
+
+def test_pool_times_out_when_exhausted():
+    pool = ConnectionPool(FakeConnection, size=1, acquire_timeout=0.05)
+    first = pool.acquire()
+    started = time.monotonic()
+    try:
+        pool.acquire()
+    except PoolExhausted:
+        assert time.monotonic() - started >= 0.05
+    pool.release(first)
+`;
+      const KEYWORDS = new Set([
+        "import", "from", "class", "def", "return", "with", "while", "if", "try", "finally",
+        "except", "raise", "yield", "for", "in", "and", "True", "self",
+      ]);
+      const still = new URLSearchParams(location.search).has("static");
+      if (still) document.body.classList.add("static");
+
+      const code = document.getElementById("code");
+      const editor = document.getElementById("editor");
+      const terminal = document.getElementById("terminal");
+      const timer = document.getElementById("timer");
+
+      // One pass over the raw text, so highlighting never re-reads its own markup.
+      const TOKEN = /(#.*$)|("[^"]*"?)|(\b\d+(?:\.\d+)?\b)|([A-Za-z_]\w*)(?=\()|([A-Za-z_]\w*)/g;
+      function highlight(line) {
+        let html = "";
+        let last = 0;
+        for (const match of line.matchAll(TOKEN)) {
+          html += escape(line.slice(last, match.index));
+          const [text, comment, string, number, call, word] = match;
+          const kind = comment
+            ? "com"
+            : string
+              ? "str"
+              : number
+                ? "num"
+                : call && !KEYWORDS.has(call)
+                  ? "fn"
+                  : KEYWORDS.has(word ?? call)
+                    ? "kw"
+                    : null;
+          html += kind ? `<span class="${kind}">${escape(text)}</span>` : escape(text);
+          last = match.index + text.length;
+        }
+        return html + escape(line.slice(last));
+      }
+      function escape(text) {
+        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      }
+
+      let typed = still ? SOURCE.length : 0;
+      function render() {
+        const lines = SOURCE.slice(0, typed).split("\n");
+        code.innerHTML = lines
+          .map((line, index) => {
+            const caret = index === lines.length - 1 ? '<span class="caret"></span>' : "";
+            return `<span class="line">${highlight(line)}${caret}</span>`;
+          })
+          .join("");
+        editor.scrollTop = editor.scrollHeight;
+      }
+      render();
+
+      const started = Date.now();
+      if (!still) {
+        // About 10 characters a second, a fast but plausible typing speed; start again at the end.
+        setInterval(() => {
+          typed = typed >= SOURCE.length ? 0 : typed + 1;
+          render();
+        }, 100);
+        setInterval(() => {
+          const seconds = Math.floor((Date.now() - started) / 1000);
+          timer.textContent = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+        }, 1000);
+        let run = 0;
+        setInterval(() => {
+          run += 1;
+          const lines = [
+            `$ pytest -q  (run ${run})`,
+            "tests/test_pool.py::test_pool_times_out_when_exhausted PASSED",
+            "tests/test_pool.py::test_release_wakes_a_waiter PASSED",
+            "tests/test_pool.py::test_stale_connections_are_replaced PASSED",
+            `<span class="pass">3 passed in 0.${(run * 37) % 90 + 10}s</span>`,
+          ];
+          let shown = 0;
+          terminal.innerHTML = "";
+          const printer = setInterval(() => {
+            terminal.innerHTML += `${lines[shown]}<br>`;
+            shown += 1;
+            if (shown === lines.length) clearInterval(printer);
+          }, 300);
+        }, 20000);
+      }
+    </script>
+  </body>
+</html>

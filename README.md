@@ -22,8 +22,9 @@ Key documents:
 | Docker Desktop (WSL2) | recent | the local stack |
 | uv | 0.5+ | the Python toolchain (uv installs Python 3.12 itself) |
 | Node.js | 24 LTS | the web, desktop and third-eye apps |
-| pnpm | 9+ | TypeScript workspaces |
-| Rust via rustup, with Visual Studio 2022 Build Tools (C++ workload) | Rust 1.85+ | the desktop app |
+| pnpm | 12 (pinned in `package.json`) | TypeScript workspaces |
+| Rust via rustup, with Visual Studio 2022 Build Tools (C++ workload) | pinned in `ai-interviewer-desktop/src-tauri/rust-toolchain.toml` | the desktop app |
+| WebView2 Runtime | evergreen (built into Windows 11) | the desktop app |
 
 ## First-time setup
 
@@ -46,4 +47,8 @@ The [local development runbook](docs/runbooks/local-dev.md) has the details, add
 | `uv run hv smoke` | Proves each local service works |
 | `uv run pytest` | Runs the Python tests |
 | `uv run ruff check .` | Lints the Python code |
+| `pnpm install` | Installs the TypeScript workspace (desktop webview, third-eye) |
+| `pnpm lint` / `pnpm typecheck` / `pnpm test` | Checks every TypeScript package (Biome, `tsc`, Vitest) |
+| `pnpm --filter @hirevion/ai-interviewer-desktop tauri dev` | Runs the desktop app with hot reload |
+| `cargo test --workspace` (in `ai-interviewer-desktop/src-tauri`) | Runs the Rust tests |
 | `sh tools/hooks/test-hooks.sh` | Tests the git hooks |

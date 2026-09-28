@@ -11,20 +11,22 @@ use windows::Storage::Streams::InMemoryRandomAccessStream;
 use windows::Win32::Foundation::E_POINTER;
 use windows::Win32::Graphics::Direct3D11::ID3D11Texture2D;
 use windows::Win32::Media::MediaFoundation::{
-    CODECAPI_AVEncCommonMeanBitRate, CODECAPI_AVEncCommonRateControlMode, CODECAPI_AVEncMPVGOPSize,
-    IMF2DBuffer, IMFAttributes, IMFDXGIDeviceManager, IMFMediaType, IMFSinkWriter, IMFSinkWriterEx,
-    IMFTransform, MF_MT_AVG_BITRATE, MF_MT_FRAME_RATE, MF_MT_FRAME_SIZE, MF_MT_INTERLACE_MODE,
-    MF_MT_MAJOR_TYPE, MF_MT_MAX_KEYFRAME_SPACING, MF_MT_MPEG2_PROFILE, MF_MT_PIXEL_ASPECT_RATIO,
-    MF_MT_SUBTYPE, MF_MT_TRANSFER_FUNCTION, MF_MT_VIDEO_NOMINAL_RANGE, MF_MT_VIDEO_PRIMARIES,
-    MF_MT_YUV_MATRIX, MF_READWRITE_ENABLE_HARDWARE_TRANSFORMS, MF_SINK_WRITER_D3D_MANAGER,
+    CODECAPI_AVEncCommonMeanBitRate, CODECAPI_AVEncCommonQuality,
+    CODECAPI_AVEncCommonRateControlMode, CODECAPI_AVEncMPVGOPSize, IMF2DBuffer, IMFAttributes,
+    IMFDXGIDeviceManager, IMFMediaType, IMFSinkWriter, IMFSinkWriterEx, IMFTransform,
+    MF_MT_AVG_BITRATE, MF_MT_FRAME_RATE, MF_MT_FRAME_SIZE, MF_MT_INTERLACE_MODE, MF_MT_MAJOR_TYPE,
+    MF_MT_MAX_KEYFRAME_SPACING, MF_MT_MPEG2_PROFILE, MF_MT_PIXEL_ASPECT_RATIO, MF_MT_SUBTYPE,
+    MF_MT_TRANSFER_FUNCTION, MF_MT_VIDEO_NOMINAL_RANGE, MF_MT_VIDEO_PRIMARIES, MF_MT_YUV_MATRIX,
+    MF_READWRITE_ENABLE_HARDWARE_TRANSFORMS, MF_SINK_WRITER_D3D_MANAGER,
     MF_TRANSCODE_CONTAINERTYPE, MF_VERSION, MFCreateAttributes, MFCreateDXGIDeviceManager,
     MFCreateDXGISurfaceBuffer, MFCreateMFByteStreamOnStreamEx, MFCreateMediaType, MFCreateSample,
     MFCreateSinkWriterFromURL, MFMediaType_Video, MFNominalRange_16_235, MFSTARTUP_FULL, MFStartup,
     MFT_CATEGORY_VIDEO_ENCODER, MFT_CATEGORY_VIDEO_PROCESSOR, MFT_ENUM_HARDWARE_URL_Attribute,
-    MFT_FRIENDLY_NAME_Attribute, MFTranscodeContainerType_MPEG4, MFVideoFormat_H264,
-    MFVideoFormat_NV12, MFVideoInterlace_Progressive, MFVideoPrimaries_BT709, MFVideoTransFunc_709,
-    MFVideoTransferMatrix_BT709, eAVEncCommonRateControlMode_UnconstrainedVBR,
-    eAVEncH264VProfile_Main,
+    MFT_FRIENDLY_NAME_Attribute, MFT_TRANSFORM_CLSID_Attribute, MFTGetInfo,
+    MFTranscodeContainerType_MPEG4, MFVideoFormat_H264, MFVideoFormat_NV12,
+    MFVideoInterlace_Progressive, MFVideoPrimaries_BT709, MFVideoTransFunc_709,
+    MFVideoTransferMatrix_BT709, eAVEncCommonRateControlMode_Quality,
+    eAVEncCommonRateControlMode_UnconstrainedVBR, eAVEncH264VProfile_Main,
 };
 use windows::Win32::System::Com::{
     CoTaskMemFree, IStream, STATFLAG_NONAME, STATSTG, STREAM_SEEK_SET,
@@ -32,12 +34,23 @@ use windows::Win32::System::Com::{
 use windows::Win32::System::WinRT::CreateStreamOverRandomAccessStream;
 use windows_core::{Error, GUID, Interface, PCWSTR, PWSTR, Result};
 
+/// How the encoder spends bits.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RateControl {
+    /// Variable bit rate averaging `EncoderConfig::bitrate`.
+    Vbr,
+    /// Constant quality from 1 to 100: an unchanged screen costs almost nothing and a busy
+    /// one costs more. `EncoderConfig::bitrate` is then only a hint.
+    Quality(u32),
+}
+
 /// Encoder settings shared by every segment of one display.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EncoderConfig {
     pub size: Size,
     pub fps: u32,
     pub bitrate: u32,
+    pub rate_control: RateControl,
     pub gop_frames: u32,
     /// Allow hardware encoders (Quick Sync, NVENC, AMF). `false` forces Microsoft's
     /// software encoder, for comparison.
@@ -50,8 +63,19 @@ pub fn startup() -> Result<()> {
     unsafe { MFStartup(MF_VERSION, MFSTARTUP_FULL) }.context("start Media Foundation")
 }
 
-/// Shares one D3D11 device with every encoder on a thread.
-pub fn device_manager(gpu: &GpuDevice) -> Result<IMFDXGIDeviceManager> {
+/// The DXGI device manager that lets encoders use the capture thread's D3D11 device.
+#[derive(Clone)]
+pub struct DeviceManager(IMFDXGIDeviceManager);
+
+// SAFETY: the DXGI device manager exists to share one device between components on different
+// threads (it serialises access through LockDevice/UnlockDevice), and every thread that uses
+// it here is in the multithreaded apartment.
+unsafe impl Send for DeviceManager {}
+// SAFETY: as above; all its methods are safe to call concurrently.
+unsafe impl Sync for DeviceManager {}
+
+/// Shares `gpu`'s D3D11 device with Media Foundation encoders.
+pub fn device_manager(gpu: &GpuDevice) -> Result<DeviceManager> {
     let mut token = 0u32;
     let mut manager = None;
     // SAFETY: both out-pointers refer to locals.
@@ -60,7 +84,7 @@ pub fn device_manager(gpu: &GpuDevice) -> Result<IMFDXGIDeviceManager> {
     let manager = manager.ok_or_else(|| Error::new(E_POINTER, "no DXGI device manager"))?;
     // SAFETY: the device is a valid D3D11 device and `token` came from the call above.
     unsafe { manager.ResetDevice(gpu.device(), token) }.context("share the D3D11 device")?;
-    Ok(manager)
+    Ok(DeviceManager(manager))
 }
 
 /// An MP4 file being encoded in memory.
@@ -73,7 +97,7 @@ pub struct SegmentWriter {
 }
 
 impl SegmentWriter {
-    pub fn new(manager: &IMFDXGIDeviceManager, config: &EncoderConfig) -> Result<Self> {
+    pub fn new(manager: &DeviceManager, config: &EncoderConfig) -> Result<Self> {
         // SAFETY: every call below receives valid, fully initialised arguments; the objects
         // they return are owned by `Self` and released on drop.
         unsafe {
@@ -86,7 +110,7 @@ impl SegmentWriter {
                 &MF_READWRITE_ENABLE_HARDWARE_TRANSFORMS,
                 u32::from(config.hardware),
             )?;
-            attributes.SetUnknown(&MF_SINK_WRITER_D3D_MANAGER, manager)?;
+            attributes.SetUnknown(&MF_SINK_WRITER_D3D_MANAGER, &manager.0)?;
             let writer = MFCreateSinkWriterFromURL(PCWSTR::null(), &byte_stream, &attributes)
                 .context("create MP4 sink writer")?;
 
@@ -102,13 +126,24 @@ impl SegmentWriter {
             let input = video_type(&MFVideoFormat_NV12, config)?;
             let encoding = attribute_store(3)?;
             encoding.SetUINT32(&CODECAPI_AVEncMPVGOPSize, config.gop_frames)?;
-            encoding.SetUINT32(
-                &CODECAPI_AVEncCommonRateControlMode,
-                eAVEncCommonRateControlMode_UnconstrainedVBR
-                    .0
-                    .cast_unsigned(),
-            )?;
-            encoding.SetUINT32(&CODECAPI_AVEncCommonMeanBitRate, config.bitrate)?;
+            match config.rate_control {
+                RateControl::Vbr => {
+                    encoding.SetUINT32(
+                        &CODECAPI_AVEncCommonRateControlMode,
+                        eAVEncCommonRateControlMode_UnconstrainedVBR
+                            .0
+                            .cast_unsigned(),
+                    )?;
+                    encoding.SetUINT32(&CODECAPI_AVEncCommonMeanBitRate, config.bitrate)?;
+                }
+                RateControl::Quality(level) => {
+                    encoding.SetUINT32(
+                        &CODECAPI_AVEncCommonRateControlMode,
+                        eAVEncCommonRateControlMode_Quality.0.cast_unsigned(),
+                    )?;
+                    encoding.SetUINT32(&CODECAPI_AVEncCommonQuality, level)?;
+                }
+            }
             writer
                 .SetInputMediaType(index, &input, &encoding)
                 .context("set NV12 input and encoder settings")?;
@@ -281,22 +316,40 @@ fn describe_transforms(writer: &IMFSinkWriter, index: u32) -> String {
     }
 }
 
+/// The transform's friendly name, or its registered name when it has no friendly one (the
+/// Intel Quick Sync encoder, for example).
 fn friendly_name(transform: &IMFTransform) -> Option<String> {
-    // SAFETY: GetAllocatedString hands back a CoTaskMem string that is freed below.
+    // SAFETY: both calls hand back CoTaskMem strings, which `take_string` frees.
     unsafe {
         let attributes = transform.GetAttributes().ok()?;
         let mut value = PWSTR::null();
         let mut length = 0u32;
-        attributes
+        if attributes
             .GetAllocatedString(
                 &MFT_FRIENDLY_NAME_Attribute,
                 &raw mut value,
                 &raw mut length,
             )
-            .ok()?;
-        let name = value.to_string().ok();
+            .is_ok()
+        {
+            return take_string(value);
+        }
+        let clsid = attributes.GetGUID(&MFT_TRANSFORM_CLSID_Attribute).ok()?;
+        MFTGetInfo(clsid, Some(&raw mut value), None, None, None, None, None).ok()?;
+        take_string(value)
+    }
+}
+
+/// Copies and frees a CoTaskMem string.
+unsafe fn take_string(value: PWSTR) -> Option<String> {
+    // SAFETY: the caller passes a CoTaskMem-allocated, NUL-terminated string (or null).
+    unsafe {
+        if value.is_null() {
+            return None;
+        }
+        let text = value.to_string().ok();
         CoTaskMemFree(Some(value.0 as *const core::ffi::c_void));
-        name
+        text
     }
 }
 
