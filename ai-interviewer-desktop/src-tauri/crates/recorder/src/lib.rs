@@ -4,3 +4,8 @@
 pub mod clock;
 pub mod mp4;
 pub mod stats;
+
+#[cfg(windows)]
+pub mod hash;
+#[cfg(windows)]
+pub mod writer;
