@@ -3,7 +3,7 @@ name = "hirevion"
 version = "0.0.0"
 description = "Hirevion monorepo workspace root"
 requires-python = ">=3.12,<3.13"
-dependencies = ["hirevion-devcli", "hirevion-interview-agent"]
+dependencies = ["hirevion-devcli", "hirevion-interview-agent", "hirevion-voice-bench"]
 
 [tool.uv]
 package = false
@@ -11,11 +11,12 @@ package = false
 link-mode = "copy"
 
 [tool.uv.workspace]
-members = ["tools/devcli", "backend/interview_agent"]
+members = ["tools/devcli", "backend/interview_agent", "tools/voice_bench"]
 
 [tool.uv.sources]
 hirevion-devcli = { workspace = true }
 hirevion-interview-agent = { workspace = true }
+hirevion-voice-bench = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -34,13 +35,13 @@ extend-exclude = ["docs"]
 select = ["E", "F", "I", "UP", "B", "SIM", "S", "RUF"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["hirevion_devcli", "hirevion_interview_agent"]
+known-first-party = ["hirevion_devcli", "hirevion_interview_agent", "hirevion_voice_bench"]
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["S101", "S106"]
 
 [tool.pytest.ini_options]
-testpaths = ["tools/devcli/tests", "backend/interview_agent/tests"]
+testpaths = ["tools/devcli/tests", "backend/interview_agent/tests", "tools/voice_bench/tests"]
 addopts = "-q --strict-markers"
 
 [tool.mypy]

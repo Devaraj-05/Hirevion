@@ -7,6 +7,7 @@ members = [
     "hirevion",
     "hirevion-devcli",
     "hirevion-interview-agent",
+    "hirevion-voice-bench",
 ]
 
 [[package]]
@@ -476,6 +477,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "hirevion-devcli" },
     { name = "hirevion-interview-agent" },
+    { name = "hirevion-voice-bench" },
 ]
 
 [package.dev-dependencies]
@@ -490,6 +492,7 @@ dev = [
 requires-dist = [
     { name = "hirevion-devcli", editable = "tools/devcli" },
     { name = "hirevion-interview-agent", editable = "backend/interview_agent" },
+    { name = "hirevion-voice-bench", editable = "tools/voice_bench" },
 ]
 
 [package.metadata.requires-dev]
@@ -536,6 +539,27 @@ dependencies = [
 requires-dist = [
     { name = "livekit-agents", extras = ["deepgram", "openai", "silero", "turn-detector"], specifier = ">=1.2" },
     { name = "pydantic-settings", specifier = ">=2.4" },
+]
+
+[[package]]
+name = "hirevion-voice-bench"
+version = "0.1.0"
+source = { editable = "tools/voice_bench" }
+dependencies = [
+    { name = "hirevion-interview-agent" },
+    { name = "httpx" },
+    { name = "livekit" },
+    { name = "livekit-api" },
+    { name = "numpy" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "hirevion-interview-agent", editable = "backend/interview_agent" },
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "livekit", specifier = ">=1.0" },
+    { name = "livekit-api", specifier = ">=1.0" },
+    { name = "numpy", specifier = ">=1.26" },
 ]
 
 [[package]]

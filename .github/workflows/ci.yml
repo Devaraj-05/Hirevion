@@ -30,7 +30,7 @@ jobs:
       - run: uv sync --locked
       - run: uv run ruff check .
       - run: uv run ruff format --check .
-      - run: uv run mypy tools/devcli/src backend/interview_agent/src
+      - run: uv run mypy tools/devcli/src backend/interview_agent/src tools/voice_bench/src
       - run: uv run pytest
 
   compose:
