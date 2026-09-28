@@ -102,6 +102,9 @@ extend-exclude = ["docs"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "S", "RUF"]
 
+[tool.ruff.lint.isort]
+known-first-party = ["hirevion_devcli"]
+
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["S101", "S106"]
 
