@@ -180,7 +180,12 @@ mod tests {
     #[test]
     fn vbr_switches_to_a_variable_bit_rate() {
         assert_eq!(parse_all(&["--vbr"]).expect("vbr").quality, None);
-        assert_eq!(parse_all(&["--vbr", "--quality", "60"]).expect("both").quality, Some(60));
+        assert_eq!(
+            parse_all(&["--vbr", "--quality", "60"])
+                .expect("both")
+                .quality,
+            Some(60)
+        );
     }
 
     #[test]
