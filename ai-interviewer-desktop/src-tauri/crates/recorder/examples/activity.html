@@ -188,7 +188,7 @@ def test_pool_times_out_when_exhausted():
         let html = "";
         let last = 0;
         for (const match of line.matchAll(TOKEN)) {
-          html += escape(line.slice(last, match.index));
+          html += escapeHtml(line.slice(last, match.index));
           const [text, comment, string, number, call, word] = match;
           const kind = comment
             ? "com"
@@ -201,12 +201,12 @@ def test_pool_times_out_when_exhausted():
                   : KEYWORDS.has(word ?? call)
                     ? "kw"
                     : null;
-          html += kind ? `<span class="${kind}">${escape(text)}</span>` : escape(text);
+          html += kind ? `<span class="${kind}">${escapeHtml(text)}</span>` : escapeHtml(text);
           last = match.index + text.length;
         }
-        return html + escape(line.slice(last));
+        return html + escapeHtml(line.slice(last));
       }
-      function escape(text) {
+      function escapeHtml(text) {
         return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
       }
 
