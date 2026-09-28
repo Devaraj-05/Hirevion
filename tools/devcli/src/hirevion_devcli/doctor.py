@@ -16,10 +16,11 @@ from .checks import (
     find_tool,
     run_command,
 )
-from .envfile import missing_required, parse_env
-from .vendors import check_deepgram, check_openai
+from .envfile import is_placeholder, parse_env
+from .vendors import check_deepgram, check_gemini, check_openai
 
-_MODEL_PREFIXES = ("gpt-", "o1", "o3", "o4", "text-embedding-", "tts-", "whisper-")
+_MODEL_PREFIXES = ("gemini-", "gpt-", "o1", "o3", "o4", "text-embedding-", "tts-", "whisper-")
+_VENDOR_KEYS = ("GEMINI_API_KEY", "DEEPGRAM_API_KEY", "OPENAI_API_KEY")
 
 
 def summarize_models(models: list[str]) -> list[str]:
@@ -33,7 +34,7 @@ def gather(
     which: Which = find_tool,
     runner: Runner = run_command,
     client: httpx.Client | None = None,
-) -> tuple[list[CheckResult], list[str]]:
+) -> tuple[list[CheckResult], dict[str, list[str]]]:
     results = [
         check_tool("git", ["--version"], (2, 40, 0), which=which, runner=runner),
         check_docker(which=which, runner=runner),
@@ -45,14 +46,23 @@ def gather(
     env_path = repo_root / ".env"
     values = parse_env(env_path.read_text(encoding="utf-8")) if env_path.exists() else None
     results.append(check_env(values))
-    models: list[str] = []
-    if values is not None and not missing_required(values):
-        http = client if client is not None else httpx.Client(timeout=20)
-        try:
-            openai_result, models = check_openai(values["OPENAI_API_KEY"], http)
-            results.append(openai_result)
+    models: dict[str, list[str]] = {}
+    if values is None:
+        return results, models
+    present = {key for key in _VENDOR_KEYS if not is_placeholder(values.get(key, ""))}
+    if not present:
+        return results, models
+    http = client if client is not None else httpx.Client(timeout=20)
+    try:
+        if "GEMINI_API_KEY" in present:
+            gemini_result, models["gemini"] = check_gemini(values["GEMINI_API_KEY"], http)
+            results.append(gemini_result)
+        if "DEEPGRAM_API_KEY" in present:
             results.append(check_deepgram(values["DEEPGRAM_API_KEY"], http))
-        finally:
-            if client is None:
-                http.close()
+        if "OPENAI_API_KEY" in present:
+            openai_result, models["openai"] = check_openai(values["OPENAI_API_KEY"], http)
+            results.append(openai_result)
+    finally:
+        if client is None:
+            http.close()
     return results, models

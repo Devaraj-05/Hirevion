@@ -53,8 +53,9 @@ def doctor() -> None:
     for result in results:
         table.add_row(result.name, _STATUS_STYLE[result.status], result.detail)
     console.print(table)
-    useful = doctor_checks.summarize_models(models)
-    if useful:
-        console.print("OpenAI models usable by Hirevion: " + ", ".join(useful))
+    for provider, provider_models in models.items():
+        useful = doctor_checks.summarize_models(provider_models)
+        if useful:
+            console.print(f"{provider} models usable by Hirevion: " + ", ".join(useful))
     if any(result.status == "fail" for result in results):
         raise typer.Exit(code=1)

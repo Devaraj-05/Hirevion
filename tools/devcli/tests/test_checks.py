@@ -74,6 +74,6 @@ def test_docker_with_enough_resources_passes() -> None:
 
 def test_env_check() -> None:
     assert check_env(None).status == "fail"
-    assert check_env({"OPENAI_API_KEY": "", "DEEPGRAM_API_KEY": ""}).status == "fail"
-    values = {"OPENAI_API_KEY": "a" * 40, "DEEPGRAM_API_KEY": "b" * 40}
+    assert check_env({"GEMINI_API_KEY": "", "DEEPGRAM_API_KEY": ""}).status == "fail"
+    values = {"GEMINI_API_KEY": "a" * 40, "DEEPGRAM_API_KEY": "b" * 40}
     assert check_env(values) == CheckResult(".env", "ok", "API keys present")

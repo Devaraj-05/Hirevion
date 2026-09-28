@@ -8,6 +8,21 @@ from .checks import CheckResult
 
 OPENAI_MODELS_URL = "https://api.openai.com/v1/models"
 DEEPGRAM_PROJECTS_URL = "https://api.deepgram.com/v1/projects"
+GEMINI_MODELS_URL = "https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000"
+
+
+def check_gemini(api_key: str, client: httpx.Client) -> tuple[CheckResult, list[str]]:
+    try:
+        response = client.get(GEMINI_MODELS_URL, headers={"x-goog-api-key": api_key})
+    except httpx.HTTPError as exc:
+        return CheckResult("gemini", "fail", f"network error ({type(exc).__name__})"), []
+    if response.status_code in (400, 401, 403):
+        return CheckResult("gemini", "fail", f"key rejected (HTTP {response.status_code})"), []
+    if response.status_code != 200:
+        return CheckResult("gemini", "fail", f"unexpected HTTP {response.status_code}"), []
+    listed = response.json().get("models", [])
+    models = sorted(str(item["name"]).removeprefix("models/") for item in listed)
+    return CheckResult("gemini", "ok", f"key valid; {len(models)} models available"), models
 
 
 def check_openai(api_key: str, client: httpx.Client) -> tuple[CheckResult, list[str]]:

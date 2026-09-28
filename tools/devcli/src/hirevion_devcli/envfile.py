@@ -6,7 +6,7 @@ import re
 import secrets
 from pathlib import Path
 
-REQUIRED_KEYS: tuple[str, ...] = ("OPENAI_API_KEY", "DEEPGRAM_API_KEY")
+REQUIRED_KEYS: tuple[str, ...] = ("GEMINI_API_KEY", "DEEPGRAM_API_KEY")
 GENERATED_KEYS: dict[str, int] = {
     "POSTGRES_PASSWORD": 32,
     "LIVEKIT_API_SECRET": 48,
@@ -61,6 +61,22 @@ def render_env(example_text: str, generated: dict[str, str]) -> str:
         else:
             lines.append(line)
     return "\n".join(lines) + "\n"
+
+
+def sync_env(example_text: str, env_text: str, generated: dict[str, str]) -> tuple[str, list[str]]:
+    """Append keys that are in the example but missing from the env text; keep existing values."""
+    existing = parse_env(env_text)
+    added: list[str] = []
+    lines: list[str] = []
+    for key, example_value in parse_env(example_text).items():
+        if key in existing:
+            continue
+        added.append(key)
+        lines.append(f"{key}={example_value or generated.get(key, '')}")
+    if not added:
+        return env_text, []
+    base = env_text if not env_text or env_text.endswith("\n") else env_text + "\n"
+    return base + "# Added by `hv env-sync`\n" + "\n".join(lines) + "\n", added
 
 
 def init_env(example_path: Path, env_path: Path) -> bool:

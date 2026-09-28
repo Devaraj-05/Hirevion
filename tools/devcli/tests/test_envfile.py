@@ -8,6 +8,7 @@ from hirevion_devcli.envfile import (
     missing_required,
     parse_env,
     render_env,
+    sync_env,
 )
 
 
@@ -26,9 +27,34 @@ def test_placeholders_are_detected() -> None:
 
 
 def test_missing_required_lists_empty_and_placeholder_keys() -> None:
-    values = {"OPENAI_API_KEY": "changeme", "DEEPGRAM_API_KEY": "k" * 40}
-    assert missing_required(values) == ["OPENAI_API_KEY"]
-    assert missing_required({}) == ["OPENAI_API_KEY", "DEEPGRAM_API_KEY"]
+    values = {"GEMINI_API_KEY": "changeme", "DEEPGRAM_API_KEY": "k" * 40}
+    assert missing_required(values) == ["GEMINI_API_KEY"]
+    assert missing_required({}) == ["GEMINI_API_KEY", "DEEPGRAM_API_KEY"]
+
+
+def test_sync_env_appends_only_missing_keys() -> None:
+    example = "A=\nB=default\nPOSTGRES_PASSWORD=\nC=\n"
+    env = "A=mine\n"
+    new_text, added = sync_env(example, env, {"POSTGRES_PASSWORD": "p" * 32})
+    assert added == ["B", "POSTGRES_PASSWORD", "C"]
+    assert parse_env(new_text) == {
+        "A": "mine",
+        "B": "default",
+        "POSTGRES_PASSWORD": "p" * 32,
+        "C": "",
+    }
+    assert new_text.startswith("A=mine\n")
+
+
+def test_sync_env_is_a_no_op_when_complete() -> None:
+    env = "A=mine\nB=x\n"
+    assert sync_env("A=\nB=\n", env, {}) == (env, [])
+
+
+def test_sync_env_handles_env_without_trailing_newline() -> None:
+    new_text, added = sync_env("A=\nB=\n", "A=mine", {})
+    assert added == ["B"]
+    assert parse_env(new_text) == {"A": "mine", "B": ""}
 
 
 def test_generated_secrets_are_random_and_long_enough() -> None:
