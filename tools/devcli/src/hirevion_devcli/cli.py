@@ -9,7 +9,7 @@ from rich.console import Console
 from rich.table import Table
 
 from . import doctor as doctor_checks
-from .envfile import init_env
+from .envfile import generate_local_secrets, init_env, sync_env
 
 app = typer.Typer(help="Hirevion developer CLI.", no_args_is_help=True)
 console = Console()
@@ -40,6 +40,26 @@ def init_env_command() -> None:
         )
     else:
         console.print(".env already exists; left unchanged.")
+
+
+@app.command("env-sync")
+def env_sync_command() -> None:
+    """Add settings that are new in .env.example to .env (existing values are kept)."""
+    root = repo_root()
+    env_path = root / ".env"
+    if not env_path.exists():
+        console.print(".env is missing; run `uv run hv init-env` first.")
+        raise typer.Exit(code=1)
+    new_text, added = sync_env(
+        (root / ".env.example").read_text(encoding="utf-8"),
+        env_path.read_text(encoding="utf-8"),
+        generate_local_secrets(),
+    )
+    if added:
+        env_path.write_text(new_text, encoding="utf-8")
+        console.print("Added to .env: " + ", ".join(added))
+    else:
+        console.print(".env is already up to date.")
 
 
 @app.command()
