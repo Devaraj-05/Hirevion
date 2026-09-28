@@ -16,7 +16,7 @@ Hirevion is an enterprise AI recruitment and interview platform with two separat
 
 ## Working rules
 
-- Local-first: everything runs on Docker Desktop; AI uses the OpenAI and Deepgram APIs through keys in the gitignored root `.env`. The cloud move has its own plan. Keep cloud specifics behind the adapters in master plan §5.4.
+- Local-first: everything runs on Docker Desktop. AI uses hosted APIs through keys in the gitignored root `.env`: Gemini for development and testing, OpenAI in production, Deepgram for speech (ADR-0003). The cloud move has its own plan. Keep cloud specifics behind the adapters in master plan §5.4.
 - No PRD feature may be dropped. If scope moves between sub-projects, update Appendix A of the master plan in the same change.
 - Test-driven: write the failing test first; keep CI green.
 - Never commit secrets: API keys live only in the gitignored root `.env`, never in the desktop app or the web bundle. Use synthetic data in development.

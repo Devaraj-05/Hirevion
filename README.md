@@ -29,8 +29,8 @@ Key documents:
 
 1. `git config core.hooksPath .githooks` turns on the repository's git guards.
 2. `uv sync` creates the Python environment.
-3. `uv run hv init-env` creates `.env` with fresh local secrets.
-4. Add `OPENAI_API_KEY` and `DEEPGRAM_API_KEY` to `.env`. It is gitignored; never commit it.
+3. `uv run hv init-env` creates `.env` with fresh local secrets. Later, `uv run hv env-sync` adds any new settings without touching your values.
+4. Add `GEMINI_API_KEY` and `DEEPGRAM_API_KEY` to `.env` (Gemini is the development LLM; `OPENAI_API_KEY` is only needed for production). `.env` is gitignored; never commit it.
 5. `uv run hv doctor` checks your tools, Docker and API keys.
 
 ## Everyday commands

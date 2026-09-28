@@ -7,6 +7,8 @@ dependencies = ["hirevion-devcli"]
 
 [tool.uv]
 package = false
+# The uv cache (C:) and the repo (D:) are on different drives, so hardlinks can't be used.
+link-mode = "copy"
 
 [tool.uv.workspace]
 members = ["tools/devcli"]

@@ -17,7 +17,7 @@
   2. The **Candidate Windows Desktop AI Interview** (`AI-Interview.exe`), which candidates install and log into to take the AI interview.
   3. **Third-Eye**, a mobile-browser camera.
   4. The **shared backend**.
-- **Where it runs:** everything runs end-to-end locally on Docker Desktop. AI runs on your OpenAI and Deepgram API keys (decided 2026-09-28, replacing the earlier local-model idea); everything else is free and local.
+- **Where it runs:** everything runs end-to-end locally on Docker Desktop. AI runs on hosted APIs through your keys (decided 2026-09-28, replacing the earlier local-model idea): Gemini for development and testing, OpenAI in production, Deepgram for speech. Everything else is free and local.
   - The move to Azure (Central India) is a separate **Cloud Migration Plan** written after the local build.
   - That move must be configuration plus deployment, not a rewrite.
 - **Decisions made with you:**
@@ -26,7 +26,7 @@
   - **No PRD feature is skipped.**
   - Security, robustness and usability are non-negotiable.
   - Recruiter identity is built in-house, following your answer "build everything locally first".
-  - AI vendors from day one: OpenAI (LLM, embeddings, vision) and Deepgram (speech-to-text and text-to-speech). ElevenLabs/Cartesia stay optional text-to-speech upgrades for later.
+  - AI vendors: Gemini (your paid key) for LLM, embeddings and vision in development and testing; OpenAI for the same in production; Deepgram for speech-to-text and text-to-speech in both. ElevenLabs/Cartesia stay optional text-to-speech upgrades for later.
   - Customers and data are in India, so the DPDP Act 2023 applies.
   - Launch is full GA with internal security testing, followed by an external pentest.
 - **Git hygiene:** commits and pushes go out only as Devaraj-05, with no Claude attribution anywhere (§17).
@@ -57,7 +57,7 @@ Each application has its own build, tests and release pipeline.
 | D3 | Web stack: Next.js (App Router, React 19), TypeScript, Tailwind v4, shadcn/ui, TanStack Query and Table, Zustand, ECharts, next-intl, react-hook-form + zod, and an OpenAPI-generated client. | §94. |
 | D4 | Desktop stack: Tauri 2 with React/TS/Vite and Monaco. Native code uses the Rust `windows` crate. MediaPipe Tasks (WASM) runs on-device computer vision. NSIS per-user installer and a signed updater. | §27 and §94. |
 | D5 | Self-hosted LiveKit server and Egress in Docker. The voice pipeline runs on LiveKit Agents (Python), with our orchestrator plugged in. | Provides turn detection, barge-in, streaming and fallbacks; serves §52, §65 and §92. |
-| D6 | An AI provider abstraction (§78) with two profiles: `vendor` (OpenAI + Deepgram through your API keys) for development and production, and `mock` (deterministic fakes) for CI and load tests. Providers and models are set per route in configuration. | Real model quality and latency from day one, no GPU needed, and the cost model measures real spend. |
+| D6 | An AI provider abstraction (§78) with three profiles: `dev` (Gemini + Deepgram) for development and testing, `production` (OpenAI + Deepgram), and `mock` (deterministic fakes) for CI and load tests. Providers and models are set per route in configuration. | Real model quality and latency from day one, no GPU needed, and the cost model measures real spend. |
 | D7 | In-house identity:<br>• **Recruiters:** argon2id passwords, TOTP and passkeys, sessions, lockout, SSO (Entra ID/OIDC/SAML) and SCIM.<br>• **Candidates:** invitation → set password → desktop login (plus an email OTP on a new device, org-configurable) → device-bound DPoP tokens. | Your choice; also delivers §8 device and session binding. |
 | D8 | Storage uses the Azure Blob API everywhere (Azurite locally), behind a storage-service and URL-signer interface. ClamAV scans files. Email goes over SMTP (Mailpit locally). | The cloud move needs no rework. |
 | D9 | The coding sandbox is a separate `sandbox-runner` that starts a fresh, hardened container for every run and destroys it afterwards. | §46. |
@@ -138,7 +138,7 @@ Each application has its own build, tests and release pipeline.
    - Add a transactional outbox.
    - Add composite tenant foreign keys plus Postgres row-level security.
    - Partition the high-volume tables monthly.
-   - pgvector's HNSW index caps at 2,000 dimensions, so embeddings are 1,024-dimensional, with a re-embed job for provider changes.
+   - pgvector's HNSW index caps at 2,000 dimensions, so embeddings are 1,536-dimensional (supported natively by both Gemini and OpenAI embedding models), with a re-embed job for provider changes.
    - The linear §35 flow conflicts with adaptive difficulty (§39). Keep the §35 states, but run EASY→MEDIUM→HARD as a per-skill ladder adjusted by `DifficultyController`.
    - Synchronise all event clocks to server time.
 9. **Notes for the Cloud Migration Plan:**
@@ -216,7 +216,7 @@ Docker Desktop (WSL2)
   media: livekit-server (7880 ws / 7881 tcp / 7882 udp-mux) · livekit-egress
   obs  : otel-lgtm (Grafana/Tempo/Loki/Prometheus) · glitchtip
   test : keycloak (SAML/OIDC test IdP) · webhook-receiver · ats-mocks
-External APIs (HTTPS, keys in the gitignored root .env): OpenAI (LLM, embeddings, vision, TTS fallback) · Deepgram (STT, TTS)
+External APIs (HTTPS, keys in the gitignored root .env): Gemini (dev LLM, embeddings, vision) · OpenAI (production LLM, embeddings, vision, TTS fallback) · Deepgram (STT, TTS)
 ```
 
 ### 5.2 Docker Desktop stack
@@ -228,7 +228,7 @@ External APIs (HTTPS, keys in the gitignored root .env): OpenAI (LLM, embeddings
   - If file-watching on Windows mounts is too slow, the API can run natively with uv instead.
 - **`doctor` script:**
   - Checks Docker resources, ports, hosts entries, Caddy CA trust, WebView2 and the MSVC build tools.
-  - Verifies the OpenAI and Deepgram keys with a harmless API call and lists the models your keys can use.
+  - Verifies the Gemini, Deepgram and (when set) OpenAI keys with a harmless API call and lists the models your keys can use.
 - **Seed data:**
   - A super admin, 2 organisations (for tenant-isolation checks) and users for every role.
   - Departments, teams, jobs, templates and a question library.
@@ -239,30 +239,31 @@ External APIs (HTTPS, keys in the gitignored root .env): OpenAI (LLM, embeddings
     - hidden-text injection samples
     - an EICAR malware test file
 
-### 5.3 AI stack (OpenAI + Deepgram through your API keys)
+### 5.3 AI stack (Gemini for development, OpenAI for production, Deepgram for speech)
 
-Decided on 2026-09-28: AI runs on your OpenAI and Deepgram API keys from day one, instead of local models. No GPU is needed.
+Decided on 2026-09-28 (ADR-0002, ADR-0003): AI runs on hosted APIs through your keys, instead of local models, so no GPU is needed. Gemini (your paid key) is the LLM for development and testing; OpenAI is the production LLM; Deepgram handles speech in both.
 
 - **One interface layer:** every AI call goes through `hirevion_core.ai`:
   - `LLMService`, `EmbeddingService`, `SpeechToTextService`, `TextToSpeechService`, `VisionService` (§78), plus `OCRService`.
   - Each call records model, prompt and rubric versions plus usage.
-- **Profiles:** `vendor` (development and production) and `mock` (CI and load tests). The provider and model for each route are set in configuration.
+- **Profiles:** `dev` (Gemini + Deepgram) for development and testing, `production` (OpenAI + Deepgram), and `mock` (CI and load tests). The provider and model for each route are set in configuration.
 
-| Capability | `vendor` profile | Fallback | `mock` (CI and load tests) |
-|---|---|---|---|
-| LLM (JSON-schema output) | OpenAI: a fast model for live interview turns, the flagship model for screening and evaluation | Azure OpenAI deployment of the same models (production, recommended) | Deterministic fake |
-| Embeddings (1,024-d) | OpenAI text-embedding-3-large with `dimensions=1024` | — | Deterministic fake vectors |
-| STT | Deepgram streaming (Nova-3, or Flux for conversational end-of-turn) with keyterms from the JD and resume | OpenAI transcription | Scripted transcript |
-| TTS | Deepgram Aura-2 streaming | OpenAI TTS; ElevenLabs/Cartesia optional later | Silent audio of realistic length |
-| VAD / turn-taking | Silero VAD + LiveKit turn detector (+ Flux end-of-turn when used) | — | same |
-| OCR | Tesseract 5, with OpenAI vision for low-confidence pages | — | Fixture text |
-| Vision (proctoring) | MediaPipe on-device; OpenCV + ONNX Runtime + an Apache-2.0 detector server-side | — | Fixture detections |
+| Capability | `dev` profile | `production` profile | Fallback | `mock` (CI and load tests) |
+|---|---|---|---|---|
+| LLM (JSON-schema output) | Gemini through its OpenAI-compatible endpoint: a fast model for live interview turns, the strongest model for screening and evaluation | OpenAI: same split | Azure OpenAI deployment of the production models (recommended) | Deterministic fake |
+| Embeddings (1,536-d) | Gemini `gemini-embedding-001` with `output_dimensionality=1536` | OpenAI `text-embedding-3-large` with `dimensions=1536` | — | Deterministic fake vectors |
+| STT | Deepgram streaming (Nova-3, or Flux for conversational end-of-turn) with keyterms from the JD and resume | same | OpenAI transcription | Scripted transcript |
+| TTS | Deepgram Aura-2 streaming | same | OpenAI TTS; ElevenLabs/Cartesia optional later | Silent audio of realistic length |
+| VAD / turn-taking | Silero VAD + LiveKit turn detector (+ Flux end-of-turn when used) | same | — | same |
+| OCR | Tesseract 5, with Gemini vision for low-confidence pages | Tesseract 5 + OpenAI vision | — | Fixture text |
+| Vision (proctoring) | MediaPipe on-device; OpenCV + ONNX Runtime + an Apache-2.0 detector server-side | same | — | Fixture detections |
 
-- **Voice wiring:** LiveKit Agents' `deepgram` and `openai` plugins, with `FallbackAdapter` for STT, LLM and TTS.
-- **Other LLM work:** the OpenAI Python SDK with JSON-schema structured outputs. Pydantic validates every response, with one repair retry.
+- **Voice wiring:** LiveKit Agents' `deepgram` and `openai` plugins (the `openai` plugin points at Gemini's OpenAI-compatible endpoint in `dev`), with `FallbackAdapter` for STT, LLM and TTS.
+- **Other LLM work:** the OpenAI Python SDK with JSON-schema structured outputs, against Gemini's OpenAI-compatible endpoint in `dev` and OpenAI in `production`, so one code path serves both. Pydantic validates every response, with one repair retry.
+- **Embeddings across providers:** vectors from different providers aren't comparable, so each stored vector records its model, and switching providers runs the re-embed job.
 - **Model choice:** model names live in configuration, never in code. The SP-00 benchmark lists the models your keys can use and picks the ones that keep the AI's first spoken word at p95 ≤ 2.5 s.
 - **Keys:** only in the gitignored root `.env` locally (Key Vault in the cloud). Never in the repo, the desktop app or the web bundle.
-- **Data rule:** development uses synthetic data. Real candidate data goes to OpenAI and Deepgram only after their DPAs are signed and the data-retention and model-improvement opt-outs are in place (§17).
+- **Data rule:** development uses synthetic data. Real candidate data goes to an AI vendor only after its DPA is signed and its data-retention and model-improvement opt-outs are in place (§17). Gemini's paid tier doesn't use prompts to improve Google's products.
 - **Cost control:** every call is metered (§11) against per-organisation budgets, so the cost model is built from real spend.
 
 ### 5.4 Cloud-portability contract (input to the Cloud Migration Plan)
@@ -280,7 +281,7 @@ Decided on 2026-09-28: AI runs on your OpenAI and Deepgram API keys from day one
   - Mailpit → Azure Communication Services Email (SMTP)
   - ClamAV → ClamAV + Defender for Storage
   - Self-hosted LiveKit → LiveKit Cloud or VMs/AKS
-  - The same OpenAI and Deepgram APIs, plus an Azure OpenAI failover deployment (recommended)
+  - The `production` AI profile (OpenAI + Deepgram), plus an Azure OpenAI failover deployment (recommended) and a re-embed of stored vectors
   - Docker sandbox → Azure Container Apps dynamic sessions (Hyper-V) or Kata containers
   - Caddy → Front Door WAF
   - `.env` → Key Vault with managed identity
@@ -1061,7 +1062,7 @@ Each SP gets its own detailed TDD plan before work starts. "CP" is the checkpoin
   - Git guards.
   - An ADR template.
 - **Spikes** (each result becomes an ADR):
-  1. Voice-loop latency through LiveKit with Deepgram (STT/TTS) and OpenAI (LLM), measured from end of speech to first AI audio.
+  1. Voice-loop latency through LiveKit with Deepgram (STT/TTS) and Gemini (LLM), measured from end of speech to first AI audio; OpenAI is measured too once its key is set.
   2. Screen capture → 10-second segments at 1080p/15 fps within a CPU budget.
   3. WebView2 media: permission auto-grant, WebCodecs segments, MediaPipe at ≥10 fps.
   4. Self-hosted LiveKit with the desktop and a phone connecting over a tunnel.
@@ -1074,7 +1075,7 @@ Each SP gets its own detailed TDD plan before work starts. "CP" is the checkpoin
   - The outbox publishing to Redis Streams.
   - A hash-chained audit service.
   - The storage service and URL signer (§85 paths).
-  - The AI provider layer: six services, both profiles (`vendor`, `mock`), `ai_invocations` recording.
+  - The AI provider layer: six services, the `dev`, `production` and `mock` profiles, `ai_invocations` recording.
   - Metering and a clock-sync endpoint.
   - RFC 9457 errors, pagination, idempotency and rate-limit middleware.
   - OpenTelemetry.
@@ -1082,7 +1083,7 @@ Each SP gets its own detailed TDD plan before work starts. "CP" is the checkpoin
 - **Exit criteria:**
   - The tenant-isolation harness fails any table that lacks row-level security.
   - The outbox delivery test passes.
-  - Provider contract tests pass on `mock`, plus a small opt-in live check against OpenAI and Deepgram.
+  - Provider contract tests pass on `mock`, plus a small opt-in live check against Gemini and Deepgram (and OpenAI when its key is set).
 
 **SP-02 Identity & access** (CP1; depends on SP-01 and SP-03)
 - **Deliverables:**
@@ -1477,7 +1478,7 @@ A checkpoint is a demo plus quality gates, not a promised date.
   - It answers with TTS audio from persona scripts: strong, partial, weak, silent, adversarial, cheating.
   - It emits telemetry and uploads segments.
   - Tests assert the transcript, evaluation, events, recordings and reports.
-  - It runs in CI with the `mock` profile and nightly against OpenAI and Deepgram.
+  - It runs in CI with the `mock` profile and nightly against Gemini and Deepgram.
 - **Chaos drills:** each drill must end with complete recordings, the correct events, and the interview resumed. The drills cover all seven §95 failure modes:
   - Drop the network mid-answer.
   - Force a server timeout.
@@ -1540,7 +1541,7 @@ A checkpoint is a demo plus quality gates, not a promised date.
   - Node 24 LTS and pnpm.
   - Python 3.12 and uv.
   - GitHub CLI, logged in as Devaraj-05.
-- **API keys:** put your OpenAI and Deepgram keys in the gitignored root `.env` (copy `.env.example`). No GPU is needed.
+- **API keys:** put your Gemini and Deepgram keys in the gitignored root `.env` (`uv run hv env-sync` adds any missing settings); the OpenAI key is needed only for production. No GPU is needed.
 - **Test devices:**
   - An Android phone and an iPhone for third-eye.
   - A USB webcam.
@@ -1552,7 +1553,8 @@ A checkpoint is a demo plus quality gates, not a promised date.
   - A domain name.
   - OpenAI: check your organisation's usage tier and rate limits (they rise with spend and account age), set a monthly budget, and request zero data retention if eligible.
   - Deepgram: set a budget and opt out of model improvement.
-  - Sign DPAs with OpenAI and Deepgram before any real candidate data is used. ElevenLabs/Cartesia only if we add them later.
+  - Gemini: keep the key on the paid tier (its prompts aren't used to improve Google's products) and set a budget.
+  - Sign DPAs with Google (Gemini), OpenAI and Deepgram before any real candidate data is used. ElevenLabs/Cartesia only if we add them later.
   - Counsel review of the `docs/policies/` drafts.
   - Booking the external pentest.
 

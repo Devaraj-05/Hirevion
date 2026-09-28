@@ -1,6 +1,6 @@
 # ADR-0002: OpenAI and Deepgram APIs for all AI, from day one
 
-- **Status:** Accepted
+- **Status:** Accepted; amended by [ADR-0003](0003-gemini-for-development.md) (Gemini for development and testing)
 - **Date:** 2026-09-28
 - **Sub-project:** SP-00a
 
