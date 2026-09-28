@@ -16,6 +16,7 @@ htmlcov/
 
 # Node
 node_modules/
+dist/
 .next/
 .turbo/
 *.tsbuildinfo
@@ -36,3 +37,6 @@ tools/voice_bench/.cache/
 
 # Claude Code personal settings
 .claude/settings.local.json
+
+# Desktop spike output
+ai-interviewer-desktop/spike-results/

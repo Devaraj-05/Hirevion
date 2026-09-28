@@ -15,14 +15,14 @@ jobs:
   hooks:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Git hook self-tests
         run: sh tools/hooks/test-hooks.sh
 
   python:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.12"
@@ -36,7 +36,7 @@ jobs:
   compose:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.12"
@@ -52,9 +52,52 @@ jobs:
   secrets:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  desktop:
+    runs-on: windows-2025
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - name: Build the desktop webview (Tauri embeds dist/ at compile time)
+        run: pnpm --filter @hirevion/ai-interviewer-desktop build
+      - name: Install the pinned Rust toolchain
+        working-directory: ai-interviewer-desktop/src-tauri
+        run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ai-interviewer-desktop/src-tauri
+      - name: Rust format
+        working-directory: ai-interviewer-desktop/src-tauri
+        run: cargo fmt --all --check
+      - name: Rust lint
+        working-directory: ai-interviewer-desktop/src-tauri
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Rust tests
+        working-directory: ai-interviewer-desktop/src-tauri
+        run: cargo test --workspace --locked
+
+  rust-licenses:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          manifest-path: ai-interviewer-desktop/src-tauri/Cargo.toml
+          command: check advisories bans licenses sources
