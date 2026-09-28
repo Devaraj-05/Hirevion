@@ -1,2 +1,4 @@
 packages:
   - ai-interviewer-desktop
+  - third-eye
+  - packages/*

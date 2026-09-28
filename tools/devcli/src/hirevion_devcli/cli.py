@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import os
+import secrets
+import shutil
 import subprocess
 import tempfile
-from collections.abc import Sequence
+import time
+from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import Annotated
 
+import segno
 import typer
 from rich.console import Console
 from rich.table import Table
@@ -16,11 +21,24 @@ from . import doctor as doctor_checks
 from .checks import CheckResult
 from .envfile import generate_local_secrets, init_env, parse_env, sync_env
 from .hosts import HOSTS_PATH, ensure_hosts
+from .livekit import (
+    Grants,
+    build_token,
+    detect_lan_ip,
+    is_lan_ip,
+    parse_tunnel_url,
+    phone_link,
+    route_probe,
+)
 from .smoke import run_smoke
 from .stack import ALL_PROFILES, compose_command, select_profiles
 from .trust import LOCAL_CA_PATH, export_ca_command, trust_ca_command
 
 app = typer.Typer(help="Hirevion developer CLI.", no_args_is_help=True)
+
+# Caddy's plain-HTTP site for tunnels (/rtc -> LiveKit, everything else -> third-eye dev server).
+TUNNEL_TARGET = "http://127.0.0.1:8088"
+CLOUDFLARED_INSTALL = "winget install --id Cloudflare.cloudflared"
 console = Console()
 
 _STATUS_STYLE = {
@@ -218,3 +236,145 @@ def smoke(
     _print_results("Hirevion smoke checks", results)
     if any(result.status == "fail" for result in results):
         raise typer.Exit(code=1)
+
+
+def _copy_to_clipboard(text: str) -> None:
+    subprocess.run(["clip.exe"], input=text, text=True, check=True)  # noqa: S607
+
+
+def _print_qr(link: str) -> None:
+    segno.make(link, error="l").terminal(compact=True)
+
+
+def find_cloudflared() -> str | None:
+    """cloudflared on PATH, or where winget installs it."""
+    found = shutil.which("cloudflared")
+    if found:
+        return found
+    for base in (os.environ.get("PROGRAMFILES(X86)"), os.environ.get("PROGRAMFILES")):
+        candidate = Path(base or "") / "cloudflared" / "cloudflared.exe"
+        if base and candidate.exists():
+            return str(candidate)
+    return None
+
+
+class _Tunnel:
+    """A running cloudflared quick tunnel; cloudflared logs to stderr."""
+
+    def __init__(self, command: list[str]) -> None:
+        self._process = subprocess.Popen(  # noqa: S603
+            command,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+
+    def lines(self) -> Iterator[str]:
+        if self._process.stderr is not None:
+            yield from self._process.stderr
+
+    def wait(self) -> int:
+        return self._process.wait()
+
+    def terminate(self) -> None:
+        self._process.terminate()
+
+
+def _start_tunnel(command: list[str]) -> _Tunnel:
+    return _Tunnel(command)
+
+
+def _livekit_keys(values: dict[str, str]) -> tuple[str, str]:
+    key, secret = values.get("LIVEKIT_API_KEY", ""), values.get("LIVEKIT_API_SECRET", "")
+    if not key or not secret:
+        console.print("LIVEKIT_API_KEY and LIVEKIT_API_SECRET must be set in .env.")
+        raise typer.Exit(code=1)
+    return key, secret
+
+
+@app.command("lk-token")
+def lk_token(
+    room: Annotated[str, typer.Option(help="Room to join.")],
+    identity: Annotated[str, typer.Option(help="Participant identity.")],
+    camera_only: Annotated[
+        bool, typer.Option("--camera-only", help="Only allow publishing a camera (third eye).")
+    ] = False,
+    ttl: Annotated[int, typer.Option(help="Seconds the token stays valid.")] = 600,
+    copy: Annotated[
+        bool, typer.Option("--copy", help="Copy the token to the clipboard instead of printing.")
+    ] = False,
+) -> None:
+    """Mint a short-lived LiveKit token for the local stack (development only)."""
+    key, secret = _livekit_keys(_require_env(repo_root()))
+    grants = Grants.camera_only(room) if camera_only else Grants.participant(room)
+    token = build_token(
+        key,
+        secret,
+        identity=identity,
+        name=identity,
+        grants=grants,
+        ttl_seconds=ttl,
+        now=int(time.time()),
+    )
+    if copy:
+        _copy_to_clipboard(token)
+        console.print(f"Token for {identity} in {room} copied to the clipboard (valid {ttl} s).")
+    else:
+        typer.echo(token)
+
+
+@app.command("eye-tunnel")
+def eye_tunnel(
+    room: Annotated[str, typer.Option(help="Room the phone joins.")] = "spike",
+    ttl: Annotated[int, typer.Option(help="Seconds the phone's token stays valid.")] = 900,
+) -> None:
+    """Open the third-eye page to a phone through a Cloudflare quick tunnel (development only)."""
+    values = _require_env(repo_root())
+    key, secret = _livekit_keys(values)
+    node_ip = values.get("LIVEKIT_NODE_IP", "")
+    if not is_lan_ip(node_ip):
+        detected = detect_lan_ip(route_probe)
+        hint = (
+            f"this PC's LAN address looks like {detected}"
+            if detected
+            else "find this PC's LAN address with `ipconfig`"
+        )
+        console.print(
+            f"LIVEKIT_NODE_IP is {node_ip or 'not set'}, so a phone can't reach LiveKit's media "
+            f"ports. Set it in .env ({hint}), then run `uv run hv up`."
+        )
+        raise typer.Exit(code=1)
+    cloudflared = find_cloudflared()
+    if cloudflared is None:
+        console.print(
+            f"cloudflared is not installed. Run `{CLOUDFLARED_INSTALL}`, then open a new terminal."
+        )
+        raise typer.Exit(code=1)
+
+    tunnel = _start_tunnel([cloudflared, "tunnel", "--no-autoupdate", "--url", TUNNEL_TARGET])
+    try:
+        url = next(filter(None, map(parse_tunnel_url, tunnel.lines())), None)
+        if url is None:
+            console.print("cloudflared stopped before reporting a tunnel address.")
+            raise typer.Exit(code=1)
+        token = build_token(
+            key,
+            secret,
+            identity=f"third-eye-{secrets.token_hex(3)}",
+            name="Third eye",
+            grants=Grants.camera_only(room),
+            ttl_seconds=ttl,
+            now=int(time.time()),
+        )
+        link = phone_link(url, token)
+        console.print(f"Open this on a phone on the same Wi-Fi (valid {ttl // 60} minutes):")
+        typer.echo(link)
+        _print_qr(link)
+        console.print("Keep this running while you test; press Ctrl+C to close the tunnel.")
+        tunnel.wait()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        tunnel.terminate()

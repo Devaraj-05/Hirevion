@@ -56,3 +56,14 @@ downloads.hirevion.localhost {
 	root * /srv/downloads
 	file_server browse
 }
+
+# Plain HTTP for Cloudflare quick tunnels (`uv run hv eye-tunnel`); the tunnel gives the phone
+# HTTPS. /rtc is LiveKit signalling, so the phone page and LiveKit share one origin.
+http://:8088 {
+	handle /rtc* {
+		reverse_proxy livekit:7880
+	}
+	handle {
+		reverse_proxy host.docker.internal:5174
+	}
+}

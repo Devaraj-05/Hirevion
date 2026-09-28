@@ -117,6 +117,8 @@ services:
     ports:
       - "127.0.0.1:80:80"
       - "127.0.0.1:443:443"
+      # Tunnel site for phone testing (hv eye-tunnel); loopback only.
+      - "127.0.0.1:8088:8088"
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./downloads:/srv/downloads:ro
