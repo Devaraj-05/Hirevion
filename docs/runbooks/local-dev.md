@@ -130,12 +130,28 @@ The ignored hardware test records three seconds of the primary display:
 
 ## Testing the third-eye camera from a phone
 
-1. Put the phone on the same Wi-Fi as this PC.
-2. Set `LIVEKIT_NODE_IP` in `.env` to this PC's LAN IP address (`ipconfig`), then `uv run hv up`.
-3. Browsers only allow the camera on HTTPS pages, and the phone can't use Caddy's local
-   certificate, so open the third-eye page through a quick tunnel:
-   `cloudflared tunnel --url https://eye.hirevion.localhost --no-tls-verify`.
-4. If Windows Firewall asks about Docker, allow it on private networks (UDP 7882, TCP 7881).
+Phone browsers only allow the camera on HTTPS pages and can't use Caddy's local certificate,
+so the page goes through a Cloudflare quick tunnel, while the video itself stays on your Wi-Fi
+(ADR-0008).
+
+1. Once: `winget install --id Cloudflare.cloudflared`, then open a new terminal.
+2. Put the phone on the same Wi-Fi as this PC.
+3. Set `LIVEKIT_NODE_IP` in `.env` to this PC's LAN address, then run `uv run hv up`.
+   `hv eye-tunnel` tells you the address it detects if the setting is still `127.0.0.1`.
+4. In one terminal, from `third-eye`: `pnpm dev`. The page is also at
+   `https://eye.hirevion.localhost` on this PC.
+5. In another terminal: `uv run hv eye-tunnel`. Scan the QR code with the phone, or open the
+   printed link, and tap **Start camera**.
+6. To watch the phone from the desktop app:
+   - Run `uv run hv lk-token --room spike --identity desktop --copy`.
+   - Open the app's **LiveKit spike** page, paste the token, and click **Join**.
+   - The page shows the connection type (UDP or TCP, direct or relayed), round-trip time,
+     resolution, frame rate and bit rate.
+
+Press Ctrl+C in the `eye-tunnel` terminal as soon as you're done: while it runs, the page and
+LiveKit signalling are reachable at a public (random) address. Docker Desktop's installer already
+allows its backend through Windows Firewall. If the phone connects but shows no video, check the
+firewall allows UDP 7882 and TCP 7881 for "Docker Desktop Backend".
 
 ## Troubleshooting
 
