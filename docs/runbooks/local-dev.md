@@ -46,6 +46,29 @@ fixes for common problems.
 The application sites (`app.`, `candidate.`, `api.`, `ws.`, `eye.`) point at ports 3000, 5174, 8000
 and 8001 on your PC; they answer once later sub-projects start those apps.
 
+## Voice agent and latency benchmark
+
+The spike agent (`backend/interview_agent`) is a LiveKit Agents worker: Deepgram speech-to-text
+and text-to-speech, Gemini through its OpenAI-compatible API, and LiveKit's local turn detector.
+Settings come from `HV_*` in `.env` and are read at the start of each session.
+
+1. `uv run python -m hirevion_interview_agent.agent download-files` once. It fetches the voice
+   detector and, with `HV_TURN_DETECTION=multilingual`, the turn-detector model (about 70 MB).
+2. `uv run python -m hirevion_interview_agent.agent dev` with `uv run hv up` already running.
+   Restart it after changing agent code or `HV_TURN_DETECTION`.
+3. `uv run hv-voice-bench --turns 20` plays a synthetic candidate and prints the time from the
+   end of each answer to the agent's first audio (p50/p95), with the agent's own stage
+   breakdown.
+
+`hv env-sync` only adds missing settings; it never changes values you already have. When an
+ADR changes a default, update the `HV_*` line in `.env` yourself. For example, ADR-0005 replaced
+`HV_LLM_MODEL_FAST=gemini-2.5-flash`, which Google no longer serves to new accounts.
+
+If the benchmark says the agent never spoke, LiveKit didn't hand the room to the worker: check
+that the worker logged `registered worker`. LiveKit Agents' default measures the whole PC's CPU
+and stops taking sessions when it is busy; this agent reports sessions in use instead
+(`HV_AGENT_MAX_SESSIONS`).
+
 ## Desktop app (`ai-interviewer-desktop`)
 
 The candidate app is Tauri 2: a React webview (`src/`) plus Rust (`src-tauri/`), which also

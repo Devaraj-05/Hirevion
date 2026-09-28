@@ -6,6 +6,7 @@
 | [0002](0002-ai-vendors-openai-deepgram.md) | OpenAI and Deepgram APIs for all AI, from day one | Accepted, amended by 0003 |
 | [0003](0003-gemini-for-development.md) | Gemini for development and testing, OpenAI for production | Accepted |
 | [0004](0004-local-stack.md) | Local Docker stack | Accepted |
+| [0005](0005-voice-latency.md) | Voice pipeline and measured latency | Accepted |
 | [0006](0006-screen-capture.md) | Screen capture and H.264 segment recording | Accepted |
 
 New decisions copy [0000-template.md](0000-template.md) and take the next number.
