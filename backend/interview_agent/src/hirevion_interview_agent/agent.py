@@ -20,6 +20,7 @@ from livekit.agents import (
     Agent,
     AgentServer,
     AgentSession,
+    CloseEvent,
     JobContext,
     JobProcess,
     MetricsCollectedEvent,
@@ -29,6 +30,7 @@ from livekit.agents.metrics import EOUMetrics, LLMMetrics, TTSMetrics
 from livekit.plugins import deepgram, openai, silero
 
 from .latency import LatencyCollector, TurnLatency
+from .load import session_load
 from .settings import AgentSettings
 
 logger = logging.getLogger("hirevion.interview_agent")
@@ -107,6 +109,9 @@ async def entrypoint(ctx: JobContext) -> None:
         turn_handling={
             "turn_detection": build_turn_detection(settings),
             "endpointing": {"min_delay": settings.hv_endpointing_min_delay},
+            # "adaptive" interruption sends audio to LiveKit Cloud; keep interview audio local.
+            "interruption": {"mode": "vad"},
+            "preemptive_generation": {"enabled": settings.hv_preemptive_generation},
         },
     )
     collector = LatencyCollector()
@@ -127,17 +132,29 @@ async def entrypoint(ctx: JobContext) -> None:
                 written.add(turn.speech_id)
                 write_turn(metrics_file, turn)
 
+    @session.on("close")
+    def on_close(event: CloseEvent) -> None:
+        # End the job with the session, so the worker is free for the next one at once
+        # instead of waiting for LiveKit to remove the empty room.
+        ctx.shutdown(reason=f"session closed: {event.reason}")
+
     await session.start(agent=Agent(instructions=INSTRUCTIONS), room=ctx.room)
     await session.say(OPENING_QUESTION)
 
 
 def main() -> None:
     settings = load_settings()
+    if settings.hv_turn_detection == "multilingual":
+        # The model runs in an inference process that the worker only starts for plugins
+        # imported before it starts.
+        import livekit.plugins.turn_detector.multilingual  # noqa: F401
     server = AgentServer(
         ws_url=settings.livekit_url,
         api_key=settings.livekit_api_key,
         api_secret=settings.livekit_api_secret.get_secret_value(),
         setup_fnc=prewarm,
+        load_fnc=session_load(settings.hv_agent_max_sessions),
+        load_threshold=1.0,
     )
     server.rtc_session(entrypoint)
     cli.run_app(server)

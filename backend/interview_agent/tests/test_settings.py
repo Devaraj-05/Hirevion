@@ -77,3 +77,32 @@ def test_turn_detection_rejects_unknown_modes(tmp_path: Path) -> None:
     )
     with pytest.raises(ValidationError):
         AgentSettings(_env_file=env)
+
+
+def test_preemptive_generation_is_off_unless_enabled(tmp_path: Path) -> None:
+    base = {
+        "GEMINI_API_KEY": GEMINI,
+        "DEEPGRAM_API_KEY": DEEPGRAM,
+        "LIVEKIT_API_KEY": "hirevion-local",
+        "LIVEKIT_API_SECRET": LIVEKIT_SECRET,
+    }
+    assert (
+        AgentSettings(_env_file=write_env(tmp_path / "a.env", **base)).hv_preemptive_generation
+        is False
+    )
+    enabled = write_env(tmp_path / "b.env", **base, HV_PREEMPTIVE_GENERATION="true")
+    assert AgentSettings(_env_file=enabled).hv_preemptive_generation is True
+
+
+def test_max_sessions_defaults_to_ten_and_must_be_positive(tmp_path: Path) -> None:
+    base = {
+        "GEMINI_API_KEY": GEMINI,
+        "DEEPGRAM_API_KEY": DEEPGRAM,
+        "LIVEKIT_API_KEY": "hirevion-local",
+        "LIVEKIT_API_SECRET": LIVEKIT_SECRET,
+    }
+    assert (
+        AgentSettings(_env_file=write_env(tmp_path / "a.env", **base)).hv_agent_max_sessions == 10
+    )
+    with pytest.raises(ValidationError):
+        AgentSettings(_env_file=write_env(tmp_path / "b.env", **base, HV_AGENT_MAX_SESSIONS="0"))
