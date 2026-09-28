@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import re
 import secrets
 from pathlib import Path
@@ -9,9 +10,12 @@ from pathlib import Path
 REQUIRED_KEYS: tuple[str, ...] = ("GEMINI_API_KEY", "DEEPGRAM_API_KEY")
 GENERATED_KEYS: dict[str, int] = {
     "POSTGRES_PASSWORD": 32,
+    "VALKEY_PASSWORD": 32,
     "LIVEKIT_API_SECRET": 48,
     "GLITCHTIP_SECRET_KEY": 50,
 }
+# Values that must be standard base64 (Azure storage keys): number of random bytes.
+GENERATED_BASE64_KEYS: dict[str, int] = {"AZURE_STORAGE_KEY": 64}
 _PLACEHOLDER = re.compile(r"^(<.*>|changeme|replace[-_ ]?me|your[-_ ].*)$", re.IGNORECASE)
 
 
@@ -46,7 +50,10 @@ def missing_required(
 
 
 def generate_local_secrets() -> dict[str, str]:
-    return {key: secrets.token_urlsafe(length)[:length] for key, length in GENERATED_KEYS.items()}
+    values = {key: secrets.token_urlsafe(length)[:length] for key, length in GENERATED_KEYS.items()}
+    for key, size in GENERATED_BASE64_KEYS.items():
+        values[key] = base64.b64encode(secrets.token_bytes(size)).decode("ascii")
+    return values
 
 
 def render_env(example_text: str, generated: dict[str, str]) -> str:

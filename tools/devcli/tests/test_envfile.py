@@ -1,6 +1,8 @@
+import base64
 from pathlib import Path
 
 from hirevion_devcli.envfile import (
+    GENERATED_BASE64_KEYS,
     GENERATED_KEYS,
     generate_local_secrets,
     init_env,
@@ -60,9 +62,12 @@ def test_sync_env_handles_env_without_trailing_newline() -> None:
 def test_generated_secrets_are_random_and_long_enough() -> None:
     first = generate_local_secrets()
     second = generate_local_secrets()
-    assert set(first) == set(GENERATED_KEYS)
+    assert set(first) == set(GENERATED_KEYS) | set(GENERATED_BASE64_KEYS)
     for key, length in GENERATED_KEYS.items():
         assert len(first[key]) == length
+        assert first[key] != second[key]
+    for key, size in GENERATED_BASE64_KEYS.items():
+        assert len(base64.b64decode(first[key], validate=True)) == size
         assert first[key] != second[key]
 
 
