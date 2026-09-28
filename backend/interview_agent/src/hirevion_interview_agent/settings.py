@@ -8,6 +8,7 @@ from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 TurnDetection = Literal["vad", "multilingual", "inference"]
+ReasoningEffort = Literal["none", "minimal", "low", "medium", "high"]
 
 
 class AgentSettings(BaseSettings):
@@ -22,7 +23,7 @@ class AgentSettings(BaseSettings):
     # LLM through Gemini's OpenAI-compatible endpoint in development (ADR-0003).
     hv_llm_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
     hv_llm_model_fast: str = "gemini-2.5-flash"
-    hv_llm_reasoning_effort: str | None = None
+    hv_llm_reasoning_effort: ReasoningEffort | None = None
 
     hv_stt_model: str = "nova-3"
     hv_stt_language: str = "en"
