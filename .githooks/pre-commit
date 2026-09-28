@@ -1,5 +1,7 @@
 #!/bin/sh
-# Allows commits only when author and committer are the project identity (see CLAUDE.md).
+# Pre-commit guard for this repository (see CLAUDE.md):
+#   1. author and committer must be the project identity;
+#   2. no .env files or API keys may be committed.
 
 expected_name="Devaraj-05"
 expected_email="padma.devaraj1800@gmail.com"
@@ -20,5 +22,20 @@ committer=$(git var GIT_COMMITTER_IDENT) || exit 1
 
 check_ident "author" "$author" || exit 1
 check_ident "committer" "$committer" || exit 1
+
+env_files=$(git diff --cached --name-only --diff-filter=ACMR \
+  | grep -E '(^|/)\.env(\.[^/]*)?$' | grep -vE '(^|/)\.env\.example$')
+if [ -n "$env_files" ]; then
+  echo "pre-commit: refusing to commit env files; secrets belong in the gitignored .env:" >&2
+  echo "$env_files" >&2
+  exit 1
+fi
+
+openai_key='sk-(proj-|svcacct-|admin-)?[A-Za-z0-9_-]{32,}'
+key_assignment='(OPENAI|DEEPGRAM|LIVEKIT)_API_(KEY|SECRET)[[:space:]]*[:=][[:space:]]*["'"'"']?[A-Za-z0-9_-]{20,}'
+if git diff --cached -U0 --diff-filter=ACMR | grep -E '^\+' | grep -Eq "$openai_key|$key_assignment"; then
+  echo "pre-commit: staged changes contain what looks like an API key or secret; keep it in .env." >&2
+  exit 1
+fi
 
 exit 0
