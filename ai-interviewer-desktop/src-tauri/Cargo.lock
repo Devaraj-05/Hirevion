@@ -1210,6 +1210,10 @@ dependencies = [
  "serde_json",
  "tauri",
  "tauri-build",
+ "url",
+ "webview2-com",
+ "windows",
+ "windows-core",
 ]
 
 [[package]]
