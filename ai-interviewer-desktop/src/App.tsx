@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { type ParsedRoute, parseRoute } from "./routes";
+import { LiveKitSpike } from "./spikes/livekit/LiveKitSpike";
 import { type FaceMode, MediaSpike } from "./spikes/media/MediaSpike";
 import { spikeConfig } from "./spikes/report";
 
@@ -53,7 +54,7 @@ export function App() {
       {route === "media" && (
         <MediaSpike autoSeconds={autoSeconds(params)} faceMode={faceMode(params)} />
       )}
-      {route === "livekit" && <p>The LiveKit spike arrives with SP-00d Task 7.</p>}
+      {route === "livekit" && <LiveKitSpike autoSeconds={autoSeconds(params)} />}
     </main>
   );
 }

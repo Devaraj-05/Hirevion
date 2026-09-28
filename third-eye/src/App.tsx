@@ -1,7 +1,7 @@
 import { kbps, summarizeConnection, type VideoSample, videoSample } from "@hirevion/rtc-stats";
 import { LocalVideoTrack, Room, RoomEvent, Track } from "livekit-client";
 import { useEffect, useRef, useState } from "react";
-import { readToken } from "./token";
+import { readToken, wantsAutoStart } from "./token";
 
 type Phase = "ready" | "starting" | "live" | "failed";
 
@@ -23,6 +23,7 @@ export function App() {
   const preview = useRef<HTMLVideoElement>(null);
   const room = useRef<Room | null>(null);
   const statsTimer = useRef<number | undefined>(undefined);
+  const autoStarted = useRef(false);
   const [phase, setPhase] = useState<Phase>("ready");
   const [connection, setConnection] = useState("not connected");
   const [timings, setTimings] = useState<Timings | null>(null);
@@ -123,6 +124,11 @@ export function App() {
       setPhase("failed");
     }
   };
+
+  if (!autoStarted.current && wantsAutoStart(window.location.hash)) {
+    autoStarted.current = true;
+    queueMicrotask(() => void start());
+  }
 
   return (
     <main className="eye">

@@ -6,3 +6,8 @@ export function readToken(hash: string): string | null {
   const token = new URLSearchParams(hash.replace(/^#/, "")).get("t");
   return token ? token : null;
 }
+
+/** Automated tests add `auto=1` to start the camera without a tap. */
+export function wantsAutoStart(hash: string): boolean {
+  return new URLSearchParams(hash.replace(/^#/, "")).get("auto") === "1";
+}

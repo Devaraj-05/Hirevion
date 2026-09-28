@@ -172,12 +172,18 @@ importers:
 
   ai-interviewer-desktop:
     dependencies:
+      '@hirevion/rtc-stats':
+        specifier: workspace:*
+        version: link:../packages/rtc-stats
       '@mediapipe/tasks-vision':
         specifier: 1.0.1
         version: 1.0.1
       '@tauri-apps/api':
         specifier: 2.12.0
         version: 2.12.0
+      livekit-client:
+        specifier: 2.22.3
+        version: 2.22.3(@types/dom-mediacapture-record@1.0.22)
       mediabunny:
         specifier: 1.60.0
         version: 1.60.0
