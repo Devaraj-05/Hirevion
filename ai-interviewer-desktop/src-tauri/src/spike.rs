@@ -1,33 +1,47 @@
-//! Debug-only support for unattended spike runs (SP-00d): `HV_SPIKE=<page>:<seconds>`
-//! opens that spike page, which runs by itself and reports its measurements to Rust.
-//! The module is compiled into debug builds only.
+//! Debug-only support for unattended spike runs (SP-00d):
+//! `HV_SPIKE=<page>:<seconds>[:<params>]` opens that spike page, which runs by itself and
+//! reports its measurements to Rust. The module is compiled into debug builds only.
 
 /// An unattended run requested through `HV_SPIKE`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SpikeRun {
     pub page: String,
     pub seconds: u32,
+    /// Extra page parameters, for example `faces=cpu`.
+    pub params: String,
 }
 
 impl SpikeRun {
-    /// Parses `<page>:<seconds>`: a lower-case page name and 1 to 3,600 seconds.
+    /// Parses `<page>:<seconds>[:<params>]`: a lower-case page name, 1 to 3,600 seconds, and
+    /// optional `name=value` pairs joined by `&` (lower-case letters, digits, `=` and `&`).
     #[must_use]
     pub fn parse(value: &str) -> Option<Self> {
-        let (page, seconds) = value.split_once(':')?;
-        if page.is_empty() || !page.bytes().all(|byte| byte.is_ascii_lowercase()) {
-            return None;
-        }
-        let seconds: u32 = seconds.parse().ok()?;
-        (1..=3_600).contains(&seconds).then(|| Self {
+        let mut parts = value.splitn(3, ':');
+        let page = parts.next()?;
+        let seconds: u32 = parts.next()?.parse().ok()?;
+        let params = parts.next();
+        let lower = |text: &str| !text.is_empty() && text.bytes().all(|b| b.is_ascii_lowercase());
+        let valid_params = params.is_none_or(|text| {
+            !text.is_empty()
+                && text
+                    .bytes()
+                    .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'=' || b == b'&')
+        });
+        (lower(page) && valid_params && (1..=3_600).contains(&seconds)).then(|| Self {
             page: page.to_owned(),
             seconds,
+            params: params.unwrap_or_default().to_owned(),
         })
     }
 
     /// The location hash that opens the page in unattended mode.
     #[must_use]
     pub fn hash(&self) -> String {
-        format!("#/{}?auto={}", self.page, self.seconds)
+        if self.params.is_empty() {
+            format!("#/{}?auto={}", self.page, self.seconds)
+        } else {
+            format!("#/{}?auto={}&{}", self.page, self.seconds, self.params)
+        }
     }
 }
 
@@ -175,14 +189,16 @@ mod tests {
             SpikeRun::parse("media:60"),
             Some(SpikeRun {
                 page: String::from("media"),
-                seconds: 60
+                seconds: 60,
+                params: String::new(),
             })
         );
         assert_eq!(
             SpikeRun::parse("livekit:5"),
             Some(SpikeRun {
                 page: String::from("livekit"),
-                seconds: 5
+                seconds: 5,
+                params: String::new(),
             })
         );
     }
@@ -199,6 +215,9 @@ mod tests {
             "media:3601",
             "Media:60",
             "me dia:5",
+            "media:45:",
+            "media:45:faces=CPU",
+            "media:45:faces=<x>",
         ] {
             assert_eq!(SpikeRun::parse(value), None, "{value:?}");
         }
@@ -209,7 +228,15 @@ mod tests {
         let run = SpikeRun {
             page: String::from("media"),
             seconds: 60,
+            params: String::new(),
         };
         assert_eq!(run.hash(), "#/media?auto=60");
+    }
+
+    #[test]
+    fn passes_extra_page_parameters_through() {
+        let run = SpikeRun::parse("media:45:faces=cpu").expect("valid run");
+        assert_eq!(run.params, "faces=cpu");
+        assert_eq!(run.hash(), "#/media?auto=45&faces=cpu");
     }
 }

@@ -9,3 +9,8 @@
 # Hooks and shell scripts must stay LF so sh can run them on every platform.
 .githooks/* text eol=lf
 *.sh text eol=lf
+
+# Model and WebAssembly files are binary
+*.tflite binary
+*.onnx binary
+*.wasm binary

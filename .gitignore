@@ -40,3 +40,5 @@ tools/voice_bench/.cache/
 
 # Desktop spike output
 ai-interviewer-desktop/spike-results/
+# Copied from node_modules by scripts/copy-mediapipe.mjs
+ai-interviewer-desktop/public/mediapipe/
