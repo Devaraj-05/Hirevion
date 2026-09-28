@@ -35,6 +35,7 @@ RATE = 48_000
 FRAME_MS = 10
 VOICED_RMS = 0.02
 QUIET_SECONDS = 1.5
+FIRST_AUDIO_TIMEOUT = 30.0
 CACHE_DIR = Path(__file__).resolve().parents[2] / ".cache"
 DEEPGRAM_SPEAK_URL = "https://api.deepgram.com/v1/speak"
 ANSWERS = (
@@ -120,8 +121,14 @@ class AgentEar:
             if watching and self.first_voiced is None:
                 self.first_voiced = now
 
-    async def wait_until_quiet(self) -> None:
-        await self.heard_anything.wait()
+    async def wait_until_quiet(self, first_audio_timeout: float = FIRST_AUDIO_TIMEOUT) -> None:
+        try:
+            await asyncio.wait_for(self.heard_anything.wait(), first_audio_timeout)
+        except TimeoutError:
+            raise TimeoutError(
+                "the agent never spoke: is a worker running, and available? "
+                "(`agent start` stops taking sessions above 70% CPU; use `agent dev` locally)"
+            ) from None
         while time.perf_counter() - self.last_voiced < QUIET_SECONDS:
             await asyncio.sleep(0.05)
 
