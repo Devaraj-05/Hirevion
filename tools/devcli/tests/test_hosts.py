@@ -1,8 +1,68 @@
+import shutil
 import socket
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Any
 
-from hirevion_devcli.hosts import BEGIN, END, apply_block, hostnames, render_block, unresolved
+from hirevion_devcli.hosts import (
+    BEGIN,
+    END,
+    apply_block,
+    ensure_hosts,
+    hostnames,
+    render_block,
+    unresolved,
+)
+
+
+def resolver_backed_by(hosts_file: Path) -> Any:
+    """A fake resolver that knows only the names written in hosts_file."""
+
+    def resolve(name: str, port: int) -> Sequence[tuple[Any, ...]]:
+        for line in hosts_file.read_text(encoding="utf-8").splitlines():
+            parts = line.split()
+            if len(parts) == 2 and parts[1] == name:
+                return [(socket.AF_INET, 1, 6, "", (parts[0], port))]
+        raise socket.gaierror("not found")
+
+    return resolve
+
+
+def test_ensure_hosts_writes_block_through_copy_and_verifies(tmp_path: Path) -> None:
+    hosts_file = tmp_path / "hosts"
+    hosts_file.write_text("127.0.0.1 localhost\r\n", encoding="utf-8")
+    copies: list[tuple[Path, Path]] = []
+
+    def copy(source: Path, destination: Path) -> int:
+        copies.append((source, destination))
+        shutil.copyfile(source, destination)
+        return 0
+
+    still_missing = ensure_hosts(hosts_file, tmp_path, copy, resolver_backed_by(hosts_file))
+    assert still_missing == []
+    assert len(copies) == 1
+    assert hosts_file.read_bytes().startswith(b"127.0.0.1 localhost\r\n")
+
+
+def test_ensure_hosts_does_nothing_when_names_already_resolve(tmp_path: Path) -> None:
+    hosts_file = tmp_path / "hosts"
+    hosts_file.write_text(apply_block("", render_block(hostnames())), encoding="utf-8")
+
+    def copy(source: Path, destination: Path) -> int:
+        raise AssertionError("should not copy")
+
+    assert ensure_hosts(hosts_file, tmp_path, copy, resolver_backed_by(hosts_file)) == []
+
+
+def test_ensure_hosts_reports_names_when_copy_is_refused(tmp_path: Path) -> None:
+    hosts_file = tmp_path / "hosts"
+    hosts_file.write_text("", encoding="utf-8")
+
+    def refused(source: Path, destination: Path) -> int:
+        return 1
+
+    still_missing = ensure_hosts(hosts_file, tmp_path, refused, resolver_backed_by(hosts_file))
+    assert still_missing == hostnames()
 
 
 def test_hostnames_cover_every_local_site() -> None:

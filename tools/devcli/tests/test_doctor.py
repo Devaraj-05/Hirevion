@@ -1,6 +1,8 @@
+import socket
 import subprocess
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
 import httpx
 import respx
@@ -27,11 +29,26 @@ def write_env(root: Path, **keys: str) -> None:
     )
 
 
+def loopback(name: str, port: int) -> Sequence[tuple[Any, ...]]:
+    return [(socket.AF_INET, 1, 6, "", ("127.0.0.1", port))]
+
+
+def unknown(name: str, port: int) -> Sequence[tuple[Any, ...]]:
+    raise socket.gaierror("not found")
+
+
 def test_gather_without_env_skips_vendor_checks(tmp_path: Path) -> None:
-    results, models = gather(tmp_path, which=lambda name: name, runner=runner)
+    results, models = gather(tmp_path, which=lambda name: name, runner=runner, resolve=loopback)
     names = [r.name for r in results]
-    assert names == ["git", "docker", "uv", "node", "pnpm", "cargo", ".env"]
+    assert names == ["git", "docker", "uv", "node", "pnpm", "cargo", "hostnames", ".env"]
     assert models == {}
+
+
+def test_hostnames_check_warns_with_a_fix(tmp_path: Path) -> None:
+    results, _ = gather(tmp_path, which=lambda name: name, runner=runner, resolve=unknown)
+    hostnames = {r.name: r for r in results}["hostnames"]
+    assert hostnames.status == "warn"
+    assert "hv hosts" in hostnames.detail
 
 
 @respx.mock
@@ -42,7 +59,9 @@ def test_gather_checks_gemini_and_deepgram(tmp_path: Path) -> None:
     )
     respx.get(DEEPGRAM_PROJECTS_URL).mock(return_value=httpx.Response(200, json={"projects": []}))
     with httpx.Client() as client:
-        results, models = gather(tmp_path, which=lambda name: name, runner=runner, client=client)
+        results, models = gather(
+            tmp_path, which=lambda name: name, runner=runner, client=client, resolve=loopback
+        )
     by_name = {r.name: r for r in results}
     assert by_name[".env"].status == "ok"
     assert by_name["gemini"].status == "ok"
@@ -67,7 +86,9 @@ def test_gather_checks_openai_when_its_key_is_set(tmp_path: Path) -> None:
         return_value=httpx.Response(200, json={"data": [{"id": "gpt-test"}]})
     )
     with httpx.Client() as client:
-        results, models = gather(tmp_path, which=lambda name: name, runner=runner, client=client)
+        results, models = gather(
+            tmp_path, which=lambda name: name, runner=runner, client=client, resolve=loopback
+        )
     assert {r.name: r.status for r in results}["openai"] == "ok"
     assert models["openai"] == ["gpt-test"]
 
@@ -77,7 +98,9 @@ def test_gather_checks_each_vendor_independently(tmp_path: Path) -> None:
     write_env(tmp_path, DEEPGRAM_API_KEY=DEEPGRAM_KEY)
     respx.get(DEEPGRAM_PROJECTS_URL).mock(return_value=httpx.Response(200, json={"projects": []}))
     with httpx.Client() as client:
-        results, _ = gather(tmp_path, which=lambda name: name, runner=runner, client=client)
+        results, _ = gather(
+            tmp_path, which=lambda name: name, runner=runner, client=client, resolve=loopback
+        )
     by_name = {r.name: r for r in results}
     assert by_name[".env"].status == "fail"
     assert by_name["deepgram"].status == "ok"

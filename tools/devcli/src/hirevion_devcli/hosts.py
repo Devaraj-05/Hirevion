@@ -56,6 +56,26 @@ def apply_block(hosts_text: str, block: str) -> str:
     return "\r\n".join(lines) + "\r\n"
 
 
+def ensure_hosts(
+    hosts_path: Path,
+    staging_dir: Path,
+    copy: Callable[[Path, Path], int],
+    resolve: Resolver = socket.getaddrinfo,
+) -> list[str]:
+    """Make every Hirevion hostname resolve locally; returns the names that still don't.
+
+    `copy` replaces the hosts file with the staged content; on Windows it runs elevated.
+    """
+    names = hostnames()
+    if not unresolved(names, resolve):
+        return []
+    current = hosts_path.read_text(encoding="utf-8", errors="replace")
+    staged = staging_dir / "hirevion-hosts"
+    staged.write_bytes(apply_block(current, render_block(names)).encode("utf-8"))
+    copy(staged, hosts_path)
+    return unresolved(names, resolve)
+
+
 def unresolved(names: Sequence[str], resolve: Resolver = socket.getaddrinfo) -> list[str]:
     missing: list[str] = []
     for name in names:

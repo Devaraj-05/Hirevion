@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import socket
 from pathlib import Path
 
 import httpx
 
+from . import hosts
 from .checks import (
     CheckResult,
     Runner,
@@ -28,12 +30,26 @@ def summarize_models(models: list[str]) -> list[str]:
     return sorted(model for model in models if model.startswith(_MODEL_PREFIXES))
 
 
+def check_hostnames(resolve: hosts.Resolver = socket.getaddrinfo) -> CheckResult:
+    names = hosts.hostnames()
+    missing = hosts.unresolved(names, resolve)
+    if missing:
+        return CheckResult(
+            "hostnames",
+            "warn",
+            f"{len(missing)} of {len(names)} *.{hosts.DOMAIN} names don't resolve; "
+            "run `uv run hv hosts`",
+        )
+    return CheckResult("hostnames", "ok", f"all *.{hosts.DOMAIN} names resolve to this PC")
+
+
 def gather(
     repo_root: Path,
     *,
     which: Which = find_tool,
     runner: Runner = run_command,
     client: httpx.Client | None = None,
+    resolve: hosts.Resolver = socket.getaddrinfo,
 ) -> tuple[list[CheckResult], dict[str, list[str]]]:
     results = [
         check_tool("git", ["--version"], (2, 40, 0), which=which, runner=runner),
@@ -42,6 +58,7 @@ def gather(
         check_tool("node", ["--version"], (24, 0, 0), which=which, runner=runner),
         check_tool("pnpm", ["--version"], (9, 0, 0), which=which, runner=runner),
         check_tool("cargo", ["--version"], (1, 85, 0), required=False, which=which, runner=runner),
+        check_hostnames(resolve),
     ]
     env_path = repo_root / ".env"
     values = parse_env(env_path.read_text(encoding="utf-8")) if env_path.exists() else None
