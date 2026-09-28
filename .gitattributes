@@ -1,2 +1,11 @@
-# Hook scripts must keep LF line endings so sh can run them on every platform.
+# Normalize text files to LF in the repository and the working tree (see .editorconfig).
+* text=auto eol=lf
+
+# Windows scripts keep CRLF.
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Hooks and shell scripts must stay LF so sh can run them on every platform.
 .githooks/* text eol=lf
+*.sh text eol=lf
