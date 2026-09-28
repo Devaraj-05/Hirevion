@@ -1,0 +1,24 @@
+#!/bin/sh
+# Allows commits only when author and committer are the project identity (see CLAUDE.md).
+
+expected_name="Devaraj-05"
+expected_email="padma.devaraj1800@gmail.com"
+
+check_ident() {
+  role="$1"
+  ident="$2"
+  name=$(printf '%s\n' "$ident" | sed -E 's/^(.*) <[^>]*>.*$/\1/')
+  email=$(printf '%s\n' "$ident" | sed -E 's/^.*<([^>]*)>.*$/\1/')
+  if [ "$name" != "$expected_name" ] || [ "$email" != "$expected_email" ]; then
+    echo "pre-commit: $role must be '$expected_name <$expected_email>', got '$name <$email>' (see CLAUDE.md)." >&2
+    return 1
+  fi
+}
+
+author=$(git var GIT_AUTHOR_IDENT) || exit 1
+committer=$(git var GIT_COMMITTER_IDENT) || exit 1
+
+check_ident "author" "$author" || exit 1
+check_ident "committer" "$committer" || exit 1
+
+exit 0

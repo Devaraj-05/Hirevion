@@ -1,0 +1,12 @@
+#!/bin/sh
+# Rejects Claude/Anthropic attribution in commit messages.
+# Project rule: commits carry only the Devaraj-05 identity (see CLAUDE.md).
+
+msg_file="$1"
+
+if grep -Eiq 'co-authored-by:.*(claude|anthropic)|noreply@anthropic\.com|generated with .*claude|claude\.com/claude-code' "$msg_file"; then
+  echo "commit-msg: Claude/Anthropic attribution is not allowed in this repository (see CLAUDE.md)." >&2
+  exit 1
+fi
+
+exit 0

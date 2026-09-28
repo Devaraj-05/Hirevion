@@ -1,0 +1,2 @@
+# Hook scripts must keep LF line endings so sh can run them on every platform.
+.githooks/* text eol=lf
