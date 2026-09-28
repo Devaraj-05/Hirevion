@@ -1,0 +1,37 @@
+# Secrets: never commit. Create .env with `uv run hv init-env`.
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+.next/
+.turbo/
+*.tsbuildinfo
+coverage/
+
+# Rust / Tauri
+target/
+
+# OS and editors
+.DS_Store
+Thumbs.db
+.idea/
+
+# Local runtime data
+infrastructure/local/data/
+*.log
+
+# Claude Code personal settings
+.claude/settings.local.json

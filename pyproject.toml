@@ -1,0 +1,42 @@
+[project]
+name = "hirevion"
+version = "0.0.0"
+description = "Hirevion monorepo workspace root"
+requires-python = ">=3.12,<3.13"
+dependencies = ["hirevion-devcli"]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["tools/devcli"]
+
+[tool.uv.sources]
+hirevion-devcli = { workspace = true }
+
+[dependency-groups]
+dev = [
+  "mypy>=1.11",
+  "pytest>=8.3",
+  "respx>=0.21",
+  "ruff>=0.6",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["docs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "S", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S101", "S106"]
+
+[tool.pytest.ini_options]
+testpaths = ["tools/devcli/tests"]
+addopts = "-q --strict-markers"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
