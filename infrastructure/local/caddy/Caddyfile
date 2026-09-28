@@ -1,0 +1,58 @@
+# Local HTTPS for *.hirevion.localhost using Caddy's own CA (trust it with `uv run hv trust-ca`).
+# Application upstreams (host ports 3000, 5174, 8000, 8001) come online in later sub-projects.
+{
+	local_certs
+}
+
+app.hirevion.localhost {
+	handle /api/* {
+		reverse_proxy host.docker.internal:8000
+	}
+	handle /ws/* {
+		reverse_proxy host.docker.internal:8001
+	}
+	handle {
+		reverse_proxy host.docker.internal:3000
+	}
+}
+
+candidate.hirevion.localhost {
+	reverse_proxy host.docker.internal:3000
+}
+
+api.hirevion.localhost {
+	reverse_proxy host.docker.internal:8000
+}
+
+ws.hirevion.localhost {
+	reverse_proxy host.docker.internal:8001
+}
+
+eye.hirevion.localhost {
+	reverse_proxy host.docker.internal:5174
+}
+
+livekit.hirevion.localhost {
+	reverse_proxy livekit:7880
+}
+
+storage.hirevion.localhost {
+	reverse_proxy azurite:10000
+}
+
+mail.hirevion.localhost {
+	reverse_proxy mailpit:8025
+}
+
+grafana.hirevion.localhost {
+	reverse_proxy otel-lgtm:3000
+}
+
+errors.hirevion.localhost {
+	reverse_proxy glitchtip:8000
+}
+
+downloads.hirevion.localhost {
+	root * /srv/downloads
+	file_server browse
+}

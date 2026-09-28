@@ -1,0 +1,208 @@
+# Hirevion local stack. Start it with `uv run hv up` (see docs/runbooks/local-dev.md).
+#
+# - Secrets and settings are interpolated from the root .env (`--env-file`); nothing secret lives here.
+# - Host ports bind to 127.0.0.1, except LiveKit's media ports, which a phone on the LAN must reach.
+# - Images are pinned by digest; bump them deliberately.
+# - Profiles: core (data services), edge (Caddy HTTPS), media (LiveKit), obs (Grafana, GlitchTip).
+name: hirevion
+
+x-healthcheck: &healthcheck-timing
+  interval: 10s
+  timeout: 5s
+  retries: 12
+  start_period: 20s
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17@sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f
+    profiles: [core]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?set in .env}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      <<: *healthcheck-timing
+    restart: unless-stopped
+
+  valkey:
+    image: valkey/valkey:8@sha256:640c5e62cea04b6d6f2084232651d0cc70362d31f4f805e7be94dbed6855e8f2
+    profiles: [core]
+    command: ["valkey-server", "--appendonly", "yes", "--requirepass", "${VALKEY_PASSWORD:?set in .env}"]
+    environment:
+      VALKEY_PASSWORD: ${VALKEY_PASSWORD}
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - valkey-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "valkey-cli --no-auth-warning -a \"$$VALKEY_PASSWORD\" ping | grep -q PONG"]
+      <<: *healthcheck-timing
+    restart: unless-stopped
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest@sha256:830430c1da1a2d537e08f3e6764dd1f5ae00cf0346bcaf625b968ec3f0971fd5
+    profiles: [core]
+    command:
+      - azurite
+      - --blobHost
+      - 0.0.0.0
+      - --queueHost
+      - 0.0.0.0
+      - --tableHost
+      - 0.0.0.0
+      - --location
+      - /data
+      - --skipApiVersionCheck
+      - --loose
+    environment:
+      AZURITE_ACCOUNTS: "${AZURE_STORAGE_ACCOUNT:?set in .env}:${AZURE_STORAGE_KEY:?set in .env}"
+    ports:
+      - "127.0.0.1:10000:10000"
+      - "127.0.0.1:10001:10001"
+      - "127.0.0.1:10002:10002"
+    volumes:
+      - azurite-data:/data
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "require('net').connect(10000,'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))"
+      <<: *healthcheck-timing
+    restart: unless-stopped
+
+  clamav:
+    image: clamav/clamav:stable@sha256:ebec5bc138401b36ae987caa1a3fa3c3b2a21ed3d51f0bfa5852825e663e67b0
+    profiles: [core]
+    ports:
+      - "127.0.0.1:3310:3310"
+    volumes:
+      - clamav-db:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      # The first start downloads the virus signatures, which takes a few minutes.
+      start_period: 300s
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit:latest@sha256:ed9b00c609e77e99c79b93f1178255ebc271868920f2c69a8d166bd5634ed10d
+    profiles: [core]
+    environment:
+      MP_DATABASE: /data/mailpit.db
+      MP_MAX_MESSAGES: "5000"
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+    volumes:
+      - mailpit-data:/data
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      <<: *healthcheck-timing
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2@sha256:0c994536bddb66445885237f1a5dcc1916bccea922661c76b4e9fc24061f9b52
+    profiles: [edge]
+    ports:
+      - "127.0.0.1:80:80"
+      - "127.0.0.1:443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./downloads:/srv/downloads:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2019/config/"]
+      <<: *healthcheck-timing
+    restart: unless-stopped
+
+  livekit:
+    image: livekit/livekit-server:latest@sha256:6fd3b7088874c4d119160dd688798dfec852bc014786d392caad15f6f63912a3
+    profiles: [media]
+    command: ["--node-ip", "${LIVEKIT_NODE_IP:-127.0.0.1}"]
+    environment:
+      LIVEKIT_CONFIG: |
+        port: 7880
+        rtc:
+          tcp_port: 7881
+          udp_port: 7882
+          use_external_ip: false
+        redis:
+          address: valkey:6379
+          password: "${VALKEY_PASSWORD}"
+        keys:
+          "${LIVEKIT_API_KEY:?set in .env}": "${LIVEKIT_API_SECRET:?set in .env}"
+        logging:
+          level: info
+    ports:
+      - "127.0.0.1:7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+    depends_on:
+      valkey:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:7880/"]
+      <<: *healthcheck-timing
+    restart: unless-stopped
+
+  otel-lgtm:
+    image: grafana/otel-lgtm:latest@sha256:b966ea107831d526d9eb8fe4d2d86c9e5731392fad9dce8296bcf2072031f07c
+    profiles: [obs]
+    ports:
+      - "127.0.0.1:3001:3000"
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
+    volumes:
+      - lgtm-data:/data
+    restart: unless-stopped
+
+  glitchtip:
+    image: glitchtip/glitchtip:latest@sha256:a3d8eb1b36c1e1603d55ab32711ea3dd8115874742a781a57391a62a16e0dff6
+    profiles: [obs]
+    environment:
+      # One container runs migrations, the web app and the worker.
+      SERVER_ROLE: all_in_one
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/glitchtip
+      REDIS_URL: redis://:${VALKEY_PASSWORD}@valkey:6379/1
+      SECRET_KEY: ${GLITCHTIP_SECRET_KEY:?set in .env}
+      PORT: "8000"
+      GLITCHTIP_DOMAIN: https://errors.hirevion.localhost
+      DEFAULT_FROM_EMAIL: glitchtip@hirevion.localhost
+      EMAIL_URL: smtp://mailpit:1025
+      ENABLE_USER_REGISTRATION: "true"
+    ports:
+      - "127.0.0.1:8100:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "healthcheck.py"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 90s
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  valkey-data:
+  azurite-data:
+  clamav-db:
+  mailpit-data:
+  caddy-data:
+  caddy-config:
+  lgtm-data:
