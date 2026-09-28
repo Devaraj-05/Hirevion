@@ -17,7 +17,7 @@
   2. The **Candidate Windows Desktop AI Interview** (`AI-Interview.exe`), which candidates install and log into to take the AI interview.
   3. **Third-Eye**, a mobile-browser camera.
   4. The **shared backend**.
-- **Where it runs:** everything runs end-to-end locally on Docker Desktop, using free, API-compatible AI services.
+- **Where it runs:** everything runs end-to-end locally on Docker Desktop. AI runs on your OpenAI and Deepgram API keys (decided 2026-09-28, replacing the earlier local-model idea); everything else is free and local.
   - The move to Azure (Central India) is a separate **Cloud Migration Plan** written after the local build.
   - That move must be configuration plus deployment, not a rewrite.
 - **Decisions made with you:**
@@ -26,7 +26,7 @@
   - **No PRD feature is skipped.**
   - Security, robustness and usability are non-negotiable.
   - Recruiter identity is built in-house, following your answer "build everything locally first".
-  - Production AI vendors after migration: OpenAI (LLM, embeddings), Deepgram (speech-to-text) and ElevenLabs/Cartesia (text-to-speech).
+  - AI vendors from day one: OpenAI (LLM, embeddings, vision) and Deepgram (speech-to-text and text-to-speech). ElevenLabs/Cartesia stay optional text-to-speech upgrades for later.
   - Customers and data are in India, so the DPDP Act 2023 applies.
   - Launch is full GA with internal security testing, followed by an external pentest.
 - **Git hygiene:** commits and pushes go out only as Devaraj-05, with no Claude attribution anywhere (§17).
@@ -57,7 +57,7 @@ Each application has its own build, tests and release pipeline.
 | D3 | Web stack: Next.js (App Router, React 19), TypeScript, Tailwind v4, shadcn/ui, TanStack Query and Table, Zustand, ECharts, next-intl, react-hook-form + zod, and an OpenAPI-generated client. | §94. |
 | D4 | Desktop stack: Tauri 2 with React/TS/Vite and Monaco. Native code uses the Rust `windows` crate. MediaPipe Tasks (WASM) runs on-device computer vision. NSIS per-user installer and a signed updater. | §27 and §94. |
 | D5 | Self-hosted LiveKit server and Egress in Docker. The voice pipeline runs on LiveKit Agents (Python), with our orchestrator plugged in. | Provides turn detection, barge-in, streaming and fallbacks; serves §52, §65 and §92. |
-| D6 | An AI provider abstraction (§78) with switchable profiles: `local-gpu`, `local-cpu`, `free-cloud`, `production` and `mock`. OpenAI-compatible APIs are used wherever possible. | Free, compatible services locally; paid vendors later through config only. |
+| D6 | An AI provider abstraction (§78) with two profiles: `vendor` (OpenAI + Deepgram through your API keys) for development and production, and `mock` (deterministic fakes) for CI and load tests. Providers and models are set per route in configuration. | Real model quality and latency from day one, no GPU needed, and the cost model measures real spend. |
 | D7 | In-house identity:<br>• **Recruiters:** argon2id passwords, TOTP and passkeys, sessions, lockout, SSO (Entra ID/OIDC/SAML) and SCIM.<br>• **Candidates:** invitation → set password → desktop login (plus an email OTP on a new device, org-configurable) → device-bound DPoP tokens. | Your choice; also delivers §8 device and session binding. |
 | D8 | Storage uses the Azure Blob API everywhere (Azurite locally), behind a storage-service and URL-signer interface. ClamAV scans files. Email goes over SMTP (Mailpit locally). | The cloud move needs no rework. |
 | D9 | The coding sandbox is a separate `sandbox-runner` that starts a fresh, hardened container for every run and destroys it afterwards. | §46. |
@@ -147,7 +147,7 @@ Each application has its own build, tests and release pipeline.
    - Kong isn't needed at launch; Front Door WAF plus in-app rate limits are enough.
 10. **Licensing hazards:**
     - Avoid PyMuPDF (AGPL), Ultralytics YOLO (AGPL) and Coqui XTTS (non-commercial).
-    - Use pdfplumber/pypdfium2, Apache-2.0 detectors (RT-DETR/D-FINE) and Kokoro instead.
+    - Use pdfplumber/pypdfium2 and Apache-2.0 detectors (RT-DETR/D-FINE) instead.
     - License scanning runs in CI.
 11. **Windows realities:**
     - SmartScreen reputation builds over time; EV certificates no longer bypass it.
@@ -214,21 +214,21 @@ Docker Desktop (WSL2)
   core : postgres17+pgvector · valkey · azurite · clamav · mailpit
   app  : api · realtime · worker+beat · media-worker · interview-agent · vision-agent · coding-service · sandbox-runner(isolated net)
   media: livekit-server (7880 ws / 7881 tcp / 7882 udp-mux) · livekit-egress
-  ai   : ollama (LLM + embeddings) · speaches (faster-whisper STT) · kokoro-fastapi (TTS)
   obs  : otel-lgtm (Grafana/Tempo/Loki/Prometheus) · glitchtip
   test : keycloak (SAML/OIDC test IdP) · webhook-receiver · ats-mocks
+External APIs (HTTPS, keys in the gitignored root .env): OpenAI (LLM, embeddings, vision, TTS fallback) · Deepgram (STT, TTS)
 ```
 
 ### 5.2 Docker Desktop stack
 
-- **Compose file:** `infrastructure/local/compose.yaml`, with profiles `core`, `app`, `media`, `ai`, `obs` and `test`.
+- **Compose file:** `infrastructure/local/compose.yaml`, with profiles `core`, `app`, `media`, `obs` and `test`.
 - **Task runner commands:** `up`, `down`, `reset`, `seed`, `logs`, `doctor`.
 - **Dockerfiles:** every backend service has a production Dockerfile: multi-stage, non-root, digest-pinned.
   - Locally, source code is bind-mounted with hot reload.
   - If file-watching on Windows mounts is too slow, the API can run natively with uv instead.
 - **`doctor` script:**
-  - Checks Docker resources, GPU, ports, hosts entries, Caddy CA trust, model downloads, WebView2 and the MSVC build tools.
-  - Selects the AI profile.
+  - Checks Docker resources, ports, hosts entries, Caddy CA trust, WebView2 and the MSVC build tools.
+  - Verifies the OpenAI and Deepgram keys with a harmless API call and lists the models your keys can use.
 - **Seed data:**
   - A super admin, 2 organisations (for tenant-isolation checks) and users for every role.
   - Departments, teams, jobs, templates and a question library.
@@ -239,28 +239,31 @@ Docker Desktop (WSL2)
     - hidden-text injection samples
     - an EICAR malware test file
 
-### 5.3 Free, API-compatible AI stack
+### 5.3 AI stack (OpenAI + Deepgram through your API keys)
+
+Decided on 2026-09-28: AI runs on your OpenAI and Deepgram API keys from day one, instead of local models. No GPU is needed.
 
 - **One interface layer:** every AI call goes through `hirevion_core.ai`:
   - `LLMService`, `EmbeddingService`, `SpeechToTextService`, `TextToSpeechService`, `VisionService` (§78), plus `OCRService`.
   - Each call records model, prompt and rubric versions plus usage.
-- **Profile per route:** which profile a task uses is set in configuration, route by route.
+- **Profiles:** `vendor` (development and production) and `mock` (CI and load tests). The provider and model for each route are set in configuration.
 
-| Capability | `local-gpu` (default) | `local-cpu` | `free-cloud` (optional, synthetic data only) | `production` (after migration) |
-|---|---|---|---|---|
-| LLM (JSON-schema output) | Ollama: gpt-oss-20b (≥16 GB VRAM) or Qwen3-8B/14B (8–12 GB) | Ollama: Qwen3-4B / Phi-4-mini | Groq free tier (OpenAI-compatible) | OpenAI (fast model for live turns, flagship for screening/evaluation) + Azure OpenAI failover (recommended) |
-| Embeddings (1,024-d) | Ollama bge-m3 | same | same | OpenAI text-embedding-3-large (`dimensions=1024`) + re-embed job |
-| STT | Speaches: faster-whisper large-v3-turbo | faster-whisper small.en int8 | Groq Whisper | Deepgram Nova-3/Flux streaming + keyterms |
-| TTS | Kokoro-82M via Kokoro-FastAPI | Kokoro (CPU) | Kokoro | ElevenLabs primary, Cartesia fallback |
-| VAD / turn-taking | Silero VAD + LiveKit turn detector | same | same | same (+ Flux end-of-turn) |
-| OCR | Tesseract 5 + local VLM (e.g. Qwen2.5-VL-7B) for low-confidence pages | Tesseract | same | Tesseract + OpenAI vision |
-| Vision | MediaPipe on-device; OpenCV + ONNX Runtime + Apache-2.0 detector server-side | CPU | same | same |
+| Capability | `vendor` profile | Fallback | `mock` (CI and load tests) |
+|---|---|---|---|
+| LLM (JSON-schema output) | OpenAI: a fast model for live interview turns, the flagship model for screening and evaluation | Azure OpenAI deployment of the same models (production, recommended) | Deterministic fake |
+| Embeddings (1,024-d) | OpenAI text-embedding-3-large with `dimensions=1024` | — | Deterministic fake vectors |
+| STT | Deepgram streaming (Nova-3, or Flux for conversational end-of-turn) with keyterms from the JD and resume | OpenAI transcription | Scripted transcript |
+| TTS | Deepgram Aura-2 streaming | OpenAI TTS; ElevenLabs/Cartesia optional later | Silent audio of realistic length |
+| VAD / turn-taking | Silero VAD + LiveKit turn detector (+ Flux end-of-turn when used) | — | same |
+| OCR | Tesseract 5, with OpenAI vision for low-confidence pages | — | Fixture text |
+| Vision (proctoring) | MediaPipe on-device; OpenCV + ONNX Runtime + an Apache-2.0 detector server-side | — | Fixture detections |
 
-- **Voice wiring:** LiveKit Agents' `openai` plugin is pointed at Ollama, Speaches and Kokoro via `base_url`. After migration, the `deepgram`, `elevenlabs`, `cartesia` and `openai` plugins take over, with `FallbackAdapter` for STT, LLM and TTS.
-- **Other LLM work:** uses the OpenAI Python SDK's Chat Completions API with a JSON-schema `response_format`, which OpenAI, Azure OpenAI, Ollama and Groq all support. Pydantic validates the output, with one repair retry.
-- **Model pinning:** exact model tags go in `infrastructure/local/models.lock`. A Day-1 benchmark picks the profile that keeps the AI's first spoken word at p95 ≤ 2.5 s on this PC.
-- **Mock profile:** CI and load tests use `mock`: deterministic fake STT/LLM/TTS with realistic latency.
-- **Privacy rule:** real candidate PII never goes to `free-cloud`.
+- **Voice wiring:** LiveKit Agents' `deepgram` and `openai` plugins, with `FallbackAdapter` for STT, LLM and TTS.
+- **Other LLM work:** the OpenAI Python SDK with JSON-schema structured outputs. Pydantic validates every response, with one repair retry.
+- **Model choice:** model names live in configuration, never in code. The SP-00 benchmark lists the models your keys can use and picks the ones that keep the AI's first spoken word at p95 ≤ 2.5 s.
+- **Keys:** only in the gitignored root `.env` locally (Key Vault in the cloud). Never in the repo, the desktop app or the web bundle.
+- **Data rule:** development uses synthetic data. Real candidate data goes to OpenAI and Deepgram only after their DPAs are signed and the data-retention and model-improvement opt-outs are in place (§17).
+- **Cost control:** every call is metered (§11) against per-organisation budgets, so the cost model is built from real spend.
 
 ### 5.4 Cloud-portability contract (input to the Cloud Migration Plan)
 
@@ -277,7 +280,7 @@ Docker Desktop (WSL2)
   - Mailpit → Azure Communication Services Email (SMTP)
   - ClamAV → ClamAV + Defender for Storage
   - Self-hosted LiveKit → LiveKit Cloud or VMs/AKS
-  - Local AI profile → `production` profile
+  - The same OpenAI and Deepgram APIs, plus an Azure OpenAI failover deployment (recommended)
   - Docker sandbox → Azure Container Apps dynamic sessions (Hyper-V) or Kata containers
   - Caddy → Front Door WAF
   - `.env` → Key Vault with managed identity
@@ -546,7 +549,7 @@ Pairing again revokes the old device. Egress records the stream.
 
   Per-question time limits and follow-up rules (§22) are honoured. Coverage of required JD skills is tracked live (§37).
 - **Division of labour:** a deterministic Python policy makes the decisions; LLMs only analyse answers and phrase questions. This avoids "one giant prompt" (§34).
-- **Latency:** local-gpu target is p95 ≤ 2.5 s until the AI starts speaking.
+- **Latency:** target is p95 ≤ 2.5 s until the AI starts speaking.
   - Path: end of turn → final transcript → answer analysis, while a short acknowledgement plays → policy → streamed question → streamed TTS.
   - Likely next questions are generated while the candidate speaks.
 - **Voice:**
@@ -989,7 +992,7 @@ Hirevion/
 ├── workers/                       # Celery worker-service + media-worker
 ├── coding-sandbox/                # sandbox-runner + runner images (python, node, ts, sql) + test harness
 ├── packages/                      # shared TS: api-client (generated), ui (design system), events, i18n
-├── infrastructure/local/          # compose, Caddyfile, livekit/egress config, models.lock, scripts (cloud/ comes with migration plan)
+├── infrastructure/local/          # compose, Caddyfile, livekit/egress config, scripts (cloud/ comes with migration plan)
 ├── tools/                         # interview-simulator, eval-harness, synthetic-data, load-tests (k6), cost-model
 └── docs/                          # architecture/ADRs, superpowers/plans, security/, policies/, runbooks/, api/
 ```
@@ -1025,7 +1028,7 @@ Hirevion/
   - Prompts and rubrics are versioned files.
   - Every call is recorded in `ai_invocations`.
   - Blind screening is on by default.
-  - No PII goes to the `free-cloud` profile.
+  - Development uses synthetic data; real candidate data reaches AI vendors only after DPAs and opt-outs are in place.
 - **Desktop:** ships no master credentials. It uses only short-lived, scoped tokens.
 - **UX:**
   - Every string is externalised (en-IN and en-US first).
@@ -1058,7 +1061,7 @@ Each SP gets its own detailed TDD plan before work starts. "CP" is the checkpoin
   - Git guards.
   - An ADR template.
 - **Spikes** (each result becomes an ADR):
-  1. Voice-loop latency with the local AI profiles.
+  1. Voice-loop latency through LiveKit with Deepgram (STT/TTS) and OpenAI (LLM), measured from end of speech to first AI audio.
   2. Screen capture → 10-second segments at 1080p/15 fps within a CPU budget.
   3. WebView2 media: permission auto-grant, WebCodecs segments, MediaPipe at ≥10 fps.
   4. Self-hosted LiveKit with the desktop and a phone connecting over a tunnel.
@@ -1071,7 +1074,7 @@ Each SP gets its own detailed TDD plan before work starts. "CP" is the checkpoin
   - The outbox publishing to Redis Streams.
   - A hash-chained audit service.
   - The storage service and URL signer (§85 paths).
-  - The AI provider layer: six services, all profiles including `mock`, `ai_invocations` recording.
+  - The AI provider layer: six services, both profiles (`vendor`, `mock`), `ai_invocations` recording.
   - Metering and a clock-sync endpoint.
   - RFC 9457 errors, pagination, idempotency and rate-limit middleware.
   - OpenTelemetry.
@@ -1079,7 +1082,7 @@ Each SP gets its own detailed TDD plan before work starts. "CP" is the checkpoin
 - **Exit criteria:**
   - The tenant-isolation harness fails any table that lacks row-level security.
   - The outbox delivery test passes.
-  - Provider contract tests pass on both the `mock` and a local profile.
+  - Provider contract tests pass on `mock`, plus a small opt-in live check against OpenAI and Deepgram.
 
 **SP-02 Identity & access** (CP1; depends on SP-01 and SP-03)
 - **Deliverables:**
@@ -1222,7 +1225,7 @@ Each SP gets its own detailed TDD plan before work starts. "CP" is the checkpoin
   - Checkpoints, the resume policy and crash recovery.
 - **Exit criteria:**
   - Simulator personas complete full interviews.
-  - p95 time to first audio ≤ 2.5 s on local-gpu (documented for local-cpu).
+  - p95 time to first audio ≤ 2.5 s.
   - After an agent is killed, the interview resumes within 10 s with no lost turns.
   - 100% of required skills are covered when time allows.
 
@@ -1430,7 +1433,7 @@ A checkpoint is a demo plus quality gates, not a promised date.
 
 | CP | Outcome | Aggressive | Expected |
 |---|---|---|---|
-| 0 | Stack up; spikes decide the model profile, capture/encode path and LiveKit networking | Sep 30 | Oct 1 |
+| 0 | Stack up; spikes decide the models, capture/encode path and LiveKit networking | Sep 30 | Oct 1 |
 | 1 | Recruiter: job → JD → 200 resumes → evidence-backed ranking → shortlist | Oct 5 | Oct 8 |
 | 2 | Candidate completes a voice interview in the desktop app, with recording, core proctoring and evaluation | Oct 11 | Oct 16 |
 | 3 | Core hiring loop: PRD §104 MVP plus live monitoring, reports and third-eye | **Oct 15** | Oct 22 |
@@ -1474,7 +1477,7 @@ A checkpoint is a demo plus quality gates, not a promised date.
   - It answers with TTS audio from persona scripts: strong, partial, weak, silent, adversarial, cheating.
   - It emits telemetry and uploads segments.
   - Tests assert the transcript, evaluation, events, recordings and reports.
-  - It runs in CI with the `mock` profile and nightly with the local models.
+  - It runs in CI with the `mock` profile and nightly against OpenAI and Deepgram.
 - **Chaos drills:** each drill must end with complete recordings, the correct events, and the interview resumed. The drills cover all seven §95 failure modes:
   - Drop the network mid-answer.
   - Force a server timeout.
@@ -1537,7 +1540,7 @@ A checkpoint is a demo plus quality gates, not a promised date.
   - Node 24 LTS and pnpm.
   - Python 3.12 and uv.
   - GitHub CLI, logged in as Devaraj-05.
-- **Hardware:** I couldn't read this PC's hardware this session. SP-00's `doctor` detects it: a GPU with at least 8 GB VRAM keeps local voice latency on target; otherwise we use `local-cpu`, or `free-cloud` with synthetic data only, for development.
+- **API keys:** put your OpenAI and Deepgram keys in the gitignored root `.env` (copy `.env.example`). No GPU is needed.
 - **Test devices:**
   - An Android phone and an iPhone for third-eye.
   - A USB webcam.
@@ -1547,8 +1550,9 @@ A checkpoint is a demo plus quality gates, not a promised date.
 - **Long-lead items for cloud GA** (start now; they don't block local work):
   - An OV code-signing certificate for your legal entity via a cloud HSM (validation takes days).
   - A domain name.
-  - An OpenAI organisation — the first payment starts the usage-tier clock, and higher rate limits unlock with spend and account age.
-  - Deepgram and ElevenLabs/Cartesia accounts, with DPAs and training/retention opt-outs.
+  - OpenAI: check your organisation's usage tier and rate limits (they rise with spend and account age), set a monthly budget, and request zero data retention if eligible.
+  - Deepgram: set a budget and opt out of model improvement.
+  - Sign DPAs with OpenAI and Deepgram before any real candidate data is used. ElevenLabs/Cartesia only if we add them later.
   - Counsel review of the `docs/policies/` drafts.
   - Booking the external pentest.
 
@@ -1557,7 +1561,7 @@ A checkpoint is a demo plus quality gates, not a promised date.
 | Risk | Mitigation |
 |---|---|
 | Solo capacity vs full scope | Riskiest work first (spikes on days 1–2), parallel subagents, checkpoint demos and a weekly re-plan. Gates never move; dates do. |
-| Local AI latency on this hardware | Switchable profiles, a Day-1 benchmark, `free-cloud` for development, `mock` for CI and load tests. |
+| AI vendor latency from India, rate limits and cost | SP-00 latency benchmark, streaming everywhere, per-route model choice, fallbacks, metering with budgets, and the `mock` profile for CI and load tests. |
 | Native capture/encoding complexity | Spike it first; DXGI fallback; software H.264 encoder; Media Feature Pack guidance on N editions. |
 | LiveKit and phone networking on Docker Desktop | Single-port UDP mux with TCP fallback; tunnel for HTTPS signalling; same-Wi-Fi rule during development. |
 | AI scoring quality and fairness | Evidence verification, eval harness, calibration with humans, blind mode, adverse-impact monitoring, no automatic decisions. |
