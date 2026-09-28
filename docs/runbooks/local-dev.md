@@ -85,6 +85,20 @@ holds the native crates in `src-tauri/crates/`.
 `rust-toolchain.toml` pins the Rust version; rustup installs it automatically on first use.
 `cargo deny check` (with `cargo-deny` installed) checks licences and advisories the way CI does.
 
+### Unattended spike runs
+
+Debug builds can run a spike page by themselves and write a JSON report (including the CPU
+use of the app and all its WebView2 processes) to `ai-interviewer-desktop/spike-results/`. From
+`ai-interviewer-desktop`, in Git Bash:
+
+```
+HV_SPIKE=media:45:faces=gpu WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--use-fake-device-for-media-stream pnpm tauri dev
+```
+
+`faces` can be `gpu`, `cpu` or `off`. The fake-device flag feeds a synthetic camera and tone
+instead of your webcam and microphone; leave it out to test with the real devices. The app
+closes itself when the report is written.
+
 ### Screen-capture benchmark
 
 `crates/recorder/examples/capture_bench.rs` records every display into 10-second H.264 MP4
