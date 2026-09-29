@@ -19,9 +19,11 @@ from hirevion_api.middleware import (
     UnhandledErrorMiddleware,
 )
 from hirevion_api.problems import install_problem_handlers
+from hirevion_api.ratelimit import RateLimitMiddleware
 from hirevion_api.routing import API_PREFIX, build_openapi, operation_id
 from hirevion_api.settings import ApiSettings, load_api_settings
 from hirevion_core.db.session import Database, create_database
+from hirevion_core.ratelimit import RateRule
 from hirevion_core.settings import CoreSettings, load_core_settings
 
 
@@ -67,11 +69,13 @@ def create_app(
     install_idempotency_handler(app)
     app.include_router(health.router)
 
-    # Starlette runs the last-added middleware first: proxy headers, then the host check,
-    # then the body limit, security headers and the catch-all for unhandled errors.
+    # Starlette runs the last-added middleware first: proxy headers, the host check, the
+    # per-IP rate limit, the body limit, security headers, then the catch-all for errors.
+    ip_rule = RateRule("ip", settings.ip_rate_limit, settings.ip_rate_window_seconds)
     app.add_middleware(UnhandledErrorMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(BodySizeLimitMiddleware, max_bytes=settings.max_body_bytes)
+    app.add_middleware(RateLimitMiddleware, rule=ip_rule)
     app.add_middleware(HostCheckMiddleware, allowed_hosts=settings.hosts)
     app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=settings.proxies)
     return app
