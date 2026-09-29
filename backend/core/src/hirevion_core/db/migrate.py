@@ -1,12 +1,13 @@
 """`migrate()`: bring a database to the latest schema. `uv run hv migrate` runs it.
 
-It creates or updates the application roles, then applies the Alembic migrations. Everything
-runs in one transaction under an advisory lock, so concurrent runs queue and a failed run
-leaves nothing half-applied.
+It creates or updates the application roles, applies the Alembic migrations, then creates
+this month's and the next months' partitions. Everything runs in one transaction under an
+advisory lock, so concurrent runs queue and a failed run leaves nothing half-applied.
 """
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 
 from alembic import command
@@ -15,6 +16,11 @@ from sqlalchemy import Connection, text
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 
+from hirevion_core.db.partitions import (
+    MONTHS_AHEAD,
+    PARTITIONED_TABLES,
+    ensure_monthly_partitions,
+)
 from hirevion_core.db.roles import bootstrap_roles
 from hirevion_core.settings import CoreSettings
 
@@ -45,6 +51,9 @@ async def migrate(settings: CoreSettings, database: str | None = None) -> None:
                 settings.postgres_relay_password.get_secret_value(),
             )
             await conn.run_sync(_upgrade_to_head)
+            today = datetime.now(UTC).date()
+            for table in PARTITIONED_TABLES:
+                await ensure_monthly_partitions(conn, table, today, MONTHS_AHEAD)
     finally:
         await engine.dispose()
 
