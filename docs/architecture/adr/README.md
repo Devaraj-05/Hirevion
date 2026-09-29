@@ -10,5 +10,6 @@
 | [0006](0006-screen-capture.md) | Screen capture and H.264 segment recording | Accepted |
 | [0007](0007-webview-media.md) | Camera and microphone recording and face detection in WebView2 | Accepted |
 | [0008](0008-livekit-phone-networking.md) | Third-eye phone and desktop on self-hosted LiveKit (local development) | Accepted |
+| [0009](0009-tenancy-and-data-foundations.md) | Tenancy, audit log and outbox on PostgreSQL | Accepted |
 
 New decisions copy [0000-template.md](0000-template.md) and take the next number.

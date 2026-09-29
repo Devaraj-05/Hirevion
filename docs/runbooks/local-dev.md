@@ -16,6 +16,7 @@ fixes for common problems.
 6. `uv run hv trust-ca`. Windows asks you to confirm installing Caddy's local root certificate,
    which makes `https://*.hirevion.localhost` trusted in Edge, Chrome and the desktop app.
 7. `uv run hv doctor`, then `uv run hv smoke`. Every line should say `ok`.
+8. `uv run hv migrate`. It creates the database roles and applies the migrations.
 
 ## Daily commands
 
@@ -26,6 +27,7 @@ fixes for common problems.
 | `uv run hv ps` | Shows containers and their health |
 | `uv run hv logs [service]` | Follows logs, for example `uv run hv logs livekit` |
 | `uv run hv smoke [--obs]` | Proves each service works with a real round-trip |
+| `uv run hv migrate [--database NAME]` | Creates the database roles, applies migrations and adds upcoming partitions |
 | `uv run hv down` | Stops everything; data is kept |
 | `uv run hv reset` | Stops everything and deletes all local data (asks first) |
 
@@ -45,6 +47,31 @@ fixes for common problems.
 
 The application sites (`app.`, `candidate.`, `api.`, `ws.`, `eye.`) point at ports 3000, 5174, 8000
 and 8001 on your PC; they answer once later sub-projects start those apps.
+
+## Database: migrations, roles and tests
+
+The design is in [ADR-0009](../architecture/adr/0009-tenancy-and-data-foundations.md).
+
+- **Roles.**
+  - Services connect as `hirevion_app`, which row-level security always applies to.
+  - The outbox relay connects as `hirevion_relay`.
+  - Their passwords are `POSTGRES_APP_PASSWORD` and `POSTGRES_RELAY_PASSWORD` in `.env` (`hv env-sync` generates them).
+  - `hv migrate` creates the roles, or resets them to match `.env`. Only migrations use the admin role (`POSTGRES_USER`).
+- **Migrate.** Run `uv run hv migrate` after pulling changes, and at least every two months: it also creates the next months' partitions of `audit_logs` and `usage_events`.
+- **Add a migration.**
+  - Run `uv run alembic -c backend/migrations/alembic.ini revision -m "add jobs"` and write it by hand.
+  - A new tenant table needs `tenant_policy_sql()` and explicit `grant_sql()` calls.
+  - Update the model in `hirevion_core.models` to match.
+  - `test_models_match_migrations` and the isolation harness (`test_baseline_has_no_isolation_problems`) catch mistakes.
+- **Tests.**
+  - `uv run pytest` includes the `db` tests. They rebuild the `hirevion_test` database's schema and use Valkey database 15, so the stack must be up.
+  - `uv run pytest -m "not db"` runs everything else.
+- **Look inside.** `docker exec -it hirevion-postgres-1 psql -U hirevion hirevion` (the user is `POSTGRES_USER`). As the admin you bypass row-level security; to see what a tenant sees, run:
+
+  ```sql
+  SET ROLE hirevion_app;
+  SELECT set_config('app.org_id', '<org id>', false);
+  ```
 
 ## Voice agent and latency benchmark
 

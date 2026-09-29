@@ -61,20 +61,20 @@
 - Produces: `CoreSettings.valkey_url() -> str` (no auth part when the password is empty).
 - Produces: `uuid7(now_ms: int | None = None, rand: bytes | None = None) -> UUID` and `uuid7_time(value: UUID) -> datetime`.
 
-- [ ] Add the workspace member `backend/core` (deps: `sqlalchemy[asyncio]>=2.0`, `asyncpg`, `alembic`, `pydantic-settings>=2.4`, `redis>=5`). Add `pytest-asyncio` to the dev group, and add `backend/core/tests` to `testpaths` with `asyncio_mode = "auto"` and a `db` marker.
-- [ ] Tests first (`tests/test_ids.py`), covering:
+- [x] Add the workspace member `backend/core` (deps: `sqlalchemy[asyncio]>=2.0`, `asyncpg`, `alembic`, `pydantic-settings>=2.4`, `redis>=5`). Add `pytest-asyncio` to the dev group, and add `backend/core/tests` to `testpaths` with `asyncio_mode = "auto"` and a `db` marker.
+- [x] Tests first (`tests/test_ids.py`), covering:
   - version 7 and the RFC variant;
   - the timestamp round-trips through `uuid7_time`;
   - a later millisecond sorts after an earlier one;
   - fixed `rand` gives a fixed value;
   - 10,000 calls are unique.
-- [ ] Tests first (`tests/test_settings.py`), covering:
+- [x] Tests first (`tests/test_settings.py`), covering:
   - URLs for all three roles;
   - a password containing `@:/` is escaped;
   - the Valkey URL with and without a password;
   - a missing required password names the key but never its value;
   - `repr` contains no secret.
-- [ ] Implement both modules:
+- [x] Implement both modules:
 
 ```python
 # ids.py
@@ -89,8 +89,8 @@ def uuid7(now_ms: int | None = None, rand: bytes | None = None) -> UUID:
     return UUID(int=value)
 ```
 
-- [ ] Add `POSTGRES_APP_PASSWORD` and `POSTGRES_RELAY_PASSWORD` (32 characters each) to `GENERATED_KEYS` and `.env.example`. Extend the devcli tests. Run `uv run hv env-sync`.
-- [ ] Commit `feat(core): add core settings and UUIDv7 ids`.
+- [x] Add `POSTGRES_APP_PASSWORD` and `POSTGRES_RELAY_PASSWORD` (32 characters each) to `GENERATED_KEYS` and `.env.example`. Extend the devcli tests. Run `uv run hv env-sync`.
+- [x] Commit `feat(core): add core settings and UUIDv7 ids`.
 
 ### Task 2: Base models, tenant sessions, roles and the Alembic baseline
 
@@ -105,7 +105,7 @@ def uuid7(now_ms: int | None = None, rand: bytes | None = None) -> UUID:
 - Produces: `migrate(settings, database) -> None`.
 - Produces: `find_isolation_problems(conn) -> list[str]`, which is empty when isolation holds.
 
-- [ ] Tests first:
+- [x] Tests first:
   - Pure tests:
     - `tenant_policy_sql("jobs")` produces ENABLE, FORCE, and a policy `TO hirevion_app` using `NULLIF(current_setting('app.org_id', true), '')::uuid`;
     - invalid identifiers raise.
@@ -114,12 +114,12 @@ def uuid7(now_ms: int | None = None, rand: bytes | None = None) -> UUID:
     2. Roles: `hirevion_app` is not a superuser, lacks `BYPASSRLS`, and owns no table.
     3. Isolation behaviour: an organisation inserted as admin is visible in `db.tenant(its_id)` and invisible in `db.tenant(other_id)` and in `db.unscoped()`.
     4. No leak through the pool: after a tenant session, the next `unscoped()` session on the same engine sees nothing.
-- [ ] Implement `db/base.py`:
+- [x] Implement `db/base.py`:
   - naming conventions `pk_%(table_name)s`, `fk_…`, `ix_…`, `uq_…`, `ck_…`;
   - `IdMixin` (`id: Mapped[UUID]`, primary key, `default=uuid7`);
   - `TimestampMixin` (`created_at`, `updated_at`, `timestamptz`, server default `now()`);
   - `TenantMixin` (`organization_id`, not null, indexed, FK to `organizations.id`).
-- [ ] Implement `db/session.py`:
+- [x] Implement `db/session.py`:
 
 ```python
 @asynccontextmanager
@@ -131,21 +131,21 @@ async def tenant(self, organization_id: UUID) -> AsyncIterator[AsyncSession]:
         yield session
 ```
 
-- [ ] Implement `db/roles.py`:
+- [x] Implement `db/roles.py`:
   - passwords must match `^[A-Za-z0-9_-]{24,}$`, because DDL can't take bind parameters;
   - `CREATE ROLE` / `ALTER ROLE … LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE PASSWORD '…'`;
   - `GRANT CONNECT ON DATABASE`, `GRANT USAGE ON SCHEMA public`.
-- [ ] Implement `db/isolation.py`. It queries `pg_class`/`pg_attribute`/`pg_policy` in `public` for:
+- [x] Implement `db/isolation.py`. It queries `pg_class`/`pg_attribute`/`pg_policy` in `public` for:
   - every ordinary or partitioned table (not partitions) that has an `organization_id` column, or is named `organizations`, and lacks `relrowsecurity`, `relforcerowsecurity` or at least one policy;
   - any table owned by the app role;
   - any partition the app or relay role holds privileges on.
-- [ ] Alembic (`backend/migrations`): an async `env.py` whose URL comes from `CoreSettings.database_url("admin", database)` (override: `-x database=NAME`). Baseline `0001`:
+- [x] Alembic (`backend/migrations`): an async `env.py` whose URL comes from `CoreSettings.database_url("admin", database)` (override: `-x database=NAME`). Baseline `0001`:
   - extensions `vector`, `pg_trgm`, `citext`;
   - `ALTER DEFAULT PRIVILEGES … GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO hirevion_app`;
   - `organizations`: `id`, `name`, `slug citext unique`, `status`, `created_at`, `updated_at`. RLS policy `id = current org`; app role `SELECT` and `UPDATE` only (creation is a platform action, SP-02/22).
   - `feature_flags`: `id`, `key`, `organization_id` nullable, `enabled`, `rollout_percent`, `description`, timestamps; unique `(key, organization_id)`. RLS read policy `organization_id IS NULL OR organization_id = current org`; app role `SELECT` only.
-- [ ] Implement `db/migrate.py` (bootstrap roles, then `alembic.command.upgrade`, then `ensure_monthly_partitions` for 3 months ahead) and `hv migrate [--database hirevion]`.
-- [ ] Commit `feat(core): add tenant-scoped sessions, roles and the Alembic baseline`.
+- [x] Implement `db/migrate.py` (bootstrap roles, then `alembic.command.upgrade`, then `ensure_monthly_partitions` for 3 months ahead) and `hv migrate [--database hirevion]`.
+- [x] Commit `feat(core): add tenant-scoped sessions, roles and the Alembic baseline`.
 
 ### Task 3: Monthly partitions and the hash-chained audit log
 
@@ -158,7 +158,7 @@ async def tenant(self, organization_id: UUID) -> AsyncIterator[AsyncSession]:
 - Produces: `AuditService.verify_chain(session, organization_id) -> ChainCheck(ok: bool, checked: int, first_bad_seq: int | None)`.
 - Produces: `canonical_json(record: dict) -> bytes` and `chain_hash(prev: bytes, record: dict) -> bytes`.
 
-- [ ] Tests first:
+- [x] Tests first:
   - Pure tests:
     - `month_ranges` across a year boundary;
     - `canonical_json` is key-order independent and UTF-8 exact;
@@ -171,15 +171,15 @@ async def tenant(self, organization_id: UUID) -> AsyncIterator[AsyncSession]:
     4. 20 concurrent appends for one organisation (`asyncio.gather` across separate sessions) produce `seq` 1–20 and a valid chain.
     5. An organisation can't read another organisation's audit rows.
     6. A row dated in 2030 lands in the default partition and is still readable.
-- [ ] Migration `0002_audit_logs`, partitioned `BY RANGE (occurred_at)`:
+- [x] Migration `0002_audit_logs`, partitioned `BY RANGE (occurred_at)`:
   - columns: `id`, `organization_id`, `seq bigint`, `occurred_at`, `actor_type`, `actor_id`, `action`, `resource_type`, `resource_id`, `ip inet`, `user_agent`, `details jsonb`, `prev_hash bytea`, `hash bytea`;
   - PK `(id, occurred_at)`; index `(organization_id, seq DESC)`;
   - a DEFAULT partition;
   - RLS (tenant policy);
   - `REVOKE UPDATE, DELETE` from the app role;
   - a `BEFORE UPDATE OR DELETE` trigger that raises. Retention drops whole partitions (SP-22), which fires no row trigger.
-- [ ] Implement `audit.py`. `append` takes `pg_advisory_xact_lock(hashtextextended('audit:' || org, 0))`, reads the last `(seq, hash)` for the organisation, computes the next values and inserts. `occurred_at` is generated in Python (UTC, microseconds), so the hashed value is exactly the stored one.
-- [ ] Commit `feat(core): add monthly partitions and the hash-chained audit log`.
+- [x] Implement `audit.py`. `append` takes `pg_advisory_xact_lock(hashtextextended('audit:' || org, 0))`, reads the last `(seq, hash)` for the organisation, computes the next values and inserts. `occurred_at` is generated in Python (UTC, microseconds), so the hashed value is exactly the stored one.
+- [x] Commit `feat(core): add monthly partitions and the hash-chained audit log`.
 
 ### Task 4: Outbox, relay to Valkey Streams, usage events
 
@@ -189,7 +189,7 @@ async def tenant(self, organization_id: UUID) -> AsyncIterator[AsyncSession]:
 - Produces: `stream_name(topic) -> str`, which gives `"hv:events:<topic>"`. Topics match `^[a-z][a-z0-9_.-]{1,62}$`.
 - Produces: `OutboxRelay(db: Database, redis, batch=100, maxlen=100_000)` with `run_once() -> int` (events published) and `run_forever(stop: asyncio.Event, poll=0.5)`.
 
-- [ ] Tests first:
+- [x] Tests first:
   - Pure tests: `stream_name` validation.
   - DB + Valkey tests (the "outbox delivery test"):
     1. `publish_event` in a committed tenant transaction; `relay.run_once()` returns 1, and a consumer group reads one entry with the same `id`, `org`, `topic` and payload; `published_at` is set.
@@ -197,7 +197,7 @@ async def tenant(self, organization_id: UUID) -> AsyncIterator[AsyncSession]:
     3. Two relays running at once publish each event exactly once (`FOR UPDATE SKIP LOCKED`).
     4. The relay role can't read `audit_logs` (permission denied).
     5. The app role can't read another organisation's outbox rows.
-- [ ] Migration `0003_outbox_and_usage`:
+- [x] Migration `0003_outbox_and_usage`:
   - `outbox_events`:
     - columns: `id`, `organization_id`, `topic`, `key`, `payload jsonb`, `created_at`, `published_at`, `attempts`;
     - partial index on unpublished rows;
@@ -208,21 +208,21 @@ async def tenant(self, organization_id: UUID) -> AsyncIterator[AsyncSession]:
     - columns: `id`, `organization_id`, `occurred_at`, `meter`, `quantity numeric`, `unit`, `source`, `attributes jsonb`;
     - partitioned monthly, with a DEFAULT partition;
     - RLS; app role `SELECT` and `INSERT`.
-- [ ] Implement `outbox.py`. The relay uses the relay role's `unscoped()` session:
+- [x] Implement `outbox.py`. The relay uses the relay role's `unscoped()` session:
   - `select … where published_at is null order by created_at limit :batch for update skip locked`;
   - `XADD` with fields `id`, `org`, `topic`, `key`, `payload`, `created_at`, and `MAXLEN ~`;
   - then set `published_at`.
-- [ ] Commit `feat(core): add the transactional outbox and Valkey stream relay`.
+- [x] Commit `feat(core): add the transactional outbox and Valkey stream relay`.
 
 ### Task 5: CI, models-versus-migrations check, docs
 
-- [ ] Add a test that compares `Base.metadata` with the migrated schema (`alembic.autogenerate.compare_metadata`, ignoring partitions, RLS and triggers); the difference must be empty.
-- [ ] CI Python job:
+- [x] Add a test that compares `Base.metadata` with the migrated schema (`alembic.autogenerate.compare_metadata`, ignoring partitions, RLS and triggers); the difference must be empty.
+- [x] CI Python job:
   - service containers `pgvector/pgvector:pg17` (pinned digest; env `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB=hirevion_test`) and `valkey/valkey:8` (pinned digest, no password);
   - health options;
   - env for `POSTGRES_*`, `POSTGRES_APP_PASSWORD`, `POSTGRES_RELAY_PASSWORD`, `VALKEY_HOST`.
-- [ ] Write ADR-0009 (tenancy and data foundations), and add a runbook section on `hv migrate`, the roles and running the DB tests.
-- [ ] Commit `docs: add ADR-0009 tenancy and data foundations`, then finish the branch: green CI, fast-forward, delete the branch.
+- [x] Write ADR-0009 (tenancy and data foundations), and add a runbook section on `hv migrate`, the roles and running the DB tests.
+- [x] Commit `docs: add ADR-0009 tenancy and data foundations`, then finish the branch: green CI, fast-forward, delete the branch.
 
 ## Self-review
 
@@ -236,3 +236,12 @@ async def tenant(self, organization_id: UUID) -> AsyncIterator[AsyncSession]:
   - SP-01b: API conventions (RFC 9457, pagination, idempotency, rate limits), the clock-sync endpoint, OpenTelemetry and the OpenAPI → TypeScript client.
   - SP-01c: storage and the URL signer, the AI provider layer with `ai_invocations`, and the metering API over `usage_events`.
 - **Type consistency:** `Database.tenant` / `unscoped` and `publish_event` / `OutboxRelay` use the same names in every task.
+
+## Implementation notes
+
+Where the build differs from the steps above (ADR-0009 records the reasons):
+
+- **Role passwords** reach PostgreSQL as SCRAM-SHA-256 verifiers computed in Python (`scram_verifier()`), not as clear-text `PASSWORD` literals. The `[A-Za-z0-9_-]{24,}` rule still applies.
+- **No default privileges.** Every table is granted explicitly with `grant_sql()`, so a new table or partition is reachable by nobody until a migration says so.
+- **Audit index** is `(organization_id, seq)`; a B-tree scans it backwards for the latest `seq`, so `DESC` isn't needed.
+- **pytest runs with `--import-mode=importlib`**, because two packages have a `test_settings.py`.
