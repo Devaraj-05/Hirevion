@@ -4,6 +4,7 @@ version = "0.0.0"
 description = "Hirevion monorepo workspace root"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+  "hirevion-api",
   "hirevion-core",
   "hirevion-devcli",
   "hirevion-interview-agent",
@@ -16,9 +17,16 @@ package = false
 link-mode = "copy"
 
 [tool.uv.workspace]
-members = ["tools/devcli", "backend/core", "backend/interview_agent", "tools/voice_bench"]
+members = [
+  "tools/devcli",
+  "backend/core",
+  "backend/api",
+  "backend/interview_agent",
+  "tools/voice_bench",
+]
 
 [tool.uv.sources]
+hirevion-api = { workspace = true }
 hirevion-core = { workspace = true }
 hirevion-devcli = { workspace = true }
 hirevion-interview-agent = { workspace = true }
@@ -43,6 +51,7 @@ select = ["E", "F", "I", "UP", "B", "SIM", "S", "RUF"]
 
 [tool.ruff.lint.isort]
 known-first-party = [
+  "hirevion_api",
   "hirevion_core",
   "hirevion_devcli",
   "hirevion_interview_agent",
@@ -56,6 +65,7 @@ known-first-party = [
 testpaths = [
   "tools/devcli/tests",
   "backend/core/tests",
+  "backend/api/tests",
   "backend/interview_agent/tests",
   "tools/voice_bench/tests",
 ]

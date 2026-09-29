@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 import pytest
@@ -87,6 +88,24 @@ def test_smoke_exit_code_follows_results(repo: Path, monkeypatch: pytest.MonkeyP
     assert runner.invoke(cli.app, ["smoke"]).exit_code == 0
     monkeypatch.setattr(cli, "run_smoke", failing)
     assert runner.invoke(cli.app, ["smoke"]).exit_code == 1
+
+
+def test_api_runs_uvicorn_on_localhost(repo: Path, calls: list[list[str]]) -> None:
+    serve = [sys.executable, "-m", "uvicorn", "hirevion_api.main:app", "--host", "127.0.0.1"]
+    assert runner.invoke(cli.app, ["api"]).exit_code == 0
+    assert runner.invoke(cli.app, ["api", "--port", "9000", "--no-reload"]).exit_code == 0
+    assert calls == [
+        [
+            *serve,
+            "--port",
+            "8000",
+            "--no-access-log",
+            "--reload",
+            "--reload-dir",
+            str(repo / "backend"),
+        ],
+        [*serve, "--port", "9000", "--no-access-log"],
+    ]
 
 
 def test_migrate_runs_the_core_migration(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:

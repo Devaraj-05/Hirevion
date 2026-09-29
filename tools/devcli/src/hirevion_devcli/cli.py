@@ -7,6 +7,7 @@ import os
 import secrets
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 from collections.abc import Iterator, Sequence
@@ -205,6 +206,21 @@ def logs(
     _require_env(root)
     args = ["logs", "--follow", "--tail", "200", *([service] if service else [])]
     raise typer.Exit(code=_run_stream(compose_command(root, ALL_PROFILES, *args)))
+
+
+@app.command()
+def api(
+    port: Annotated[int, typer.Option(help="Port on 127.0.0.1.")] = 8000,
+    reload: Annotated[bool, typer.Option(help="Restart when backend code changes.")] = True,
+) -> None:
+    """Run the API; Caddy serves it at https://api.hirevion.localhost (needs `hv up`)."""
+    root = repo_root()
+    _require_env(root)
+    command = [sys.executable, "-m", "uvicorn", "hirevion_api.main:app", "--host", "127.0.0.1"]
+    command += ["--port", str(port), "--no-access-log"]
+    if reload:
+        command += ["--reload", "--reload-dir", str(root / "backend")]
+    raise typer.Exit(code=_run_stream(command))
 
 
 @app.command("migrate")

@@ -1,4 +1,5 @@
-"""Fixtures for tests that need the real PostgreSQL and Valkey (marked `db`).
+"""Fixtures shared by every backend package's tests that need the real PostgreSQL and Valkey
+(marked `db`).
 
 Locally they use the `hirevion_test` database of `uv run hv up`; CI runs service containers.
 The schema is rebuilt from the migrations once per test session.
