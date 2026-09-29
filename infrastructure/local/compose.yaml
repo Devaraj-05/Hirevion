@@ -60,6 +60,9 @@ services:
       - /data
       - --skipApiVersionCheck
       - --loose
+      # Read the account from the path even behind Caddy's storage.hirevion.localhost host,
+      # which Azurite would otherwise parse as a production-style <account>.<host> URL.
+      - --disableProductStyleUrl
     environment:
       AZURITE_ACCOUNTS: "${AZURE_STORAGE_ACCOUNT:?set in .env}:${AZURE_STORAGE_KEY:?set in .env}"
     ports:

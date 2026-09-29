@@ -23,6 +23,9 @@ import redis
 from azure.core.exceptions import AzureError
 from azure.storage.blob import BlobServiceClient
 
+from hirevion_core.storage.paths import job_blob
+from hirevion_core.storage.service import StorageService, StorageSettings
+
 from .checks import CheckResult, Runner, run_command
 from .stack import compose_command
 from .trust import LOCAL_CA_PATH
@@ -36,6 +39,10 @@ CLAMD_ADDRESS = ("127.0.0.1", 3310)
 MAILPIT_SEARCH_URL = "http://127.0.0.1:8025/api/v1/search"
 LIVEKIT_LIST_ROOMS_URL = "http://127.0.0.1:7880/twirp/livekit.RoomService/ListRooms"
 CADDY_CHECK_URL = "https://mail.hirevion.localhost/api/v1/info"
+# One fixed blob that every run overwrites, under an organisation id no tenant can have.
+SMOKE_ORG = uuid.UUID("00000000-0000-7000-8000-00000000500e")
+SMOKE_JOB = uuid.UUID("00000000-0000-7000-8000-00000000500f")
+SIGNED_SMOKE_BODY = b"hirevion signed-url smoke"
 
 ValkeyFactory = Callable[[str], Any]
 BlobFactory = Callable[[str], Any]
@@ -239,6 +246,43 @@ def check_https(url: str, http: httpx.Client) -> CheckResult:
     return CheckResult("https", "ok", f"trusted HTTPS via Caddy ({url})")
 
 
+def check_signed_storage(upload_url: str, download_url: str, http: httpx.Client) -> CheckResult:
+    """Upload and read back through Caddy with signed URLs, as browsers and the desktop do."""
+    try:
+        stored = http.put(
+            upload_url, content=SIGNED_SMOKE_BODY, headers={"x-ms-blob-type": "BlockBlob"}
+        )
+        if stored.status_code != 201:
+            return CheckResult(
+                "signed-storage",
+                "fail",
+                f"signed upload returned HTTP {stored.status_code}; run `uv run hv storage-init`",
+            )
+        read = http.get(download_url)
+    except httpx.ConnectError:
+        return CheckResult(
+            "signed-storage", "warn", "cannot reach https://storage.hirevion.localhost"
+        )
+    except httpx.HTTPError as exc:
+        return CheckResult("signed-storage", "fail", f"request failed ({type(exc).__name__})")
+    if read.status_code != 200 or read.content != SIGNED_SMOKE_BODY:
+        return CheckResult(
+            "signed-storage", "fail", f"signed download returned HTTP {read.status_code}"
+        )
+    return CheckResult("signed-storage", "ok", "signed upload and download through Caddy")
+
+
+def signed_smoke_urls(values: Mapping[str, str]) -> tuple[str, str]:
+    storage = StorageService(
+        StorageSettings(
+            azure_storage_account=values["AZURE_STORAGE_ACCOUNT"],
+            azure_storage_key=values["AZURE_STORAGE_KEY"],  # type: ignore[arg-type]
+        )
+    )
+    path = job_blob(SMOKE_ORG, SMOKE_JOB, "smoke.txt")
+    return storage.upload_url(SMOKE_ORG, path), storage.download_url(SMOKE_ORG, path)
+
+
 def check_http(name: str, url: str, http: httpx.Client) -> CheckResult:
     try:
         response = http.get(url)
@@ -273,4 +317,5 @@ def run_smoke(
     context = ssl.create_default_context(cafile=str(ca_file))
     with httpx.Client(timeout=15, verify=context) as tls:
         results.append(check_https(CADDY_CHECK_URL, tls))
+        results.append(check_signed_storage(*signed_smoke_urls(values), tls))
     return results

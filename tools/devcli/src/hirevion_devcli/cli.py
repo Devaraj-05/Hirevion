@@ -21,6 +21,7 @@ from rich.table import Table
 
 from hirevion_core.db.migrate import migrate as migrate_database
 from hirevion_core.settings import load_core_settings
+from hirevion_core.storage.service import ensure_storage, load_storage_settings
 
 from . import doctor as doctor_checks
 from .checks import CheckResult
@@ -233,6 +234,25 @@ def openapi(
     """Write the API's OpenAPI document for the TypeScript client (or check it is current)."""
     command = [sys.executable, "-m", "hirevion_api.openapi", str(repo_root() / OPENAPI_DOCUMENT)]
     raise typer.Exit(code=_run_stream(command + (["--check"] if check else [])))
+
+
+# Web apps that upload straight to storage with signed URLs (the desktop uploads from Rust).
+STORAGE_ORIGINS = [
+    "https://app.hirevion.localhost",
+    "https://candidate.hirevion.localhost",
+    "https://eye.hirevion.localhost",
+]
+
+
+@app.command("storage-init")
+def storage_init() -> None:
+    """Create the private blob container and allow browser uploads from the web apps."""
+    try:
+        asyncio.run(ensure_storage(load_storage_settings(), STORAGE_ORIGINS))
+    except OSError as error:
+        console.print(f"Could not reach blob storage ({error}); is `uv run hv up` running?")
+        raise typer.Exit(code=1) from error
+    console.print("Blob storage is ready.")
 
 
 @app.command("migrate")

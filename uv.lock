@@ -610,8 +610,10 @@ name = "hirevion-core"
 version = "0.1.0"
 source = { editable = "backend/core" }
 dependencies = [
+    { name = "aiohttp" },
     { name = "alembic" },
     { name = "asyncpg" },
+    { name = "azure-storage-blob" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
     { name = "opentelemetry-instrumentation-redis" },
     { name = "opentelemetry-instrumentation-sqlalchemy" },
@@ -623,8 +625,10 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "aiohttp", specifier = ">=3.10" },
     { name = "alembic", specifier = ">=1.14" },
     { name = "asyncpg", specifier = ">=0.30" },
+    { name = "azure-storage-blob", specifier = ">=12.30" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = ">=1.44" },
     { name = "opentelemetry-instrumentation-redis", specifier = ">=0.65b0" },
     { name = "opentelemetry-instrumentation-sqlalchemy", specifier = ">=0.65b0" },

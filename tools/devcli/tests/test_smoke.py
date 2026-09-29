@@ -14,6 +14,7 @@ from hirevion_devcli.smoke import (
     EICAR_SHA256,
     LIVEKIT_LIST_ROOMS_URL,
     MAILPIT_SEARCH_URL,
+    SIGNED_SMOKE_BODY,
     blob_connection_string,
     check_blob_storage,
     check_clamav,
@@ -21,6 +22,7 @@ from hirevion_devcli.smoke import (
     check_livekit,
     check_mailpit,
     check_postgres,
+    check_signed_storage,
     check_valkey,
     eicar,
     instream_payload,
@@ -237,6 +239,44 @@ def test_check_https_ok_and_connect_error_warns() -> None:
     with httpx.Client() as client:
         assert check_https("https://mail.hirevion.localhost/api/v1/info", client).status == "ok"
         assert check_https("https://down.hirevion.localhost/", client).status == "warn"
+
+
+UPLOAD = "https://storage.hirevion.localhost/hirevion/hirevion/o/jobs/j/smoke.txt?sp=cw"
+DOWNLOAD = "https://storage.hirevion.localhost/hirevion/hirevion/o/jobs/j/smoke.txt?sp=r"
+
+
+@respx.mock
+def test_signed_storage_round_trips_through_caddy() -> None:
+    put = respx.put(UPLOAD).mock(return_value=httpx.Response(201))
+    respx.get(DOWNLOAD).mock(return_value=httpx.Response(200, content=SIGNED_SMOKE_BODY))
+    with httpx.Client() as client:
+        result = check_signed_storage(UPLOAD, DOWNLOAD, client)
+    assert result.status == "ok"
+    assert put.calls.last.request.headers["x-ms-blob-type"] == "BlockBlob"
+
+
+@respx.mock
+def test_signed_storage_names_the_fix_when_refused() -> None:
+    respx.put(UPLOAD).mock(return_value=httpx.Response(404))
+    with httpx.Client() as client:
+        result = check_signed_storage(UPLOAD, DOWNLOAD, client)
+    assert result.status == "fail"
+    assert "hv storage-init" in result.detail
+
+
+@respx.mock
+def test_signed_storage_fails_when_the_read_differs() -> None:
+    respx.put(UPLOAD).mock(return_value=httpx.Response(201))
+    respx.get(DOWNLOAD).mock(return_value=httpx.Response(200, content=b"other"))
+    with httpx.Client() as client:
+        assert check_signed_storage(UPLOAD, DOWNLOAD, client).status == "fail"
+
+
+@respx.mock
+def test_signed_storage_warns_when_caddy_is_unreachable() -> None:
+    respx.put(UPLOAD).mock(side_effect=httpx.ConnectError("tls"))
+    with httpx.Client() as client:
+        assert check_signed_storage(UPLOAD, DOWNLOAD, client).status == "warn"
 
 
 def test_eicar_is_the_standard_test_string() -> None:

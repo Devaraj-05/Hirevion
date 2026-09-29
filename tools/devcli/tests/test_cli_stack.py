@@ -121,6 +121,30 @@ def test_openapi_writes_or_checks_the_committed_document(
     ]
 
 
+def test_storage_init_prepares_storage_for_the_web_origins(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    prepared: list[tuple[object, list[str]]] = []
+    settings = object()
+
+    async def fake_ensure(given: object, origins: list[str]) -> None:
+        prepared.append((given, list(origins)))
+
+    monkeypatch.setattr(cli, "load_storage_settings", lambda: settings)
+    monkeypatch.setattr(cli, "ensure_storage", fake_ensure)
+    assert runner.invoke(cli.app, ["storage-init"]).exit_code == 0
+    assert prepared == [
+        (
+            settings,
+            [
+                "https://app.hirevion.localhost",
+                "https://candidate.hirevion.localhost",
+                "https://eye.hirevion.localhost",
+            ],
+        )
+    ]
+
+
 def test_migrate_runs_the_core_migration(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     migrated: list[tuple[object, str | None]] = []
     settings = object()
