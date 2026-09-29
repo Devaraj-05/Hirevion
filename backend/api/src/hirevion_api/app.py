@@ -11,6 +11,7 @@ from redis.asyncio import Redis
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from hirevion_api import health
+from hirevion_api.idempotency import install_idempotency_handler
 from hirevion_api.middleware import (
     BodySizeLimitMiddleware,
     HostCheckMiddleware,
@@ -63,6 +64,7 @@ def create_app(
     app.openapi = lambda: build_openapi(app)  # type: ignore[method-assign]
 
     install_problem_handlers(app)
+    install_idempotency_handler(app)
     app.include_router(health.router)
 
     # Starlette runs the last-added middleware first: proxy headers, then the host check,
