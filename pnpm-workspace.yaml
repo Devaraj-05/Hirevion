@@ -2,3 +2,4 @@ packages:
   - ai-interviewer-desktop
   - third-eye
   - packages/*
+  - tools/api-codegen

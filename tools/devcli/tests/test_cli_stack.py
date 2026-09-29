@@ -108,6 +108,19 @@ def test_api_runs_uvicorn_on_localhost(repo: Path, calls: list[list[str]]) -> No
     ]
 
 
+def test_openapi_writes_or_checks_the_committed_document(
+    repo: Path, calls: list[list[str]]
+) -> None:
+    (repo / ".env").unlink()  # the document needs no secrets, so no .env either
+    document = str(repo / "packages" / "api-client" / "openapi.json")
+    assert runner.invoke(cli.app, ["openapi"]).exit_code == 0
+    assert runner.invoke(cli.app, ["openapi", "--check"]).exit_code == 0
+    assert calls == [
+        [sys.executable, "-m", "hirevion_api.openapi", document],
+        [sys.executable, "-m", "hirevion_api.openapi", document, "--check"],
+    ]
+
+
 def test_migrate_runs_the_core_migration(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     migrated: list[tuple[object, str | None]] = []
     settings = object()

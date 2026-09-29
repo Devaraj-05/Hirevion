@@ -11,7 +11,7 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from redis.asyncio import Redis
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
-from hirevion_api import health
+from hirevion_api import clock, health
 from hirevion_api.idempotency import install_idempotency_handler
 from hirevion_api.middleware import (
     BodySizeLimitMiddleware,
@@ -76,6 +76,7 @@ def create_app(
     install_problem_handlers(app)
     install_idempotency_handler(app)
     app.include_router(health.router)
+    app.include_router(clock.router)
     if telemetry is not None and telemetry.enabled:
         FastAPIInstrumentor.instrument_app(
             app,

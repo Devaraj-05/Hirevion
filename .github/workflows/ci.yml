@@ -61,9 +61,32 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: >-
-          uv run mypy tools/devcli/src backend/core/src backend/interview_agent/src
-          tools/voice_bench/src
+          uv run mypy tools/devcli/src backend/core/src backend/api/src
+          backend/interview_agent/src tools/voice_bench/src
       - run: uv run pytest
+
+  # The committed OpenAPI document and the TypeScript types generated from it match the API.
+  api-contract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: uv sync --locked
+      - name: The OpenAPI document is current
+        run: uv run hv openapi --check
+      - run: pnpm install --frozen-lockfile
+      - name: The generated TypeScript types are current
+        run: |
+          pnpm --filter @hirevion/api-codegen generate
+          git diff --exit-code packages/api-client/src/schema.d.ts
 
   compose:
     runs-on: ubuntu-24.04

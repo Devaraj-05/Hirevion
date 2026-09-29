@@ -223,6 +223,18 @@ def api(
     raise typer.Exit(code=_run_stream(command))
 
 
+OPENAPI_DOCUMENT = Path("packages/api-client/openapi.json")
+
+
+@app.command()
+def openapi(
+    check: Annotated[bool, typer.Option("--check", help="Only compare; fail if stale.")] = False,
+) -> None:
+    """Write the API's OpenAPI document for the TypeScript client (or check it is current)."""
+    command = [sys.executable, "-m", "hirevion_api.openapi", str(repo_root() / OPENAPI_DOCUMENT)]
+    raise typer.Exit(code=_run_stream(command + (["--check"] if check else [])))
+
+
 @app.command("migrate")
 def migrate_command(
     database: Annotated[

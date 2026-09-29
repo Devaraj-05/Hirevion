@@ -1,0 +1,14 @@
+{
+  "name": "@hirevion/api-codegen",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Generates @hirevion/api-client's types from the API's OpenAPI document. openapi-typescript needs the TypeScript 5 compiler API, so it lives here, away from the TypeScript 7 packages.",
+  "type": "module",
+  "scripts": {
+    "generate": "openapi-typescript ../../packages/api-client/openapi.json --output ../../packages/api-client/src/schema.d.ts"
+  },
+  "devDependencies": {
+    "openapi-typescript": "7.13.0",
+    "typescript": "5.9.3"
+  }
+}
