@@ -76,6 +76,7 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 markers = [
   "db: needs the local stack from `uv run hv up` (PostgreSQL, Valkey, Azurite) or CI's containers",
+  "live: calls the real AI vendors with the keys in .env; skipped unless pytest gets --live",
 ]
 
 [tool.mypy]

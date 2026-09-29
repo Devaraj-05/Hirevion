@@ -8,6 +8,7 @@ dependencies = [
     "alembic>=1.14",
     "asyncpg>=0.30",
     "azure-storage-blob>=12.30",
+    "openai>=2.54",
     "opentelemetry-exporter-otlp-proto-http>=1.44",
     "opentelemetry-instrumentation-redis>=0.65b0",
     "opentelemetry-instrumentation-sqlalchemy>=0.65b0",

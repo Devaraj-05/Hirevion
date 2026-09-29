@@ -27,6 +27,24 @@ TEST_DATABASE = os.environ.get("HV_TEST_DATABASE", "hirevion_test")
 TEST_VALKEY_DB = 15
 
 
+def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addoption(
+        "--live",
+        action="store_true",
+        help="also run the `live` tests, which call the real AI vendors (costs a few cents)",
+    )
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    # An explicit flag rather than `-m`, which a later `-m` on the command line would replace.
+    if config.getoption("--live"):
+        return
+    skip = pytest.mark.skip(reason="calls the real AI vendors; run with --live")
+    for item in items:
+        if "live" in item.keywords:
+            item.add_marker(skip)
+
+
 async def _reset_schema(settings: CoreSettings, database: str) -> None:
     engine = create_async_engine(settings.database_url("admin", database))
     try:
