@@ -28,6 +28,8 @@ fixes for common problems.
 | `uv run hv logs [service]` | Follows logs, for example `uv run hv logs livekit` |
 | `uv run hv smoke [--obs]` | Proves each service works with a real round-trip |
 | `uv run hv migrate [--database NAME]` | Creates the database roles, applies migrations and adds upcoming partitions |
+| `uv run hv api [--port 8000] [--no-reload]` | Runs the API on `127.0.0.1:8000`, reloading when backend code changes |
+| `uv run hv openapi [--check]` | Writes (or checks) `packages/api-client/openapi.json` |
 | `uv run hv down` | Stops everything; data is kept |
 | `uv run hv reset` | Stops everything and deletes all local data (asks first) |
 
@@ -46,7 +48,8 @@ fixes for common problems.
 | GlitchTip | obs | `http://127.0.0.1:8100` | `https://errors.hirevion.localhost` |
 
 The application sites (`app.`, `candidate.`, `api.`, `ws.`, `eye.`) point at ports 3000, 5174, 8000
-and 8001 on your PC; they answer once later sub-projects start those apps.
+and 8001 on your PC. `api.` and `app.`'s `/api/*` answer while `uv run hv api` runs; the others
+answer once later sub-projects start those apps.
 
 ## Database: migrations, roles and tests
 
@@ -72,6 +75,29 @@ The design is in [ADR-0009](../architecture/adr/0009-tenancy-and-data-foundation
   SET ROLE hirevion_app;
   SELECT set_config('app.org_id', '<org id>', false);
   ```
+
+## API (`backend/api`)
+
+The conventions are in [ADR-0010](../architecture/adr/0010-api-conventions.md); client developers
+read [docs/api/conventions.md](../api/conventions.md).
+
+- **Run it.** `uv run hv migrate` once, then `uv run hv api`. Try:
+  - `https://api.hirevion.localhost/api/v1/health/ready`;
+  - the interactive docs at `https://api.hirevion.localhost/api/v1/docs`.
+
+  Windows' `curl.exe` needs `--ssl-no-revoke` for the local certificate authority; browsers don't.
+- **Traces, metrics and logs.** Start `uv run hv up --obs` and set `OTEL_SDK_DISABLED=false` in
+  `.env`. Then open Grafana → Explore → Tempo and search `{resource.service.name="hirevion-api"}`.
+  Health probes are never traced.
+- **After changing a route or a response model**, regenerate the client contract. CI fails until
+  both files are committed:
+
+  ```sh
+  uv run hv openapi
+  pnpm --filter @hirevion/api-codegen generate
+  ```
+
+- **Container image.** `docker build -f backend/api/Dockerfile -t hirevion-api .` builds what CI builds.
 
 ## Voice agent and latency benchmark
 

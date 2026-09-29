@@ -7,6 +7,7 @@ advisory lock, so concurrent runs queue and a failed run leaves nothing half-app
 
 from __future__ import annotations
 
+import os
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -24,14 +25,16 @@ from hirevion_core.db.partitions import (
 from hirevion_core.db.roles import bootstrap_roles
 from hirevion_core.settings import CoreSettings
 
-# backend/core/src/hirevion_core/db/migrate.py -> backend/migrations
+# backend/core/src/hirevion_core/db/migrate.py -> backend/migrations. Container images, which
+# don't keep the repository layout, set HV_MIGRATIONS_DIR instead.
 MIGRATIONS_DIR = Path(__file__).resolve().parents[4] / "migrations"
 # The pg_advisory_xact_lock key every migrate() run takes ("hvmg").
 MIGRATION_LOCK = 0x68766D67
 
 
 def alembic_config() -> Config:
-    ini = MIGRATIONS_DIR / "alembic.ini"
+    override = os.environ.get("HV_MIGRATIONS_DIR")
+    ini = (Path(override) if override else MIGRATIONS_DIR) / "alembic.ini"
     if not ini.exists():
         raise FileNotFoundError(f"the Alembic configuration is missing: {ini}")
     return Config(str(ini))

@@ -83,11 +83,11 @@
   - `get_db(request) -> Database`, `get_redis(request) -> Redis`, `client_ip(request) -> str`.
   - `hv api [--port 8000] [--reload/--no-reload]`.
 
-- [ ] Add the workspace member `backend/api`:
+- [x] Add the workspace member `backend/api`:
   - dependencies `hirevion-core`, `fastapi>=0.141`, `uvicorn>=0.54`;
   - root `pyproject.toml`: add it to the members, sources, root dependencies, `known-first-party` and `testpaths`;
   - `hv api` runs `python -m uvicorn hirevion_api.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir backend --no-access-log`.
-- [ ] Tests first (`backend/api/tests/`). The fixture `make_app(**overrides)` builds `create_app()` with a test router mounted. It uses `httpx.AsyncClient(transport=ASGITransport(app, raise_app_exceptions=False), base_url="http://api.hirevion.localhost")`.
+- [x] Tests first (`backend/api/tests/`). The fixture `make_app(**overrides)` builds `create_app()` with a test router mounted. It uses `httpx.AsyncClient(transport=ASGITransport(app, raise_app_exceptions=False), base_url="http://api.hirevion.localhost")`.
   - **Problems:**
     - a route raising `ProblemError(409, "conflict-example", "Conflict", detail="x", thing=1)` gives status 409, `content-type: application/problem+json`, and a body with `type` `urn:hirevion:problem:conflict-example`, `title`, `status`, `detail`, `instance` (the request path), `code`, `thing` and `trace_id` (a key present even with telemetry off: `null`).
   - **Validation:**
@@ -112,7 +112,7 @@
   - **Lifespan:** `async with app.router.lifespan_context(app)` creates and disposes its own `Database` and Valkey client from `core` (`db`-marked).
   - **OpenAPI:** operation ids are the route function names (`get_liveness`, `get_readiness`), and every operation lists the `4XX`/`5XX` problem responses.
   - **CLI:** `hv api` runs the command above (test via the `calls` fixture in `test_cli_stack.py`).
-- [ ] Implement `problems.py`:
+- [x] Implement `problems.py`:
 
 ```python
 PROBLEM_MEDIA_TYPE = "application/problem+json"
@@ -140,12 +140,12 @@ class ProblemError(Exception):
     - `StarletteHTTPException` (404/405 keep their headers);
     - `Exception`: 500, `log.exception`, generic detail.
   - `trace_id` is the current span's trace id as 32 hex characters, or `None` when no span is recording.
-- [ ] Implement `middleware.py`, three pure ASGI classes that write problem responses themselves:
+- [x] Implement `middleware.py`, three pure ASGI classes that write problem responses themselves:
   - `HostCheckMiddleware(allowed_hosts)`: exact match on the host without its port;
   - `BodySizeLimitMiddleware(max_bytes)`: checks `content-length`, then counts streamed `http.request` chunks;
   - `SecurityHeadersMiddleware`: adds the two headers unless a route set them.
-- [ ] Proxy headers: wrap the app in `uvicorn.middleware.proxy_headers.ProxyHeadersMiddleware(trusted_hosts=api.trusted_proxies)`, so it behaves the same under `hv api`, tests and the container.
-- [ ] Implement `settings.py`:
+- [x] Proxy headers: wrap the app in `uvicorn.middleware.proxy_headers.ProxyHeadersMiddleware(trusted_hosts=api.trusted_proxies)`, so it behaves the same under `hv api`, tests and the container.
+- [x] Implement `settings.py`:
 
 ```python
 class ApiSettings(BaseSettings):
@@ -159,7 +159,7 @@ class ApiSettings(BaseSettings):
 ```
 
   Also `routing.py`: `generate_unique_id_function=lambda route: route.name`. And `health.py`: readiness runs `SELECT 1` through `db.unscoped()` and `redis.ping()`, each under `asyncio.timeout(2)`.
-- [ ] Commit `feat(api): add the API service with problem details and health checks`.
+- [x] Commit `feat(api): add the API service with problem details and health checks`.
 
 ### Task 2: Cursor pagination
 
@@ -171,7 +171,7 @@ class ApiSettings(BaseSettings):
   - `encode_cursor(order: str, values: Sequence[CursorValue]) -> str` and `decode_cursor(order: str, cursor: str) -> list[CursorValue]`. They raise `ProblemError(400, "invalid-cursor", …)`. `CursorValue = UUID | datetime | date | int | str | Decimal | None`.
   - `paginate(session, stmt, order_by: Sequence[InstrumentedAttribute[Any]], params, *, descending=False) -> tuple[list[Any], str | None]`. `order_by` must end with a unique column (normally `id`).
 
-- [ ] Tests first:
+- [x] Tests first:
   - Pure tests:
     - encode then decode returns the same `UUID`, aware `datetime`, `Decimal`, `int`, `str` and `None` values;
     - a cursor is URL-safe base64 with no padding;
@@ -185,11 +185,11 @@ class ApiSettings(BaseSettings):
   - API test (test router returning `Page[OrgOut]`):
     - `limit=0` gives 422 with `parameter: "limit"`;
     - a tampered cursor gives 400 `invalid-cursor`.
-- [ ] Implement:
+- [x] Implement:
   - **Cursor format:** `base64url(json({"v": 1, "o": order, "k": [tagged values]}))` without padding. Tagged values are `{"u": "…"}` (UUID), `{"t": "…"}` (datetime ISO), `{"d": "…"}` (date), `{"n": "…"}` (Decimal), and plain JSON for `int`/`str`/`None`.
   - **Order signature:** `order` is `",".join(column.key for column in order_by) + (":desc" if descending else ":asc")`.
   - **Query:** `paginate` adds `tuple_(*order_by) > tuple_(*values)` (or `<` when descending), orders by the columns in the same direction, fetches `limit + 1` rows, and builds `next_cursor` from the last returned row when there was an extra row.
-- [ ] Commit `feat(api): add cursor pagination`.
+- [x] Commit `feat(api): add cursor pagination`.
 
 ### Task 3: Idempotency keys on creates
 
@@ -207,7 +207,7 @@ class ApiSettings(BaseSettings):
   - `Idempotency.run(session, organization_id, scope, create: Callable[[], Awaitable[BaseModel]]) -> BaseModel`.
   - A replay returns the stored status and body with `Idempotent-Replayed: true`.
 
-- [ ] Tests first:
+- [x] Tests first:
   - DB tests (core):
     - the first `claim` returns `None`;
     - after `remember` and commit, a second `claim` with the same fingerprint returns the stored response;
@@ -221,25 +221,25 @@ class ApiSettings(BaseSettings):
     3. The same key with a different body gives 422 `idempotency-key-reused`.
     4. A handler raising `ProblemError(409, …)` stores nothing, so a retry with the same key runs again.
     5. The key is accepted quoted (the draft's sf-string form `"abc…"`) and bare.
-- [ ] Migration `0004_idempotency_keys`:
+- [x] Migration `0004_idempotency_keys`:
   - columns: `organization_id uuid` (FK), `scope text`, `key text`, `fingerprint bytea`, `status_code smallint NULL`, `response jsonb NULL`, `created_at timestamptz DEFAULT now()`;
   - PK `(organization_id, scope, key)`; index on `created_at`;
   - tenant RLS;
   - app role `SELECT, INSERT` plus `UPDATE (status_code, response)`.
-- [ ] Implement `claim`:
+- [x] Implement `claim`:
   - `SET LOCAL lock_timeout = '5s'`;
   - `INSERT … ON CONFLICT DO NOTHING RETURNING key`;
   - if nothing was returned, `SELECT fingerprint, status_code, response`;
   - `SET LOCAL lock_timeout TO DEFAULT`;
   - an asyncpg `LockNotAvailableError` becomes `IdempotencyInProgress`.
-- [ ] Implement the API side:
+- [x] Implement the API side:
   - `fingerprint = sha256(method + "\n" + path + "\n" + body)`;
   - key pattern `[A-Za-z0-9_.:-]{8,255}` after stripping one pair of surrounding quotes;
   - the status code comes from `request.scope["route"].status_code`;
   - the stored body is `result.model_dump(mode="json", by_alias=True)`;
   - a replay raises `IdempotentReplay(stored)`, which an exception handler turns into the `JSONResponse`;
   - core errors become 422 `idempotency-key-reused` and 409 `idempotency-request-in-progress`.
-- [ ] Commit `feat(api): add Idempotency-Key handling for creates`.
+- [x] Commit `feat(api): add Idempotency-Key handling for creates`.
 
 ### Task 4: Rate limits
 
@@ -254,7 +254,7 @@ class ApiSettings(BaseSettings):
   - `rate_limited(rule, key: Callable[[Request], str] = by_ip)`: a route dependency, for SP-02's login and account limits.
   - `by_ip(request) -> str`.
 
-- [ ] Tests first:
+- [x] Tests first:
   - DB-marked (real Valkey, database 15):
     - with `RateRule("t", 3, 60)`, three hits are allowed with `remaining` 2, 1, 0, and the fourth is denied with `retry_after_seconds` between 1 and 20;
     - subjects are independent;
@@ -268,7 +268,7 @@ class ApiSettings(BaseSettings):
   - Valkey unreachable:
     - the global limit fails open (request served, warning logged);
     - a `fail_closed` route rule gives 503 `service-unavailable`.
-- [ ] Implement GCRA in one Lua script run with `EVALSHA`, loaded through redis-py `register_script`. The script uses the server clock, so API instances need no clock agreement:
+- [x] Implement GCRA in one Lua script run with `EVALSHA`, loaded through redis-py `register_script`. The script uses the server clock, so API instances need no clock agreement:
 
 ```lua
 local limit, period, cost = tonumber(ARGV[1]), tonumber(ARGV[2]) * 1000, tonumber(ARGV[3])
@@ -285,10 +285,10 @@ return {1, math.floor((period - (new_tat - now)) / interval), 0, math.ceil(new_t
 ```
 
   It returns `allowed, remaining, retry_after_ms, reset_ms`. Python rounds the milliseconds up to seconds.
-- [ ] Implement the middleware and dependency:
+- [x] Implement the middleware and dependency:
   - the headers follow draft-ietf-httpapi-ratelimit-headers (`RateLimit-Policy`, `RateLimit`, and `Retry-After` on 429);
   - a `RedisError` or `TimeoutError` (with a 250 ms budget) fails open, or gives 503 when `fail_closed`.
-- [ ] Commit `feat(api): add GCRA rate limits on Valkey`.
+- [x] Commit `feat(api): add GCRA rate limits on Valkey`.
 
 ### Task 5: OpenTelemetry and redacted logs
 
@@ -303,7 +303,7 @@ return {1, math.floor((period - (new_tat - now)) / interval), 0, math.ceil(new_t
   - `configure_logging(level="INFO", json_output=True)` and `redact(text: str) -> str`.
   - `create_app(..., telemetry=True)` instruments FastAPI with `excluded_urls="api/v1/health/"`.
 
-- [ ] Tests first:
+- [x] Tests first:
   - Redaction (pure). Each of these is replaced by `[redacted-…]`:
     - emails;
     - Indian and international phone numbers (`+91 98765 43210`, `9876543210`);
@@ -321,12 +321,12 @@ return {1, math.floor((period - (new_tat - now)) / interval), 0, math.ceil(new_t
     - that route's 500 problem has `trace_id` equal to the span's trace id;
     - a SQL query inside the request creates a child span without parameter values.
   - With `OTEL_SDK_DISABLED=true`, `setup_telemetry` exports nothing and doesn't fail when no collector is running.
-- [ ] Implement:
+- [x] Implement:
   - The resource carries `service.name`, `service.version` (package version) and `deployment.environment` (`HV_ENVIRONMENT`, default `development`).
   - Processors: `BatchSpanProcessor`; `PeriodicExportingMetricReader` (60 s); `BatchLogRecordProcessor` with `LoggingHandler` from `opentelemetry.sdk._logs` on the root logger.
   - The redaction filter sits on the handlers, so both stdout and OTLP logs are redacted.
-- [ ] The API lifespan calls `setup_telemetry("hirevion-api")` when `telemetry=True` (`main.py` passes it), instruments the engine and Valkey, and `shutdown()`s on exit.
-- [ ] Commit `feat(core): add OpenTelemetry setup and redacted structured logs`.
+- [x] The API lifespan calls `setup_telemetry("hirevion-api")` when `telemetry=True` (`main.py` passes it), instruments the engine and Valkey, and `shutdown()`s on exit.
+- [x] Commit `feat(core): add OpenTelemetry setup and redacted structured logs`.
 
 ### Task 6: Clock sync, the OpenAPI export and the TypeScript client
 
@@ -343,7 +343,7 @@ return {1, math.floor((period - (new_tat - now)) / interval), 0, math.ceil(new_t
     - `estimateClockOffset(samples: ClockSample[]) -> { offsetMs: number; rttMs: number }`;
     - `syncClock(client, rounds = 5, now = () => Date.now())`.
 
-- [ ] Tests first:
+- [x] Tests first:
   - Python:
     - `GET /api/v1/time` gives `received_at_ms <= sent_at_ms`, within 1 s of the test's `time.time()`, with `no-store`;
     - `openapi_json(create_app())` equals the committed `packages/api-client/openapi.json` (the same check as `hv openapi --check`);
@@ -353,11 +353,11 @@ return {1, math.floor((period - (new_tat - now)) / interval), 0, math.ceil(new_t
     - a plain 502 without a problem body becomes `ApiProblem` with `code: "bad-gateway"`;
     - `estimateClockOffset` picks the lowest-RTT sample. For `t0=1000, t1=1600, t2=1602, t3=1010` it returns `offsetMs 596` (`((1600-1000) + (1602-1010)) / 2`) and `rttMs 8` (`(1010-1000) - (1602-1600)`);
     - `syncClock` calls `/api/v1/time` `rounds` times.
-- [ ] Implement `tools/api-codegen`:
+- [x] Implement `tools/api-codegen`:
   - a pnpm workspace member, devDependencies `openapi-typescript@7.13.0` and `typescript@5.9.3`;
   - script `generate`: `openapi-typescript ../../packages/api-client/openapi.json -o ../../packages/api-client/src/schema.d.ts`.
   - Add `tools/api-codegen` to `pnpm-workspace.yaml`. Biome ignores `packages/api-client/openapi.json` and `packages/api-client/src/schema.d.ts`.
-- [ ] Implement `packages/api-client`:
+- [x] Implement `packages/api-client`:
   - dependency `openapi-fetch@0.17.0`;
   - `client.ts` uses `createClient<paths>` with a middleware whose `onResponse` throws `ApiProblem` for any non-2xx.
   - `clock.ts` implements the offset formula:
@@ -368,17 +368,17 @@ export function estimateClockOffset(samples: ClockSample[]): { offsetMs: number;
 }
 ```
 
-- [ ] CI: a new `api-contract` job (ubuntu) with uv and pnpm:
+- [x] CI: a new `api-contract` job (ubuntu) with uv and pnpm:
   - `uv sync --locked`;
   - `uv run hv openapi --check`;
   - `pnpm install --frozen-lockfile`;
   - `pnpm --filter @hirevion/api-codegen generate`;
   - `git diff --exit-code packages/api-client/src/schema.d.ts`.
-- [ ] Commit `feat(api): add clock sync and the generated TypeScript client`.
+- [x] Commit `feat(api): add clock sync and the generated TypeScript client`.
 
 ### Task 7: API image, docs and finish
 
-- [ ] `backend/api/Dockerfile`:
+- [x] `backend/api/Dockerfile`:
   - Stages:
     1. `ghcr.io/astral-sh/uv:<version>-python3.12-bookworm-slim` runs `uv sync --locked --no-dev --package hirevion-api --no-editable` into `/app/.venv`;
     2. `python:3.12-slim-bookworm` copies the venv and `backend/migrations`.
@@ -386,10 +386,10 @@ export function estimateClockOffset(samples: ClockSample[]): { offsetMs: number;
   - Runtime: user `10001`; `HEALTHCHECK` hits `/api/v1/health/live`; `CMD ["uvicorn", "hirevion_api.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]`.
   - Add `.dockerignore`.
   - Since `migrate()` finds `backend/migrations` from the package path, copy it to the same relative place, or set `HV_MIGRATIONS_DIR`, which `migrate.py` reads first (add the override and a test).
-- [ ] CI:
+- [x] CI:
   - the `compose` job also runs `docker build -f backend/api/Dockerfile .`;
   - it then starts the image with `OTEL_SDK_DISABLED=true` and waits for `/api/v1/health/live` to answer 200.
-- [ ] Docs:
+- [x] Docs:
   - **ADR-0010 (API conventions):**
     - problem types as URNs and the code catalogue;
     - the cursor format;
@@ -401,7 +401,7 @@ export function estimateClockOffset(samples: ClockSample[]): { offsetMs: number;
     - the TypeScript 5 codegen isolation.
   - `docs/api/conventions.md`: the client developer's reference (problem codes table, pagination, idempotency, rate limits, clock sync).
   - Runbook: `hv api`, `hv openapi`, Grafana traces.
-- [ ] Commit `docs: add ADR-0010 API conventions`, then finish the branch: green CI, fast-forward, delete the branch.
+- [x] Commit `docs: add ADR-0010 API conventions`, then finish the branch: green CI, fast-forward, delete the branch.
 
 ## Problem codes introduced here
 
@@ -439,3 +439,16 @@ export function estimateClockOffset(samples: ClockSample[]): { offsetMs: number;
 - **Type consistency:**
   - `ProblemError` / `problem_type` / `Page` / `PageParams` / `paginate` / `Idempotency.run` / `RateRule` / `RateLimiter.hit` / `setup_telemetry` are named the same in every task.
   - `ServerTime` fields match `ClockSample` (`t1 = received_at_ms`, `t2 = sent_at_ms`).
+
+## Implementation notes
+
+Where the build differs from the steps above (ADR-0010 records the reasons):
+
+- **OpenTelemetry 1.44 / instrumentations 0.65b0**, not 1.45 / 0.66b0: `livekit-agents` 1.8.3 requires `opentelemetry-* < 1.45`, and a 1.45 floor had silently downgraded it to 1.3.5.
+- **`create_app(..., telemetry: Telemetry | None)`** takes the telemetry object rather than a flag, so tests pass in-memory exporters. The lifespan shuts it down.
+- **Readiness probes suppress instrumentation**, so their `SELECT 1` and `PING` leave no orphan spans. Found by checking real traces in Tempo.
+- **Unhandled errors** are answered by `UnhandledErrorMiddleware` inside the middleware stack, not a Starlette `Exception` handler, so they are logged once and the 500 still carries the trace id.
+- **The body limit** raises a 413 `HTTPException` while streaming, because FastAPI turns any other exception during body parsing into a 400.
+- **`hv openapi`** runs `python -m hirevion_api.openapi` in a subprocess, so the devcli doesn't depend on the API package. It needs no `.env`.
+- **The image** copies the `uv` binary from `ghcr.io/astral-sh/uv:0.12.19` into `python:3.12-slim-bookworm`, because no versioned uv+Python tag exists. Its build context is an allow-list (`backend/api/Dockerfile.dockerignore`).
+- **Shared test fixtures** moved from `backend/core/tests/conftest.py` to `backend/conftest.py`, so the API tests use the same database and Valkey fixtures.

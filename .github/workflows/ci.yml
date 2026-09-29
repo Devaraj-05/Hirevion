@@ -103,6 +103,19 @@ jobs:
         run: >-
           docker compose --env-file .env -f infrastructure/local/compose.yaml
           --profile core --profile edge --profile media --profile obs config --quiet
+      - name: Build the API image
+        run: docker build -f backend/api/Dockerfile -t hirevion-api:ci .
+      - name: The API image starts and answers its liveness probe
+        run: |
+          docker run -d --name hirevion-api -p 127.0.0.1:8000:8000 \
+            -e OTEL_SDK_DISABLED=true -e POSTGRES_USER=ci -e POSTGRES_PASSWORD=ci \
+            -e POSTGRES_APP_PASSWORD=ci -e POSTGRES_RELAY_PASSWORD=ci hirevion-api:ci
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/api/v1/health/live; then exit 0; fi
+            sleep 1
+          done
+          docker logs hirevion-api
+          exit 1
 
   secrets:
     runs-on: ubuntu-24.04

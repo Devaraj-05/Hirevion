@@ -1,0 +1,13 @@
+# Build context for backend/api/Dockerfile: only what the image needs (allow-list).
+*
+!pyproject.toml
+!uv.lock
+!tools/devcli/pyproject.toml
+!tools/voice_bench/pyproject.toml
+!backend/interview_agent/pyproject.toml
+!backend/core/pyproject.toml
+!backend/core/src/
+!backend/api/pyproject.toml
+!backend/api/src/
+!backend/migrations/
+**/__pycache__
