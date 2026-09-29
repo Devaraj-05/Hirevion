@@ -79,7 +79,7 @@
   - `ensure_storage(settings, allowed_origins) -> None`: a private container, plus CORS for browser uploads.
   - `hv storage-init`.
 
-- [ ] Tests first:
+- [x] Tests first:
   - Pure:
     - builders produce `"{org}/interviews/{id}/screen/seg-000001.mp4"`, and so on;
     - unsafe filenames (`..`, `/`, `\`, empty, over 200 characters, control characters) and unknown artifact kinds raise `ValueError`;
@@ -92,14 +92,14 @@
     - a URL signed to expire in the past is refused;
     - `ensure_storage` is idempotent, and the container isn't public (an anonymous `GET` is refused).
     - Azurite honours CORS rules: an `OPTIONS` preflight from `https://app.hirevion.localhost` for `PUT` is allowed. If Azurite ignores service CORS, record that in the ADR and mark the test `xfail(strict=True)` with the reason.
-- [ ] Implement with `azure.storage.blob.aio` and `generate_blob_sas`:
+- [x] Implement with `azure.storage.blob.aio` and `generate_blob_sas`:
   - HTTPS-only SAS except when the public endpoint is `http://`;
   - `content_disposition` is set on download SAS;
   - the path's organisation must equal the `org` argument.
   - Dependencies: `azure-storage-blob>=12.30` and `aiohttp` for core.
-- [ ] `hv storage-init` calls `ensure_storage` with the web origins (`https://app.hirevion.localhost`, `https://candidate.hirevion.localhost`, `https://eye.hirevion.localhost`).
-- [ ] CI's python job starts Azurite with `docker run`: the account key is generated in the step, the image is pinned by the same digest as `compose.yaml`, and the step exports `AZURE_STORAGE_*`.
-- [ ] Commit `feat(core): add blob storage with signed upload and download URLs`.
+- [x] `hv storage-init` calls `ensure_storage` with the web origins (`https://app.hirevion.localhost`, `https://candidate.hirevion.localhost`, `https://eye.hirevion.localhost`).
+- [x] CI's python job starts Azurite with `docker run`: the account key is generated in the step, the image is pinned by the same digest as `compose.yaml`, and the step exports `AZURE_STORAGE_*`.
+- [x] Commit `feat(core): add blob storage with signed upload and download URLs`.
 
 ### Task 2: AI foundation — context, recording, budgets, metering, mock
 
@@ -132,7 +132,7 @@
   - `Recorder(db, prices, settings).call(ctx, service, provider, model, run: Callable[[], Awaitable[R]], usage: Callable[[R], Usage], output: Callable[[R], Any]) -> R`.
   - `build_ai(settings, db) -> AiServices`, which has `llm`, `embeddings`, `stt`, `tts`, `vision` and `ocr`.
 
-- [ ] Tests first (DB-marked, mock profile):
+- [x] Tests first (DB-marked, mock profile):
   - **Every service records an `ai_invocations` row** with: service, purpose, provider `mock`, model, versions, `input_refs`, `output` (structured for LLM and vision; `{"dimensions": n, "count": k}` for embeddings; `{"characters": n}` for text-to-speech; the transcript text for speech-to-text), tokens/seconds/characters, `latency_ms >= 0`, `status "ok"` and `trace_id`.
   - **Usage events** `ai.llm.input_tokens`, `ai.llm.output_tokens`, `ai.embedding.tokens`, `ai.stt.seconds`, `ai.tts.characters`, `ai.vision.*` and `ai.cost.usd` are recorded with the same `source` (the purpose).
   - **A failing call** (the mock raises `AiUnavailable`) still records a row: `status "error"`, `error_code "unavailable"`, zero cost.
@@ -147,7 +147,7 @@
     - every price entry has a `source` URL and a `retrieved` date;
     - the mock is deterministic (the same text gives the same embedding, of `embedding_dimensions` length).
   - **`usage_totals`** sums per meter within the window.
-- [ ] Migration `0005_ai_invocations_and_quotas`:
+- [x] Migration `0005_ai_invocations_and_quotas`:
   - **`ai_invocations`**, partitioned monthly on `occurred_at`, with a DEFAULT partition:
     - columns: `id`, `occurred_at`, `organization_id`, `service`, `purpose`, `provider`, `model`, `model_version`, `prompt_version`, `rubric_version`, `evaluation_version`, `input_refs jsonb`, `output jsonb`, `input_tokens`, `output_tokens`, `audio_seconds numeric`, `characters`, `latency_ms`, `cost_usd numeric`, `status`, `error_code`, `trace_id`;
     - index `(organization_id, occurred_at)`;
@@ -157,8 +157,8 @@
     - PK `(organization_id, meter, period)`;
     - RLS; app role `SELECT` only (SP-22 administers quotas).
   - Add `ai_invocations` to `PARTITIONED_TABLES`.
-- [ ] `prices.yaml`: fetch current prices from the vendors' pricing pages at implementation time, for the configured `dev` and `production` models, embeddings and Deepgram Nova-3 / Aura-2. Record `source` and `retrieved: 2026-09-29` per entry. Don't guess a price: a model without a verified price stays out, and its calls record `cost_usd = NULL`.
-- [ ] Commit `feat(core): add the AI provider foundation with invocation records and budgets`.
+- [x] `prices.yaml`: fetch current prices from the vendors' pricing pages at implementation time, for the configured `dev` and `production` models, embeddings and Deepgram Nova-3 / Aura-2. Record `source` and `retrieved: 2026-09-29` per entry. Don't guess a price: a model without a verified price stays out, and its calls record `cost_usd = NULL`.
+- [x] Commit `feat(core): add the AI provider foundation with invocation records and budgets`.
 
 ### Task 3: OpenAI-compatible backend (LLM, embeddings, vision, OCR)
 
@@ -169,7 +169,7 @@
   - `OpenAICompatible(settings, recorder, provider: Literal["gemini", "openai"])`, which implements `LLMService`, `EmbeddingService`, `VisionService` and `OCRService`.
   - `build_ai` wires it for `dev` (base URL `HV_LLM_BASE_URL`, key `GEMINI_API_KEY`) and `production` (the OpenAI default base URL, `OPENAI_API_KEY`).
 
-- [ ] Tests first (respx on the base URL; no network):
+- [x] Tests first (respx on the base URL; no network):
   - **The LLM request** carries:
     - the tier's model;
     - `response_format: {"type": "json_schema", "json_schema": {"name": <schema title>, "schema": ..., "strict": true}}`;
@@ -187,13 +187,13 @@
     - a response with any other length raises `AiOutputInvalid`;
     - batches are split at 100 inputs.
   - **Vision:** the image goes as a `data:` URL content part. OCR asks for `{text, confidence}`, and its `confidence` is clamped to 0–1.
-- [ ] Live tests (`@pytest.mark.live`, each skipped unless its key is set):
+- [x] Live tests (`@pytest.mark.live`, each skipped unless its key is set):
   - one `fast` structured completion;
   - one embedding (length 1536);
   - one vision call on a generated 200×60 PNG with the word "HIREVION" (Pillow isn't a dependency, so the test writes a tiny PNG with `zlib`), which OCR must read back.
 
   They run against `dev`, and against `production` when `OPENAI_API_KEY` is set.
-- [ ] Commit `feat(core): add the OpenAI-compatible AI backend for Gemini and OpenAI`.
+- [x] Commit `feat(core): add the OpenAI-compatible AI backend for Gemini and OpenAI`.
 
 ### Task 4: Deepgram speech backend
 
@@ -201,7 +201,7 @@
 
 - Produces: `Deepgram(settings, recorder)` implementing `SpeechToTextService` (`POST https://api.deepgram.com/v1/listen`) and `TextToSpeechService` (`POST /v1/speak`), wired into both `dev` and `production`.
 
-- [ ] Tests first (respx):
+- [x] Tests first (respx):
   - **Speech-to-text request:** `model=nova-3&smart_format=true&punctuate=true`, `keyterm=` per key term (at most 50), and `Authorization: Token <key>`.
   - **Speech-to-text parsing:**
     - the transcript, words with `start`/`end`/`confidence`, and `duration_seconds` come from `metadata.duration`;
@@ -211,17 +211,17 @@
     - `characters` is `len(text)`;
     - text over 2,000 characters raises `AiRequestError` (Deepgram's limit) before any call.
   - **Errors:** 429 or 5xx become `AiUnavailable`; 400 or 401 become `AiRequestError`.
-- [ ] Live tests:
+- [x] Live tests:
   - synthesize "Hirevion interview check", then transcribe that audio;
   - the transcript must contain "interview".
-- [ ] Commit `feat(core): add the Deepgram speech backend`.
+- [x] Commit `feat(core): add the Deepgram speech backend`.
 
 ### Task 5: Docs, CI and finish
 
-- [ ] **Configuration:**
+- [x] **Configuration:**
   - `.env.example` gains `HV_AI_PROFILE=dev`, `HV_LLM_MODEL_STRONG`, `HV_EMBEDDING_MODEL=gemini-embedding-001`, `HV_VISION_MODEL` and `HV_AI_MONTHLY_BUDGET_USD=50`. The strong and vision model names come from the models the key can list, via `hv doctor`.
   - pytest `addopts` gains `-m "not live"`.
-- [ ] **ADR-0011:**
+- [x] **ADR-0011:**
   - storage layout and signing;
   - the provider layer's three backends and profiles;
   - recording in its own transaction;
@@ -229,8 +229,8 @@
   - the price book and its sources;
   - live checks;
   - what SP-04 (Tesseract and ClamAV), SP-09 (LiveKit plugins record through `Recorder`) and SP-22 (quota administration, usage pages) build on.
-- [ ] **Runbook:** `hv storage-init`, `uv run pytest -m live` (costs a few cents), and how to read spend from `ai_invocations`.
-- [ ] Commit `docs: add ADR-0011 storage, AI provider layer and metering`, then finish the branch: green CI, fast-forward, delete the branch.
+- [x] **Runbook:** `hv storage-init`, `uv run pytest -m live` (costs a few cents), and how to read spend from `ai_invocations`.
+- [x] Commit `docs: add ADR-0011 storage, AI provider layer and metering`, then finish the branch: green CI, fast-forward, delete the branch.
 
 ## Self-review
 
@@ -246,3 +246,18 @@
   - SP-22: quota administration and the usage and cost pages over `usage_totals`.
   - SP-01b's `purge_idempotency_keys` and partition upkeep still need the worker's scheduler.
 - **Type consistency:** `AiContext`, `Recorder.call`, `build_ai`, `StorageService.upload_url` / `download_url` and `record_usage` use the same names in every task.
+
+## Implementation notes
+
+Where the build differs from the steps above (ADR-0011 records the reasons):
+
+- **SAS protocol** follows the storage service's own endpoint, not the public one. Behind Caddy, Azurite receives plain HTTP, so an HTTPS-only SAS was refused (`AuthorizationProtocolMismatch`).
+- **Azurite `--disableProductStyleUrl`** (compose and CI). Without it Azurite took the account name from `storage.hirevion.localhost`, so every signed URL through Caddy returned 404. `hv smoke` now checks a signed round trip.
+- **Embedding model** `gemini-embedding-2`, not `gemini-embedding-001` (ADR-0003 amended). Vectors are always normalised, because 001 returns unnormalised vectors at 1,536 dimensions.
+- **Gemini embedding quirks**, found by the live checks: no usage (tokens estimated and flagged) and `index: null` (input order kept).
+- **An invalid first reply** is recorded as `status "error"`, `error_code "invalid_output"`, with its tokens. The plan's separate `invalid_output` status isn't needed.
+- **Live tests** are enabled with `--live`, not `-m "not live"` in `addopts`, which any later `-m` would silently replace.
+- **Default strong model** `gemini-3.8-flash`. The only 3.x Pro is a preview, and previews change or retire without warning.
+- **OpenAI chat models** stay out of `prices.yaml` until production chooses them; only `text-embedding-3-large` is priced.
+- **Missing keys** fail when the backends are built, naming the variable. The SDK's own message always blamed `OPENAI_API_KEY`.
+- **The branch** is `feat/sp-01c-storage-ai`. An automatic commit (not made in this session) had pushed `feat/sp-01c-storage-ai-metering`; that branch is deleted when this one merges.

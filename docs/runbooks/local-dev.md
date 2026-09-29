@@ -17,6 +17,7 @@ fixes for common problems.
    which makes `https://*.hirevion.localhost` trusted in Edge, Chrome and the desktop app.
 7. `uv run hv doctor`, then `uv run hv smoke`. Every line should say `ok`.
 8. `uv run hv migrate`. It creates the database roles and applies the migrations.
+9. `uv run hv storage-init`. It creates the private blob container and lets the web apps upload to it.
 
 ## Daily commands
 
@@ -30,6 +31,7 @@ fixes for common problems.
 | `uv run hv migrate [--database NAME]` | Creates the database roles, applies migrations and adds upcoming partitions |
 | `uv run hv api [--port 8000] [--no-reload]` | Runs the API on `127.0.0.1:8000`, reloading when backend code changes |
 | `uv run hv openapi [--check]` | Writes (or checks) `packages/api-client/openapi.json` |
+| `uv run hv storage-init` | Creates the blob container and the CORS rules for browser uploads |
 | `uv run hv down` | Stops everything; data is kept |
 | `uv run hv reset` | Stops everything and deletes all local data (asks first) |
 
@@ -98,6 +100,28 @@ read [docs/api/conventions.md](../api/conventions.md).
   ```
 
 - **Container image.** `docker build -f backend/api/Dockerfile -t hirevion-api .` builds what CI builds.
+
+## Storage and AI (`hirevion_core.storage`, `hirevion_core.ai`)
+
+The design is in [ADR-0011](../architecture/adr/0011-storage-ai-metering.md).
+
+- **Signed URLs.** Upload and download URLs point at `https://storage.hirevion.localhost`. `hv smoke` checks one round trip through Caddy (`signed-storage`).
+- **AI profile.**
+  - `HV_AI_PROFILE=dev` uses Gemini and Deepgram with the keys in `.env`.
+  - `mock` needs no network (tests use it).
+  - Model names are the `HV_LLM_MODEL_*`, `HV_EMBEDDING_MODEL` and `HV_VISION_MODEL` settings.
+- **Live checks** (a few cents): `uv run pytest --live backend/core/tests/live`. Add `OPENAI_API_KEY` and `HV_OPENAI_TEST_MODEL` to check OpenAI too.
+- **Spend.** Every call is a row in `ai_invocations`. For this month's cost per organisation:
+
+  ```sql
+  SELECT organization_id, service, count(*), sum(cost_usd)
+  FROM ai_invocations
+  WHERE occurred_at >= date_trunc('month', now())
+  GROUP BY 1, 2;
+  ```
+
+- **Budget.** Calls stop with `AiBudgetExceeded` once an organisation's monthly spend reaches its `ai.cost.usd` quota, or `HV_AI_MONTHLY_BUDGET_USD` when it has none.
+- **Prices** live in `backend/core/src/hirevion_core/ai/prices.yaml`, each with its source and date. Add a model there when you configure it; until then its calls record no cost.
 
 ## Voice agent and latency benchmark
 
