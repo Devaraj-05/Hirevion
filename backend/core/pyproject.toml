@@ -13,6 +13,7 @@ dependencies = [
     "opentelemetry-instrumentation-sqlalchemy>=0.65b0",
     "opentelemetry-sdk>=1.44",
     "pydantic-settings>=2.4",
+    "pyyaml>=6.0",
     "redis>=5.2",
     "sqlalchemy[asyncio]>=2.0",
 ]

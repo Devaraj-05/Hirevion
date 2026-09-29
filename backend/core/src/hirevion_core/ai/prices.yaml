@@ -1,0 +1,44 @@
+# USD list prices (pay-as-you-go / Standard tier) for the models Hirevion is configured to use.
+# Every entry names the page it was read from and when. Re-check before trusting the cost model;
+# a model that isn't listed records cost_usd = NULL rather than a guess.
+#
+# Fields: input_per_million_tokens, output_per_million_tokens, per_minute (audio),
+# per_thousand_characters (speech). A key may end in "*" to price a family of models, and
+# "periods" lists prices that change on a date (each period applies up to its "until" date).
+
+models:
+  gemini-3.1-flash-lite:
+    source: https://ai.google.dev/gemini-api/docs/pricing
+    retrieved: 2026-09-29
+    input_per_million_tokens: "0.25"  # text / image / video input
+    output_per_million_tokens: "1.50"
+
+  gemini-3.8-flash:
+    source: https://ai.google.dev/gemini-api/docs/pricing
+    retrieved: 2026-09-29
+    periods:
+      - until: 2026-12-31
+        input_per_million_tokens: "0.75"
+        output_per_million_tokens: "3.75"
+      - input_per_million_tokens: "1.50"
+        output_per_million_tokens: "7.50"
+
+  gemini-embedding-2:
+    source: https://ai.google.dev/gemini-api/docs/pricing
+    retrieved: 2026-09-29
+    input_per_million_tokens: "0.20"  # text
+
+  text-embedding-3-large:
+    source: https://developers.openai.com/api/docs/pricing
+    retrieved: 2026-09-29
+    input_per_million_tokens: "0.13"
+
+  nova-3:
+    source: https://deepgram.com/pricing
+    retrieved: 2026-09-29
+    per_minute: "0.0043"  # pre-recorded, monolingual
+
+  aura-2-*:
+    source: https://deepgram.com/pricing
+    retrieved: 2026-09-29
+    per_thousand_characters: "0.030"
