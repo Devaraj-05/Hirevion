@@ -14,6 +14,7 @@ from uuid import UUID
 import pytest
 from pydantic import BaseModel
 
+from hirevion_core.ai.deepgram import Deepgram
 from hirevion_core.ai.openai_compat import OpenAICompatible
 from hirevion_core.ai.prices import PriceBook
 from hirevion_core.ai.recorder import Recorder
@@ -140,3 +141,24 @@ async def test_ocr_reads_a_rendered_word(
     page = await backend.read_page(AiContext(org, "live.check"), word_png("HIREVION"), "image/png")
     assert "HIREVION" in page.text.upper().replace(" ", "")
     assert 0 <= page.confidence <= 1
+
+
+@pytest.fixture
+def speech(app_db: Database) -> Deepgram:
+    settings = load_ai_settings()
+    if not settings.deepgram_api_key.get_secret_value():
+        pytest.skip("DEEPGRAM_API_KEY is not set")
+    return Deepgram(settings, Recorder(app_db, PriceBook.load(), settings))
+
+
+async def test_speech_round_trips_through_deepgram(
+    speech: Deepgram, make_organization: MakeOrganization
+) -> None:
+    org = await make_organization("LiveSpeech")
+    ctx = AiContext(org, "live.check")
+    spoken = await speech.synthesize(ctx, "Hirevion interview check.")
+    assert spoken.audio
+    heard = await speech.transcribe(ctx, spoken.audio, spoken.content_type, keyterms=["Hirevion"])
+    assert "interview" in heard.text.lower()
+    assert heard.duration_seconds > 0
+    await speech.aclose()

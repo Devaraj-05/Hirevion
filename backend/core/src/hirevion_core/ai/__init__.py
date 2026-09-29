@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from hirevion_core.ai.deepgram import Deepgram
 from hirevion_core.ai.mock import (
     MockEmbeddings,
     MockLLM,
@@ -20,6 +21,7 @@ from hirevion_core.ai.mock import (
     MockTextToSpeech,
     MockVision,
 )
+from hirevion_core.ai.openai_compat import OpenAICompatible
 from hirevion_core.ai.prices import PriceBook
 from hirevion_core.ai.recorder import Recorder
 from hirevion_core.ai.settings import AiSettings
@@ -43,6 +45,15 @@ class AiServices:
     vision: VisionService
     ocr: OCRService
 
+    async def aclose(self) -> None:
+        """Close the vendor connections (each backend once, however many services it serves)."""
+        seen: set[int] = set()
+        for service in (self.llm, self.embeddings, self.stt, self.tts, self.vision, self.ocr):
+            close = getattr(service, "aclose", None)
+            if close is not None and id(service) not in seen:
+                seen.add(id(service))
+                await close()
+
 
 def build_ai(settings: AiSettings, db: Database, prices: PriceBook | None = None) -> AiServices:
     """The services for `settings.profile`, recording through `db` (the app role)."""
@@ -56,7 +67,13 @@ def build_ai(settings: AiSettings, db: Database, prices: PriceBook | None = None
             vision=MockVision(recorder, settings),
             ocr=MockOCR(recorder, settings),
         )
-    raise NotImplementedError(f"the {settings.profile} profile's backends are not wired yet")
+    compat = OpenAICompatible(
+        settings, recorder, "gemini" if settings.profile == "dev" else "openai"
+    )
+    speech = Deepgram(settings, recorder)
+    return AiServices(
+        llm=compat, embeddings=compat, stt=speech, tts=speech, vision=compat, ocr=compat
+    )
 
 
 __all__ = ["AiServices", "build_ai"]

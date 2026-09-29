@@ -185,6 +185,9 @@ class OpenAICompatible:
             timeout=DEFAULT_TIMEOUT,
         )
 
+    async def aclose(self) -> None:
+        await self.client.close()
+
     async def _vendor[R](self, call: Callable[[], Awaitable[R]]) -> R:
         """Run one SDK call, turning its failures into AI errors (status only, never the body)."""
         try:
