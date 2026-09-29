@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 import secrets
 import shutil
@@ -16,6 +17,9 @@ import segno
 import typer
 from rich.console import Console
 from rich.table import Table
+
+from hirevion_core.db.migrate import migrate as migrate_database
+from hirevion_core.settings import load_core_settings
 
 from . import doctor as doctor_checks
 from .checks import CheckResult
@@ -201,6 +205,23 @@ def logs(
     _require_env(root)
     args = ["logs", "--follow", "--tail", "200", *([service] if service else [])]
     raise typer.Exit(code=_run_stream(compose_command(root, ALL_PROFILES, *args)))
+
+
+@app.command("migrate")
+def migrate_command(
+    database: Annotated[
+        str | None, typer.Option(help="Database to migrate (default: POSTGRES_DB).")
+    ] = None,
+) -> None:
+    """Create the database roles and apply every migration."""
+    root = repo_root()
+    _require_env(root)
+    try:
+        asyncio.run(migrate_database(load_core_settings(), database))
+    except OSError as error:
+        console.print(f"Could not reach PostgreSQL ({error}); is `uv run hv up` running?")
+        raise typer.Exit(code=1) from error
+    console.print(f"Migrated {database or 'the default database'}.")
 
 
 @app.command()

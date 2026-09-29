@@ -59,7 +59,8 @@ testpaths = [
   "backend/interview_agent/tests",
   "tools/voice_bench/tests",
 ]
-addopts = "-q --strict-markers"
+# importlib: test modules in different packages may share a name (e.g. test_settings.py).
+addopts = "-q --strict-markers --import-mode=importlib"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 markers = ["db: needs the PostgreSQL and Valkey from `uv run hv up` (or CI service containers)"]

@@ -583,6 +583,7 @@ version = "0.1.0"
 source = { editable = "tools/devcli" }
 dependencies = [
     { name = "azure-storage-blob" },
+    { name = "hirevion-core" },
     { name = "httpx" },
     { name = "pyjwt" },
     { name = "redis" },
@@ -594,6 +595,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "azure-storage-blob", specifier = ">=12.20" },
+    { name = "hirevion-core", editable = "backend/core" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "pyjwt", specifier = ">=2.8" },
     { name = "redis", specifier = ">=5.0" },

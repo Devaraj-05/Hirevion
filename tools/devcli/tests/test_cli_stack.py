@@ -89,6 +89,33 @@ def test_smoke_exit_code_follows_results(repo: Path, monkeypatch: pytest.MonkeyP
     assert runner.invoke(cli.app, ["smoke"]).exit_code == 1
 
 
+def test_migrate_runs_the_core_migration(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    migrated: list[tuple[object, str | None]] = []
+    settings = object()
+
+    async def fake_migrate(given: object, database: str | None = None) -> None:
+        migrated.append((given, database))
+
+    monkeypatch.setattr(cli, "load_core_settings", lambda: settings)
+    monkeypatch.setattr(cli, "migrate_database", fake_migrate)
+    assert runner.invoke(cli.app, ["migrate"]).exit_code == 0
+    assert runner.invoke(cli.app, ["migrate", "--database", "hirevion_test"]).exit_code == 0
+    assert migrated == [(settings, None), (settings, "hirevion_test")]
+
+
+def test_migrate_explains_an_unreachable_database(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def refused(given: object, database: str | None = None) -> None:
+        raise ConnectionRefusedError("connection refused")
+
+    monkeypatch.setattr(cli, "load_core_settings", object)
+    monkeypatch.setattr(cli, "migrate_database", refused)
+    result = runner.invoke(cli.app, ["migrate"])
+    assert result.exit_code == 1
+    assert "hv up" in result.output
+
+
 def test_hosts_reports_names_that_still_fail(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cli, "ensure_hosts", lambda *args, **kwargs: ["api.hirevion.localhost"])
     result = runner.invoke(cli.app, ["hosts"])

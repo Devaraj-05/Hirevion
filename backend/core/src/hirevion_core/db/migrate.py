@@ -1,0 +1,56 @@
+"""`migrate()`: bring a database to the latest schema. `uv run hv migrate` runs it.
+
+It creates or updates the application roles, then applies the Alembic migrations. Everything
+runs in one transaction under an advisory lock, so concurrent runs queue and a failed run
+leaves nothing half-applied.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from alembic import command
+from alembic.config import Config
+from sqlalchemy import Connection, text
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.pool import NullPool
+
+from hirevion_core.db.roles import bootstrap_roles
+from hirevion_core.settings import CoreSettings
+
+# backend/core/src/hirevion_core/db/migrate.py -> backend/migrations
+MIGRATIONS_DIR = Path(__file__).resolve().parents[4] / "migrations"
+# The pg_advisory_xact_lock key every migrate() run takes ("hvmg").
+MIGRATION_LOCK = 0x68766D67
+
+
+def alembic_config() -> Config:
+    ini = MIGRATIONS_DIR / "alembic.ini"
+    if not ini.exists():
+        raise FileNotFoundError(f"the Alembic configuration is missing: {ini}")
+    return Config(str(ini))
+
+
+async def migrate(settings: CoreSettings, database: str | None = None) -> None:
+    """Create the roles and apply every migration to `database` (default `POSTGRES_DB`)."""
+    name = database or settings.postgres_db
+    engine = create_async_engine(settings.database_url("admin", name), poolclass=NullPool)
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": MIGRATION_LOCK})
+            await bootstrap_roles(
+                conn,
+                name,
+                settings.postgres_app_password.get_secret_value(),
+                settings.postgres_relay_password.get_secret_value(),
+            )
+            await conn.run_sync(_upgrade_to_head)
+    finally:
+        await engine.dispose()
+
+
+def _upgrade_to_head(connection: Connection) -> None:
+    config = alembic_config()
+    # env.py uses this connection (and its open transaction) instead of connecting itself.
+    config.attributes["connection"] = connection
+    command.upgrade(config, "head")
