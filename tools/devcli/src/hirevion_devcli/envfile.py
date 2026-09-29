@@ -10,6 +10,9 @@ from pathlib import Path
 REQUIRED_KEYS: tuple[str, ...] = ("GEMINI_API_KEY", "DEEPGRAM_API_KEY")
 GENERATED_KEYS: dict[str, int] = {
     "POSTGRES_PASSWORD": 32,
+    # Passwords for the application and outbox-relay database roles (ADR-0009).
+    "POSTGRES_APP_PASSWORD": 32,
+    "POSTGRES_RELAY_PASSWORD": 32,
     "VALKEY_PASSWORD": 32,
     "LIVEKIT_API_SECRET": 48,
     "GLITCHTIP_SECRET_KEY": 50,

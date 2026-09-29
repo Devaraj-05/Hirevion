@@ -91,3 +91,10 @@ def test_init_env_creates_file_once(tmp_path: Path) -> None:
     assert len(parse_env(created)["POSTGRES_PASSWORD"]) == GENERATED_KEYS["POSTGRES_PASSWORD"]
     assert init_env(example, env) is False
     assert env.read_text(encoding="utf-8") == created
+
+
+def test_generates_passwords_for_the_database_roles() -> None:
+    generated = generate_local_secrets()
+    for key in ("POSTGRES_APP_PASSWORD", "POSTGRES_RELAY_PASSWORD"):
+        assert len(generated[key]) == 32
+        assert generated[key].replace("-", "").replace("_", "").isalnum()
