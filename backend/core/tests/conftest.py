@@ -12,6 +12,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from uuid import UUID
 
 import pytest
+from redis.asyncio import Redis
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
@@ -21,6 +22,8 @@ from hirevion_core.ids import uuid7
 from hirevion_core.settings import CoreSettings, load_core_settings
 
 TEST_DATABASE = os.environ.get("HV_TEST_DATABASE", "hirevion_test")
+# The Valkey logical database the tests own; it is flushed before each test that uses it.
+TEST_VALKEY_DB = 15
 
 
 async def _reset_schema(settings: CoreSettings, database: str) -> None:
@@ -76,6 +79,21 @@ async def app_db(core_settings: CoreSettings, migrated_database: str) -> AsyncIt
     db = create_database(core_settings, "app", migrated_database)
     yield db
     await db.dispose()
+
+
+@pytest.fixture
+async def valkey(core_settings: CoreSettings) -> AsyncIterator[Redis]:
+    client = Redis.from_url(core_settings.valkey_url(TEST_VALKEY_DB), decode_responses=True)
+    await client.flushdb()
+    yield client
+    await client.aclose()
+
+
+@pytest.fixture
+async def empty_outbox(admin_engine: AsyncEngine) -> None:
+    """Relay tests count events, so they start from an empty outbox."""
+    async with admin_engine.begin() as conn:
+        await conn.execute(text("DELETE FROM outbox_events"))
 
 
 @pytest.fixture

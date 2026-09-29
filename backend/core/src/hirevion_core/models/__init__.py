@@ -3,5 +3,7 @@
 from hirevion_core.models.audit_log import AuditLog
 from hirevion_core.models.feature_flag import FeatureFlag
 from hirevion_core.models.organization import Organization
+from hirevion_core.models.outbox_event import OutboxEvent
+from hirevion_core.models.usage_event import UsageEvent
 
-__all__ = ["AuditLog", "FeatureFlag", "Organization"]
+__all__ = ["AuditLog", "FeatureFlag", "Organization", "OutboxEvent", "UsageEvent"]
