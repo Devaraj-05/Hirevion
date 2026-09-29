@@ -8,6 +8,7 @@ from collections.abc import Awaitable, Callable
 from typing import Annotated, Literal
 
 from fastapi import Depends
+from opentelemetry.instrumentation.utils import suppress_instrumentation
 from pydantic import BaseModel
 from redis.asyncio import Redis
 from sqlalchemy import text
@@ -51,10 +52,12 @@ async def get_readiness(
     async def valkey() -> None:
         await redis.ping()
 
-    checks = {
-        "database": await _check("database", database),
-        "valkey": await _check("valkey", valkey),
-    }
+    # Probes run every few seconds; tracing them would bury real traffic in orphan spans.
+    with suppress_instrumentation():
+        checks = {
+            "database": await _check("database", database),
+            "valkey": await _check("valkey", valkey),
+        }
     if any(state != "ok" for state in checks.values()):
         raise ProblemError(
             503,
