@@ -41,12 +41,12 @@ export function inviteSuperAdmin(email: string): string {
     ["run", "hv", "create-super-admin", "--email", email, "--name", "E2E Admin"],
     { cwd: REPO, encoding: "utf8" },
   );
-  const link = output.match(/https?:\/\/\S+\/set-password\/\S+/)?.[0];
-  if (!link) throw new Error(`no set-password link in: ${output}`);
-  return new URL(link).pathname;
+  const path = output.match(/\/set-password\/[\w-]+/)?.[0];
+  if (!path) throw new Error(`no set-password link in: ${output}`);
+  return path;
 }
 
-/** The path of the newest emailed link to `to` that contains `segment`. */
+/** The path of the newest emailed link to `to` that starts with `segment` (then a token). */
 export async function emailedLink(to: string, segment: string): Promise<string> {
   for (let attempt = 0; attempt < 50; attempt++) {
     const search = await fetch(
@@ -56,8 +56,9 @@ export async function emailedLink(to: string, segment: string): Promise<string> 
       const body = await fetch(`${MAILPIT}/api/v1/message/${message.ID}`).then(
         (response) => response.json() as Promise<{ Text: string }>,
       );
-      const link = body.Text.match(new RegExp(`https?://\\S+${segment}\\S+`))?.[0];
-      if (link) return new URL(link).pathname;
+      // Tokens are URL-safe base64, so the match ends where the token does.
+      const path = body.Text.match(new RegExp(`${segment}[\\w-]+`))?.[0];
+      if (path) return path;
     }
     await new Promise((resolve) => setTimeout(resolve, 200));
   }

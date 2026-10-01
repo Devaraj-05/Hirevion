@@ -287,7 +287,8 @@ def create_super_admin_command(
         console.print(f"An account already uses {email}.")
         raise typer.Exit(code=1) from None
     console.print(f"Invited {email}. Open this link within 72 hours to set a password:")
-    console.print(link, soft_wrap=True)
+    # Plain, on its own line: Rich would colour and might wrap it, which breaks copying.
+    typer.echo(link)
 
 
 @app.command("seed-identity")

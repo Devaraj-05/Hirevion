@@ -1,8 +1,10 @@
 from pathlib import Path
 
 import pytest
+from rich.console import Console
 from typer.testing import CliRunner
 
+from hirevion_devcli import cli
 from hirevion_devcli.cli import app
 
 runner = CliRunner()
@@ -65,6 +67,26 @@ def test_seed_identity_refuses_production(tmp_path: Path, monkeypatch: pytest.Mo
     result = runner.invoke(app, ["seed-identity"])
     assert result.exit_code == 1
     assert "production" in result.output
+
+
+def test_create_super_admin_prints_a_plain_link(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Playwright and CI set FORCE_COLOR; the link must still be copyable as printed. The
+    # console picks its colours when it is created, as `hv` does at startup.
+    identity_repo(tmp_path, "HV_ENVIRONMENT=development\n")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("FORCE_COLOR", "1")
+    monkeypatch.setattr(cli, "console", Console())
+    link = "https://app.hirevion.localhost/set-password/" + "a1-B_" * 9
+
+    async def invite(email: str, name: str) -> str:
+        return link
+
+    monkeypatch.setattr(cli, "invite_super_admin", invite)
+    result = runner.invoke(app, ["create-super-admin", "--email", "a@x.test", "--name", "A"])
+    assert result.exit_code == 0
+    assert link in result.output.splitlines()
 
 
 def test_seed_identity_needs_a_seed_password(
