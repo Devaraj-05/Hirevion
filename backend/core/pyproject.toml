@@ -20,6 +20,7 @@ dependencies = [
     "pyyaml>=6.0",
     "redis>=5.2",
     "sqlalchemy[asyncio]>=2.0",
+    "tzdata>=2025.2",
 ]
 
 [build-system]

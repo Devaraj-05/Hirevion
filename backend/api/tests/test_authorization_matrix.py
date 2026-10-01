@@ -42,6 +42,32 @@ def route_id(route: ApiRoute) -> str:
     return f"{route.method} {route.path}"
 
 
+# Who may call what, written out so that any change to it shows up in review: route → (the
+# permissions, any one of which is enough; whether a recent password confirmation is needed).
+EXPECTED: dict[str, tuple[tuple[str, ...], bool]] = {
+    "GET /api/v1/organization": (("admin.organization.manage",), False),
+    "PATCH /api/v1/organization": (("admin.organization.manage",), False),
+    "GET /api/v1/departments": (("admin.departments.manage", "admin.teams.manage"), False),
+    "POST /api/v1/departments": (("admin.departments.manage",), False),
+    "PATCH /api/v1/departments/{department_id}": (("admin.departments.manage",), False),
+    "GET /api/v1/teams": (("admin.teams.manage", "admin.users.manage"), False),
+    "POST /api/v1/teams": (("admin.teams.manage",), False),
+    "PATCH /api/v1/teams/{team_id}": (("admin.teams.manage",), False),
+    "GET /api/v1/teams/{team_id}/members": (("admin.teams.manage",), False),
+    "PUT /api/v1/teams/{team_id}/members/{user_id}": (("admin.teams.manage",), False),
+    "DELETE /api/v1/teams/{team_id}/members/{user_id}": (("admin.teams.manage",), False),
+}
+
+
+def test_every_guard_is_the_one_written_down() -> None:
+    actual = {
+        route_id(route): (route.requirement.permissions, route.requirement.step_up)
+        for route in GUARDED
+        if route.requirement is not None
+    }
+    assert actual == EXPECTED
+
+
 def test_every_route_is_guarded_or_listed_as_unguarded() -> None:
     unclassified = [
         route_id(route)

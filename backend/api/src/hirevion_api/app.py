@@ -15,6 +15,8 @@ from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from hirevion_api import clock, health
 from hirevion_api.access.errors import install_access_handlers
+from hirevion_api.access.organization import router as organization_router
+from hirevion_api.access.structure import router as structure_router
 from hirevion_api.auth.csrf import CsrfMiddleware
 from hirevion_api.auth.router import router as auth_router
 from hirevion_api.idempotency import install_idempotency_handler
@@ -111,6 +113,8 @@ def create_app(
     app.include_router(health.router)
     app.include_router(clock.router)
     app.include_router(auth_router)
+    app.include_router(organization_router)
+    app.include_router(structure_router)
     if telemetry is not None and telemetry.enabled:
         FastAPIInstrumentor.instrument_app(
             app,

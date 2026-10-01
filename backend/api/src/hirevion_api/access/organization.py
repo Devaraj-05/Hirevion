@@ -1,0 +1,43 @@
+"""`/api/v1/organization`: the signed-in user's organisation profile (PRD §9)."""
+
+from __future__ import annotations
+
+from typing import Annotated
+
+from fastapi import Request
+
+from hirevion_api.access.deps import own_tenant
+from hirevion_api.access.schemas import (
+    OrganizationProfileResponse,
+    OrganizationProfileUpdate,
+    patched,
+)
+from hirevion_api.authz import Principal, requires
+from hirevion_api.routing import api_router
+from hirevion_core.access.organization import ProfileChanges, get_profile, update_profile
+
+router = api_router(tags=["organization"])
+
+ManagesOrganization = Annotated[Principal, requires("admin.organization.manage")]
+
+
+@router.get("/organization")
+async def get_organization(
+    request: Request, principal: ManagesOrganization
+) -> OrganizationProfileResponse:
+    """The organisation's profile. The Platform organisation has none (403)."""
+    async with own_tenant(request, principal) as session:
+        organization = await get_profile(session, principal.actor(request))
+        return OrganizationProfileResponse.model_validate(organization)
+
+
+@router.patch("/organization")
+async def update_organization(
+    body: OrganizationProfileUpdate, request: Request, principal: ManagesOrganization
+) -> OrganizationProfileResponse:
+    """Changes the fields sent; `website: null` clears the website."""
+    async with own_tenant(request, principal) as session:
+        organization = await update_profile(
+            session, principal.actor(request), ProfileChanges(**patched(body))
+        )
+        return OrganizationProfileResponse.model_validate(organization)
