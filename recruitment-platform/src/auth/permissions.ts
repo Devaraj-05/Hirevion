@@ -27,6 +27,7 @@ export const PERMISSIONS = [
   "reports.candidate.view",
   "reports.analytics.view",
   "notifications.view",
+  "account.manage",
   "admin.view",
   "admin.organization.manage",
   "admin.users.manage",
@@ -92,6 +93,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "reports.candidate.view",
     "reports.analytics.view",
     "notifications.view",
+    "account.manage",
   ],
   hiring_manager: [
     "dashboard.view",
@@ -103,6 +105,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "reports.proctoring.view",
     "reports.candidate.view",
     "notifications.view",
+    "account.manage",
   ],
   interviewer: [
     "dashboard.view",
@@ -110,5 +113,6 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "reports.view",
     "reports.interview.view",
     "notifications.view",
+    "account.manage",
   ],
 };

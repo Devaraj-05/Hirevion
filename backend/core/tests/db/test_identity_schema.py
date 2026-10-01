@@ -167,7 +167,8 @@ async def test_lookups_are_owned_by_the_auth_role_and_only_the_app_may_call_them
             await conn.execute(
                 text(
                     "SELECT proname, prosecdef, pg_get_userbyid(proowner) AS owner "
-                    "FROM pg_proc WHERE proname IN ('auth_user_by_email', 'auth_session') "
+                    "FROM pg_proc "
+                    "WHERE proname IN ('auth_user_by_email', 'auth_session', 'auth_token') "
                     "ORDER BY proname"
                 )
             )
@@ -184,6 +185,7 @@ async def test_lookups_are_owned_by_the_auth_role_and_only_the_app_may_call_them
 
     assert [tuple(row) for row in functions] == [
         ("auth_session", True, AUTH_ROLE),
+        ("auth_token", True, AUTH_ROLE),
         ("auth_user_by_email", True, AUTH_ROLE),
     ]
     assert (callers.app, callers.relay) == (True, False)

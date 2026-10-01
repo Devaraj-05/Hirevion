@@ -9,16 +9,18 @@ from __future__ import annotations
 
 import asyncio
 import os
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
+from typing import Protocol
 from uuid import UUID
 
 import pytest
 from redis.asyncio import Redis
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 
 from hirevion_core.db.migrate import migrate
 from hirevion_core.db.session import Database, create_database
+from hirevion_core.identity.roles import ensure_system_roles
 from hirevion_core.ids import uuid7
 from hirevion_core.settings import CoreSettings, load_core_settings
 
@@ -79,16 +81,74 @@ async def admin_engine(
 
 @pytest.fixture
 def make_organization(admin_engine: AsyncEngine) -> Callable[[str], Awaitable[UUID]]:
-    """Creates an organisation as the admin role (the app role can't) and returns its id."""
+    """Creates an organisation, with its system roles, as the admin role (the app role can't)
+    and returns its id."""
 
     async def make(name: str) -> UUID:
         org_id = uuid7()
-        async with admin_engine.begin() as conn:
-            await conn.execute(
+        async with AsyncSession(admin_engine) as session, session.begin():
+            await session.execute(
                 text("INSERT INTO organizations (id, name, slug) VALUES (:id, :name, :slug)"),
                 {"id": org_id, "name": name, "slug": f"{name.lower()}-{org_id.hex[-12:]}"},
             )
+            await ensure_system_roles(session, org_id)
         return org_id
+
+    return make
+
+
+class MakeUser(Protocol):
+    async def __call__(
+        self,
+        organization_id: UUID,
+        *,
+        email: str | None = None,
+        name: str = "Test User",
+        status: str = "active",
+        password_hash: str | None = None,
+        roles: Sequence[str] = (),
+    ) -> UUID: ...
+
+
+@pytest.fixture
+def make_user(admin_engine: AsyncEngine) -> MakeUser:
+    """Creates a user (with system roles by key) as the admin role and returns its id."""
+
+    async def make(
+        organization_id: UUID,
+        *,
+        email: str | None = None,
+        name: str = "Test User",
+        status: str = "active",
+        password_hash: str | None = None,
+        roles: Sequence[str] = (),
+    ) -> UUID:
+        user_id = uuid7()
+        async with admin_engine.begin() as conn:
+            await conn.execute(
+                text(
+                    "INSERT INTO users (id, organization_id, email, name, status, password_hash) "
+                    "VALUES (:id, :org, :email, :name, :status, :hash)"
+                ),
+                {
+                    "id": user_id,
+                    "org": organization_id,
+                    "email": email or f"user-{user_id.hex[-12:]}@example.test",
+                    "name": name,
+                    "status": status,
+                    "hash": password_hash,
+                },
+            )
+            for key in roles:
+                await conn.execute(
+                    text(
+                        "INSERT INTO user_roles (organization_id, user_id, role_id) "
+                        "SELECT :org, :user, id FROM roles WHERE organization_id = :org "
+                        "AND key = :key"
+                    ),
+                    {"org": organization_id, "user": user_id, "key": key},
+                )
+        return user_id
 
     return make
 
