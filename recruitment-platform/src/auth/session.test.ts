@@ -41,6 +41,13 @@ describe("resolveSession", () => {
     expect(new Headers(init.headers).get("cookie")).toBe("hv_session=abc");
   });
 
+  it("defaults to the API as `uv run hv api` serves it", async () => {
+    const fetcher = respond(200, apiSession);
+    await resolveSession({ hv_session: "abc" }, {}, fetcher);
+    const [url] = (fetcher as unknown as ReturnType<typeof vi.fn>).mock.calls[0] as [string];
+    expect(url).toBe("http://127.0.0.1:8000/api/v1/auth/session");
+  });
+
   it("treats any API failure as no session", async () => {
     expect(await resolveSession({ hv_session: "abc" }, {}, respond(401))).toBeNull();
     expect(await resolveSession({ hv_session: "abc" }, {}, respond(404))).toBeNull();

@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@/config/zod";
 import { devToolsEnabled } from "../config/environment";
 import { DEV_SESSIONS } from "./dev-sessions";
 import { isPermission, isRole, type Session } from "./permissions";
@@ -12,7 +12,7 @@ export const DEV_ROLE_COOKIE = "hv_dev_role";
 /** The proxy forwards the requested path and query to the pages under this header. */
 export const PATH_HEADER = "x-hv-path";
 
-const DEFAULT_API = "http://127.0.0.1:8100";
+const DEFAULT_API = "http://127.0.0.1:8000";
 const TIMEOUT_MS = 2_000;
 
 type Env = Record<string, string | undefined>;

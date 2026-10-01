@@ -7,6 +7,9 @@ assertSafeEnvironment();
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const nextConfig: NextConfig = {
+  // `next dev` only: Caddy serves the app on these hosts, and Next blocks its dev assets
+  // (hot reload, chunks) for origins it doesn't know.
+  allowedDevOrigins: ["app.hirevion.localhost", "candidate.hirevion.localhost"],
   poweredByHeader: false,
   reactStrictMode: true,
   // proxy.ts rewrites each host onto its own route tree. Without this, the proxy sees its URL on a

@@ -9,9 +9,5 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function ForbiddenPage() {
-  return (
-    <main id="main" className="px-6">
-      <Forbidden />
-    </main>
-  );
+  return <Forbidden />;
 }

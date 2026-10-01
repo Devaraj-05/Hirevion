@@ -58,7 +58,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Bell, Inbox, Plus } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
+import { z } from "@/config/zod";
 
 // A development-only page (404 unless HV_WEB_DEV_TOOLS), so its demo text isn't translated.
 const T = {

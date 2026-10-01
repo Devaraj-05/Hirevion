@@ -60,6 +60,23 @@
           }
         }
       }
+    },
+    {
+      "includes": ["recruitment-platform/src/**", "!recruitment-platform/src/config/zod.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "zod": "Import { z } from \"@/config/zod\": it turns off code generation, which the CSP forbids."
+                }
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }
