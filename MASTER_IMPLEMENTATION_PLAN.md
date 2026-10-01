@@ -726,6 +726,7 @@ Pairing again revokes the old device. Egress records the stream.
 - **Home-realm discovery** by verified email domain.
 - **Just-in-time provisioning** with role mapping.
 - **SCIM 2.0**, passkeys (WebAuthn), and an SSO-only mode.
+- **TOTP MFA with recovery codes** (moved from SP-02), enforceable per organisation.
 - **Tested** against Keycloak locally and an Entra test tenant.
 
 ### 6.16 ATS integrations & public API (§76)
@@ -1085,15 +1086,15 @@ Each SP gets its own detailed TDD plan before work starts. "CP" is the checkpoin
   - The outbox delivery test passes.
   - Provider contract tests pass on `mock`, plus a small opt-in live check against Gemini and Deepgram (and OpenAI when its key is set).
 
-**SP-02 Identity & access** (CP1; depends on SP-01 and SP-03)
+**SP-02 Identity & access** (CP1; depends on SP-01 and SP-03). Built in two parts: SP-02a (accounts and sign-in) and SP-02b (organisations and access).
 - **Deliverables:**
-  - Recruiter authentication:
+  - Recruiter authentication (SP-02a):
     - login and logout
     - email verification and password reset
-    - TOTP MFA with recovery codes
     - session list and revoke
     - lockout and rate limits
     - breached-password check
+    - TOTP MFA moved to SP-19 (decided 2026-10-01); until then passwords need 15 characters (§9)
   - User invitations.
   - Organisations: super-admin create and suspend, organisation profile, departments, teams, users.
   - Roles: the 5 predefined §6 roles, custom roles and a permission matrix.
@@ -1373,8 +1374,9 @@ Each SP gets its own detailed TDD plan before work starts. "CP" is the checkpoin
   - A replayed delivery is rejected.
 
 **SP-19 Enterprise identity** (CP5; depends on SP-02)
-- **Deliverables:** everything in §6.15, plus organisation security settings.
+- **Deliverables:** everything in §6.15, plus organisation security settings and TOTP MFA (moved from SP-02): encrypted secrets, recovery codes, session rotation on MFA, and enforcement per organisation (required for super and organisation admins by default).
 - **Exit criteria:**
+  - TOTP enrolment, sign-in with a code, recovery-code sign-in and organisation-enforced MFA pass end-to-end.
   - SAML and OIDC logins work via Keycloak and an Entra test tenant.
   - SCIM compliance tests pass.
   - SAML signature-wrapping attacks are rejected.
@@ -1588,7 +1590,7 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 5 | Product architecture: web, desktop, third-eye and shared-backend components | §1, §5, §6 |
 | 6 | Six roles and their responsibilities, including Hiring Manager input and reviewers on assigned interviews | SP-02 (roles and scopes), SP-07 (reviewers), SP-17 (HM input), SP-22 (super admin) |
 | 7 | IA: Dashboard; Jobs ×7; Candidates ×6; Interviews ×4; Question Library ×5; Reports ×4; Administration ×7 | SP-03 plus the owning SPs (§6.2) |
-| 8 | Web: email/password, Entra ID, OIDC, SAML, MFA, sessions, password reset, RBAC, rate limiting | SP-02, SP-19 |
+| 8 | Web: email/password, Entra ID, OIDC, SAML, MFA, sessions, password reset, RBAC, rate limiting | SP-02a (email/password, sessions, password reset, rate limiting), SP-02b (RBAC), SP-19 (Entra ID, OIDC, SAML, MFA) |
 | 8 | Desktop: email/password, short-lived token, interview session token, device/session binding, expiry; no master credentials | SP-07, SP-08, §13 |
 | 9 | Organisation profile, departments, teams, users, roles, permissions | SP-02 |
 | 9 | Branding, default screening/interview config, proctoring policies, AI config, retention, integrations | SP-22, SP-20 |
