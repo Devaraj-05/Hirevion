@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
@@ -131,5 +132,32 @@ describe("CommandPalette", () => {
     await userEvent.keyboard("{Enter}");
     expect(goCandidates).toHaveBeenCalledOnce();
     expect(goJobs).not.toHaveBeenCalled();
+  });
+
+  // It has no Radix trigger (a shortcut or any button opens it), so it must remember the focus.
+  it("returns focus to where it was when it closes", async () => {
+    const user = userEvent.setup();
+    function Harness() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <Button onClick={() => setOpen(true)}>Search</Button>
+          <CommandPalette
+            open={open}
+            onOpenChange={setOpen}
+            label="Go to"
+            placeholder="Search pages"
+            emptyLabel="Nothing found"
+            groups={[]}
+          />
+        </>
+      );
+    }
+    render(<Harness />);
+    await user.click(screen.getByRole("button", { name: "Search" }));
+    expect(screen.getByRole("dialog", { name: "Go to" })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByRole("button", { name: "Search" })).toHaveFocus();
   });
 });

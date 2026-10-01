@@ -2,6 +2,7 @@
 
 import { Command } from "cmdk";
 import { Dialog as DialogPrimitive } from "radix-ui";
+import { useRef } from "react";
 
 export interface CommandItem {
   id: string;
@@ -35,6 +36,9 @@ export function CommandPalette({
   emptyLabel,
   groups,
 }: CommandPaletteProps) {
+  // There is no Radix trigger to return focus to (a shortcut or any button opens the palette),
+  // so remember what had focus when it opened and go back there when it closes.
+  const returnFocusTo = useRef<Element | null>(null);
   const run = (item: CommandItem) => {
     onOpenChange(false);
     item.onSelect();
@@ -45,6 +49,16 @@ export function CommandPalette({
         <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-overlay" />
         <DialogPrimitive.Content
           aria-describedby={undefined}
+          onOpenAutoFocus={() => {
+            returnFocusTo.current = document.activeElement;
+          }}
+          onCloseAutoFocus={(event) => {
+            const target = returnFocusTo.current;
+            if (target instanceof HTMLElement && target.isConnected) {
+              event.preventDefault();
+              target.focus();
+            }
+          }}
           className="fixed top-[15vh] left-1/2 z-50 w-[min(36rem,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-lg border border-border bg-surface shadow-md"
         >
           <DialogPrimitive.Title className="sr-only">{label}</DialogPrimitive.Title>
