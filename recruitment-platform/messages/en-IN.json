@@ -3,7 +3,8 @@
     "name": "Hirevion"
   },
   "portal": {
-    "title": "Your interview"
+    "title": "Your interview",
+    "notices": "Privacy and recording notices"
   },
   "routes": {
     "dashboard": "Dashboard",
@@ -61,5 +62,46 @@
     "title": "You don't have access to this page",
     "body": "Your role doesn't include this page. If you need it, ask your organisation's administrator.",
     "back": "Go to the dashboard"
+  },
+  "shell": {
+    "skipToContent": "Skip to content",
+    "navigation": "Main",
+    "navigationTitle": "Navigation",
+    "openNavigation": "Open navigation",
+    "close": "Close",
+    "breadcrumb": "Breadcrumb",
+    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand sidebar",
+    "searchPages": "Search pages",
+    "searchShortcut": "Ctrl K",
+    "languageMenu": "Language: {language}",
+    "palette": {
+      "label": "Go to",
+      "placeholder": "Search pages…",
+      "empty": "No matching pages."
+    },
+    "notifications": {
+      "open": "Notifications",
+      "title": "Notifications",
+      "close": "Close",
+      "empty": "You're all caught up",
+      "emptyHint": "Interview, report and proctoring updates will appear here.",
+      "seeAll": "See all notifications"
+    },
+    "account": {
+      "menu": "Your account",
+      "allOrganizations": "All organisations",
+      "theme": "Theme",
+      "light": "Light",
+      "dark": "Dark",
+      "system": "Match system",
+      "language": "Language",
+      "switchRole": "Switch role (development)",
+      "signOut": "Sign out"
+    },
+    "languages": {
+      "en-IN": "English (India)",
+      "en-US": "English (United States)"
+    }
   }
 }
