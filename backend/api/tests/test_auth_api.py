@@ -360,3 +360,36 @@ async def test_state_changes_without_the_csrf_token_are_refused(
     await sign_in(client, address)
     refused = await client.post("/api/v1/auth/sessions/revoke-others")
     assert refused.status_code == 403 and refused.json()["code"] == "csrf-failed"
+
+
+async def test_stepping_up(browser, make_organization: MakeOrganization, make_user) -> None:
+    _, address = await recruiter(make_organization, make_user)
+    client = await browser()
+    await sign_in(client, address)
+
+    wrong = await client.post(
+        "/api/v1/auth/step-up", json={"password": "not my password"}, headers=csrf(client)
+    )
+    assert wrong.status_code == 422
+    assert wrong.json()["errors"] == [{"detail": "wrong_password", "pointer": "#/password"}]
+
+    right = await client.post(
+        "/api/v1/auth/step-up", json={"password": PASSWORD}, headers=csrf(client)
+    )
+    assert right.status_code == 204
+    assert (await client.get("/api/v1/auth/session")).status_code == 200
+
+
+async def test_stepping_up_needs_a_session_and_the_csrf_token(
+    browser, make_organization: MakeOrganization, make_user
+) -> None:
+    _, address = await recruiter(make_organization, make_user)
+    anonymous = await browser()
+    answer = await anonymous.post("/api/v1/auth/step-up", json={"password": PASSWORD})
+    assert answer.status_code == 401
+
+    client = await browser()
+    await sign_in(client, address)
+    refused = await client.post("/api/v1/auth/step-up", json={"password": PASSWORD})
+    assert refused.status_code == 403
+    assert refused.json()["code"] == "csrf-failed"

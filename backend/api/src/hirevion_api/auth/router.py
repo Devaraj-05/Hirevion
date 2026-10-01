@@ -25,6 +25,7 @@ from hirevion_api.auth.schemas import (
     SessionOrganization,
     SessionResponse,
     SessionUser,
+    StepUpRequest,
     TokenPasswordRequest,
 )
 from hirevion_api.deps import client_ip
@@ -69,6 +70,20 @@ def _rejected(outcomes: Sequence[str], field: str) -> ProblemError:
     return ProblemError(422, "password-rejected", "The password wasn't accepted", errors=errors)
 
 
+def _locked(refused: LoginRefused) -> ProblemError:
+    """429 while the email is locked out, saying how long to wait."""
+    retry_after = refused.retry_after or 1
+    minutes = math.ceil(retry_after / 60)
+    return ProblemError(
+        429,
+        "rate-limited",
+        "Too many attempts",
+        f"Try again in {minutes} minute{'s' if minutes != 1 else ''}.",
+        headers={"Retry-After": str(retry_after)},
+        retry_after=retry_after,
+    )
+
+
 @router.post("/auth/login", status_code=204, dependencies=[Depends(rate_limited(LOGIN_BY_IP))])
 async def login(body: LoginRequest, request: Request, response: Response, auth: Auth) -> None:
     """Signs in: sets the session and CSRF cookies."""
@@ -76,15 +91,7 @@ async def login(body: LoginRequest, request: Request, response: Response, auth: 
     result = await auth.login(body.email, body.password, **_where(request))
     if isinstance(result, LoginRefused):
         if result.retry_after is not None:
-            minutes = math.ceil(result.retry_after / 60)
-            raise ProblemError(
-                429,
-                "rate-limited",
-                "Too many attempts",
-                f"Try again in {minutes} minute{'s' if minutes != 1 else ''}.",
-                headers={"Retry-After": str(result.retry_after)},
-                retry_after=result.retry_after,
-            )
+            raise _locked(result)
         raise ProblemError(401, *_INVALID_CREDENTIALS)
     set_session_cookies(response, result.session_token, result.csrf_token)
 
@@ -155,6 +162,19 @@ async def change_password(
     )
     if outcome:
         raise _rejected(outcome, "new_password")
+
+
+@router.post("/auth/step-up", status_code=204, dependencies=[Depends(rate_limited(LOGIN_BY_IP))])
+async def step_up(
+    body: StepUpRequest, request: Request, auth: Auth, context: CurrentSession
+) -> None:
+    """Confirms the password before a sensitive change; changes that need it answer 403
+    `step-up-required` until then. Wrong passwords count towards the sign-in lockout."""
+    outcome = await auth.step_up(context, body.password, **_where(request))
+    if isinstance(outcome, LoginRefused):
+        raise _locked(outcome)
+    if outcome == "wrong_password":
+        raise _rejected([outcome], "password")
 
 
 @router.post(

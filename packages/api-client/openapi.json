@@ -408,6 +408,21 @@
         "title": "SessionUser",
         "type": "object"
       },
+      "StepUpRequest": {
+        "properties": {
+          "password": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "title": "StepUpRequest",
+        "type": "object"
+      },
       "TokenPasswordRequest": {
         "properties": {
           "password": {
@@ -953,6 +968,51 @@
           }
         },
         "summary": "Revoke Session",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/step-up": {
+      "post": {
+        "description": "Confirms the password before a sensitive change; changes that need it answer 403\n`step-up-required` until then. Wrong passwords count towards the sign-in lockout.",
+        "operationId": "step_up",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StepUpRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Step Up",
         "tags": [
           "auth"
         ]

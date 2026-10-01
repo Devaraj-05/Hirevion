@@ -33,6 +33,7 @@ from hirevion_core.identity.sessions import (
     SessionContext,
     create_session,
     list_sessions,
+    mark_stepped_up,
     revoke_all_sessions,
     revoke_session,
 )
@@ -312,6 +313,42 @@ class AuthService:
                 {"forgot_link": self._link("/forgot-password")},
             )
         return None
+
+    # Step-up
+
+    async def step_up(
+        self, context: SessionContext, password: str, *, ip: str | None, user_agent: str | None
+    ) -> Literal["ok", "wrong_password"] | LoginRefused:
+        """Confirms the password before a sensitive change (ADR-0014). Wrong passwords count
+        towards the sign-in lockout, so a stolen session can't be used to guess the password."""
+        user, _ = await self._user_and_organization(context.organization_id, context.user_id)
+        locked = await self._lockout.retry_after(user.email)
+        if locked is not None:
+            return LoginRefused(locked)
+        if not verify_password(user.password_hash, password)[0]:
+            wait = await self._lockout.record_failure(user.email)
+            async with self._db.tenant(context.organization_id) as session:
+                await self._record(
+                    session, user.organization_id, user.id, "auth.step_up.failed", ip, user_agent
+                )
+                if wait is not None:
+                    await self._record(
+                        session,
+                        user.organization_id,
+                        user.id,
+                        "auth.lockout.started",
+                        ip,
+                        user_agent,
+                    )
+            return "wrong_password" if wait is None else LoginRefused(wait)
+
+        await self._lockout.reset(user.email)
+        async with self._db.tenant(context.organization_id) as session:
+            await mark_stepped_up(session, session_id=context.session_id, now=_utcnow())
+            await self._record(
+                session, user.organization_id, user.id, "auth.step_up.succeeded", ip, user_agent
+            )
+        return "ok"
 
     async def request_reset(self, email: str, *, ip: str | None, user_agent: str | None) -> None:
         """Emails a reset link to an active account. Returns the same way when there's none."""

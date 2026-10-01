@@ -363,3 +363,47 @@ async def test_listing_and_ending_sessions(
     now = datetime.now(UTC)
     assert await resolve_session(app_db, third.session_token, settings=SETTINGS, now=now) is None
     assert await resolve_session(app_db, this.session_token, settings=SETTINGS, now=now)
+
+
+async def test_stepping_up_with_the_right_password_marks_the_session(
+    auth: AuthService,
+    app_db: Database,
+    admin_engine: AsyncEngine,
+    make_organization: MakeOrganization,
+    make_user,
+) -> None:
+    acme = await make_organization("Acme")
+    address = email()
+    await make_user(acme, email=address, password_hash=hash_password(PASSWORD))
+    signed = await signed_in(auth, address)
+
+    assert await auth.step_up(signed.context, PASSWORD, **WHERE) == "ok"
+
+    now = datetime.now(UTC)
+    resolved = await resolve_session(app_db, signed.session_token, settings=SETTINGS, now=now)
+    assert resolved is not None and resolved.stepped_up_at is not None
+    assert now - resolved.stepped_up_at < timedelta(minutes=1)
+    assert "auth.step_up.succeeded" in await audit_actions(admin_engine, acme)
+
+
+async def test_wrong_step_up_passwords_count_towards_the_sign_in_lockout(
+    auth: AuthService, admin_engine: AsyncEngine, make_organization: MakeOrganization, make_user
+) -> None:
+    acme = await make_organization("Acme")
+    address = email()
+    await make_user(acme, email=address, password_hash=hash_password(PASSWORD))
+    signed = await signed_in(auth, address)
+
+    for _ in range(4):
+        assert await auth.step_up(signed.context, "not my password at all", **WHERE) == (
+            "wrong_password"
+        )
+    assert await auth.step_up(signed.context, "not my password at all", **WHERE) == (
+        LoginRefused(60)
+    )
+    # Locked: even the right password is refused, here and at sign-in.
+    assert isinstance(await auth.step_up(signed.context, PASSWORD, **WHERE), LoginRefused)
+    assert isinstance(await auth.login(address, PASSWORD, **WHERE), LoginRefused)
+    actions = await audit_actions(admin_engine, acme)
+    assert actions.count("auth.step_up.failed") == 5
+    assert "auth.lockout.started" in actions

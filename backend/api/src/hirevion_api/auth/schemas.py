@@ -62,6 +62,10 @@ class PasswordChangeRequest(BaseModel):
     new_password: Password
 
 
+class StepUpRequest(BaseModel):
+    password: Password
+
+
 class ForgotPasswordRequest(BaseModel):
     email: Email
 

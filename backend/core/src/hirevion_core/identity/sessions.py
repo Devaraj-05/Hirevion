@@ -30,6 +30,15 @@ class SessionContext:
     user_id: UUID
     organization_id: UUID
     csrf_hash: bytes
+    # When the user last confirmed their password in this session (step-up).
+    stepped_up_at: datetime | None = None
+
+
+def is_stepped_up(context: SessionContext, settings: IdentitySettings, now: datetime) -> bool:
+    """Whether the session confirmed its password recently enough for a sensitive change."""
+    return (
+        context.stepped_up_at is not None and now - context.stepped_up_at <= settings.step_up_window
+    )
 
 
 def new_token() -> str:
@@ -92,7 +101,15 @@ async def resolve_session(
             await session.execute(
                 update(WebSession).where(WebSession.id == row.session_id).values(last_seen_at=now)
             )
-    return SessionContext(row.session_id, row.user_id, row.organization_id, row.csrf_hash)
+    return SessionContext(
+        row.session_id, row.user_id, row.organization_id, row.csrf_hash, row.stepped_up_at
+    )
+
+
+async def mark_stepped_up(session: AsyncSession, *, session_id: UUID, now: datetime) -> None:
+    await session.execute(
+        update(WebSession).where(WebSession.id == session_id).values(stepped_up_at=now)
+    )
 
 
 async def revoke_session(

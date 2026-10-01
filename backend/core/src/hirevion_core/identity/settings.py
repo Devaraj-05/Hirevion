@@ -24,10 +24,16 @@ class IdentitySettings(BaseSettings):
     lockout_threshold: int = 5
     lockout_base_seconds: int = 60
     lockout_max_seconds: int = 3600
+    # How long a confirmed password unlocks sensitive changes (step-up, ADR-0014).
+    step_up_minutes: int = 10
 
     @property
     def session_idle(self) -> timedelta:
         return timedelta(minutes=self.session_idle_minutes)
+
+    @property
+    def step_up_window(self) -> timedelta:
+        return timedelta(minutes=self.step_up_minutes)
 
     @property
     def session_absolute(self) -> timedelta:
