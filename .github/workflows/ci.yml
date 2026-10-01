@@ -134,6 +134,93 @@ jobs:
           path: recruitment-platform/playwright-report/
           retention-days: 7
 
+  # Sign-in end to end: the web app (behind a gateway like Caddy) against the real API,
+  # PostgreSQL, Valkey and Mailpit (SP-02a).
+  e2e-auth:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17@sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f
+        env:
+          POSTGRES_USER: hirevion
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: hirevion
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hirevion -d hirevion"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+      valkey:
+        image: valkey/valkey:8@sha256:640c5e62cea04b6d6f2084232651d0cc70362d31f4f805e7be94dbed6855e8f2
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+      mailpit:
+        image: axllent/mailpit:latest@sha256:ed9b00c609e77e99c79b93f1178255ebc271868920f2c69a8d166bd5634ed10d
+        ports:
+          - 1025:1025
+          - 8025:8025
+        options: >-
+          --health-cmd "/mailpit readyz"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_USER: hirevion
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: hirevion
+      VALKEY_HOST: 127.0.0.1
+      HV_ENVIRONMENT: ci
+      HV_HIBP_ENABLED: "false"
+      HV_WEB_ORIGIN: http://app.hirevion.localhost:3100
+      OTEL_SDK_DISABLED: "true"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: uv sync --locked
+      - run: pnpm install --frozen-lockfile
+      - name: Throwaway secrets (the hv commands read settings from the environment)
+        run: |
+          echo "POSTGRES_APP_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"
+          echo "POSTGRES_RELAY_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"
+          echo "HV_SEED_PASSWORD=$(openssl rand -hex 16)" >> "$GITHUB_ENV"
+          touch .env
+      - run: uv run hv migrate
+      - run: uv run hv seed-identity
+      - name: Start the API (it also runs the outbox relay and the mail consumer)
+        run: |
+          nohup uv run hv api --no-reload > api.log 2>&1 &
+          for _ in $(seq 1 60); do
+            curl -sf http://127.0.0.1:8000/api/v1/health/ready && exit 0
+            sleep 1
+          done
+          cat api.log
+          exit 1
+      - name: Install Chromium for Playwright
+        run: pnpm --filter @hirevion/recruitment-platform exec playwright install --with-deps chromium
+      - name: Sign-in, password reset, email change, sessions and CSRF
+        run: pnpm --filter @hirevion/recruitment-platform e2e
+        env:
+          HV_E2E_API: "1"
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: e2e-auth-report
+          path: |
+            recruitment-platform/playwright-report/
+            api.log
+          retention-days: 7
+
   compose:
     runs-on: ubuntu-24.04
     steps:
