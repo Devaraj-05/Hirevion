@@ -146,6 +146,42 @@ that the worker logged `registered worker`. LiveKit Agents' default measures the
 and stops taking sessions when it is busy; this agent reports sessions in use instead
 (`HV_AGENT_MAX_SESSIONS`).
 
+## Web app (`recruitment-platform`)
+
+One Next.js app serves the Recruitment Platform (`app.`) and the candidate portal (`candidate.`).
+How it is put together is in [ADR-0012](../architecture/adr/0012-web-app-architecture.md).
+
+- **Run it.** `pnpm --filter @hirevion/recruitment-platform dev`, then open
+  `https://app.hirevion.localhost` and `https://candidate.hirevion.localhost` (through Caddy), or
+  `http://localhost:3000` for the recruiter host alone.
+- **Sign in.** Until SP-02, `next dev` offers a development session per role. Pick one at
+  `/login`, and switch from the account menu (top right). Set `HV_WEB_DEV_TOOLS=false` to see the
+  app without them; production refuses to start with them on.
+- **Component gallery.** `/dev/ui` on the recruiter host shows every design-system component in
+  both themes. It is a 404 without the development tools.
+- **Keyboard.** Ctrl+K (⌘K) opens the page search; `g` then `d`, `j`, `c`, `i`, `q` or `r` goes to
+  Dashboard, Jobs, Candidates, Interviews, Questions or Reports.
+- **Settings** (environment variables, all optional locally):
+
+  | Variable | Default | Meaning |
+  |---|---|---|
+  | `HV_WEB_DEV_TOOLS` | on under `next dev` | Development sessions and the gallery |
+  | `HV_API_INTERNAL_URL` | `http://127.0.0.1:8000` | Where the server asks the API for the session |
+  | `HV_WEB_RECRUITER_HOSTS` | `app.hirevion.localhost,localhost,127.0.0.1,::1` | Hosts served the recruiter app |
+  | `HV_WEB_PORTAL_HOSTS` | `candidate.hirevion.localhost` | Hosts served the candidate portal |
+
+- **Tests.**
+  - `pnpm --filter @hirevion/recruitment-platform test` runs the unit and component tests.
+  - `pnpm --filter @hirevion/recruitment-platform e2e` builds the app, serves it on port 3100 and runs Playwright:
+    - every route for every role;
+    - axe in both themes;
+    - keyboard paths, CSP and the host split.
+  - Run `pnpm --filter @hirevion/recruitment-platform exec playwright install chromium` once first.
+  - A failed run leaves `recruitment-platform/playwright-report/`; open it with `pnpm exec playwright show-report`.
+- **Adding a page.** Add an entry to `src/auth/manifest.ts` (path, permission, title key, owner)
+  and a `page.tsx` under `src/app/recruiter/(shell)/` that calls `guardedPage` or `requireRoute`
+  with that path. Add its title to both message catalogues. The tests fail until all three agree.
+
 ## Desktop app (`ai-interviewer-desktop`)
 
 The candidate app is Tauri 2: a React webview (`src/`) plus Rust (`src-tauri/`), which also

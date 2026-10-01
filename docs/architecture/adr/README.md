@@ -13,5 +13,6 @@
 | [0009](0009-tenancy-and-data-foundations.md) | Tenancy, audit log and outbox on PostgreSQL | Accepted |
 | [0010](0010-api-conventions.md) | API conventions: problems, pagination, idempotency, rate limits, clock, telemetry, client | Accepted |
 | [0011](0011-storage-ai-metering.md) | Blob storage, the AI provider layer and metering | Accepted |
+| [0012](0012-web-app-architecture.md) | The web app: one Next.js app for both hosts, guarded routes and a shared design system | Accepted |
 
 New decisions copy [0000-template.md](0000-template.md) and take the next number.
