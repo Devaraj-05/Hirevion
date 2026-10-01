@@ -23,6 +23,13 @@ describe("useTheme", () => {
     expect(again.result.current.preference).toBe("dark");
   });
 
+  it("keeps every user of the hook in step", () => {
+    const menu = renderHook(() => useTheme());
+    const toaster = renderHook(() => useTheme());
+    act(() => menu.result.current.setPreference("dark"));
+    expect(toaster.result.current.preference).toBe("dark");
+  });
+
   it("still works when storage throws", () => {
     vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
       throw new Error("blocked");

@@ -14,6 +14,9 @@ function readPreference(): ThemePreference {
   }
 }
 
+/** Tells every mounted useTheme() about a choice made through any one of them. */
+const CHANGE_EVENT = "hv-theme-change";
+
 function apply(preference: ThemePreference): void {
   const dark =
     preference === "dark" || (preference === "system" && window.matchMedia(DARK_QUERY).matches);
@@ -25,6 +28,14 @@ export function useTheme(): {
   setPreference: (preference: ThemePreference) => void;
 } {
   const [preference, setPreferenceState] = useState<ThemePreference>(readPreference);
+
+  useEffect(() => {
+    const onChange = (event: Event) => {
+      setPreferenceState((event as CustomEvent<ThemePreference>).detail);
+    };
+    window.addEventListener(CHANGE_EVENT, onChange);
+    return () => window.removeEventListener(CHANGE_EVENT, onChange);
+  }, []);
 
   useEffect(() => {
     apply(preference);
@@ -43,6 +54,7 @@ export function useTheme(): {
     }
     apply(next);
     setPreferenceState(next);
+    window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: next }));
   }, []);
 
   return { preference, setPreference };
