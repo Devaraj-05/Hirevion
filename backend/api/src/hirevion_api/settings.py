@@ -19,6 +19,14 @@ class ApiSettings(BaseSettings):
     ip_rate_limit: int = 600
     ip_rate_window_seconds: int = 60
     docs_enabled: bool = True
+    # Origins whose cookie-authenticated requests are accepted (CSRF), comma-separated: the
+    # app through Caddy, `next dev`, and the end-to-end server.
+    allowed_origins: str = (
+        "https://app.hirevion.localhost,http://localhost:3000,http://127.0.0.1:3000,"
+        "http://app.hirevion.localhost:3100"
+    )
+    # Run the outbox relay and the mail consumer in this process (else `hv worker` runs them).
+    run_workers: bool = True
 
     @property
     def hosts(self) -> frozenset[str]:
@@ -27,6 +35,11 @@ class ApiSettings(BaseSettings):
     @property
     def proxies(self) -> list[str]:
         return _split(self.trusted_proxies)
+
+    @property
+    def origins(self) -> frozenset[str]:
+        # Origins keep their case-insensitive scheme and host, and drop a trailing slash.
+        return frozenset(origin.rstrip("/") for origin in _split(self.allowed_origins))
 
 
 def _split(value: str) -> list[str]:

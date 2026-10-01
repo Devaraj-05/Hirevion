@@ -76,21 +76,27 @@ def rate_limited(
     """A route dependency that applies `rule` to the subject `key` picks from the request."""
 
     async def dependency(request: Request, response: Response) -> None:
-        redis: Redis | None = request.app.state.redis
-        if redis is None:
-            return
-        try:
-            decision = await check(redis, rule, key(request))
-        except RateLimiterUnavailable as error:
-            raise ProblemError(503, *_UNAVAILABLE) from error
-        if decision is None:
-            return
-        if not decision.allowed:
-            code, title, detail, headers = _refusal(rule, decision)
-            raise ProblemError(429, code, title, detail, headers=headers)
-        response.headers.update(rate_headers(rule, decision))
+        await enforce(request, response, rule, key(request))
 
     return dependency
+
+
+async def enforce(request: Request, response: Response, rule: RateRule, subject: str) -> None:
+    """Applies `rule` to `subject` inside a handler, for subjects that come from the body
+    (e.g. the email on a sign-in form). Raises the 429 or 503 problem."""
+    redis: Redis | None = request.app.state.redis
+    if redis is None:
+        return
+    try:
+        decision = await check(redis, rule, subject)
+    except RateLimiterUnavailable as error:
+        raise ProblemError(503, *_UNAVAILABLE) from error
+    if decision is None:
+        return
+    if not decision.allowed:
+        code, title, detail, headers = _refusal(rule, decision)
+        raise ProblemError(429, code, title, detail, headers=headers)
+    response.headers.update(rate_headers(rule, decision))
 
 
 class RateLimitMiddleware:

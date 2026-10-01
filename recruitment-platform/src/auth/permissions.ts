@@ -1,3 +1,5 @@
+import type { components } from "@hirevion/api-client";
+
 /**
  * Who may open what. The roles are PRD §6's. The permission map is provisional: SP-02's
  * server-side RBAC matrix (with custom roles) replaces ROLE_PERMISSIONS and sends each session's
@@ -54,6 +56,12 @@ export const PERMISSIONS = [
   "platform.health.view",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
+
+// The API's session type lists the server's catalogue (generated from its OpenAPI document);
+// this fails to compile when the two lists differ.
+type ApiPermission = components["schemas"]["SessionResponse"]["permissions"][number];
+type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+export const permissionsMatchTheApi: Same<Permission, ApiPermission> = true;
 
 export interface Session {
   user: { id: string; name: string; email: string };

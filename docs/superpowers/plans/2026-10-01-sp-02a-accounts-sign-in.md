@@ -375,11 +375,11 @@
   | `GET sessions` | 200 `[{id, created_at, last_seen_at, ip, user_agent, current}]` |
   | `DELETE sessions/{id}` | 204; 404 |
   | `POST sessions/revoke-others` | 204 |
-  | `POST password/change` | 204; 422 `password-rejected` with `errors[].detail` holding the codes; 401 `wrong-password` |
+  | `POST password/change` | 204; 422 `password-rejected`, each code in `errors[]` on its field (`wrong_current` on `#/current_password`). Not 401: the web app treats every 401 as "sign in again" |
   | `POST password/forgot` | 202 |
   | `POST password/reset` | 204; 400 `invalid-token`; 422 `password-rejected` |
   | `POST password/set` | 204; 400; 422 |
-  | `POST email/change` | 202; 401 `wrong-password` |
+  | `POST email/change` | 202; 422 `password-rejected` (`wrong_password` on `#/password`) |
   | `POST email/verify` | 204; 400 `invalid-token` |
 
 - **Cookies:**
