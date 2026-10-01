@@ -425,7 +425,7 @@
 ### Task 7: Developer commands
 
 **Files:**
-- Create: `tools/devcli/src/hirevion_devcli/identity.py`
+- Create: `backend/core/src/hirevion_core/identity/bootstrap.py` (the logic, tested with the database fixtures) and `tools/devcli/src/hirevion_devcli/identity.py` (the wiring)
 - Modify: `cli.py`, `envfile.py` (`HV_SEED_PASSWORD`: 24 characters, generated), `.env.example`
 - Tests: `tools/devcli/tests/test_identity.py` (`db`)
 
@@ -433,7 +433,7 @@
 - `uv run hv create-super-admin --email E --name N` creates an invited Platform user with the `super_admin` role and prints `{HV_WEB_ORIGIN}/set-password/{token}` (72 hours). It refuses an email that already exists.
 - `uv run hv seed-identity`:
   - creates the organisation "Acme Talent (dev)" (slug `acme-dev`) with its system roles, if it's missing;
-  - creates one active user per organisation role, `{role}@acme.example.test`, with `HV_SEED_PASSWORD`;
+  - creates one active user per organisation role (`org-admin@acme.example.test`, `recruiter@…`, `hiring-manager@…`, `interviewer@…`), with `HV_SEED_PASSWORD`;
   - creates a Platform super admin, `super@hirevion.example.test`;
   - is idempotent;
   - refuses to run when `HV_ENVIRONMENT=production`.

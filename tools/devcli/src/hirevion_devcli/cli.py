@@ -20,6 +20,7 @@ from rich.console import Console
 from rich.table import Table
 
 from hirevion_core.db.migrate import migrate as migrate_database
+from hirevion_core.identity.bootstrap import AccountExists, ProductionRefused, seed_emails
 from hirevion_core.settings import load_core_settings
 from hirevion_core.storage.service import ensure_storage, load_storage_settings
 
@@ -27,6 +28,7 @@ from . import doctor as doctor_checks
 from .checks import CheckResult
 from .envfile import generate_local_secrets, init_env, parse_env, sync_env
 from .hosts import HOSTS_PATH, ensure_hosts
+from .identity import invite_super_admin, seed, work
 from .livekit import (
     Grants,
     build_token,
@@ -270,6 +272,56 @@ def migrate_command(
         console.print(f"Could not reach PostgreSQL ({error}); is `uv run hv up` running?")
         raise typer.Exit(code=1) from error
     console.print(f"Migrated {database or 'the default database'}.")
+
+
+@app.command("create-super-admin")
+def create_super_admin_command(
+    email: Annotated[str, typer.Option(help="The super admin's email address.")],
+    name: Annotated[str, typer.Option(help="Their name, as the app shows it.")],
+) -> None:
+    """Invite a platform super admin and print their one-time set-password link."""
+    _require_env(repo_root())
+    try:
+        link = asyncio.run(invite_super_admin(email, name))
+    except AccountExists:
+        console.print(f"An account already uses {email}.")
+        raise typer.Exit(code=1) from None
+    console.print(f"Invited {email}. Open this link within 72 hours to set a password:")
+    console.print(link, soft_wrap=True)
+
+
+@app.command("seed-identity")
+def seed_identity_command() -> None:
+    """Create the development organisation with one user per role (password: HV_SEED_PASSWORD)."""
+    values = _require_env(repo_root())
+    environment = os.environ.get("HV_ENVIRONMENT") or values.get("HV_ENVIRONMENT", "development")
+    if environment == "production":
+        console.print("Refusing to seed development users with HV_ENVIRONMENT=production.")
+        raise typer.Exit(code=1)
+    password = os.environ.get("HV_SEED_PASSWORD") or values.get("HV_SEED_PASSWORD", "")
+    if len(password) < 15:
+        console.print("Set HV_SEED_PASSWORD (15+ characters) in .env, e.g. `uv run hv env-sync`.")
+        raise typer.Exit(code=1)
+    try:
+        result = asyncio.run(seed(password, environment))
+    except ProductionRefused:
+        console.print("Refusing to seed development users in production.")
+        raise typer.Exit(code=1) from None
+    created = set(result.created)
+    for email in seed_emails():
+        console.print(f"{email}  {'created' if email in created else 'already there'}")
+    console.print("They sign in with the HV_SEED_PASSWORD from .env.")
+
+
+@app.command()
+def worker() -> None:
+    """Relay the outbox and send email until Ctrl+C (for an API with HV_API_RUN_WORKERS=false)."""
+    _require_env(repo_root())
+    console.print("Relaying the outbox and sending email; Ctrl+C stops.")
+    try:
+        asyncio.run(work())
+    except KeyboardInterrupt:
+        console.print("Stopped.")
 
 
 @app.command()

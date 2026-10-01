@@ -98,3 +98,8 @@ def test_generates_passwords_for_the_database_roles() -> None:
     for key in ("POSTGRES_APP_PASSWORD", "POSTGRES_RELAY_PASSWORD"):
         assert len(generated[key]) == 32
         assert generated[key].replace("-", "").replace("_", "").isalnum()
+
+
+def test_a_seed_password_is_generated_long_enough_for_the_policy() -> None:
+    # Sign-in passwords need 15 characters until MFA arrives (SP-02 spec).
+    assert len(generate_local_secrets()["HV_SEED_PASSWORD"]) >= 15

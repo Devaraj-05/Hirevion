@@ -1,0 +1,36 @@
+"""`hv create-super-admin`, `hv seed-identity` and `hv worker` (SP-02a)."""
+
+from __future__ import annotations
+
+import asyncio
+
+from hirevion_core.db.session import create_database
+from hirevion_core.identity.bootstrap import SeedResult, create_super_admin, seed_identity
+from hirevion_core.identity.settings import load_identity_settings
+from hirevion_core.mail.runner import run_workers
+from hirevion_core.settings import load_core_settings
+
+
+async def invite_super_admin(email: str, name: str) -> str:
+    db = create_database(load_core_settings(), "app")
+    try:
+        return await create_super_admin(
+            db, email=email, name=name, settings=load_identity_settings()
+        )
+    finally:
+        await db.dispose()
+
+
+async def seed(password: str, environment: str) -> SeedResult:
+    core = load_core_settings()
+    admin, db = create_database(core, "admin"), create_database(core, "app")
+    try:
+        return await seed_identity(admin, db, password=password, environment=environment)
+    finally:
+        await db.dispose()
+        await admin.dispose()
+
+
+async def work() -> None:
+    """Runs until cancelled (Ctrl+C)."""
+    await run_workers(load_core_settings(), asyncio.Event())

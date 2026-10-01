@@ -16,6 +16,8 @@ GENERATED_KEYS: dict[str, int] = {
     "VALKEY_PASSWORD": 32,
     "LIVEKIT_API_SECRET": 48,
     "GLITCHTIP_SECRET_KEY": 50,
+    # The password of the development users `hv seed-identity` creates (15+ characters).
+    "HV_SEED_PASSWORD": 24,
 }
 # Values that must be standard base64 (Azure storage keys): number of random bytes.
 GENERATED_BASE64_KEYS: dict[str, int] = {"AZURE_STORAGE_KEY": 64}

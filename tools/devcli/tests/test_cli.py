@@ -51,3 +51,28 @@ def test_doctor_exits_nonzero_when_env_missing(
     result = runner.invoke(app, ["doctor"])
     assert result.exit_code == 1
     assert ".env" in result.output
+
+
+def identity_repo(root: Path, env: str) -> None:
+    make_repo(root)
+    (root / ".env").write_text(env, encoding="utf-8")
+
+
+def test_seed_identity_refuses_production(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    identity_repo(tmp_path, "HV_SEED_PASSWORD=a-local-seed-password\nHV_ENVIRONMENT=production\n")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("HV_ENVIRONMENT", raising=False)
+    result = runner.invoke(app, ["seed-identity"])
+    assert result.exit_code == 1
+    assert "production" in result.output
+
+
+def test_seed_identity_needs_a_seed_password(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    identity_repo(tmp_path, "HV_ENVIRONMENT=development\n")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("HV_SEED_PASSWORD", raising=False)
+    result = runner.invoke(app, ["seed-identity"])
+    assert result.exit_code == 1
+    assert "HV_SEED_PASSWORD" in result.output
