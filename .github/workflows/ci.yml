@@ -41,12 +41,22 @@ jobs:
         options: >-
           --health-cmd "valkey-cli ping"
           --health-interval 5s --health-timeout 5s --health-retries 20
+      # The mail tests send real SMTP and read it back through Mailpit's API.
+      mailpit:
+        image: axllent/mailpit:latest@sha256:ed9b00c609e77e99c79b93f1178255ebc271868920f2c69a8d166bd5634ed10d
+        ports:
+          - 1025:1025
+          - 8025:8025
+        options: >-
+          --health-cmd "/mailpit readyz"
+          --health-interval 5s --health-timeout 5s --health-retries 20
     env:
       POSTGRES_HOST: 127.0.0.1
       POSTGRES_USER: hirevion
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: hirevion_test
       VALKEY_HOST: 127.0.0.1
+      HV_HIBP_ENABLED: "false"
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v6

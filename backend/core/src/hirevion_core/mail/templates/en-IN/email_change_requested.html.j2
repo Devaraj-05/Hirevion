@@ -1,0 +1,8 @@
+{% extends "_layout.html.j2" %}
+{% block body %}
+<p>Hello {{ name }},</p>
+<p>Someone asked to change your Hirevion account's email address to <strong>{{ new_email }}</strong>. It changes only once that address is confirmed.</p>
+<p>If you didn't ask for this, reset your password now.</p>
+<p><a href="{{ forgot_link }}" style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:6px">Reset my password</a></p>
+<p style="font-size:13px;color:#475569">Or paste this link into your browser: {{ forgot_link }}</p>
+{% endblock %}
