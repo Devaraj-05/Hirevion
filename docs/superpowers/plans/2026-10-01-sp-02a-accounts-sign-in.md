@@ -145,7 +145,7 @@
 - Tests: `backend/core/tests/test_passwords.py`, `test_breach.py`
 
 **Interfaces (produces):**
-- `PasswordProblem = Literal["too_short","too_long","personal","common","breached"]`.
+- `PasswordProblem = Literal["too_short","too_long","personal","breached"]`. One code covers the bundled list and HIBP: the policy asks a single composite checker, and the user gets one message either way.
 - `class PasswordPolicy`: `min_length: int = 15`, `max_length: int = 128`, and `async def check(self, password: str, *, email: str, name: str, organization: str) -> list[PasswordProblem]`. It takes a `BreachChecker`.
 - `hash_password(password: str) -> str`.
 - `verify_password(stored: str | None, password: str) -> tuple[bool, bool]` returns (valid, needs_rehash). A `None` stored hash verifies against `DUMMY_HASH` and returns `(False, False)`.
@@ -157,7 +157,7 @@
 - [ ] **Step 1: Failing tests:**
   - 14 characters is `too_short`, and 129 is `too_long`. Length counts code points after NFKC, so `"ﬁ"*8` is 16.
   - A password containing the email's local part, the name or the organisation name (case-insensitive, 4+ characters) is `personal`.
-  - **Local list:** a list entry with different case (`"Password123456789"`) is `common`.
+  - **Local list:** a list entry with different case (`"PASSWORD1"`) is `breached`.
   - **HIBP:**
     - the fake fetch receives the upper-cased 5-character prefix;
     - a suffix line with a count above 0 is `breached`;
@@ -487,7 +487,7 @@
 - **New password (reset and set):**
   - the password, plus a confirmation that must match;
   - client-side length hint;
-  - API 422 codes become field errors in the user's language: `too_short`, `too_long`, `personal`, `common`, `breached`;
+  - API 422 codes become field errors in the user's language: `too_short`, `too_long`, `personal`, `breached`;
   - success goes to `/login?reset=1`, which shows a status message.
 - **Verify email** posts on load, through a button, so link prefetchers can't use the token. It then shows success or "This link has expired".
 - **Account page:**

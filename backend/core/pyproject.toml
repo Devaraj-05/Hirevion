@@ -6,6 +6,7 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
     "aiohttp>=3.10",
     "alembic>=1.14",
+    "argon2-cffi>=25.1",
     "asyncpg>=0.30",
     "azure-storage-blob>=12.30",
     "openai>=2.54",
