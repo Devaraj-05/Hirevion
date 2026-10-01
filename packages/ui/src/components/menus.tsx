@@ -58,6 +58,23 @@ export function DropdownMenuRadioItem({
   );
 }
 
+export function DropdownMenuCheckboxItem({
+  className,
+  children,
+  ...props
+}: ComponentProps<typeof MenuPrimitive.CheckboxItem>) {
+  return (
+    <MenuPrimitive.CheckboxItem className={cn(item, "pl-8", className)} {...props}>
+      <span className="absolute left-2 flex size-4 items-center justify-center">
+        <MenuPrimitive.ItemIndicator>
+          <Check aria-hidden />
+        </MenuPrimitive.ItemIndicator>
+      </span>
+      {children}
+    </MenuPrimitive.CheckboxItem>
+  );
+}
+
 export function DropdownMenuLabel({
   className,
   ...props

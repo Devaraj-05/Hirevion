@@ -18,6 +18,12 @@ export {
   CommandPalette,
 } from "./components/command-palette";
 export {
+  DataTable,
+  type DataTableColumn,
+  type DataTableLabels,
+  type DataTableProps,
+} from "./components/data-table";
+export {
   Dialog,
   DialogClose,
   DialogContent,
@@ -33,6 +39,7 @@ export { Input, Label, Textarea } from "./components/input";
 export { KpiTile } from "./components/kpi-tile";
 export {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
@@ -49,6 +56,12 @@ export {
 } from "./components/menus";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/tabs";
 export { Toaster, toast } from "./components/toast";
+export {
+  localViewStore,
+  type SavedView,
+  type SortingState,
+  type ViewStore,
+} from "./components/view-store";
 export { cn } from "./lib/cn";
 export { useTheme } from "./theme/theme";
 export {
