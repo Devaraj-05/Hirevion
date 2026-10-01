@@ -14,5 +14,6 @@
 | [0010](0010-api-conventions.md) | API conventions: problems, pagination, idempotency, rate limits, clock, telemetry, client | Accepted |
 | [0011](0011-storage-ai-metering.md) | Blob storage, the AI provider layer and metering | Accepted |
 | [0012](0012-web-app-architecture.md) | The web app: one Next.js app for both hosts, guarded routes and a shared design system | Accepted |
+| [0013](0013-sign-in-and-sessions.md) | Sign-in and sessions: server-side sessions, the lookup role, CSRF and email | Accepted |
 
 New decisions copy [0000-template.md](0000-template.md) and take the next number.

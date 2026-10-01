@@ -154,9 +154,10 @@ How it is put together is in [ADR-0012](../architecture/adr/0012-web-app-archite
 - **Run it.** `pnpm --filter @hirevion/recruitment-platform dev`, then open
   `https://app.hirevion.localhost` and `https://candidate.hirevion.localhost` (through Caddy), or
   `http://localhost:3000` for the recruiter host alone.
-- **Sign in.** Until SP-02, `next dev` offers a development session per role. Pick one at
-  `/login`, and switch from the account menu (top right). Set `HV_WEB_DEV_TOOLS=false` to see the
-  app without them; production refuses to start with them on.
+- **Sign in.** `/login` signs in against the API (see [Sign in locally](#sign-in-locally)). Under
+  `next dev` it also offers a development session per role, which needs no API; switch roles from
+  the account menu (top right). Set `HV_WEB_DEV_TOOLS=false` to see the app without them;
+  production refuses to start with them on.
 - **Component gallery.** `/dev/ui` on the recruiter host shows every design-system component in
   both themes. It is a 404 without the development tools.
 - **Keyboard.** Ctrl+K (⌘K) opens the page search; `g` then `d`, `j`, `c`, `i`, `q` or `r` goes to
@@ -181,6 +182,48 @@ How it is put together is in [ADR-0012](../architecture/adr/0012-web-app-archite
 - **Adding a page.** Add an entry to `src/auth/manifest.ts` (path, permission, title key, owner)
   and a `page.tsx` under `src/app/recruiter/(shell)/` that calls `guardedPage` or `requireRoute`
   with that path. Add its title to both message catalogues. The tests fail until all three agree.
+
+## Sign in locally
+
+How accounts, sessions and the sign-in lookups work is in
+[ADR-0013](../architecture/adr/0013-sign-in-and-sessions.md).
+
+1. **Accounts.** `uv run hv migrate`, then `uv run hv seed-identity`. It creates, if missing:
+   - the organisation "Acme Talent (dev)", with one user per role: `org-admin@acme.example.test`,
+     `recruiter@acme.example.test`, `hiring-manager@acme.example.test` and
+     `interviewer@acme.example.test`;
+   - the super admin `super@hirevion.example.test` in the Platform organisation.
+
+   They all use `HV_SEED_PASSWORD` from `.env` (`hv env-sync` generates it). The command refuses
+   to run when `HV_ENVIRONMENT=production`.
+2. **Run it.** `uv run hv api` and the web app's `pnpm dev`, then sign in at
+   `https://app.hirevion.localhost/login`. Through Caddy the session cookie is same-origin; in
+   `next dev` without Caddy, `/api/*` is forwarded to `HV_API_INTERNAL_URL`.
+3. **Email.** Reset, set-password and confirm-email links go to Mailpit
+   (`https://mail.hirevion.localhost`). `hv api` sends them itself; with `HV_API_RUN_WORKERS=false`
+   run `uv run hv worker` alongside it. A message that fails five times moves to the
+   `hv:dead:mail` stream.
+4. **Another super admin.** `uv run hv create-super-admin --email you@example.test --name "You"`
+   prints a one-time set-password link, valid for 72 hours (`HV_SET_PASSWORD_TOKEN_HOURS`).
+5. **Locked out.** Five wrong passwords lock the email for a minute, doubling up to an hour.
+   Locks are Valkey keys named `lockout:<SHA-256 of the lower-cased email>`;
+   `docker exec hirevion-valkey-1 valkey-cli -a <VALKEY_PASSWORD> --scan --pattern "lockout:*"`
+   lists them, and deleting one unlocks that email.
+6. **Breached-password check.** New passwords are checked against a bundled list and, with
+   `HV_HIBP_ENABLED=true` (the default), the Have I Been Pwned range API. Only the first five
+   characters of the password's SHA-1 leave the PC. Set it to `false` offline.
+
+**End-to-end sign-in suite.** With the stack up, `hv seed-identity` done and `uv run hv api`
+running:
+
+```sh
+HV_E2E_API=1 pnpm --filter @hirevion/recruitment-platform e2e
+```
+
+It builds the web app without development sessions, serves it on port 3101 behind a small
+gateway on 3100 (standing in for Caddy), and signs in, resets passwords, changes email addresses
+and revokes sessions for real, reading the emails from Mailpit. It invites its own super admins
+with `uv run hv create-super-admin`; set `HV_UV` to uv's full path if `uv` isn't on `PATH`.
 
 ## Desktop app (`ai-interviewer-desktop`)
 
