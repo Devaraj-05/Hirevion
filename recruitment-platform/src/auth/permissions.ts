@@ -67,8 +67,10 @@ export interface Session {
   user: { id: string; name: string; email: string };
   /** null for the super admin, who works across organisations. */
   organization: { id: string; name: string } | null;
-  /** Role keys: the five PRD §6 roles, or an organisation's custom roles once SP-02 adds them. */
+  /** System role keys: the five PRD §6 roles. */
   roles: readonly string[];
+  /** The organisation's own roles the user holds, by name (ADR-0014). */
+  customRoles: readonly string[];
   permissions: readonly Permission[];
   /** "api" for a real sign-in; "dev" for a development fixture, which has no account behind it. */
   source: "api" | "dev";

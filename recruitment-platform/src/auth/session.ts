@@ -17,13 +17,16 @@ const TIMEOUT_MS = 2_000;
 
 type Env = Record<string, string | undefined>;
 
-const sessionSchema = z.object({
-  user: z.object({ id: z.string(), name: z.string(), email: z.string() }),
-  organization: z.object({ id: z.string(), name: z.string() }).nullable(),
-  roles: z.array(z.string()),
-  // A permission this build doesn't know grants nothing, so it is dropped rather than refused.
-  permissions: z.array(z.string()).transform((list) => list.filter(isPermission)),
-});
+const sessionSchema = z
+  .object({
+    user: z.object({ id: z.string(), name: z.string(), email: z.string() }),
+    organization: z.object({ id: z.string(), name: z.string() }).nullable(),
+    roles: z.array(z.string()),
+    custom_roles: z.array(z.string()).default([]),
+    // A permission this build doesn't know grants nothing, so it is dropped rather than refused.
+    permissions: z.array(z.string()).transform((list) => list.filter(isPermission)),
+  })
+  .transform(({ custom_roles, ...session }) => ({ ...session, customRoles: custom_roles }));
 
 export async function resolveSession(
   cookies: Readonly<Record<string, string>>,

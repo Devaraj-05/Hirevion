@@ -4,6 +4,8 @@ import re
 from pathlib import Path
 
 from hirevion_core.identity.permissions import (
+    ASSIGNABLE_PERMISSIONS,
+    BASELINE_PERMISSIONS,
     ORGANIZATION_ROLES,
     PERMISSIONS,
     SYSTEM_ROLES,
@@ -40,5 +42,24 @@ def test_a_sessions_permissions_are_the_ordered_union_of_its_roles() -> None:
     ]
 
 
-def test_unknown_roles_grant_nothing() -> None:
-    assert permissions_for(["root"]) == []
+def test_unknown_roles_grant_only_the_baseline() -> None:
+    assert permissions_for(["root"]) == list(BASELINE_PERMISSIONS)
+
+
+def test_every_session_manages_its_own_account() -> None:
+    assert permissions_for([]) == ["account.manage"]
+
+
+def test_custom_role_grants_join_in_catalogue_order_and_unknown_names_are_dropped() -> None:
+    # A permission removed from the catalogue simply stops applying to the roles that stored it.
+    assert permissions_for(["interviewer"], ["jobs.view", "nonsense.perm"]) == [
+        p for p in PERMISSIONS if p in {*SYSTEM_ROLES["interviewer"], "jobs.view"}
+    ]
+
+
+def test_custom_roles_may_hold_everything_but_the_platform() -> None:
+    assert not any(p.startswith("platform.") for p in ASSIGNABLE_PERMISSIONS)
+    assert set(ASSIGNABLE_PERMISSIONS) | {
+        p for p in PERMISSIONS if p.startswith("platform.")
+    } == set(PERMISSIONS)
+    assert list(ASSIGNABLE_PERMISSIONS) == [p for p in PERMISSIONS if p in ASSIGNABLE_PERMISSIONS]

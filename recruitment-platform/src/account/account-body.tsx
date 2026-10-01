@@ -42,9 +42,12 @@ export async function AccountBody({ session }: PageBodyProps) {
             <dd>{session.organization?.name ?? t("profile.allOrganizations")}</dd>
             <dt className="text-muted-foreground">{t("profile.roles")}</dt>
             <dd>
-              {session.roles
-                .map((role) => (roles.has(role as "recruiter") ? roles(role as "recruiter") : role))
-                .join(", ")}
+              {[
+                ...session.roles.map((role) =>
+                  roles.has(role as "recruiter") ? roles(role as "recruiter") : role,
+                ),
+                ...session.customRoles,
+              ].join(", ")}
             </dd>
           </dl>
           <p className="text-muted-foreground text-sm">{t("profile.nameNote")}</p>

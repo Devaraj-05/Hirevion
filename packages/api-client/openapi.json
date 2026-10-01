@@ -298,6 +298,14 @@
       "SessionResponse": {
         "description": "The signed-in session (ADR-0012). `organization` is null for platform super admins.",
         "properties": {
+          "custom_roles": {
+            "description": "The user's custom roles, by name.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Custom Roles",
+            "type": "array"
+          },
           "organization": {
             "anyOf": [
               {
@@ -356,6 +364,7 @@
             "type": "array"
           },
           "roles": {
+            "description": "The user's system roles, by key.",
             "items": {
               "type": "string"
             },

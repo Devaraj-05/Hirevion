@@ -42,6 +42,19 @@ describe("resolveSession", () => {
     expect(new Headers(init.headers).get("cookie")).toBe("hv_session=abc");
   });
 
+  it("reads custom roles, and treats a response without them as having none", async () => {
+    const { customRoles: _, ...withoutCustomRoles } = apiSession;
+    const plain = await resolveSession({ hv_session: "abc" }, {}, respond(200, withoutCustomRoles));
+    expect(plain?.customRoles).toEqual([]);
+
+    const custom = await resolveSession(
+      { hv_session: "abc" },
+      {},
+      respond(200, { ...withoutCustomRoles, custom_roles: ["Talent sourcer"] }),
+    );
+    expect(custom?.customRoles).toEqual(["Talent sourcer"]);
+  });
+
   it("defaults to the API as `uv run hv api` serves it", async () => {
     const fetcher = respond(200, apiSession);
     await resolveSession({ hv_session: "abc" }, {}, fetcher);

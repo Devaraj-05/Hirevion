@@ -14,13 +14,14 @@ from typing import Any, Literal
 from uuid import UUID
 
 from redis.asyncio import Redis
-from sqlalchemy import Row, select, text, update
+from sqlalchemy import Row, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from hirevion_core.audit import AuditEntry, AuditService
 from hirevion_core.db.session import Database
 from hirevion_core.identity import PLATFORM_ORGANIZATION_ID
+from hirevion_core.identity.grants import load_grants
 from hirevion_core.identity.lockout import Lockout
 from hirevion_core.identity.passwords import (
     PasswordPolicy,
@@ -28,7 +29,6 @@ from hirevion_core.identity.passwords import (
     hash_password,
     verify_password,
 )
-from hirevion_core.identity.permissions import permissions_for
 from hirevion_core.identity.sessions import (
     SessionContext,
     create_session,
@@ -40,7 +40,7 @@ from hirevion_core.identity.settings import IdentitySettings
 from hirevion_core.identity.tokens import TokenPurpose, claim_token, issue_token, lookup_token
 from hirevion_core.mail.render import MailTemplate
 from hirevion_core.mail.sender import queue_mail
-from hirevion_core.models import Organization, Role, User, UserRole
+from hirevion_core.models import Organization, User
 
 PasswordOutcome = PasswordProblem | Literal["wrong_current", "invalid_token"]
 EmailChangeOutcome = Literal["ok", "wrong_password", "unavailable"]
@@ -81,6 +81,7 @@ class SessionView:
     user: UserView
     organization: OrganizationView | None
     roles: list[str]
+    custom_roles: list[str]
     permissions: list[str]
 
 
@@ -199,24 +200,15 @@ class AuthService:
         async with self._db.tenant(context.organization_id) as session:
             user = await session.get_one(User, context.user_id)
             organization = await session.get_one(Organization, context.organization_id)
-            keys = sorted(
-                key
-                for key in (
-                    await session.scalars(
-                        select(Role.key)
-                        .join(UserRole, UserRole.role_id == Role.id)
-                        .where(UserRole.user_id == context.user_id)
-                    )
-                ).all()
-                if key is not None
-            )
+            grants = await load_grants(session, context.user_id)
         return SessionView(
             user=UserView(user.id, user.name, user.email),
             organization=None
             if organization.id == PLATFORM_ORGANIZATION_ID
             else OrganizationView(organization.id, organization.name),
-            roles=keys,
-            permissions=permissions_for(keys),
+            roles=grants.role_keys,
+            custom_roles=grants.custom_roles,
+            permissions=grants.permissions,
         )
 
     async def list_sessions(self, context: SessionContext) -> list[SessionSummary]:

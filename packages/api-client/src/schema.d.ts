@@ -447,10 +447,18 @@ export interface components {
          * @description The signed-in session (ADR-0012). `organization` is null for platform super admins.
          */
         SessionResponse: {
+            /**
+             * Custom Roles
+             * @description The user's custom roles, by name.
+             */
+            custom_roles?: string[];
             organization: components["schemas"]["SessionOrganization"] | null;
             /** Permissions */
             permissions: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "interviews.view" | "interviews.templates.view" | "questions.view" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[];
-            /** Roles */
+            /**
+             * Roles
+             * @description The user's system roles, by key.
+             */
             roles: string[];
             user: components["schemas"]["SessionUser"];
         };

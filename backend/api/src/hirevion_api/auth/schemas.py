@@ -41,7 +41,10 @@ class SessionResponse(BaseModel):
 
     user: SessionUser
     organization: SessionOrganization | None
-    roles: list[str]
+    roles: list[str] = Field(description="The user's system roles, by key.")
+    custom_roles: list[str] = Field(
+        default_factory=list, description="The user's custom roles, by name."
+    )
     permissions: list[Permission]
 
 

@@ -109,6 +109,7 @@ async def get_session(auth: Auth, context: CurrentSession) -> SessionResponse:
         if view.organization is not None
         else None,
         roles=view.roles,
+        custom_roles=view.custom_roles,
         permissions=view.permissions,
     )
 

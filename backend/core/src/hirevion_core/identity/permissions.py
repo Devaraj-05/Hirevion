@@ -1,8 +1,8 @@
 """The permission catalogue and the five PRD §6 system roles.
 
 The web app (`recruitment-platform/src/auth/permissions.ts`) checks the same names; the session
-endpoint's response type carries this list, so the generated client catches any drift. SP-02b
-adds custom roles, whose permissions are stored per organisation.
+endpoint's response type carries this list, so the generated client catches any drift. System
+roles' permissions live here; custom roles store theirs per organisation (`role_permissions`).
 """
 
 from __future__ import annotations
@@ -48,6 +48,14 @@ PERMISSIONS: tuple[str, ...] = (
     "platform.desktop_releases.manage",
     "platform.audit.view",
     "platform.health.view",
+)
+
+# Every signed-in user may manage their own account, whatever their roles.
+BASELINE_PERMISSIONS: tuple[str, ...] = ("account.manage",)
+
+# What a custom role may hold: everything but the platform's own permissions.
+ASSIGNABLE_PERMISSIONS: tuple[str, ...] = tuple(
+    p for p in PERMISSIONS if not p.startswith("platform.")
 )
 
 SYSTEM_ROLES: dict[str, tuple[str, ...]] = {
@@ -104,7 +112,10 @@ SYSTEM_ROLE_NAMES: dict[str, str] = {
 }
 
 
-def permissions_for(role_keys: Iterable[str]) -> list[str]:
-    """The union of the roles' permissions, in catalogue order. Unknown roles grant nothing."""
-    granted = {p for key in role_keys for p in SYSTEM_ROLES.get(key, ())}
-    return [p for p in PERMISSIONS if p in granted]
+def permissions_for(role_keys: Iterable[str], granted: Iterable[str] = ()) -> list[str]:
+    """The baseline, the system roles' permissions and `granted` (custom roles'), in catalogue
+    order. Unknown roles and names grant nothing, so a permission removed from the catalogue
+    simply stops applying."""
+    held = {*BASELINE_PERMISSIONS, *granted}
+    held.update(p for key in role_keys for p in SYSTEM_ROLES.get(key, ()))
+    return [p for p in PERMISSIONS if p in held]

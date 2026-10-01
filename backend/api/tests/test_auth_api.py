@@ -117,7 +117,41 @@ async def test_signing_in_sets_both_cookies_and_the_session_answers(
     assert body["user"]["email"] == address and body["user"]["name"] == "Ravi Kumar"
     assert body["organization"]["id"] == str(acme)
     assert body["roles"] == ["recruiter"]
+    assert body["custom_roles"] == []
     assert body["permissions"] == permissions_for(["recruiter"])
+
+
+async def test_the_session_reports_custom_roles_and_their_permissions(
+    browser, admin_engine: AsyncEngine, make_organization: MakeOrganization, make_user
+) -> None:
+    acme, address = await recruiter(make_organization, make_user)
+    role_id = uuid7()
+    async with admin_engine.begin() as conn:
+        await conn.execute(
+            text("INSERT INTO roles (id, organization_id, name) VALUES (:id, :org, 'Sourcer')"),
+            {"id": role_id, "org": acme},
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO role_permissions (organization_id, role_id, permission) "
+                "VALUES (:org, :role, 'admin.teams.manage')"
+            ),
+            {"org": acme, "role": role_id},
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO user_roles (organization_id, user_id, role_id) "
+                "SELECT :org, id, :role FROM users WHERE email = :email"
+            ),
+            {"org": acme, "role": role_id, "email": address},
+        )
+    client = await browser()
+    await sign_in(client, address)
+
+    body = (await client.get("/api/v1/auth/session")).json()
+    assert body["roles"] == ["recruiter"]
+    assert body["custom_roles"] == ["Sourcer"]
+    assert body["permissions"] == permissions_for(["recruiter"], ["admin.teams.manage"])
 
 
 async def test_signing_out_clears_the_session(
