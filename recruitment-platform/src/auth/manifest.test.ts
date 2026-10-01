@@ -33,7 +33,7 @@ describe("the route manifest", () => {
   // navigating between its pages, so every page checks its own route.
   it("has every page check its own route", () => {
     for (const page of pageFiles(SHELL)) {
-      const guard = new RegExp(`(requireRoute|guardedPage)\\("${page.path}"\\)`);
+      const guard = new RegExp(`(requireRoute|guardedPage)\\("${page.path}"[,)]`);
       expect(page.source, page.path).toMatch(guard);
     }
   });

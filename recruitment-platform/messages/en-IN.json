@@ -3,8 +3,16 @@
     "name": "Hirevion"
   },
   "portal": {
-    "title": "Your interview",
-    "notices": "Privacy and recording notices"
+    "notices": "Privacy and recording notices",
+    "pages": {
+      "status": "Your interview",
+      "invitation": "Accept your invitation",
+      "setPassword": "Set your password",
+      "download": "Download the interview app",
+      "notices": "Privacy and recording notices",
+      "report": "Your report",
+      "requests": "Requests and data rights"
+    }
   },
   "routes": {
     "dashboard": "Dashboard",
@@ -108,6 +116,130 @@
     "problem": {
       "reference": "Reference: {traceId}",
       "unknown": "Something went wrong. Please try again."
+    }
+  },
+  "dashboard": {
+    "kpis": {
+      "title": "Key figures",
+      "noData": "no data yet",
+      "openJobs": "Open jobs",
+      "activeCandidates": "Active candidates",
+      "screened": "Screened",
+      "shortlisted": "Shortlisted",
+      "interviewsScheduled": "Interviews scheduled",
+      "liveInterviews": "Live interviews",
+      "completedInterviews": "Completed interviews",
+      "pendingReviews": "Pending reviews",
+      "proctoringAlerts": "Proctoring alerts",
+      "inPipeline": "In the hiring pipeline"
+    },
+    "filters": {
+      "title": "Filters",
+      "clear": "Clear filters",
+      "any": "Any",
+      "from": "From",
+      "to": "To",
+      "recruiter": "Recruiter",
+      "team": "Team",
+      "job": "Job",
+      "department": "Department",
+      "candidateStatus": "Candidate status",
+      "interviewStatus": "Interview status"
+    },
+    "pipeline": {
+      "title": "Hiring pipeline",
+      "empty": "No candidates",
+      "status": {
+        "under_review": "Under review",
+        "shortlisted": "Shortlisted",
+        "interview_invited": "Interview invited",
+        "interview_started": "Interview started",
+        "interview_completed": "Interview completed",
+        "additional_review": "Additional review",
+        "selected": "Selected",
+        "rejected": "Rejected",
+        "on_hold": "On hold"
+      }
+    },
+    "interviewStatus": {
+      "scheduled": "Scheduled",
+      "invited": "Invited",
+      "in_progress": "In progress",
+      "interrupted": "Interrupted",
+      "completed": "Completed",
+      "evaluating": "Evaluating",
+      "evaluated": "Evaluated",
+      "expired": "Expired",
+      "cancelled": "Cancelled",
+      "abandoned": "Abandoned"
+    }
+  },
+  "tabs": {
+    "jobs": {
+      "all": "All",
+      "draft": "Draft",
+      "open": "Open",
+      "paused": "Paused",
+      "closed": "Closed",
+      "archived": "Archived"
+    },
+    "candidates": {
+      "all": "All",
+      "screening": "Screening",
+      "shortlisted": "Shortlisted",
+      "interview": "Interview",
+      "completed": "Completed",
+      "decision": "Final decision"
+    },
+    "interviews": {
+      "upcoming": "Upcoming",
+      "live": "Live",
+      "completed": "Completed",
+      "templates": "Templates"
+    },
+    "questions": {
+      "all": "All",
+      "technical": "Technical",
+      "coding": "Coding",
+      "system_design": "System design",
+      "resume_based": "Resume-based",
+      "custom": "Custom"
+    },
+    "reports": {
+      "interview": "Interview",
+      "proctoring": "Proctoring",
+      "candidate": "Candidate",
+      "analytics": "Analytics"
+    }
+  },
+  "placeholder": {
+    "title": "Nothing here yet",
+    "description": "This page arrives with {owner}."
+  },
+  "table": {
+    "selectAll": "Select all rows",
+    "selectRow": "Select {name}",
+    "selected": "{count, plural, one {# selected} other {# selected}}",
+    "clearSelection": "Clear selection",
+    "columns": "Columns",
+    "views": "Saved views",
+    "viewName": "View name",
+    "saveView": "Save view",
+    "applyView": "Apply view {name}",
+    "deleteView": "Delete view {name}",
+    "noViews": "No saved views yet."
+  },
+  "jobs": {
+    "table": {
+      "caption": "Jobs",
+      "title": "Title",
+      "department": "Department",
+      "location": "Location",
+      "status": "Status",
+      "candidates": "Candidates",
+      "updated": "Updated",
+      "emptyTitle": "No jobs yet",
+      "emptyHint": "Jobs appear here once creating them arrives with {owner}."
     }
   }
 }

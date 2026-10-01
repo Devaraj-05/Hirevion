@@ -1,4 +1,5 @@
-import { guardedPage, routeMetadata } from "@/auth/guarded-page";
+import { SectionIndexBody } from "@/page/bodies";
+import { guardedPage, routeMetadata } from "@/page/guarded-page";
 
 export const generateMetadata = routeMetadata("/reports");
-export default guardedPage("/reports");
+export default guardedPage("/reports", SectionIndexBody);
