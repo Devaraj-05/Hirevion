@@ -14,6 +14,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # row-level security always applies to it (ADR-0009).
 APP_ROLE = "hirevion_app"
 RELAY_ROLE = "hirevion_relay"
+# Owns the sign-in lookup functions (no login, no row-level security bypass; ADR-0013).
+AUTH_ROLE = "hirevion_auth"
 
 Role = Literal["admin", "app", "relay"]
 
