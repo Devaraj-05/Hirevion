@@ -11,15 +11,16 @@ export const router = {
   forward: vi.fn(),
 };
 
-const current = { pathname: "/dashboard" };
+const current = { pathname: "/dashboard", search: "" };
 
 export const nextNavigation = {
   useRouter: () => router,
   usePathname: () => current.pathname,
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => new URLSearchParams(current.search),
 };
 
-export function resetNavigation(pathname = "/dashboard"): void {
+export function resetNavigation(pathname = "/dashboard", search = ""): void {
   current.pathname = pathname;
+  current.search = search;
   for (const fn of Object.values(router)) fn.mockReset();
 }

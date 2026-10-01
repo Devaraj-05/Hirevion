@@ -103,5 +103,11 @@
       "en-IN": "English (India)",
       "en-US": "English (United States)"
     }
+  },
+  "data": {
+    "problem": {
+      "reference": "Reference: {traceId}",
+      "unknown": "Something went wrong. Please try again."
+    }
   }
 }
