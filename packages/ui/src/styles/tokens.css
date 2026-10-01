@@ -1,4 +1,158 @@
-/* Hirevion design tokens. The full palette arrives with the design system (SP-03 Task 2). */
-:root {
-  --accent: oklch(0.51 0.23 277);
+/*
+ * Hirevion design tokens: calm professional (slate neutrals, one indigo accent, Inter).
+ * Light is the default; `data-theme="dark"` on <html> switches every token. An organisation's
+ * brand colour (SP-22) replaces --accent and its companions in one place.
+ * Text and background pairs below meet WCAG 2.2 AA contrast in both themes.
+ */
+
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+  --background: #ffffff;
+  --foreground: #0f172a; /* slate-900 */
+  --surface: #ffffff;
+  --surface-muted: #f8fafc; /* slate-50 */
+  --surface-sunken: #f1f5f9; /* slate-100 */
+  --border: #e2e8f0; /* slate-200 */
+  --input: #cbd5e1; /* slate-300 */
+  --muted-foreground: #475569; /* slate-600 */
+
+  --accent: #4f46e5; /* indigo-600 */
+  --accent-hover: #4338ca; /* indigo-700 */
+  --accent-foreground: #ffffff;
+  --accent-subtle: #eef2ff; /* indigo-50 */
+  --accent-subtle-foreground: #3730a3; /* indigo-800 */
+  --ring: #4f46e5;
+
+  --success: #047857; /* emerald-700 */
+  --success-subtle: #ecfdf5;
+  --warning: #92400e; /* amber-800 */
+  --warning-subtle: #fffbeb;
+  --danger: #b91c1c; /* red-700 */
+  --danger-subtle: #fef2f2;
+  --danger-solid: #b91c1c;
+  --danger-solid-foreground: #ffffff;
+  --info: #075985; /* sky-800 */
+  --info-subtle: #f0f9ff;
+
+  /* Proctoring severities (PRD §64) */
+  --sev-info: var(--info);
+  --sev-info-subtle: var(--info-subtle);
+  --sev-warning: var(--warning);
+  --sev-warning-subtle: var(--warning-subtle);
+  --sev-critical: #ffffff;
+  --sev-critical-subtle: #b91c1c;
+
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.06);
+  --shadow-md: 0 4px 12px rgb(15 23 42 / 0.08);
+  --overlay: rgb(15 23 42 / 0.4);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #020617; /* slate-950 */
+  --foreground: #f1f5f9; /* slate-100 */
+  --surface: #0f172a; /* slate-900 */
+  --surface-muted: #1e293b; /* slate-800 */
+  --surface-sunken: #020617;
+  --border: #1e293b;
+  --input: #334155; /* slate-700 */
+  --muted-foreground: #94a3b8; /* slate-400 */
+
+  --accent: #818cf8; /* indigo-400 */
+  --accent-hover: #a5b4fc; /* indigo-300 */
+  --accent-foreground: #020617;
+  --accent-subtle: #1e1b4b; /* indigo-950 */
+  --accent-subtle-foreground: #c7d2fe; /* indigo-200 */
+  --ring: #818cf8;
+
+  --success: #6ee7b7; /* emerald-300 */
+  --success-subtle: #022c22;
+  --warning: #fcd34d; /* amber-300 */
+  --warning-subtle: #451a03;
+  --danger: #fca5a5; /* red-300 */
+  --danger-subtle: #450a0a;
+  --danger-solid: #dc2626;
+  --danger-solid-foreground: #ffffff;
+  --info: #7dd3fc; /* sky-300 */
+  --info-subtle: #082f49;
+
+  --sev-critical: #ffffff;
+  --sev-critical-subtle: #b91c1c;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 12px rgb(0 0 0 / 0.5);
+  --overlay: rgb(0 0 0 / 0.6);
+}
+
+/* Tailwind: `bg-background`, `text-muted-foreground`, `border-border`, `bg-accent`, … */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-accent-subtle-foreground: var(--accent-subtle-foreground);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-subtle: var(--success-subtle);
+  --color-warning: var(--warning);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-danger: var(--danger);
+  --color-danger-subtle: var(--danger-subtle);
+  --color-danger-solid: var(--danger-solid);
+  --color-danger-solid-foreground: var(--danger-solid-foreground);
+  --color-info: var(--info);
+  --color-info-subtle: var(--info-subtle);
+  --color-sev-info: var(--sev-info);
+  --color-sev-info-subtle: var(--sev-info-subtle);
+  --color-sev-warning: var(--sev-warning);
+  --color-sev-warning-subtle: var(--sev-warning-subtle);
+  --color-sev-critical: var(--sev-critical);
+  --color-sev-critical-subtle: var(--sev-critical-subtle);
+  --color-overlay: var(--overlay);
+  --font-sans: "Inter Variable", "Segoe UI", system-ui, sans-serif;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+}
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    background: var(--background);
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  /* biome-ignore-start lint/complexity/noImportantStyles: reduced motion must beat every component's own animation */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+  /* biome-ignore-end lint/complexity/noImportantStyles: reduced motion block */
 }
