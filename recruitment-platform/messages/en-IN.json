@@ -2,10 +2,64 @@
   "app": {
     "name": "Hirevion"
   },
-  "dashboard": {
-    "title": "Dashboard"
-  },
   "portal": {
     "title": "Your interview"
+  },
+  "routes": {
+    "dashboard": "Dashboard",
+    "jobs": "Jobs",
+    "jobsNew": "New job",
+    "candidates": "Candidates",
+    "interviews": "Interviews",
+    "interviewTemplates": "Interview templates",
+    "questions": "Question library",
+    "reports": "Reports",
+    "reportsInterview": "Interview reports",
+    "reportsProctoring": "Proctoring reports",
+    "reportsCandidate": "Candidate reports",
+    "reportsAnalytics": "Analytics",
+    "notifications": "Notifications",
+    "admin": "Administration",
+    "adminOrganization": "Organisation",
+    "adminUsers": "Users",
+    "adminRoles": "Roles",
+    "adminTeams": "Teams",
+    "adminDepartments": "Departments",
+    "adminAi": "AI settings",
+    "adminIntegrations": "Integrations",
+    "adminSecurity": "Security",
+    "adminProctoring": "Proctoring policies",
+    "adminRetention": "Retention and data requests",
+    "adminBranding": "Branding",
+    "adminWebhooks": "Webhooks",
+    "adminApiKeys": "API keys",
+    "adminUsage": "Usage and cost",
+    "adminAuditLogs": "Audit logs",
+    "platform": "Platform",
+    "platformOrganizations": "Organisations",
+    "platformAi": "Platform AI settings",
+    "platformSecurity": "Platform security",
+    "platformAppCatalog": "App catalogue",
+    "platformDesktopReleases": "Desktop releases",
+    "platformAudit": "Platform audit",
+    "platformHealth": "Platform health"
+  },
+  "roles": {
+    "super_admin": "Super admin",
+    "org_admin": "Organisation admin",
+    "recruiter": "Recruiter",
+    "hiring_manager": "Hiring manager",
+    "interviewer": "Interviewer"
+  },
+  "login": {
+    "title": "Sign in",
+    "devIntro": "Development sign-in: choose who to continue as. Real sign-in replaces this.",
+    "continueAs": "Continue as {role}",
+    "unavailable": "Sign-in isn't available yet."
+  },
+  "forbidden": {
+    "title": "You don't have access to this page",
+    "body": "Your role doesn't include this page. If you need it, ask your organisation's administrator.",
+    "back": "Go to the dashboard"
   }
 }

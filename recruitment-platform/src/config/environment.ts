@@ -5,8 +5,10 @@
 
 type Env = Record<string, string | undefined>;
 
+/** On when HV_WEB_DEV_TOOLS=true, and by default under `next dev`; HV_WEB_DEV_TOOLS=false wins. */
 export function devToolsEnabled(env: Env = process.env): boolean {
-  return env.HV_WEB_DEV_TOOLS === "true";
+  const flag = env.HV_WEB_DEV_TOOLS;
+  return flag === undefined ? env.NODE_ENV === "development" : flag === "true";
 }
 
 export function assertSafeEnvironment(env: Env = process.env): void {

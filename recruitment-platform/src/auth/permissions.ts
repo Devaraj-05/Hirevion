@@ -1,0 +1,114 @@
+/**
+ * Who may open what. The roles are PRD §6's. The permission map is provisional: SP-02's
+ * server-side RBAC matrix (with custom roles) replaces ROLE_PERMISSIONS and sends each session's
+ * permissions from the API.
+ */
+
+export const ROLES = [
+  "super_admin",
+  "org_admin",
+  "recruiter",
+  "hiring_manager",
+  "interviewer",
+] as const;
+export type Role = (typeof ROLES)[number];
+
+export const PERMISSIONS = [
+  "dashboard.view",
+  "jobs.view",
+  "jobs.create",
+  "candidates.view",
+  "interviews.view",
+  "interviews.templates.view",
+  "questions.view",
+  "reports.view",
+  "reports.interview.view",
+  "reports.proctoring.view",
+  "reports.candidate.view",
+  "reports.analytics.view",
+  "notifications.view",
+  "admin.view",
+  "admin.organization.manage",
+  "admin.users.manage",
+  "admin.roles.manage",
+  "admin.teams.manage",
+  "admin.departments.manage",
+  "admin.ai.manage",
+  "admin.integrations.manage",
+  "admin.security.manage",
+  "admin.proctoring.manage",
+  "admin.retention.manage",
+  "admin.branding.manage",
+  "admin.webhooks.manage",
+  "admin.api_keys.manage",
+  "admin.usage.view",
+  "admin.audit.view",
+  "platform.view",
+  "platform.organizations.manage",
+  "platform.ai.manage",
+  "platform.security.manage",
+  "platform.app_catalog.manage",
+  "platform.desktop_releases.manage",
+  "platform.audit.view",
+  "platform.health.view",
+] as const;
+export type Permission = (typeof PERMISSIONS)[number];
+
+export interface Session {
+  user: { id: string; name: string; email: string };
+  /** null for the super admin, who works across organisations. */
+  organization: { id: string; name: string } | null;
+  /** Role keys: the five PRD §6 roles, or an organisation's custom roles once SP-02 adds them. */
+  roles: readonly string[];
+  permissions: readonly Permission[];
+}
+
+export function isRole(value: unknown): value is Role {
+  return ROLES.some((role) => role === value);
+}
+
+export function isPermission(value: unknown): value is Permission {
+  return PERMISSIONS.some((permission) => permission === value);
+}
+
+export function can(session: Session, permission: Permission): boolean {
+  return session.permissions.includes(permission);
+}
+
+export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
+  super_admin: PERMISSIONS,
+  org_admin: PERMISSIONS.filter((permission) => !permission.startsWith("platform.")),
+  recruiter: [
+    "dashboard.view",
+    "jobs.view",
+    "jobs.create",
+    "candidates.view",
+    "interviews.view",
+    "interviews.templates.view",
+    "questions.view",
+    "reports.view",
+    "reports.interview.view",
+    "reports.proctoring.view",
+    "reports.candidate.view",
+    "reports.analytics.view",
+    "notifications.view",
+  ],
+  hiring_manager: [
+    "dashboard.view",
+    "jobs.view",
+    "candidates.view",
+    "interviews.view",
+    "reports.view",
+    "reports.interview.view",
+    "reports.proctoring.view",
+    "reports.candidate.view",
+    "notifications.view",
+  ],
+  interviewer: [
+    "dashboard.view",
+    "interviews.view",
+    "reports.view",
+    "reports.interview.view",
+    "notifications.view",
+  ],
+};

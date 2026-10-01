@@ -75,7 +75,7 @@ Build the recruitment platform's frame, which every later web feature plugs into
   - **Navigation and the command palette** show only what the session may open.
   - **Server actions** re-check permissions themselves; the proxy is never trusted for authorisation (Next.js guidance).
   - **Until SP-02, development sessions:**
-    - When `HV_WEB_DEV_SESSIONS=true`, a switcher offers one fixture session per PRD §6 role (super admin, org admin, recruiter, hiring manager, interviewer).
+    - When `HV_WEB_DEV_TOOLS=true`, a switcher offers one fixture session per PRD §6 role (super admin, org admin, recruiter, hiring manager, interviewer).
     - The app refuses to start with that variable set when `HV_ENVIRONMENT=production`.
     - The fixtures' role-to-permission map is provisional; SP-02's server-side RBAC matrix becomes the source of truth.
 - **Data.**
