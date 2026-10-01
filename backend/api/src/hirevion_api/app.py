@@ -14,6 +14,7 @@ from redis.asyncio import Redis
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from hirevion_api import clock, health
+from hirevion_api.access.errors import install_access_handlers
 from hirevion_api.auth.csrf import CsrfMiddleware
 from hirevion_api.auth.router import router as auth_router
 from hirevion_api.idempotency import install_idempotency_handler
@@ -105,6 +106,7 @@ def create_app(
     app.openapi = lambda: build_openapi(app)  # type: ignore[method-assign]
 
     install_problem_handlers(app)
+    install_access_handlers(app)
     install_idempotency_handler(app)
     app.include_router(health.router)
     app.include_router(clock.router)

@@ -22,9 +22,10 @@ from fastapi.dependencies.models import Dependant
 from fastapi.routing import APIRoute, iter_route_contexts
 
 from hirevion_api.auth.deps import CurrentSession
-from hirevion_api.deps import get_db
+from hirevion_api.deps import client_ip, get_db
 from hirevion_api.problems import ProblemError
 from hirevion_api.routing import API_PREFIX
+from hirevion_core.access.actor import Actor
 from hirevion_core.identity.grants import load_grants
 from hirevion_core.identity.permissions import PERMISSIONS
 from hirevion_core.identity.sessions import SessionContext, is_stepped_up
@@ -67,6 +68,16 @@ class Principal:
     @property
     def organization_id(self) -> UUID:
         return self.context.organization_id
+
+    def actor(self, request: Request) -> Actor:
+        """The principal as the access domain's acting user, with where the request came from."""
+        return Actor(
+            self.user_id,
+            self.organization_id,
+            self.permissions,
+            ip=client_ip(request),
+            user_agent=request.headers.get("user-agent"),
+        )
 
 
 async def current_principal(request: Request, context: CurrentSession) -> Principal:
