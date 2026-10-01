@@ -32,10 +32,7 @@ class Database:
     async def tenant(self, organization_id: UUID) -> AsyncIterator[AsyncSession]:
         """A transaction that sees only `organization_id`'s rows; it commits on success."""
         async with self._sessions() as session, session.begin():
-            await session.execute(
-                text("SELECT set_config('app.org_id', :org, true)"),
-                {"org": str(UUID(str(organization_id)))},
-            )
+            await _set_tenant(session, organization_id)
             yield session
 
     @asynccontextmanager
@@ -46,6 +43,21 @@ class Database:
 
     async def dispose(self) -> None:
         await self.engine.dispose()
+
+
+async def _set_tenant(session: AsyncSession, organization_id: UUID) -> None:
+    await session.execute(
+        text("SELECT set_config('app.org_id', :org, true)"),
+        {"org": str(UUID(str(organization_id)))},
+    )
+
+
+async def switch_tenant(session: AsyncSession, organization_id: UUID) -> None:
+    """Moves a `tenant()` transaction to another organisation, for platform actions that change
+    one organisation and record it in the platform's audit chain atomically (ADR-0014). Pending
+    changes are flushed first, while the tenant they belong to is still current."""
+    await session.flush()
+    await _set_tenant(session, organization_id)
 
 
 def create_database(

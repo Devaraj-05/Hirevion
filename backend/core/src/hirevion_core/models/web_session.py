@@ -32,3 +32,5 @@ class WebSession(IdMixin, TenantMixin, Base):
     ip: Mapped[str | None] = mapped_column(INET)
     user_agent: Mapped[str | None] = mapped_column(Text)
     revoked_at: Mapped[datetime | None]
+    # When the user last confirmed their password for a sensitive change (step-up, ADR-0014).
+    stepped_up_at: Mapped[datetime | None]

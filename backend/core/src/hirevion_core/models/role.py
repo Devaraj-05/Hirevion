@@ -5,6 +5,7 @@ from uuid import UUID
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     ForeignKey,
     ForeignKeyConstraint,
     Index,
@@ -13,6 +14,7 @@ from sqlalchemy import (
     func,
     text,
 )
+from sqlalchemy.dialects.postgresql import CITEXT
 from sqlalchemy.orm import Mapped, mapped_column
 
 from hirevion_core.db.base import Base, IdMixin, TenantMixin, TimestampMixin
@@ -20,17 +22,38 @@ from hirevion_core.db.base import Base, IdMixin, TenantMixin, TimestampMixin
 
 class Role(IdMixin, TenantMixin, TimestampMixin, Base):
     """A role in one organisation. System roles carry a `key` from the code catalogue
-    (`hirevion_core.identity.permissions`) and can't be edited; custom roles (SP-02b) have none."""
+    (`hirevion_core.identity.permissions`) and can't be edited; custom roles have none and keep
+    their permissions in `role_permissions`. Names are unique per organisation, ignoring case."""
 
     __tablename__ = "roles"
     __table_args__ = (
         UniqueConstraint("organization_id", "key"),
+        UniqueConstraint("organization_id", "name"),
         UniqueConstraint("organization_id", "id"),
     )
 
     key: Mapped[str | None] = mapped_column(Text)
-    name: Mapped[str] = mapped_column(Text)
+    name: Mapped[str] = mapped_column(CITEXT)
+    description: Mapped[str | None] = mapped_column(Text)
     system: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+
+
+class RolePermission(Base):
+    """A permission granted by a custom role. System roles' permissions live in code."""
+
+    __tablename__ = "role_permissions"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["organization_id", "role_id"],
+            ["roles.organization_id", "roles.id"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint(r"permission ~ '^[a-z_]+(\.[a-z_]+)+$'", name="permission"),
+    )
+
+    organization_id: Mapped[UUID] = mapped_column(ForeignKey("organizations.id"), index=True)
+    role_id: Mapped[UUID] = mapped_column(primary_key=True)
+    permission: Mapped[str] = mapped_column(Text, primary_key=True)
 
 
 class UserRole(Base):

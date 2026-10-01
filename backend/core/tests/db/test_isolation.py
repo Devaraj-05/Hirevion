@@ -74,8 +74,12 @@ async def test_tenant_setting_never_leaks_through_the_pool(
         await db.dispose()
 
 
-async def test_the_app_role_cannot_create_organisations(app_db: Database) -> None:
-    with pytest.raises(DBAPIError, match="permission denied"):
+async def test_the_app_role_creates_organisations_only_in_their_own_tenant(
+    app_db: Database,
+) -> None:
+    # Super admins create organisations inside the new one's tenant (ADR-0014); without a
+    # tenant, or under another one, the policy refuses (test_access_schema covers the latter).
+    with pytest.raises(DBAPIError, match="row-level security"):
         async with app_db.unscoped() as session:
             await session.execute(
                 text(
