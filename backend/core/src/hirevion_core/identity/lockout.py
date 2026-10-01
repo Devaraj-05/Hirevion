@@ -53,7 +53,8 @@ class Lockout:
         await self._redis.expire(key, self._maximum + _DAY)
         if failures < self._threshold:
             return None
-        doublings = min(failures - self._threshold, 32)  # past the cap, more doublings change nothing
+        # Past the cap more doublings change nothing, so the shift stays small.
+        doublings = min(failures - self._threshold, 32)
         wait = min(self._base << doublings, self._maximum)
         await self._redis.hset(key, "until", str(self._clock() + wait))
         return wait
