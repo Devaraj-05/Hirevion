@@ -3,6 +3,7 @@ import {
   BookOpen,
   Briefcase,
   ChartColumn,
+  CircleUser,
   LayoutDashboard,
   type LucideIcon,
   Settings,
@@ -20,6 +21,7 @@ export const SECTION_ICONS: Record<Section, LucideIcon> = {
   questions: BookOpen,
   reports: ChartColumn,
   notifications: Bell,
+  account: CircleUser,
   admin: Settings,
   platform: ShieldCheck,
 };

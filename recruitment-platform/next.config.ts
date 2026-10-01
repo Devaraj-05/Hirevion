@@ -17,6 +17,13 @@ const nextConfig: NextConfig = {
   // back over the network to itself, where it is rewritten again, endlessly.
   skipProxyUrlNormalize: true,
   transpilePackages: ["@hirevion/ui", "@hirevion/api-client"],
+  // `next dev` only: send /api/* to the API, so sign-in works without Caddy (which does this
+  // in front of every other build). The proxy never sees /api/*.
+  async rewrites() {
+    if (process.env.NODE_ENV !== "development") return [];
+    const api = process.env.HV_API_INTERNAL_URL ?? "http://127.0.0.1:8000";
+    return [{ source: "/api/:path*", destination: `${api}/api/:path*` }];
+  },
 };
 
 export default withNextIntl(nextConfig);

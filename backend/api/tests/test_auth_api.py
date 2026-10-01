@@ -153,6 +153,8 @@ async def test_repeated_failures_are_answered_with_a_wait(
         assert (await sign_in(client, address, "wrong password attempt")).status_code == 401
     locked = await sign_in(client, address, "wrong password attempt")
     assert locked.status_code == 429 and locked.headers["Retry-After"] == "60"
+    # The form says how long to wait.
+    assert locked.json()["retry_after"] == 60
     assert (await sign_in(client, address)).status_code == 429
 
 

@@ -16,6 +16,7 @@ export type Section =
   | "questions"
   | "reports"
   | "notifications"
+  | "account"
   | "admin"
   | "platform";
 
@@ -133,6 +134,13 @@ export const ROUTES = [
     section: "notifications",
     titleKey: "notifications",
     owner: "SP-18",
+  }),
+  route({
+    path: "/account",
+    permission: "account.manage",
+    section: "account",
+    titleKey: "account",
+    owner: "SP-02a",
   }),
   route({
     path: "/admin",

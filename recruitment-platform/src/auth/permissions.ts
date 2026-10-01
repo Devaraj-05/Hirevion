@@ -70,6 +70,8 @@ export interface Session {
   /** Role keys: the five PRD §6 roles, or an organisation's custom roles once SP-02 adds them. */
   roles: readonly string[];
   permissions: readonly Permission[];
+  /** "api" for a real sign-in; "dev" for a development fixture, which has no account behind it. */
+  source: "api" | "dev";
 }
 
 export function isRole(value: unknown): value is Role {

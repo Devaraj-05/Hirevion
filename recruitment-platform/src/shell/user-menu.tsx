@@ -14,12 +14,14 @@ import {
   type ThemePreference,
   useTheme,
 } from "@hirevion/ui";
-import { LogOut } from "lucide-react";
+import { CircleUser, LogOut } from "lucide-react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useId, useTransition } from "react";
+import { signOutOfApi } from "@/auth/api";
 import { signInAsDevRole, signOut } from "@/auth/dev-actions";
-import { isRole, ROLES, type Session } from "@/auth/permissions";
+import { can, isRole, ROLES, type Session } from "@/auth/permissions";
 import { LOCALES } from "@/i18n/locales";
 import { useSetLocale } from "@/i18n/use-set-locale";
 
@@ -112,9 +114,19 @@ export function UserMenu({ session, devTools }: UserMenuProps) {
           </>
         ) : null}
         <DropdownMenuSeparator />
+        {can(session, "account.manage") ? (
+          <DropdownMenuItem asChild>
+            <Link href="/account">
+              <CircleUser aria-hidden />
+              {t("accountPage")}
+            </Link>
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuItem
           onSelect={() =>
             startTransition(async () => {
+              // A real session ends at the API; the development role is cleared either way.
+              if (session.source === "api") await signOutOfApi();
               await signOut();
             })
           }

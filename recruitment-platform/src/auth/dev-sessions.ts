@@ -13,6 +13,7 @@ function fixture(role: Role, id: string, name: string, email: string): Session {
     organization: role === "super_admin" ? null : ORGANIZATION,
     roles: [role],
     permissions: ROLE_PERMISSIONS[role],
+    source: "dev",
   };
 }
 

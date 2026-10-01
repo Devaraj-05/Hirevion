@@ -9,6 +9,10 @@ const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const PAGES = [
   ...ROUTES.map((route) => `${APP}${route.path}`),
   `${APP}/login`,
+  `${APP}/forgot-password`,
+  `${APP}/reset-password/e2e-token`,
+  `${APP}/set-password/e2e-token`,
+  `${APP}/verify-email/e2e-token`,
   `${APP}/forbidden`,
   `${APP}/dev/ui`,
   ...PORTAL_PAGES.map((page) => `${PORTAL}${page.path.replace("[token]", "e2e-token")}`),

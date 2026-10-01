@@ -32,7 +32,8 @@ describe("resolveSession", () => {
       { HV_API_INTERNAL_URL: "http://api.internal:8000" },
       fetcher,
     );
-    expect(session).toEqual(apiSession);
+    // Sessions from the API are told apart from development ones.
+    expect(session).toEqual({ ...apiSession, source: "api" });
     const [url, init] = (fetcher as unknown as ReturnType<typeof vi.fn>).mock.calls[0] as [
       string,
       RequestInit,

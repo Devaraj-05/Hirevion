@@ -37,7 +37,8 @@ from hirevion_core.ratelimit import RateRule
 router = api_router(tags=["auth"])
 
 # Sign-in and token routes refuse requests when Valkey is down (fail closed).
-LOGIN_BY_IP = RateRule("login-ip", 10, 60, fail_closed=True)
+# Per IP it allows for an office behind one address; per email, the lockout does the rest.
+LOGIN_BY_IP = RateRule("login-ip", 30, 60, fail_closed=True)
 LOGIN_BY_EMAIL = RateRule("login-email", 10, 60, fail_closed=True)
 FORGOT_BY_IP = RateRule("forgot-ip", 20, 3600, fail_closed=True)
 FORGOT_BY_EMAIL = RateRule("forgot-email", 5, 3600, fail_closed=True)
@@ -82,6 +83,7 @@ async def login(body: LoginRequest, request: Request, response: Response, auth: 
                 "Too many attempts",
                 f"Try again in {minutes} minute{'s' if minutes != 1 else ''}.",
                 headers={"Retry-After": str(result.retry_after)},
+                retry_after=result.retry_after,
             )
         raise ProblemError(401, *_INVALID_CREDENTIALS)
     set_session_cookies(response, result.session_token, result.csrf_token)

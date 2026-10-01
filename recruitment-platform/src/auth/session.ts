@@ -50,7 +50,7 @@ export async function resolveSession(
     );
     if (!response.ok) return null;
     const parsed = sessionSchema.safeParse(await response.json());
-    return parsed.success ? parsed.data : null;
+    return parsed.success ? { ...parsed.data, source: "api" } : null;
   } catch {
     return null;
   }

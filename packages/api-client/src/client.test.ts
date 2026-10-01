@@ -25,6 +25,30 @@ async function failure(promise: Promise<unknown>): Promise<unknown> {
 }
 
 describe("createApiClient", () => {
+  it("sends the CSRF token on state-changing calls only", async () => {
+    const { fetch, requests } = respondWith(new Response(null, { status: 204 }));
+    const client = createApiClient({
+      baseUrl: "https://app.hirevion.localhost",
+      fetch,
+      csrfToken: () => "token-from-cookie",
+    });
+    await client.POST("/api/v1/auth/logout");
+    await client.GET("/api/v1/health/live");
+    expect(requests[0]?.headers.get("X-CSRF-Token")).toBe("token-from-cookie");
+    expect(requests[1]?.headers.has("X-CSRF-Token")).toBe(false);
+  });
+
+  it("sends no CSRF header when there is no token", async () => {
+    const { fetch, requests } = respondWith(new Response(null, { status: 204 }));
+    const client = createApiClient({
+      baseUrl: "https://app.hirevion.localhost",
+      fetch,
+      csrfToken: () => undefined,
+    });
+    await client.POST("/api/v1/auth/logout");
+    expect(requests[0]?.headers.has("X-CSRF-Token")).toBe(false);
+  });
+
   it("returns data for a successful call", async () => {
     const { fetch, requests } = respondWith(Response.json({ status: "ok" }));
     const client = createApiClient({ baseUrl: "https://api.hirevion.localhost", fetch });

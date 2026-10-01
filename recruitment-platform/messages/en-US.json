@@ -51,7 +51,8 @@
     "platformAppCatalog": "App catalog",
     "platformDesktopReleases": "Desktop releases",
     "platformAudit": "Platform audit",
-    "platformHealth": "Platform health"
+    "platformHealth": "Platform health",
+    "account": "Account"
   },
   "roles": {
     "super_admin": "Super admin",
@@ -59,12 +60,6 @@
     "recruiter": "Recruiter",
     "hiring_manager": "Hiring manager",
     "interviewer": "Interviewer"
-  },
-  "login": {
-    "title": "Sign in",
-    "devIntro": "Development sign-in: choose who to continue as. Real sign-in replaces this.",
-    "continueAs": "Continue as {role}",
-    "unavailable": "Sign-in isn't available yet."
   },
   "forbidden": {
     "title": "You don't have access to this page",
@@ -105,7 +100,8 @@
       "system": "Match system",
       "language": "Language",
       "switchRole": "Switch role (development)",
-      "signOut": "Sign out"
+      "signOut": "Sign out",
+      "accountPage": "Account"
     },
     "languages": {
       "en-IN": "English (India)",
@@ -240,6 +236,122 @@
       "updated": "Updated",
       "emptyTitle": "No jobs yet",
       "emptyHint": "Jobs appear here once creating them arrives with {owner}."
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Sign in",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Sign in",
+      "forgot": "Forgot your password?",
+      "emailRequired": "Enter your email address.",
+      "passwordRequired": "Enter your password.",
+      "invalid": "Email or password is incorrect.",
+      "locked": "Too many attempts. Try again in {minutes, plural, one {# minute} other {# minutes}}.",
+      "lockedSoon": "Too many attempts. Try again in a few minutes.",
+      "unavailable": "Sign-in isn't available right now. Try again in a moment.",
+      "resetDone": "Your password is changed. Sign in with the new one.",
+      "setDone": "Your password is set. Sign in to continue.",
+      "devTitle": "Development sign-in",
+      "devIntro": "Choose a role to continue as. These fixture sessions exist only in development.",
+      "continueAs": "Continue as {role}"
+    },
+    "forgot": {
+      "title": "Reset your password",
+      "intro": "Enter the email address you sign in with, and we'll email you a link to choose a new password.",
+      "email": "Email",
+      "emailRequired": "Enter your email address.",
+      "submit": "Send the link",
+      "sent": "If an account exists for {email}, we've emailed a link to reset its password. The link expires in 30 minutes.",
+      "limited": "Too many requests. Try again later.",
+      "unavailable": "We couldn't send the link right now. Try again in a moment.",
+      "back": "Back to sign in"
+    },
+    "newPassword": {
+      "resetTitle": "Choose a new password",
+      "setTitle": "Set your password",
+      "setIntro": "Choose the password you'll sign in to Hirevion with.",
+      "password": "New password",
+      "hint": "At least 15 characters. A few unrelated words work well; there are no other rules.",
+      "confirmation": "Confirm the new password",
+      "mismatch": "The passwords don't match.",
+      "saveReset": "Save the new password",
+      "saveSet": "Set the password",
+      "expired": "This link has expired or was already used.",
+      "askAgain": "Ask for a new link",
+      "unavailable": "We couldn't save the password right now. Try again in a moment."
+    },
+    "verify": {
+      "title": "Confirm your email address",
+      "intro": "Confirm the new email address for your Hirevion account.",
+      "submit": "Confirm my new email address",
+      "verified": "Your email address is confirmed. Use it to sign in from now on.",
+      "expired": "This link has expired or was already used. Ask for the change again from your account page.",
+      "unavailable": "We couldn't confirm it right now. Try again in a moment.",
+      "continue": "Go to the dashboard"
+    },
+    "problems": {
+      "too_short": "Use at least 15 characters.",
+      "too_long": "Use 128 characters or fewer.",
+      "personal": "Don't use your name, email address or organization's name.",
+      "breached": "This password has appeared in a data breach or is too common. Choose another.",
+      "wrong_current": "Your current password is incorrect.",
+      "wrong_password": "Your password is incorrect.",
+      "unknown": "This password can't be used. Choose another."
+    }
+  },
+  "account": {
+    "profile": {
+      "title": "Profile",
+      "name": "Name",
+      "email": "Email",
+      "organization": "Organization",
+      "allOrganizations": "All organizations (platform)",
+      "roles": "Roles",
+      "nameNote": "Your organization's administrator can change your name.",
+      "language": "Language"
+    },
+    "password": {
+      "title": "Password",
+      "current": "Current password",
+      "currentRequired": "Enter your current password.",
+      "submit": "Change password",
+      "done": "Your password is changed. Your other devices were signed out.",
+      "unavailable": "We couldn't change the password right now. Try again in a moment."
+    },
+    "email": {
+      "title": "Email address",
+      "intro": "You sign in with {email}.",
+      "new": "New email address",
+      "newRequired": "Enter the new address.",
+      "password": "Your password",
+      "passwordRequired": "Enter your password.",
+      "submit": "Send a confirmation link",
+      "sent": "Check {email} for a link to confirm it. Until then, you keep signing in with your current address.",
+      "unavailable": "We couldn't send the link right now. Try again in a moment."
+    },
+    "sessions": {
+      "title": "Where you're signed in",
+      "intro": "Sign out of any device you don't recognize.",
+      "caption": "Your signed-in devices",
+      "device": "Device",
+      "ip": "IP address",
+      "lastActive": "Last active",
+      "actions": "Actions",
+      "thisDevice": "This device",
+      "signOut": "Sign out",
+      "signOutDevice": "Sign out {device}",
+      "signOutOthers": "Sign out everywhere else",
+      "unknownDevice": "Unknown device",
+      "deviceOn": "{browser} on {system}",
+      "loadFailed": "Your sessions couldn't be loaded.",
+      "unknownIp": "Unknown"
+    },
+    "dev": {
+      "title": "No account behind development sign-in",
+      "body": "Development sessions are fixtures without an account. Sign in as one of the seeded users to manage an account.",
+      "signIn": "Go to sign in"
     }
   }
 }
