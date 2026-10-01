@@ -1,5 +1,11 @@
 packages:
   - ai-interviewer-desktop
+  - recruitment-platform
   - third-eye
   - packages/*
   - tools/api-codegen
+# Install scripts: none needed. Both come from next-intl's optional message-extraction tooling,
+# which ships prebuilt binaries and which Hirevion doesn't use.
+allowBuilds:
+  '@parcel/watcher': false
+  '@swc/core': false

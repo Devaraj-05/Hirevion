@@ -1,0 +1,4 @@
+/* Hirevion design tokens. The full palette arrives with the design system (SP-03 Task 2). */
+:root {
+  --accent: oklch(0.51 0.23 277);
+}

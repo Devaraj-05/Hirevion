@@ -1,0 +1,5 @@
+@import "tailwindcss";
+@import "@hirevion/ui/styles.css";
+
+/* The design system's components live outside this app; let Tailwind see their classes. */
+@source "../../../packages/ui/src";

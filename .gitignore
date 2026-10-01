@@ -18,6 +18,9 @@ htmlcov/
 node_modules/
 dist/
 .next/
+next-env.d.ts
+playwright-report/
+test-results/
 .turbo/
 *.tsbuildinfo
 coverage/
