@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { homeFor } from "./auth/home";
 import { routeFor } from "./auth/manifest";
-import { loginPath } from "./auth/next-path";
+import { HOME_PATH, loginPath } from "./auth/next-path";
 import { can } from "./auth/permissions";
 import { PATH_HEADER, resolveSession } from "./auth/session";
 import { hostConfig, hostKind, internalPath } from "./hosts";
@@ -39,6 +40,11 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       return secure(NextResponse.redirect(login, 307), csp);
     }
     if (!can(session, route.permission)) {
+      // Signing in lands on the dashboard; a role without it starts on its own first page.
+      const home = route.path === HOME_PATH ? homeFor(session) : HOME_PATH;
+      if (home !== HOME_PATH) {
+        return secure(NextResponse.redirect(browserUrl(request, home), 307), csp);
+      }
       target = FORBIDDEN_PAGE;
       status = 403;
     }

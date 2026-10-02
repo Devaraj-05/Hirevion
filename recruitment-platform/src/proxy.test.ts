@@ -81,6 +81,28 @@ describe("proxy", () => {
     );
   });
 
+  it("sends someone whose roles leave out the dashboard to the first page they may open", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          user: { id: "u-1", name: "Sana Sourcer", email: "sana@acme.example.test" },
+          organization: { id: "o-1", name: "Acme" },
+          roles: [],
+          custom_roles: ["Sourcer"],
+          permissions: ["jobs.view", "admin.teams.manage", "account.manage"],
+        }),
+      ),
+    );
+    const response = await proxy(
+      request("/dashboard", "app.hirevion.localhost", undefined, {
+        cookie: "__Host-hv_session=abc",
+      }),
+    );
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("http://app.hirevion.localhost/jobs");
+  });
+
   it("never guards the public pages", async () => {
     const login = await proxy(request("/login", "app.hirevion.localhost"));
     expect(login.headers.get("x-middleware-rewrite")).toBe("http://localhost:3000/recruiter/login");
