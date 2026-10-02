@@ -65,6 +65,11 @@ EXPECTED: dict[str, tuple[tuple[str, ...], bool]] = {
     "POST /api/v1/users/{user_id}/enable": (("admin.users.manage",), True),
     "POST /api/v1/users/{user_id}/invitation": (("admin.users.manage",), True),
     "DELETE /api/v1/users/{user_id}": (("admin.users.manage",), True),
+    "GET /api/v1/roles": (("admin.roles.manage", "admin.users.manage"), False),
+    "POST /api/v1/roles": (("admin.roles.manage",), True),
+    "PATCH /api/v1/roles/{role_id}": (("admin.roles.manage",), True),
+    "DELETE /api/v1/roles/{role_id}": (("admin.roles.manage",), True),
+    "GET /api/v1/permissions": (("admin.roles.manage",), False),
 }
 
 

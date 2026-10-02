@@ -433,6 +433,65 @@
         "title": "PasswordChangeRequest",
         "type": "object"
       },
+      "PermissionResponse": {
+        "properties": {
+          "area": {
+            "description": "The part before the first dot, for grouping.",
+            "title": "Area",
+            "type": "string"
+          },
+          "name": {
+            "enum": [
+              "dashboard.view",
+              "jobs.view",
+              "jobs.create",
+              "candidates.view",
+              "interviews.view",
+              "interviews.templates.view",
+              "questions.view",
+              "reports.view",
+              "reports.interview.view",
+              "reports.proctoring.view",
+              "reports.candidate.view",
+              "reports.analytics.view",
+              "notifications.view",
+              "account.manage",
+              "admin.view",
+              "admin.organization.manage",
+              "admin.users.manage",
+              "admin.roles.manage",
+              "admin.teams.manage",
+              "admin.departments.manage",
+              "admin.ai.manage",
+              "admin.integrations.manage",
+              "admin.security.manage",
+              "admin.proctoring.manage",
+              "admin.retention.manage",
+              "admin.branding.manage",
+              "admin.webhooks.manage",
+              "admin.api_keys.manage",
+              "admin.usage.view",
+              "admin.audit.view",
+              "platform.view",
+              "platform.organizations.manage",
+              "platform.ai.manage",
+              "platform.security.manage",
+              "platform.app_catalog.manage",
+              "platform.desktop_releases.manage",
+              "platform.audit.view",
+              "platform.health.view"
+            ],
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "area"
+        ],
+        "title": "PermissionResponse",
+        "type": "object"
+      },
       "Problem": {
         "additionalProperties": true,
         "description": "An RFC 9457 problem; codes may add extension members (e.g. `errors`, `checks`).",
@@ -521,6 +580,82 @@
         "title": "Readiness",
         "type": "object"
       },
+      "RoleCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "permissions": {
+            "items": {
+              "enum": [
+                "dashboard.view",
+                "jobs.view",
+                "jobs.create",
+                "candidates.view",
+                "interviews.view",
+                "interviews.templates.view",
+                "questions.view",
+                "reports.view",
+                "reports.interview.view",
+                "reports.proctoring.view",
+                "reports.candidate.view",
+                "reports.analytics.view",
+                "notifications.view",
+                "account.manage",
+                "admin.view",
+                "admin.organization.manage",
+                "admin.users.manage",
+                "admin.roles.manage",
+                "admin.teams.manage",
+                "admin.departments.manage",
+                "admin.ai.manage",
+                "admin.integrations.manage",
+                "admin.security.manage",
+                "admin.proctoring.manage",
+                "admin.retention.manage",
+                "admin.branding.manage",
+                "admin.webhooks.manage",
+                "admin.api_keys.manage",
+                "admin.usage.view",
+                "admin.audit.view",
+                "platform.view",
+                "platform.organizations.manage",
+                "platform.ai.manage",
+                "platform.security.manage",
+                "platform.app_catalog.manage",
+                "platform.desktop_releases.manage",
+                "platform.audit.view",
+                "platform.health.view"
+              ],
+              "type": "string"
+            },
+            "title": "Permissions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "permissions"
+        ],
+        "title": "RoleCreate",
+        "type": "object"
+      },
       "RoleRef": {
         "properties": {
           "id": {
@@ -551,6 +686,196 @@
           "name"
         ],
         "title": "RoleRef",
+        "type": "object"
+      },
+      "RoleResponse": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The system role's key; null for a custom role.",
+            "title": "Key"
+          },
+          "member_count": {
+            "title": "Member Count",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "permissions": {
+            "description": "What it grants, in catalogue order.",
+            "items": {
+              "enum": [
+                "dashboard.view",
+                "jobs.view",
+                "jobs.create",
+                "candidates.view",
+                "interviews.view",
+                "interviews.templates.view",
+                "questions.view",
+                "reports.view",
+                "reports.interview.view",
+                "reports.proctoring.view",
+                "reports.candidate.view",
+                "reports.analytics.view",
+                "notifications.view",
+                "account.manage",
+                "admin.view",
+                "admin.organization.manage",
+                "admin.users.manage",
+                "admin.roles.manage",
+                "admin.teams.manage",
+                "admin.departments.manage",
+                "admin.ai.manage",
+                "admin.integrations.manage",
+                "admin.security.manage",
+                "admin.proctoring.manage",
+                "admin.retention.manage",
+                "admin.branding.manage",
+                "admin.webhooks.manage",
+                "admin.api_keys.manage",
+                "admin.usage.view",
+                "admin.audit.view",
+                "platform.view",
+                "platform.organizations.manage",
+                "platform.ai.manage",
+                "platform.security.manage",
+                "platform.app_catalog.manage",
+                "platform.desktop_releases.manage",
+                "platform.audit.view",
+                "platform.health.view"
+              ],
+              "type": "string"
+            },
+            "title": "Permissions",
+            "type": "array"
+          },
+          "system": {
+            "description": "Built in: can't be changed or deleted.",
+            "title": "System",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "name",
+          "description",
+          "system",
+          "permissions",
+          "member_count"
+        ],
+        "title": "RoleResponse",
+        "type": "object"
+      },
+      "RoleUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "permissions": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "dashboard.view",
+                    "jobs.view",
+                    "jobs.create",
+                    "candidates.view",
+                    "interviews.view",
+                    "interviews.templates.view",
+                    "questions.view",
+                    "reports.view",
+                    "reports.interview.view",
+                    "reports.proctoring.view",
+                    "reports.candidate.view",
+                    "reports.analytics.view",
+                    "notifications.view",
+                    "account.manage",
+                    "admin.view",
+                    "admin.organization.manage",
+                    "admin.users.manage",
+                    "admin.roles.manage",
+                    "admin.teams.manage",
+                    "admin.departments.manage",
+                    "admin.ai.manage",
+                    "admin.integrations.manage",
+                    "admin.security.manage",
+                    "admin.proctoring.manage",
+                    "admin.retention.manage",
+                    "admin.branding.manage",
+                    "admin.webhooks.manage",
+                    "admin.api_keys.manage",
+                    "admin.usage.view",
+                    "admin.audit.view",
+                    "platform.view",
+                    "platform.organizations.manage",
+                    "platform.ai.manage",
+                    "platform.security.manage",
+                    "platform.app_catalog.manage",
+                    "platform.desktop_releases.manage",
+                    "platform.audit.view",
+                    "platform.health.view"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Permissions"
+          }
+        },
+        "title": "RoleUpdate",
         "type": "object"
       },
       "ServerTime": {
@@ -2134,6 +2459,277 @@
         "summary": "Update Organization",
         "tags": [
           "organization"
+        ]
+      }
+    },
+    "/api/v1/permissions": {
+      "get": {
+        "description": "Every permission a custom role may hold, grouped by area.",
+        "operationId": "list_permissions",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PermissionResponse"
+                  },
+                  "title": "Response List Permissions",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "List Permissions",
+        "tags": [
+          "roles"
+        ]
+      }
+    },
+    "/api/v1/roles": {
+      "get": {
+        "description": "Built-in roles first, then the organisation's own, with what each grants.",
+        "operationId": "list_roles",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RoleResponse"
+                  },
+                  "title": "Response List Roles",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "List Roles",
+        "tags": [
+          "roles"
+        ]
+      },
+      "post": {
+        "description": "A custom role. It may hold only permissions you hold, and none of the platform's.",
+        "operationId": "create_role",
+        "parameters": [
+          {
+            "description": "Required. A unique value (a UUID is ideal) per logical create; send the same value when retrying it.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Required. A unique value (a UUID is ideal) per logical create; send the same value when retrying it.",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Create Role",
+        "tags": [
+          "roles"
+        ]
+      }
+    },
+    "/api/v1/roles/{role_id}": {
+      "delete": {
+        "description": "Deletes a custom role nobody holds.",
+        "operationId": "delete_role",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "role_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Role Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Delete Role",
+        "tags": [
+          "roles"
+        ]
+      },
+      "patch": {
+        "description": "Renames, describes or re-grants a custom role; its members feel it on their next\nrequest. Built-in roles can't be changed.",
+        "operationId": "update_role",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "role_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Role Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Update Role",
+        "tags": [
+          "roles"
         ]
       }
     },

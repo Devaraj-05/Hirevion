@@ -12,7 +12,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from hirevion_api.auth.schemas import Email
+from hirevion_api.auth.schemas import Email, Permission
 
 Name = Annotated[str, Field(min_length=1, max_length=200)]
 Description = Annotated[str, Field(max_length=500)]
@@ -192,3 +192,40 @@ class UserRolesUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     role_ids: list[UUID] = Field(description="Replaces their roles; at least one.")
+
+
+# Roles
+
+
+class RoleResponse(BaseModel):
+    id: UUID
+    key: str | None = Field(description="The system role's key; null for a custom role.")
+    name: str
+    description: str | None
+    system: bool = Field(description="Built in: can't be changed or deleted.")
+    permissions: list[Permission] = Field(description="What it grants, in catalogue order.")
+    member_count: int
+
+
+class RoleCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: Annotated[str, Field(min_length=1, max_length=60)]
+    description: Description | None = None
+    permissions: list[Permission]
+
+
+class RoleUpdate(Patch):
+    name: Annotated[str, Field(min_length=1, max_length=60)] | None = None
+    description: Description | None = None
+    permissions: list[Permission] | None = None
+
+    @field_validator("name", "permissions")
+    @classmethod
+    def _present(cls, value: object) -> object:
+        return not_null(value)
+
+
+class PermissionResponse(BaseModel):
+    name: Permission
+    area: str = Field(description="The part before the first dot, for grouping.")
