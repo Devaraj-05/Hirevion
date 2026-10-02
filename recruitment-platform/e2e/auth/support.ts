@@ -2,7 +2,13 @@ import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { expect, type Locator, type Page } from "@playwright/test";
+import {
+  type Browser,
+  type BrowserContext,
+  expect,
+  type Locator,
+  type Page,
+} from "@playwright/test";
 
 /** Helpers for the sign-in suite, which runs against the real API, database and Mailpit. */
 
@@ -88,4 +94,42 @@ export async function newSignedInAdmin(page: Page): Promise<{ email: string; pas
   await signIn(page, email, password);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Dashboard");
   return { email, password };
+}
+
+export const ORG_ADMIN = "org-admin@acme.example.test";
+export const SUPER_ADMIN = "super@hirevion.example.test";
+
+/** Answers the step-up dialog that the first sensitive change of a session opens. */
+export async function confirmPassword(page: Page, password: string): Promise<void> {
+  const dialog = page.getByRole("dialog", { name: "Confirm your password" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel("Password").fill(password);
+  await dialog.getByRole("button", { name: "Confirm" }).click();
+  await expect(dialog).toBeHidden();
+}
+
+/** Signs in on a fresh page at /login and waits for the dashboard. */
+export async function signedIn(page: Page, email: string, password: string): Promise<void> {
+  await page.goto("/login");
+  await signIn(page, email, password);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Dashboard");
+}
+
+/** The invitee, in their own browser: sets a password from the emailed link and signs in. */
+export async function acceptInvitation(
+  browser: Browser,
+  email: string,
+  landsOn = "Dashboard",
+): Promise<{ page: Page; context: BrowserContext; password: string }> {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  const password = `invited password ${randomUUID().slice(0, 8)}`;
+  await page.goto(await emailedLink(email, "/set-password/"));
+  await page.getByLabel("New password", { exact: true }).fill(password);
+  await page.getByLabel("Confirm the new password").fill(password);
+  await page.getByRole("button", { name: "Set the password" }).click();
+  await expect(page).toHaveURL(/\/login\?set=1$/);
+  await signIn(page, email, password);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(landsOn);
+  return { page, context, password };
 }

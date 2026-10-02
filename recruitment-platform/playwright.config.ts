@@ -48,12 +48,17 @@ const webServer = WITH_API
 
 export default defineConfig({
   testDir: "./e2e",
-  ...(WITH_API ? { testMatch: "auth/**/*.spec.ts" } : { testIgnore: "auth/**" }),
+  ...(WITH_API
+    ? { testMatch: "auth/**/*.spec.ts", globalSetup: "./e2e/auth/global-setup.ts" }
+    : { testIgnore: "auth/**" }),
   fullyParallel: true,
   forbidOnly: CI,
   retries: CI ? 1 : 0,
   // In CI, stop (and still write the report) well before the job's own time limit.
   ...(CI ? { workers: 2, globalTimeout: 20 * 60_000 } : {}),
+  // The sign-in suite shares one API (and a laptop's CPU) between its browsers; more than two
+  // at once starve the API's event loop into timeouts that look like sign-outs.
+  ...(WITH_API ? { workers: 2 } : {}),
   reporter: CI ? [["github"], ["html", { open: "never" }]] : [["list"]],
   timeout: 60_000,
   use: {
