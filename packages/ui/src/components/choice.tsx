@@ -125,3 +125,33 @@ export function Select({
     </SelectPrimitive.Root>
   );
 }
+
+/**
+ * The browser's own select, styled like `Select`. For long lists (countries, time zones): it
+ * renders only `<option>`s, types ahead natively and opens the platform picker on phones, where
+ * `Select` would render every item on each render.
+ */
+export function NativeSelect({
+  options,
+  className,
+  ...props
+}: Omit<ComponentProps<"select">, "children"> & { options: readonly SelectOption[] }) {
+  return (
+    <div className={cn("relative", className)}>
+      <select
+        className="h-9 w-full appearance-none rounded-md border border-input bg-surface pr-8 pl-3 text-foreground text-sm aria-invalid:border-danger"
+        {...props}
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        className="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 opacity-60"
+        aria-hidden
+      />
+    </div>
+  );
+}

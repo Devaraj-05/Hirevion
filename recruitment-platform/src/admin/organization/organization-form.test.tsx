@@ -55,7 +55,7 @@ describe("OrganizationForm", () => {
 
   it("names the country and keeps the current time zone selectable", async () => {
     renderAdmin(<OrganizationForm />);
-    expect(await screen.findByRole("combobox", { name: "Country" })).toHaveTextContent("India");
-    expect(screen.getByRole("combobox", { name: "Time zone" })).toHaveTextContent("Asia/Kolkata");
+    expect(await screen.findByRole("combobox", { name: "Country" })).toHaveDisplayValue("India");
+    expect(screen.getByRole("combobox", { name: "Time zone" })).toHaveDisplayValue("Asia/Kolkata");
   });
 });

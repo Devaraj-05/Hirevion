@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Badge, SeverityBadge } from "./badge";
 import { Breadcrumbs } from "./breadcrumbs";
 import { Button, IconButton } from "./button";
+import { NativeSelect } from "./choice";
 import { EmptyState } from "./empty-state";
 import { KpiTile } from "./kpi-tile";
 
@@ -111,5 +112,29 @@ describe("Breadcrumbs", () => {
     expect(screen.getByRole("navigation", { name: "Breadcrumb" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Administration" })).toHaveAttribute("href", "/admin");
     expect(screen.getByText("Users")).toHaveAttribute("aria-current", "page");
+  });
+});
+
+describe("NativeSelect", () => {
+  it("is a labelled native select that reports the chosen value", async () => {
+    const onChange = vi.fn();
+    render(
+      <>
+        <label htmlFor="zone">Time zone</label>
+        <NativeSelect
+          id="zone"
+          value="Asia/Kolkata"
+          onChange={(event) => onChange(event.target.value)}
+          options={[
+            { value: "Asia/Kolkata", label: "Asia/Kolkata" },
+            { value: "Europe/London", label: "Europe/London" },
+          ]}
+        />
+      </>,
+    );
+    const select = screen.getByRole("combobox", { name: "Time zone" });
+    expect(select).toHaveDisplayValue("Asia/Kolkata");
+    await userEvent.selectOptions(select, "Europe/London");
+    expect(onChange).toHaveBeenCalledWith("Europe/London");
   });
 });

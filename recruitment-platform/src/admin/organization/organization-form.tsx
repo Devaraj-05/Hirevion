@@ -8,6 +8,7 @@ import {
   FormField,
   Input,
   Label,
+  NativeSelect,
   Select,
   Skeleton,
   toast,
@@ -27,6 +28,7 @@ import { useAdminProblem } from "@/admin/problems";
 import { keys } from "@/admin/queries";
 import { z } from "@/config/zod";
 import { COUNTRY_CODES } from "./countries";
+import { timeZoneOptions } from "./time-zones";
 
 const LOCALES = ["en-IN", "en-US"] as const;
 
@@ -59,13 +61,8 @@ function ProfileForm({ profile }: { profile: OrganizationProfile }) {
       (a, b) => a.label.localeCompare(b.label, locale),
     );
   }, [locale]);
-  // The browser's list, plus the saved zone in case the browser spells it another way.
   const zones = useMemo(
-    () =>
-      [...new Set([profile.timezone, ...Intl.supportedValuesOf("timeZone")])].map((zone) => ({
-        value: zone,
-        label: zone,
-      })),
+    () => timeZoneOptions(profile.timezone).map((zone) => ({ value: zone, label: zone })),
     [profile.timezone],
   );
 
@@ -160,32 +157,14 @@ function ProfileForm({ profile }: { profile: OrganizationProfile }) {
             control={form.control}
             name="country"
             label={t("country")}
-            render={(field) => (
-              <Select
-                id={field.id}
-                aria-label={t("country")}
-                aria-invalid={field["aria-invalid"]}
-                options={countries}
-                value={field.value}
-                onValueChange={field.onChange}
-              />
-            )}
+            render={(field) => <NativeSelect options={countries} {...field} />}
           />
           <FormField
             control={form.control}
             name="timezone"
             label={t("timezone")}
             description={t("timezoneHint")}
-            render={(field) => (
-              <Select
-                id={field.id}
-                aria-label={t("timezone")}
-                aria-invalid={field["aria-invalid"]}
-                options={zones}
-                value={field.value}
-                onValueChange={field.onChange}
-              />
-            )}
+            render={(field) => <NativeSelect options={zones} {...field} />}
           />
           <FormField
             control={form.control}

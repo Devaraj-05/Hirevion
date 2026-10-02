@@ -6,6 +6,7 @@ export { Breadcrumbs, type Crumb } from "./components/breadcrumbs";
 export { Button, type ButtonProps, buttonVariants, IconButton } from "./components/button";
 export {
   Checkbox,
+  NativeSelect,
   RadioGroup,
   RadioItem,
   Select,
