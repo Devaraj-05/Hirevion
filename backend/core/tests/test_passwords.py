@@ -1,5 +1,6 @@
 """The password policy and argon2id hashing (SP-02 spec, "Passwords")."""
 
+import asyncio
 import time
 
 from argon2 import PasswordHasher
@@ -9,7 +10,9 @@ from hirevion_core.identity.passwords import (
     DUMMY_HASH,
     PasswordPolicy,
     hash_password,
+    hash_password_in_thread,
     verify_password,
+    verify_password_in_thread,
 )
 
 CONTEXT = {"email": "ravi.kumar@acme.example.test", "name": "Ravi Kumar", "organization": "Acme"}
@@ -84,3 +87,20 @@ def test_a_missing_hash_never_verifies_but_still_takes_the_time() -> None:
     assert DUMMY_HASH.startswith("$argon2id$")
     # Same work either way, so a response time doesn't reveal whether the account exists.
     assert missing > real / 3
+
+
+async def test_hashing_and_checking_leave_the_event_loop_free() -> None:
+    # argon2id takes about 100 ms; on the event loop it would stall every other request.
+    ticks = 0
+
+    async def tick() -> None:
+        nonlocal ticks
+        while True:
+            await asyncio.sleep(0.002)
+            ticks += 1
+
+    ticker = asyncio.create_task(tick())
+    stored = await hash_password_in_thread("correct horse battery staple")
+    assert await verify_password_in_thread(stored, "correct horse battery staple") == (True, False)
+    ticker.cancel()
+    assert ticks >= 10

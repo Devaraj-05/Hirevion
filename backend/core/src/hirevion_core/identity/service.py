@@ -26,8 +26,8 @@ from hirevion_core.identity.lockout import Lockout
 from hirevion_core.identity.passwords import (
     PasswordPolicy,
     PasswordProblem,
-    hash_password,
-    verify_password,
+    hash_password_in_thread,
+    verify_password_in_thread,
 )
 from hirevion_core.identity.sessions import (
     SessionContext,
@@ -129,7 +129,9 @@ class AuthService:
             return LoginRefused(locked)
 
         row = await self._find_user(email)
-        valid, needs_rehash = verify_password(row.password_hash if row else None, password)
+        valid, needs_rehash = await verify_password_in_thread(
+            row.password_hash if row else None, password
+        )
         if (
             row is None
             or not valid
@@ -165,7 +167,7 @@ class AuthService:
                 await session.execute(
                     update(User)
                     .where(User.id == row.user_id)
-                    .values(password_hash=hash_password(password))
+                    .values(password_hash=await hash_password_in_thread(password))
                 )
             token, csrf, web_session = await create_session(
                 session,
@@ -289,7 +291,7 @@ class AuthService:
         user, organization_name = await self._user_and_organization(
             context.organization_id, context.user_id
         )
-        if not verify_password(user.password_hash, current)[0]:
+        if not (await verify_password_in_thread(user.password_hash, current))[0]:
             return ["wrong_current"]
         problems = await self._policy.check(
             new, email=user.email, name=user.name, organization=organization_name
@@ -325,7 +327,7 @@ class AuthService:
         locked = await self._lockout.retry_after(user.email)
         if locked is not None:
             return LoginRefused(locked)
-        if not verify_password(user.password_hash, password)[0]:
+        if not (await verify_password_in_thread(user.password_hash, password))[0]:
             wait = await self._lockout.record_failure(user.email)
             async with self._db.tenant(context.organization_id) as session:
                 await self._record(
@@ -453,7 +455,7 @@ class AuthService:
         already in use answers `unavailable`, which the API reports exactly like `ok`."""
         new_email = new_email.strip()
         user, _ = await self._user_and_organization(context.organization_id, context.user_id)
-        if not verify_password(user.password_hash, password)[0]:
+        if not (await verify_password_in_thread(user.password_hash, password))[0]:
             return "wrong_password"
         if new_email.casefold() == user.email.casefold():
             return "ok"
@@ -535,7 +537,7 @@ class AuthService:
         await session.execute(
             update(User)
             .where(User.id == user_id)
-            .values(password_hash=hash_password(password), password_changed_at=now)
+            .values(password_hash=await hash_password_in_thread(password), password_changed_at=now)
         )
 
     async def _issue(

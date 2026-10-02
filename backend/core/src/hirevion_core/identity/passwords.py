@@ -8,6 +8,7 @@ keyboards is the same password.
 
 from __future__ import annotations
 
+import asyncio
 import unicodedata
 from contextlib import suppress
 from typing import Literal
@@ -82,3 +83,14 @@ def verify_password(stored: str | None, password: str) -> tuple[bool, bool]:
     except (VerificationError, InvalidHashError):
         return False, False
     return True, _hasher.check_needs_rehash(stored)
+
+
+async def hash_password_in_thread(password: str) -> str:
+    """`hash_password` on a worker thread: argon2id takes about 100 ms and releases the GIL, so
+    the event loop keeps serving other requests meanwhile."""
+    return await asyncio.to_thread(hash_password, password)
+
+
+async def verify_password_in_thread(stored: str | None, password: str) -> tuple[bool, bool]:
+    """`verify_password` on a worker thread, for the same reason."""
+    return await asyncio.to_thread(verify_password, stored, password)

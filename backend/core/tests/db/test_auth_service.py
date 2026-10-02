@@ -126,13 +126,13 @@ async def test_an_unknown_email_gets_the_same_answer_and_the_same_work(
     auth: AuthService, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     checked: list[str | None] = []
-    real = service_module.verify_password
+    real = service_module.verify_password_in_thread
 
-    def spy(stored: str | None, password: str) -> tuple[bool, bool]:
+    async def spy(stored: str | None, password: str) -> tuple[bool, bool]:
         checked.append(stored)
-        return real(stored, password)
+        return await real(stored, password)
 
-    monkeypatch.setattr(service_module, "verify_password", spy)
+    monkeypatch.setattr(service_module, "verify_password_in_thread", spy)
     assert await auth.login("nobody@example.test", PASSWORD, **WHERE) == LoginRefused(None)
     assert checked == [None]
 
