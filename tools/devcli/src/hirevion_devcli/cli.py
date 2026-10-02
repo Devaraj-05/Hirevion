@@ -28,7 +28,7 @@ from . import doctor as doctor_checks
 from .checks import CheckResult
 from .envfile import generate_local_secrets, init_env, parse_env, sync_env
 from .hosts import HOSTS_PATH, ensure_hosts
-from .identity import invite_super_admin, seed, work
+from .identity import invite_super_admin, reset_rate_limits, seed, work
 from .livekit import (
     Grants,
     build_token,
@@ -312,6 +312,18 @@ def seed_identity_command() -> None:
     for email in seed_emails():
         console.print(f"{email}  {'created' if email in created else 'already there'}")
     console.print("They sign in with the HV_SEED_PASSWORD from .env.")
+
+
+@app.command("reset-limits")
+def reset_limits_command() -> None:
+    """Clear every rate limit and sign-in lockout in the local Valkey (development only)."""
+    values = _require_env(repo_root())
+    environment = os.environ.get("HV_ENVIRONMENT") or values.get("HV_ENVIRONMENT", "development")
+    if environment == "production":
+        console.print("Refusing to clear rate limits with HV_ENVIRONMENT=production.")
+        raise typer.Exit(code=1)
+    removed = asyncio.run(reset_rate_limits())
+    console.print(f"Cleared {removed} rate-limit and lockout entries.")
 
 
 @app.command()

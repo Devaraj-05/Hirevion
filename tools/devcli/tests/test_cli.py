@@ -98,3 +98,28 @@ def test_seed_identity_needs_a_seed_password(
     result = runner.invoke(app, ["seed-identity"])
     assert result.exit_code == 1
     assert "HV_SEED_PASSWORD" in result.output
+
+
+def test_reset_limits_refuses_production(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    identity_repo(tmp_path, "HV_ENVIRONMENT=production\n")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("HV_ENVIRONMENT", raising=False)
+    result = runner.invoke(app, ["reset-limits"])
+    assert result.exit_code == 1
+    assert "production" in result.output
+
+
+def test_reset_limits_says_how_many_it_cleared(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    identity_repo(tmp_path, "HV_ENVIRONMENT=development\n")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("HV_ENVIRONMENT", raising=False)
+
+    async def reset() -> int:
+        return 3
+
+    monkeypatch.setattr(cli, "reset_rate_limits", reset)
+    result = runner.invoke(app, ["reset-limits"])
+    assert result.exit_code == 0
+    assert "3" in result.output

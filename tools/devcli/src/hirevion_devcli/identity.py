@@ -1,13 +1,16 @@
-"""`hv create-super-admin`, `hv seed-identity` and `hv worker` (SP-02a)."""
+"""`hv create-super-admin`, `hv seed-identity`, `hv worker` and `hv reset-limits` (SP-02)."""
 
 from __future__ import annotations
 
 import asyncio
 
+from redis.asyncio import Redis
+
 from hirevion_core.db.session import create_database
 from hirevion_core.identity.bootstrap import SeedResult, create_super_admin, seed_identity
 from hirevion_core.identity.settings import load_identity_settings
 from hirevion_core.mail.runner import run_workers
+from hirevion_core.ratelimit import reset_limits
 from hirevion_core.settings import load_core_settings
 
 
@@ -34,3 +37,12 @@ async def seed(password: str, environment: str) -> SeedResult:
 async def work() -> None:
     """Runs until cancelled (Ctrl+C)."""
     await run_workers(load_core_settings(), asyncio.Event())
+
+
+async def reset_rate_limits() -> int:
+    """Clears every rate limit and sign-in lockout in the local Valkey."""
+    redis = Redis.from_url(load_core_settings().valkey_url())
+    try:
+        return await reset_limits(redis)
+    finally:
+        await redis.aclose()

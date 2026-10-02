@@ -77,3 +77,18 @@ class RateLimiter:
             retry_after_seconds=math.ceil(int(retry_ms) / 1000),
             reset_seconds=math.ceil(int(reset_ms) / 1000),
         )
+
+
+# Every rate-limit bucket, and the sign-in lockouts (`hirevion_core.identity.lockout`).
+_RESETTABLE = ("hv:rl:*", "lockout:*")
+
+
+async def reset_limits(redis: Redis) -> int:
+    """Forgets every rate-limit bucket and sign-in lockout; returns how many keys it removed.
+    For development and the end-to-end suites only: `hv reset-limits` refuses production."""
+    removed = 0
+    for pattern in _RESETTABLE:
+        keys = [key async for key in redis.scan_iter(match=pattern, count=500)]
+        if keys:
+            removed += int(await redis.delete(*keys))
+    return removed

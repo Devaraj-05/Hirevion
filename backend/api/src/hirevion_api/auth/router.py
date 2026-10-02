@@ -39,11 +39,13 @@ router = api_router(tags=["auth"])
 
 # Sign-in and token routes refuse requests when Valkey is down (fail closed).
 # Per IP it allows for an office behind one address; per email, the lockout does the rest.
-LOGIN_BY_IP = RateRule("login-ip", 30, 60, fail_closed=True)
+LOGIN_BY_IP = RateRule("login-ip", 60, 60, fail_closed=True)
 LOGIN_BY_EMAIL = RateRule("login-email", 10, 60, fail_closed=True)
 FORGOT_BY_IP = RateRule("forgot-ip", 20, 3600, fail_closed=True)
 FORGOT_BY_EMAIL = RateRule("forgot-email", 5, 3600, fail_closed=True)
 TOKENS_BY_IP = RateRule("auth-token-ip", 20, 60, fail_closed=True)
+# Step-up already needs a session, and wrong passwords count towards the sign-in lockout.
+STEP_UP_BY_IP = RateRule("step-up-ip", 30, 60, fail_closed=True)
 
 _INVALID_CREDENTIALS = ("invalid-credentials", "Email or password is incorrect")
 _INVALID_TOKEN = (
@@ -164,7 +166,7 @@ async def change_password(
         raise _rejected(outcome, "new_password")
 
 
-@router.post("/auth/step-up", status_code=204, dependencies=[Depends(rate_limited(LOGIN_BY_IP))])
+@router.post("/auth/step-up", status_code=204, dependencies=[Depends(rate_limited(STEP_UP_BY_IP))])
 async def step_up(
     body: StepUpRequest, request: Request, auth: Auth, context: CurrentSession
 ) -> None:
