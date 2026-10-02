@@ -796,7 +796,7 @@ Pairing again revokes the old device. Egress records the stream.
 ## 7. Data model & tenancy (§81, §85, §89)
 
 - **Every §89 table**, implemented by its owning sub-project:
-  - Organisations and access: `organizations`, `organization_settings`, `users`, `roles`, `permissions`, `user_roles`, `teams`.
+  - Organisations and access: `organizations`, `organization_settings`, `users`, `roles`, `permissions` (the catalogue lives in code; custom roles' grants are `role_permissions`, ADR-0014), `user_roles`, `teams`.
   - Jobs: `jobs`, `job_versions`, `job_skills`.
   - Candidates and resumes: `candidates`, `candidate_documents`, `applications`, `resume_parses`, `resume_skills`, `resume_embeddings`, `screening_results`.
   - Interview configuration: `interview_templates`, `interview_template_versions`, `question_library`, `question_versions`.
@@ -806,8 +806,8 @@ Pairing again revokes the old device. Egress records the stream.
   - Evaluation and reports: `skill_evaluations`, `question_evaluations`, `interview_evaluations`, `reports`, `report_exports`.
   - Platform: `notifications`, `webhooks`, `integrations`, `audit_logs`.
 - **Added tables:**
-  - Organisation structure: `departments`.
-  - Recruiter identity: `user_invitations`, `web_sessions`, `mfa_factors`, `recovery_codes`, `password_reset_tokens`, `email_verification_tokens`, `sso_connections`, `verified_domains`, `scim_tokens`.
+  - Organisation structure: `departments`, `team_members`, `role_permissions`.
+  - Recruiter identity: `web_sessions`, `auth_tokens` (single-use set-password, reset and email-confirmation links, ADR-0013), `mfa_factors`, `recovery_codes`, `sso_connections`, `verified_domains`, `scim_tokens`. An invitation is an `invited` user plus a set-password link (ADR-0014), so there is no separate invitations table.
   - Candidate identity: `candidate_accounts`, `candidate_devices`, `candidate_otps`.
   - Jobs and applications: `job_documents`, `candidate_notes`, `application_status_history`, `hiring_inputs`.
   - Interview lifecycle: `interview_reviewers`, `invitations`, `consents`, `policy_documents`, `accommodations`, `system_check_results`, `session_interruptions`.

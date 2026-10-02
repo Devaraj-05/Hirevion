@@ -192,7 +192,8 @@ How accounts, sessions and the sign-in lookups work is in
    - the organisation "Acme Talent (dev)", with one user per role: `org-admin@acme.example.test`,
      `recruiter@acme.example.test`, `hiring-manager@acme.example.test` and
      `interviewer@acme.example.test`;
-   - the super admin `super@hirevion.example.test` in the Platform organisation.
+   - the super admin `super@hirevion.example.test` in the Platform organisation;
+   - the department "Engineering" and its team "Platform hiring", with the recruiter in it.
 
    They all use `HV_SEED_PASSWORD` from `.env` (`hv env-sync` generates it). The command refuses
    to run when `HV_ENVIRONMENT=production`.
@@ -205,13 +206,36 @@ How accounts, sessions and the sign-in lookups work is in
    `hv:dead:mail` stream.
 4. **Another super admin.** `uv run hv create-super-admin --email you@example.test --name "You"`
    prints a one-time set-password link, valid for 72 hours (`HV_SET_PASSWORD_TOKEN_HOURS`).
-5. **Locked out.** Five wrong passwords lock the email for a minute, doubling up to an hour.
-   Locks are Valkey keys named `lockout:<SHA-256 of the lower-cased email>`;
-   `docker exec hirevion-valkey-1 valkey-cli -a <VALKEY_PASSWORD> --scan --pattern "lockout:*"`
-   lists them, and deleting one unlocks that email.
+5. **Locked out.** Five wrong passwords (at sign-in or when confirming a change) lock the email
+   for a minute, doubling up to an hour. `uv run hv reset-limits` clears every lockout and rate
+   limit in the local Valkey (it refuses production). Locks are keys named
+   `lockout:<SHA-256 of the lower-cased email>`, and limits are `hv:rl:<rule>:<subject>`.
 6. **Breached-password check.** New passwords are checked against a bundled list and, with
    `HV_HIBP_ENABLED=true` (the default), the Have I Been Pwned range API. Only the first five
    characters of the password's SHA-1 leave the PC. Set it to `false` offline.
+
+### Administration
+
+How roles, guards, step-up and scope work is in
+[ADR-0014](../architecture/adr/0014-organizations-and-access.md).
+
+- **Organisation admins** (`org-admin@acme.example.test`) use Administration:
+  - **Users:** invite people (they get a set-password email in Mailpit), change their roles,
+    teams and access, disable or enable them.
+  - **Roles:** custom roles, and the permission matrix.
+  - **Teams and departments.**
+  - **Organisation:** the profile.
+- **Super admins** (`super@hirevion.example.test`) use Platform → Organisations to create,
+  suspend and reactivate organisations. Super admins are users of the Platform organisation, so
+  Administration → Users there invites another super admin.
+- **Step-up:** role changes, invitations, enabling or disabling someone, custom-role changes and
+  platform changes ask for the password again unless it was confirmed in the last
+  `HV_STEP_UP_MINUTES` (10).
+- **Development sessions** (the role picker under `next dev`) have no account behind them, so
+  these pages show a notice asking you to sign in with a seeded user.
+- **New API routes** must use `requires(...)` from `hirevion_api.authz` (or be listed in its
+  `UNGUARDED` with a reason), and their guard must be added to the table in
+  `backend/api/tests/test_authorization_matrix.py`. CI fails otherwise.
 
 **End-to-end sign-in suite.** With the stack up, `hv seed-identity` done and `uv run hv api`
 running:
@@ -220,10 +244,19 @@ running:
 HV_E2E_API=1 pnpm --filter @hirevion/recruitment-platform e2e
 ```
 
-It builds the web app without development sessions, serves it on port 3101 behind a small
-gateway on 3100 (standing in for Caddy), and signs in, resets passwords, changes email addresses
-and revokes sessions for real, reading the emails from Mailpit. It invites its own super admins
-with `uv run hv create-super-admin`; set `HV_UV` to uv's full path if `uv` isn't on `PATH`.
+It builds the web app without development sessions and serves it on port 3101, behind a small
+gateway on 3100 standing in for Caddy. It then works for real, reading the emails from Mailpit:
+- signs in, resets passwords, changes email addresses and revokes sessions;
+- invites users and confirms passwords;
+- creates custom roles;
+- disables users;
+- creates and suspends organisations.
+
+How it runs:
+- It first clears local rate limits (`hv reset-limits`) and runs two browsers at a time, as CI
+  does; more starve the API on a laptop.
+- It invites its own super admins with `uv run hv create-super-admin`; set `HV_UV` to uv's full
+  path if `uv` isn't on `PATH`.
 
 ## Desktop app (`ai-interviewer-desktop`)
 
