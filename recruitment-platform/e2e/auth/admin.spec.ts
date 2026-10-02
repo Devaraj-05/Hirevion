@@ -165,3 +165,22 @@ test("a super admin creates an organisation, then suspends and reactivates it", 
   await expect(firstAdmin.page.getByRole("heading", { level: 1 })).toHaveText("Jobs");
   await firstAdmin.context.close();
 });
+
+test("an organisation admin saves the profile", async ({ page }) => {
+  await signedIn(page, ORG_ADMIN, seedPassword());
+  await page.goto("/admin/organization");
+  const zone = page.getByRole("combobox", { name: "Time zone" });
+  const original = await zone.inputValue();
+  await noAxeViolations(page);
+
+  await zone.selectOption("Asia/Tokyo");
+  await page.getByRole("button", { name: "Save profile" }).click();
+  await expect(page.getByText("Profile saved.")).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("combobox", { name: "Time zone" })).toHaveValue("Asia/Tokyo");
+
+  // Leave the seeded organisation as it was.
+  await page.getByRole("combobox", { name: "Time zone" }).selectOption(original);
+  await page.getByRole("button", { name: "Save profile" }).click();
+  await expect(page.getByText("Profile saved.")).toBeVisible();
+});
