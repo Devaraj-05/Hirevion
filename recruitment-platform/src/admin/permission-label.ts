@@ -10,3 +10,14 @@ export function permissionLabelKey(permission: Permission | string): string {
 export function permissionArea(permission: Permission | string): string {
   return permission.split(".", 1)[0] ?? permission;
 }
+
+/** Catalogue entries grouped by area, areas and entries keeping their catalogue order. */
+export function byArea<T extends { area: string }>(entries: readonly T[]): [string, T[]][] {
+  const groups = new Map<string, T[]>();
+  for (const entry of entries) {
+    const group = groups.get(entry.area);
+    if (group) group.push(entry);
+    else groups.set(entry.area, [entry]);
+  }
+  return [...groups];
+}

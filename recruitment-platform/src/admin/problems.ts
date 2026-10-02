@@ -20,9 +20,10 @@ export function useAdminProblem() {
     [t],
   );
 
-  /** Shows a refusal as a toast. */
+  /** Shows a refusal as a toast; a cancelled password confirmation needs no message. */
   const show = useCallback(
     (error: unknown) => {
+      if (isApiProblem(error) && error.code === "step-up-required") return;
       const known = message(error);
       if (known) toast.error(known, {});
       else showProblem(error);

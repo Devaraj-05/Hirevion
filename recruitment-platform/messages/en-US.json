@@ -223,7 +223,10 @@
     "saveView": "Save view",
     "applyView": "Apply view {name}",
     "deleteView": "Delete view {name}",
-    "noViews": "No saved views yet."
+    "noViews": "No saved views yet.",
+    "pager": "Pages",
+    "previous": "Previous page",
+    "next": "Next page"
   },
   "jobs": {
     "table": {
@@ -440,7 +443,11 @@
       "name": "Name",
       "description": "Description",
       "nameRequired": "Enter a name.",
-      "optional": "Optional"
+      "optional": "Optional",
+      "languages": {
+        "en-IN": "English (India)",
+        "en-US": "English (US)"
+      }
     },
     "problems": {
       "name-taken": "That name is already in use.",
@@ -460,6 +467,81 @@
       "invalid-timezone": "Choose a time zone from the list.",
       "invalid-website": "Use a web address starting https://",
       "invalid-slug": "Use 3 to 40 lower-case letters, digits and hyphens, not starting or ending with one."
+    },
+    "users": {
+      "caption": "Users",
+      "invite": "Invite user",
+      "search": "Search by name or email",
+      "name": "Name",
+      "roles": "Roles",
+      "teams": "Teams",
+      "status": "Status",
+      "access": "Access",
+      "anyStatus": "Any status",
+      "anyRole": "Any role",
+      "anyTeam": "Any team",
+      "statuses": {
+        "invited": "Invited",
+        "active": "Active",
+        "disabled": "Disabled"
+      },
+      "scopes": {
+        "organization": "Whole organization",
+        "teams": "Their teams' work"
+      },
+      "scopeHint": "Someone limited to their teams sees only the work of the teams they're in, and their own.",
+      "noTeams": "No teams yet.",
+      "emptyTitle": "No users match",
+      "emptyHint": "Change the filters, or invite someone.",
+      "open": "Open {name}",
+      "inviteTitle": "Invite a user",
+      "inviteDescription": "They'll get an email with a link to set their password. The link works once, for 72 hours.",
+      "email": "Email",
+      "language": "Email language",
+      "send": "Send invitation",
+      "sent": "Invitation sent to {email}.",
+      "emailRequired": "Enter an email address.",
+      "nameRequired": "Enter their name.",
+      "rolesRequired": "Choose at least one role.",
+      "details": "Details",
+      "saveDetails": "Save details",
+      "saveRoles": "Save roles",
+      "disable": "Disable user",
+      "enable": "Enable user",
+      "resend": "Resend invitation",
+      "cancelInvitation": "Cancel invitation",
+      "resent": "A new invitation is on its way to {email}.",
+      "cancelled": "The invitation to {email} is canceled.",
+      "disabled": "{name} can no longer sign in.",
+      "enabled": "{name} can sign in again.",
+      "saved": "Saved.",
+      "invitedNote": "Invited: hasn't set a password yet.",
+      "disabledNote": "Disabled: can't sign in.",
+      "loading": "Loading…"
+    },
+    "roles": {
+      "newRole": "New role",
+      "builtIn": "Built in",
+      "custom": "Custom",
+      "members": "{count, plural, one {# member} other {# members}}",
+      "edit": "Edit {name}",
+      "listTitle": "Roles",
+      "matrixTitle": "Permission matrix",
+      "matrixCaption": "What each role can do",
+      "permission": "Permission",
+      "granted": "Granted",
+      "notGranted": "Not granted",
+      "createTitle": "New role",
+      "editTitle": "Edit {name}",
+      "editorDescription": "A role's permissions apply to everyone who has it, from their next page.",
+      "permissions": "Permissions",
+      "notYours": "You can't grant what you don't have.",
+      "save": "Save role",
+      "delete": "Delete role",
+      "created": "{name} created.",
+      "deleted": "{name} deleted.",
+      "nameRequired": "Enter a name.",
+      "builtInNote": "Built-in roles can't be changed. Create a custom role to grant a different set."
     }
   }
 }

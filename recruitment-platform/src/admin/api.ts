@@ -31,20 +31,21 @@ export interface Page<T> {
   next_cursor: string | null;
 }
 
+/** Filters a page leaves out are `undefined`; empty ones are dropped before the request. */
 export interface UserQuery {
-  status?: User["status"];
-  role_id?: string;
-  team_id?: string;
-  q?: string;
-  limit?: number;
-  cursor?: string | null;
+  status?: User["status"] | undefined;
+  role_id?: string | undefined;
+  team_id?: string | undefined;
+  q?: string | undefined;
+  limit?: number | undefined;
+  cursor?: string | null | undefined;
 }
 
 export interface OrganizationQuery {
-  status?: OrganizationListing["status"];
-  q?: string;
-  limit?: number;
-  cursor?: string | null;
+  status?: OrganizationListing["status"] | undefined;
+  q?: string | undefined;
+  limit?: number | undefined;
+  cursor?: string | null | undefined;
 }
 
 /** The API answers every success with a body; a missing one is a bug, not a state to handle. */
@@ -57,12 +58,14 @@ function idempotent(key: string) {
   return { header: { "Idempotency-Key": key } };
 }
 
-function cleanQuery<T extends object>(query: T): T {
+type Defined<T> = { [K in keyof T]?: Exclude<T[K], undefined> };
+
+function cleanQuery<T extends object>(query: T): Defined<T> {
   return Object.fromEntries(
     Object.entries(query).filter(
       ([, value]) => value !== undefined && value !== null && value !== "",
     ),
-  ) as T;
+  ) as Defined<T>;
 }
 
 // The organisation profile

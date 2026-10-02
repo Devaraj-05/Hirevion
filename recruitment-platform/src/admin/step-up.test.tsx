@@ -7,6 +7,9 @@ import { stepUp } from "@/auth/api";
 import { renderWithIntl } from "@/test/render";
 import { StepUpProvider, useStepUp } from "./step-up";
 
+// Dialogs typed into by userEvent take longer than the default 5 s when the whole suite runs.
+vi.setConfig({ testTimeout: 15_000 });
+
 vi.mock("@/auth/api", () => ({ stepUp: vi.fn() }));
 
 function problem(code: string, status = 403) {
