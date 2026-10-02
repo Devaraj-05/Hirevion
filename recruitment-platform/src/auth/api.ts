@@ -121,6 +121,27 @@ export async function verifyEmail(token: string): Promise<"verified" | "expired"
   }
 }
 
+export type StepUpResult =
+  | { ok: true }
+  | { ok: false; reason: "wrong" }
+  | { ok: false; reason: "locked"; retryAfter: number | null }
+  | { ok: false; reason: "unavailable" };
+
+/** Confirms the password before a sensitive change (ADR-0014). */
+export async function stepUp(password: string): Promise<StepUpResult> {
+  try {
+    await apiClient().POST("/api/v1/auth/step-up", { body: { password } });
+    return { ok: true };
+  } catch (error) {
+    if (isApiProblem(error) && error.status === 422) return { ok: false, reason: "wrong" };
+    if (isApiProblem(error) && error.status === 429) {
+      const retry = error.raw.retry_after;
+      return { ok: false, reason: "locked", retryAfter: typeof retry === "number" ? retry : null };
+    }
+    return { ok: false, reason: "unavailable" };
+  }
+}
+
 export async function listSessions(): Promise<SessionItem[]> {
   const { data } = await apiClient().GET("/api/v1/auth/sessions");
   return data ?? [];
