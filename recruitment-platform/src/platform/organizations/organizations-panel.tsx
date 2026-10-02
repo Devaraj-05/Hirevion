@@ -88,7 +88,8 @@ export function OrganizationsPanel() {
     listOrganizations({ ...query, cursor, limit: PAGE_SIZE }),
   );
 
-  const reactivate = useMutation({
+  // `mutate` is stable, so the columns (and the open row menu) survive re-renders.
+  const { mutate: reactivate } = useMutation({
     mutationFn: (organization: OrganizationListing) =>
       withStepUp(() => reactivateOrganization(organization.id)),
     onSuccess: (saved) => {
@@ -156,7 +157,7 @@ export function OrganizationsPanel() {
                     {t("suspend")}
                   </DropdownMenuItem>
                 ) : (
-                  <DropdownMenuItem onSelect={() => reactivate.mutate(organization)}>
+                  <DropdownMenuItem onSelect={() => reactivate(organization)}>
                     {t("reactivate")}
                   </DropdownMenuItem>
                 )}
