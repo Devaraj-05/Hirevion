@@ -22,10 +22,12 @@ from hirevion_core.identity.permissions import ORGANIZATION_ROLES
 from hirevion_core.identity.roles import ensure_system_roles
 from hirevion_core.identity.settings import IdentitySettings
 from hirevion_core.identity.tokens import issue_token
-from hirevion_core.models import Organization, Role, User, UserRole
+from hirevion_core.models import Department, Organization, Role, Team, TeamMember, User, UserRole
 
 SEED_ORGANIZATION_SLUG = "acme-dev"
 SEED_ORGANIZATION_NAME = "Acme Talent (dev)"
+SEED_DEPARTMENT = "Engineering"
+SEED_TEAM = "Platform hiring"
 SEED_SUPER_ADMIN_EMAIL = "super@hirevion.example.test"
 # The same synthetic names as the web app's development sessions.
 SEED_NAMES = {
@@ -148,4 +150,24 @@ async def seed_identity(
             await session.flush()
             await _grant(session, owner, user.id, role)
         created.append(email)
+    async with db.tenant(organization_id) as session:
+        await _seed_structure(session, organization_id)
     return SeedResult(organization_id=organization_id, created=created)
+
+
+async def _seed_structure(session: AsyncSession, organization_id: UUID) -> None:
+    """A department and a team holding the seeded recruiter, so the admin pages and the team
+    limit have something to show (ADR-0014)."""
+    department = await session.scalar(
+        select(Department).where(Department.name == SEED_DEPARTMENT)
+    ) or Department(organization_id=organization_id, name=SEED_DEPARTMENT)
+    session.add(department)
+    await session.flush()
+    team = await session.scalar(select(Team).where(Team.name == SEED_TEAM)) or Team(
+        organization_id=organization_id, name=SEED_TEAM, department_id=department.id
+    )
+    session.add(team)
+    await session.flush()
+    recruiter = await session.scalar(select(User.id).where(User.email == seed_email("recruiter")))
+    if recruiter is not None and await session.get(TeamMember, (team.id, recruiter)) is None:
+        session.add(TeamMember(organization_id=organization_id, team_id=team.id, user_id=recruiter))

@@ -90,3 +90,28 @@ async def test_seeding_never_runs_in_production(
         await seed_identity(
             Database(admin_engine), app_db, password=SEED_PASSWORD, environment="production"
         )
+
+
+async def test_seeding_adds_a_department_and_a_team_with_the_recruiter_once(
+    app_db: Database, admin_engine: AsyncEngine
+) -> None:
+    admin = Database(admin_engine)
+    seeded = await seed_identity(admin, app_db, password=SEED_PASSWORD, environment="development")
+    await seed_identity(admin, app_db, password=SEED_PASSWORD, environment="development")
+
+    async with admin_engine.connect() as conn:
+        rows = (
+            await conn.execute(
+                text(
+                    "SELECT d.name AS department, t.name AS team, "
+                    "array_agg(u.email ORDER BY u.email) AS members "
+                    "FROM teams t JOIN departments d ON d.id = t.department_id "
+                    "JOIN team_members m ON m.team_id = t.id JOIN users u ON u.id = m.user_id "
+                    "WHERE t.organization_id = :org GROUP BY d.name, t.name"
+                ),
+                {"org": seeded.organization_id},
+            )
+        ).all()
+    assert [(r.department, r.team, r.members) for r in rows] == [
+        ("Engineering", "Platform hiring", ["recruiter@acme.example.test"])
+    ]
