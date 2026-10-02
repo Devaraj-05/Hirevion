@@ -81,3 +81,14 @@ async def claim_token(session: AsyncSession, ref: TokenRef, *, now: datetime) ->
         .returning(AuthToken)
     )
     return result.scalar_one_or_none()
+
+
+async def revoke_tokens(
+    session: AsyncSession, *, user_id: UUID, now: datetime, purpose: TokenPurpose | None = None
+) -> None:
+    """Marks the user's unused tokens as used, for one purpose or for all: a resent invitation
+    replaces the earlier link, and a disabled user's links stop working."""
+    conditions = [AuthToken.user_id == user_id, AuthToken.used_at.is_(None)]
+    if purpose is not None:
+        conditions.append(AuthToken.purpose == purpose)
+    await session.execute(update(AuthToken).where(*conditions).values(used_at=now))

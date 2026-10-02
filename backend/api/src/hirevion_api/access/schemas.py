@@ -12,6 +12,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from hirevion_api.auth.schemas import Email
+
 Name = Annotated[str, Field(min_length=1, max_length=200)]
 Description = Annotated[str, Field(max_length=500)]
 
@@ -130,3 +132,63 @@ class MemberResponse(BaseModel):
     name: str
     email: str
     status: Literal["invited", "active", "disabled"]
+
+
+# Users
+
+
+class RoleRef(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    key: str | None = Field(description="The system role's key; null for a custom role.")
+    name: str
+
+
+class TeamRef(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    name: str
+
+
+class UserResponse(BaseModel):
+    id: UUID
+    name: str
+    email: str
+    status: Literal["invited", "active", "disabled"]
+    access_scope: Literal["organization", "teams"] = Field(
+        description="`teams`: only their teams' work, and their own."
+    )
+    locale: Literal["en-IN", "en-US"]
+    roles: list[RoleRef]
+    teams: list[TeamRef]
+    created_at: datetime
+
+
+class UserInvite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: Email
+    name: Name
+    role_ids: list[UUID] = Field(description="At least one.")
+    team_ids: list[UUID] = Field(default_factory=list)
+    access_scope: Literal["organization", "teams"] = "organization"
+    locale: Literal["en-IN", "en-US"] = "en-IN"
+
+
+class UserUpdate(Patch):
+    name: Name | None = None
+    access_scope: Literal["organization", "teams"] | None = None
+    team_ids: list[UUID] | None = Field(default=None, description="Replaces their teams.")
+
+    @field_validator("name", "access_scope", "team_ids")
+    @classmethod
+    def _present(cls, value: object) -> object:
+        return not_null(value)
+
+
+class UserRolesUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    role_ids: list[UUID] = Field(description="Replaces their roles; at least one.")

@@ -56,6 +56,15 @@ EXPECTED: dict[str, tuple[tuple[str, ...], bool]] = {
     "GET /api/v1/teams/{team_id}/members": (("admin.teams.manage",), False),
     "PUT /api/v1/teams/{team_id}/members/{user_id}": (("admin.teams.manage",), False),
     "DELETE /api/v1/teams/{team_id}/members/{user_id}": (("admin.teams.manage",), False),
+    "GET /api/v1/users": (("admin.users.manage", "admin.teams.manage"), False),
+    "POST /api/v1/users": (("admin.users.manage",), True),
+    "GET /api/v1/users/{user_id}": (("admin.users.manage",), False),
+    "PATCH /api/v1/users/{user_id}": (("admin.users.manage",), False),
+    "PUT /api/v1/users/{user_id}/roles": (("admin.users.manage",), True),
+    "POST /api/v1/users/{user_id}/disable": (("admin.users.manage",), True),
+    "POST /api/v1/users/{user_id}/enable": (("admin.users.manage",), True),
+    "POST /api/v1/users/{user_id}/invitation": (("admin.users.manage",), True),
+    "DELETE /api/v1/users/{user_id}": (("admin.users.manage",), True),
 }
 
 

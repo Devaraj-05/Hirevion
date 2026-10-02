@@ -16,6 +16,13 @@ CONTEXTS: dict[str, dict[str, str]] = {
         "hours": "24",
     },
     "email_change_requested": {"name": "Ravi", "new_email": "new@x.test", "forgot_link": FORGOT},
+    "invitation": {
+        "name": "Ravi",
+        "inviter": "Olivia Admin",
+        "organization": "Acme Talent",
+        "link": "https://app.hirevion.localhost/set-password/abc",
+        "hours": "72",
+    },
 }
 
 
@@ -49,3 +56,11 @@ def test_an_unknown_language_falls_back_to_en_in() -> None:
 
 def test_the_expiry_is_stated() -> None:
     assert "30 minutes" in render("reset_password", "en-US", CONTEXTS["reset_password"]).text
+
+
+@pytest.mark.parametrize("locale", ["en-IN", "en-US"])
+def test_an_invitation_says_who_invited_them_and_where(locale: str) -> None:
+    mail = render("invitation", locale, CONTEXTS["invitation"])
+    assert "Acme Talent" in mail.subject
+    for part in (mail.text, mail.html):
+        assert "Olivia Admin" in part and "Acme Talent" in part and "72 hours" in part

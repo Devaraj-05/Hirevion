@@ -9,13 +9,14 @@ from typing import Literal
 from jinja2 import Environment, PackageLoader, StrictUndefined, select_autoescape
 
 MailTemplate = Literal[
-    "reset_password", "password_changed", "verify_email", "email_change_requested"
+    "reset_password", "password_changed", "verify_email", "email_change_requested", "invitation"
 ]
 MAIL_TEMPLATES: tuple[MailTemplate, ...] = (
     "reset_password",
     "password_changed",
     "verify_email",
     "email_change_requested",
+    "invitation",
 )
 
 LOCALES = ("en-IN", "en-US")
