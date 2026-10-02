@@ -245,6 +245,112 @@
         "title": "MemberResponse",
         "type": "object"
       },
+      "OrganizationAdminInvite": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "maxLength": 320,
+            "minLength": 3,
+            "pattern": "^[^@\\s]+@[^@\\s]+$",
+            "title": "Email",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "email"
+        ],
+        "title": "OrganizationAdminInvite",
+        "type": "object"
+      },
+      "OrganizationCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "admin_email": {
+            "maxLength": 320,
+            "minLength": 3,
+            "pattern": "^[^@\\s]+@[^@\\s]+$",
+            "title": "Admin Email",
+            "type": "string"
+          },
+          "admin_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Admin Name",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "maxLength": 40,
+            "minLength": 3,
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "slug",
+          "admin_name",
+          "admin_email"
+        ],
+        "title": "OrganizationCreate",
+        "type": "object"
+      },
+      "OrganizationListingResponse": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "suspended"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "user_count": {
+            "title": "User Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "status",
+          "created_at",
+          "user_count"
+        ],
+        "title": "OrganizationListingResponse",
+        "type": "object"
+      },
       "OrganizationProfileResponse": {
         "properties": {
           "country": {
@@ -380,6 +486,54 @@
           }
         },
         "title": "OrganizationProfileUpdate",
+        "type": "object"
+      },
+      "OrganizationSuspend": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "OrganizationSuspend",
+        "type": "object"
+      },
+      "Page_OrganizationListingResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/OrganizationListingResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` to get the next page; null on the last page.",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "Page[OrganizationListingResponse]",
         "type": "object"
       },
       "Page_UserResponse_": {
@@ -2505,6 +2659,366 @@
         "summary": "List Permissions",
         "tags": [
           "roles"
+        ]
+      }
+    },
+    "/api/v1/platform/organizations": {
+      "get": {
+        "description": "Every organisation, the Platform one included, by name, with its user count.",
+        "operationId": "list_organizations",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "active",
+                    "suspended"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "description": "Part of a name or slug.",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Part of a name or slug.",
+              "title": "Q"
+            }
+          },
+          {
+            "description": "How many items to return.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "description": "How many items to return.",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "`next_cursor` from the previous page.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`next_cursor` from the previous page.",
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_OrganizationListingResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "List Organizations",
+        "tags": [
+          "platform"
+        ]
+      },
+      "post": {
+        "description": "A new organisation with its built-in roles and an invited first admin, who is emailed a\nlink to set their password.",
+        "operationId": "create_organization",
+        "parameters": [
+          {
+            "description": "Required. A unique value (a UUID is ideal) per logical create; send the same value when retrying it.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Required. A unique value (a UUID is ideal) per logical create; send the same value when retrying it.",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrganizationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationListingResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Create Organization",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/api/v1/platform/organizations/{organization_id}/admins": {
+      "post": {
+        "description": "Invites another organisation admin, for when the first invitation lapsed.",
+        "operationId": "invite_organization_admin",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organization_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organization Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrganizationAdminInvite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Invite Organization Admin",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/api/v1/platform/organizations/{organization_id}/reactivate": {
+      "post": {
+        "operationId": "reactivate_organization",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organization_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organization Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationListingResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Reactivate Organization",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/api/v1/platform/organizations/{organization_id}/suspend": {
+      "post": {
+        "description": "Suspends an organisation: its users' sessions end and nobody there can sign in.",
+        "operationId": "suspend_organization",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organization_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organization Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrganizationSuspend"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationListingResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Suspend Organization",
+        "tags": [
+          "platform"
         ]
       }
     },

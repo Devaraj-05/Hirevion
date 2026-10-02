@@ -229,3 +229,37 @@ class RoleUpdate(Patch):
 class PermissionResponse(BaseModel):
     name: Permission
     area: str = Field(description="The part before the first dot, for grouping.")
+
+
+# The platform's organisations
+
+
+class OrganizationListingResponse(BaseModel):
+    id: UUID
+    name: str
+    slug: str
+    status: Literal["active", "suspended"]
+    created_at: datetime
+    user_count: int
+
+
+class OrganizationCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: Name
+    slug: Annotated[str, Field(min_length=3, max_length=40)]
+    admin_name: Name
+    admin_email: Email
+
+
+class OrganizationSuspend(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    reason: Annotated[str, Field(max_length=500)] | None = None
+
+
+class OrganizationAdminInvite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: Name
+    email: Email

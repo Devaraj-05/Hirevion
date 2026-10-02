@@ -391,6 +391,88 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/organizations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Organizations
+         * @description Every organisation, the Platform one included, by name, with its user count.
+         */
+        get: operations["list_organizations"];
+        put?: never;
+        /**
+         * Create Organization
+         * @description A new organisation with its built-in roles and an invited first admin, who is emailed a
+         *     link to set their password.
+         */
+        post: operations["create_organization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/organizations/{organization_id}/admins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Invite Organization Admin
+         * @description Invites another organisation admin, for when the first invitation lapsed.
+         */
+        post: operations["invite_organization_admin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/organizations/{organization_id}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reactivate Organization */
+        post: operations["reactivate_organization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/organizations/{organization_id}/suspend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Suspend Organization
+         * @description Suspends an organisation: its users' sessions end and nobody there can sign in.
+         */
+        post: operations["suspend_organization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/roles": {
         parameters: {
             query?: never;
@@ -756,6 +838,48 @@ export interface components {
              */
             status: "invited" | "active" | "disabled";
         };
+        /** OrganizationAdminInvite */
+        OrganizationAdminInvite: {
+            /** Email */
+            email: string;
+            /** Name */
+            name: string;
+        };
+        /** OrganizationCreate */
+        OrganizationCreate: {
+            /** Admin Email */
+            admin_email: string;
+            /** Admin Name */
+            admin_name: string;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+        };
+        /** OrganizationListingResponse */
+        OrganizationListingResponse: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "suspended";
+            /** User Count */
+            user_count: number;
+        };
         /** OrganizationProfileResponse */
         OrganizationProfileResponse: {
             /**
@@ -802,6 +926,21 @@ export interface components {
             timezone?: string | null;
             /** Website */
             website?: string | null;
+        };
+        /** OrganizationSuspend */
+        OrganizationSuspend: {
+            /** Reason */
+            reason?: string | null;
+        };
+        /** Page[OrganizationListingResponse] */
+        Page_OrganizationListingResponse_: {
+            /** Items */
+            items: components["schemas"]["OrganizationListingResponse"][];
+            /**
+             * Next Cursor
+             * @description Pass as `cursor` to get the next page; null on the last page.
+             */
+            next_cursor: string | null;
         };
         /** Page[UserResponse] */
         Page_UserResponse_: {
@@ -1986,6 +2125,223 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PermissionResponse"][];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_organizations: {
+        parameters: {
+            query?: {
+                status?: ("active" | "suspended") | null;
+                /** @description Part of a name or slug. */
+                q?: string | null;
+                /** @description How many items to return. */
+                limit?: number;
+                /** @description `next_cursor` from the previous page. */
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_OrganizationListingResponse_"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_organization: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required. A unique value (a UUID is ideal) per logical create; send the same value when retrying it. */
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrganizationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationListingResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    invite_organization_admin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrganizationAdminInvite"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    reactivate_organization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationListingResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    suspend_organization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrganizationSuspend"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationListingResponse"];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */

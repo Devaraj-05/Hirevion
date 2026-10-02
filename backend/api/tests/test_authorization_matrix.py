@@ -70,6 +70,20 @@ EXPECTED: dict[str, tuple[tuple[str, ...], bool]] = {
     "PATCH /api/v1/roles/{role_id}": (("admin.roles.manage",), True),
     "DELETE /api/v1/roles/{role_id}": (("admin.roles.manage",), True),
     "GET /api/v1/permissions": (("admin.roles.manage",), False),
+    "GET /api/v1/platform/organizations": (("platform.organizations.manage",), False),
+    "POST /api/v1/platform/organizations": (("platform.organizations.manage",), True),
+    "POST /api/v1/platform/organizations/{organization_id}/suspend": (
+        ("platform.organizations.manage",),
+        True,
+    ),
+    "POST /api/v1/platform/organizations/{organization_id}/reactivate": (
+        ("platform.organizations.manage",),
+        True,
+    ),
+    "POST /api/v1/platform/organizations/{organization_id}/admins": (
+        ("platform.organizations.manage",),
+        True,
+    ),
 }
 
 
