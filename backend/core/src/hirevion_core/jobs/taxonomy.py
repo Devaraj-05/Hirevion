@@ -27,33 +27,47 @@ def _clean(name: str) -> str:
     return " ".join(name.strip(_WRAPPING).split())
 
 
+async def resolve_skills(
+    session: AsyncSession, names: Sequence[str]
+) -> list[NormalisedSkill | None]:
+    """Each name's skill, in one query: the taxonomy's spelling when it knows the skill, the
+    name as written otherwise, and None for a blank name. One result per name, in order."""
+    cleaned = [_clean(raw) for raw in names]
+    lowered = {name.lower() for name in cleaned if name}
+    known: dict[str, tuple[UUID, str]] = {}
+    if lowered:
+        by_name = select(func.lower(Skill.name), Skill.id, Skill.name).where(
+            func.lower(Skill.name).in_(lowered)
+        )
+        by_alias = (
+            select(func.lower(SkillAlias.alias), Skill.id, Skill.name)
+            .join(Skill, Skill.id == SkillAlias.skill_id)
+            .where(func.lower(SkillAlias.alias).in_(lowered))
+        )
+        known = {
+            key: (skill_id, name)
+            for key, skill_id, name in await session.execute(union_all(by_name, by_alias))
+        }
+    result: list[NormalisedSkill | None] = []
+    for name in cleaned:
+        if not name:
+            result.append(None)
+            continue
+        skill_id, canonical = known.get(name.lower(), (None, name))
+        result.append(NormalisedSkill(canonical, skill_id))
+    return result
+
+
 async def normalise_skills(session: AsyncSession, names: Sequence[str]) -> list[NormalisedSkill]:
     """The taxonomy's spelling for each known skill, the rest as written, in the given order,
     each skill once."""
-    cleaned = [name for name in (_clean(raw) for raw in names) if name]
-    if not cleaned:
-        return []
-    lowered = {name.lower() for name in cleaned}
-    by_name = select(func.lower(Skill.name), Skill.id, Skill.name).where(
-        func.lower(Skill.name).in_(lowered)
-    )
-    by_alias = (
-        select(func.lower(SkillAlias.alias), Skill.id, Skill.name)
-        .join(Skill, Skill.id == SkillAlias.skill_id)
-        .where(func.lower(SkillAlias.alias).in_(lowered))
-    )
-    known = {
-        key: (skill_id, name)
-        for key, skill_id, name in await session.execute(union_all(by_name, by_alias))
-    }
     result: list[NormalisedSkill] = []
     seen: set[str] = set()
-    for name in cleaned:
-        skill_id, canonical = known.get(name.lower(), (None, name))
-        if canonical.lower() in seen:
+    for skill in await resolve_skills(session, names):
+        if skill is None or skill.name.lower() in seen:
             continue
-        seen.add(canonical.lower())
-        result.append(NormalisedSkill(canonical, skill_id))
+        seen.add(skill.name.lower())
+        result.append(skill)
     return result
 
 

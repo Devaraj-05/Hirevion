@@ -14,6 +14,7 @@ from uuid import UUID
 
 from sqlalchemy import ColumnElement, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import InstrumentedAttribute
 
 from hirevion_core.models import Team, TeamMember, User
 
@@ -38,7 +39,10 @@ async def resource_scope(session: AsyncSession, user_id: UUID) -> ResourceScope:
 
 
 def scope_clause(
-    scope: ResourceScope, *, team_column: ColumnElement[Any], owner_column: ColumnElement[Any]
+    scope: ResourceScope,
+    *,
+    team_column: ColumnElement[Any] | InstrumentedAttribute[Any],
+    owner_column: ColumnElement[Any] | InstrumentedAttribute[Any],
 ) -> ColumnElement[bool]:
     """A WHERE clause keeping only the rows `scope` reaches; `team_column` is the owning team
     and `owner_column` the owning user of each row."""
