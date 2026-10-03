@@ -53,7 +53,7 @@ Each application has its own build, tests and release pipeline.
 | # | Decision | Why |
 |---|---|---|
 | D1 | One monorepo: pnpm + Turborepo for TypeScript, a uv workspace for Python, a Cargo workspace for Rust. Top-level folder names follow PRD §93. | One CI pipeline and shared contracts. |
-| D2 | The backend is a FastAPI modular monolith (`api`) plus `realtime`, Celery `worker`, `media-worker`, `interview-agent`, `vision-agent`, `coding-service` and `sandbox-runner`. PostgreSQL 17 + pgvector; Valkey 8 as the Redis-compatible store. | Follows the §87 service split; the §86 Recruitment/Interview/Proctor APIs become route groups that can be split out later. |
+| D2 | The backend is a FastAPI modular monolith (`api`) plus `realtime`, `worker` (Valkey-stream consumers, ADR-0015), `media-worker`, `interview-agent`, `vision-agent`, `coding-service` and `sandbox-runner`. PostgreSQL 17 + pgvector; Valkey 8 as the Redis-compatible store. | Follows the §87 service split; the §86 Recruitment/Interview/Proctor APIs become route groups that can be split out later. |
 | D3 | Web stack: Next.js (App Router, React 19), TypeScript, Tailwind v4, shadcn/ui, TanStack Query and Table, Zustand, ECharts, next-intl, react-hook-form + zod, and an OpenAPI-generated client. | §94. |
 | D4 | Desktop stack: Tauri 2 with React/TS/Vite and Monaco. Native code uses the Rust `windows` crate. MediaPipe Tasks (WASM) runs on-device computer vision. NSIS per-user installer and a signed updater. | §27 and §94. |
 | D5 | Self-hosted LiveKit server and Egress in Docker. The voice pipeline runs on LiveKit Agents (Python), with our orchestrator plugged in. | Provides turn detection, barge-in, streaming and fallbacks; serves §52, §65 and §92. |
@@ -311,10 +311,11 @@ Decided on 2026-09-28 (ADR-0002, ADR-0003): AI runs on hosted APIs through your 
   - Authorisation per channel.
   - Redis Streams consumer groups; clients resume from the last event ID.
   - Heartbeats and backpressure.
-- **`worker` (Celery):**
-  - Queues: `documents`, `ai_batch`, `ai_eval`, `reports`, `notify`, `webhooks`, `integrations`, `retention`, `metering`.
-  - Scheduled jobs via beat.
-  - `acks_late` and idempotent tasks.
+- **`worker` (Valkey-stream consumers, ADR-0015; replaces the planned Celery worker):**
+  - Consumer groups per topic: `documents`, `ai_batch`, `ai_eval`, `reports`, `notify`, `webhooks`, `integrations`, `retention`, `metering`.
+  - Fed by the transactional outbox; delivery at least once, with de-duplication by event id, retries and a dead-letter stream.
+  - Runs inside the API (`HV_API_RUN_WORKERS`) or alone (`hv worker`).
+  - Scheduled jobs (SP-18, SP-22) publish events from a small scheduler.
 - **`media-worker`** runs ffmpeg (LGPL build) as a separate process. It verifies and assembles segments, makes thumbnails and cuts evidence clips.
 - **`interview-agent`** runs the voice pipeline and the orchestrator (§6.8). **`vision-agent`** runs server-side vision (§6.12). Both are LiveKit Agents workers, dispatched explicitly per interview session.
 - **`coding-service`** handles code runs and submissions. **`sandbox-runner`** is the only component with Docker-socket access and sits on an isolated network.
@@ -484,7 +485,7 @@ Pairing again revokes the old device. Egress records the stream.
   5. OCR if needed.
   6. Normalise and detect sections.
   7. Scan for hidden text and injection attempts.
-  8. Detect and mask PII: Presidio plus Indian recognisers for Aadhaar and PAN.
+  8. Detect and mask PII with built-in recognisers (ADR-0015): Aadhaar (Verhoeff checksum), PAN, phone, email and date of birth; Aadhaar and PAN are masked before storage or any AI call.
   9. LLM structured parse of the 16 §14 fields, each with evidence (page, section, quote).
   10. Verify every quote against the source text.
   11. Build the candidate profile and de-duplicate by email, phone, fuzzy name or file hash.
@@ -953,7 +954,7 @@ Pairing again revokes the old device. Egress records the stream.
 ## 11. Observability, metering & cost model
 
 - **Telemetry:**
-  - OpenTelemetry across every service, agent, the desktop and the web app. Trace context propagates through Celery, WebSockets and LiveKit metadata.
+  - OpenTelemetry across every service, agent, the desktop and the web app. Trace context propagates through outbox events, WebSockets and LiveKit metadata.
   - Log filters redact PII.
 - **Dashboards and alerts** for all 14 §96 signals:
   - API, AI, STT and TTS latency
@@ -991,7 +992,7 @@ Hirevion/
 │                                  #   event-queue, process/window/display/device monitors, lockdown, system-check)
 ├── third-eye/                     # mobile-browser camera app (Vite + React)
 ├── backend/                       # uv workspace: core/, api/, realtime/, interview_agent/, vision_agent/, coding/, migrations/
-├── workers/                       # Celery worker-service + media-worker
+├── workers/                       # media-worker (stream consumers run from hirevion_core via `hv worker`)
 ├── coding-sandbox/                # sandbox-runner + runner images (python, node, ts, sql) + test harness
 ├── packages/                      # shared TS: api-client (generated), ui (design system), events, i18n
 ├── infrastructure/local/          # compose, Caddyfile, livekit/egress config, scripts (cloud/ comes with migration plan)
@@ -1595,7 +1596,7 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 9 | Organisation profile, departments, teams, users, roles, permissions | SP-02 |
 | 9 | Branding, default screening/interview config, proctoring policies, AI config, retention, integrations | SP-22, SP-20 |
 | 10 | 10 dashboard KPIs and 7 filters | SP-03, SP-21 |
-| 11 | 17 job fields; 5 statuses | SP-04 |
+| 11 | 17 job fields; 5 statuses | SP-04 (Screening Configuration field → SP-05, Interview Template field → SP-06) |
 | 12 | JD formats (PDF, DOCX, TXT, text); 10-step pipeline; 8 extracted items; recruiter review/edit | SP-04 (§6.6) |
 | 13 | Single, bulk, PDF, DOCX, TXT, image/OCR; 10-step pipeline including malware scan | SP-04 (§6.6) |
 | 14 | 16 parsed fields; evidence references | SP-04 |

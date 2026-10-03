@@ -250,13 +250,54 @@ gateway on 3100 standing in for Caddy. It then works for real, reading the email
 - invites users and confirms passwords;
 - creates custom roles;
 - disables users;
-- creates and suspends organisations.
+- creates and suspends organisations;
+- creates a job, has its pasted description read, applies it and opens the job.
+
+For the jobs test, start the API with the mock AI and its scripted answer, as CI does:
+
+```sh
+HV_AI_PROFILE=mock HV_AI_MOCK_SCRIPTS=recruitment-platform/e2e/auth/ai-scripts.json   HV_WEB_ORIGIN=http://app.hirevion.localhost:3100 uv run hv api --no-reload
+```
+
+Without them it reads the description with Gemini, which also passes but takes longer.
 
 How it runs:
 - It first clears local rate limits (`hv reset-limits`) and runs two browsers at a time, as CI
   does; more starve the API on a laptop.
 - It invites its own super admins with `uv run hv create-super-admin`; set `HV_UV` to uv's full
   path if `uv` isn't on `PATH`.
+
+### Jobs and job descriptions
+
+How the pipeline works is in [ADR-0015](../architecture/adr/0015-jobs-and-documents.md).
+
+- **Recruiters** (`recruiter@acme.example.test`) use Jobs:
+  - **The list** filters by the status tabs and department, and searches titles or `JOB-0042`.
+  - **New job** takes the fields and skills. Skills are suggested from the shared taxonomy;
+    Enter adds one as typed.
+  - **A job's page** has the status moves (Open, Pause, Resume, Close, Archive) and three tabs:
+    Details, Description and History.
+- **The description:**
+  1. Paste it, or upload a PDF, DOCX or TXT file of up to 10 MB.
+  2. The `documents` consumer reads it in the background: scan, text, sections, then one AI
+     call (`jd.extract`) and an embedding. The tab shows each step.
+  3. The review shows what was found, with the quote each skill came from, and how many items
+     were left out because their quotes weren't in the text.
+  4. "Apply to job" writes the reviewed fields as a new version.
+- **Where it runs:** inside `uv run hv api` (`HV_API_RUN_WORKERS=true`), or alone with
+  `uv run hv worker`. It uses the AI profile in `.env` (`HV_AI_PROFILE=dev` is Gemini).
+- **ClamAV** (compose profile `core`) scans uploads on `127.0.0.1:3310`
+  (`HV_CLAMAV_HOST`, `HV_CLAMAV_PORT`). Its first start downloads signatures for a few minutes.
+  Until it's healthy, set `HV_DOCUMENTS_SCAN=false`; production refuses that setting.
+- **When a description is stuck or failed:**
+  - "Try again" on the Description tab re-queues a failed one.
+  - Each failure has a reason: `unreadable`, `too-many-pages`, `no-text`, `ai-failed`,
+    `budget-exceeded`, or `retries-exhausted` after five deliveries.
+  - Events that gave up are in the `hv:dead:documents` stream
+    (`docker compose exec valkey valkey-cli XRANGE hv:dead:documents - +`).
+  - An infected file ends `quarantined`, and its blob moves under `<org>/quarantine/`.
+- **Without blob storage** (`AZURE_STORAGE_*` unset), uploads answer 503
+  `storage-unavailable`, and pasted descriptions still work.
 
 ## Desktop app (`ai-interviewer-desktop`)
 

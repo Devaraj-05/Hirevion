@@ -16,5 +16,6 @@
 | [0012](0012-web-app-architecture.md) | The web app: one Next.js app for both hosts, guarded routes and a shared design system | Accepted |
 | [0013](0013-sign-in-and-sessions.md) | Sign-in and sessions: server-side sessions, the lookup role, CSRF and email | Accepted |
 | [0014](0014-organizations-and-access.md) | Organisations and access: custom roles, guards, step-up, scope and the platform | Accepted |
+| [0015](0015-jobs-and-documents.md) | Jobs and documents: one documents table, stream workers, verified extraction | Accepted |
 
 New decisions copy [0000-template.md](0000-template.md) and take the next number.
