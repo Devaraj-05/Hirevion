@@ -72,7 +72,7 @@ describe("RolesPanel", () => {
     renderAdmin(<RolesPanel held={HELD} />);
     const matrix = await screen.findByRole("table", { name: "What each role can do" });
     expect(within(matrix).getByRole("columnheader", { name: "Sourcer" })).toBeInTheDocument();
-    const row = within(matrix).getByRole("row", { name: /Create jobs/ });
+    const row = within(matrix).getByRole("row", { name: /Create and edit jobs/ });
     const [recruiter, sourcer] = within(row).getAllByRole("cell");
     expect(recruiter).toHaveTextContent("Granted");
     expect(sourcer).toHaveTextContent("Not granted");
@@ -96,7 +96,7 @@ describe("RolesPanel", () => {
     ).not.toBeInTheDocument();
 
     await user.type(within(dialog).getByLabelText("Name"), "Talent");
-    await user.click(within(dialog).getByRole("checkbox", { name: "Create jobs" }));
+    await user.click(within(dialog).getByRole("checkbox", { name: "Create and edit jobs" }));
     await user.click(within(dialog).getByRole("button", { name: "Save role" }));
 
     await waitFor(() => expect(api.createRole).toHaveBeenCalled());
@@ -115,7 +115,7 @@ describe("RolesPanel", () => {
     expect(within(dialog).getByRole("checkbox", { name: "View jobs" })).toBeChecked();
     expect(within(dialog).getByRole("button", { name: "Delete role" })).toBeInTheDocument();
 
-    await user.click(within(dialog).getByRole("checkbox", { name: "Create jobs" }));
+    await user.click(within(dialog).getByRole("checkbox", { name: "Create and edit jobs" }));
     await user.click(within(dialog).getByRole("button", { name: "Save role" }));
     await waitFor(() =>
       expect(api.updateRole).toHaveBeenCalledWith("r-sourcer", {

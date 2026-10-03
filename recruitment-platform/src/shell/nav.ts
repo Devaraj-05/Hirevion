@@ -17,8 +17,9 @@ export function navRoutes(session: Session): ManifestRoute[] {
   return ROUTES.filter((route) => route.nav && can(session, route.permission));
 }
 
+/** Pages the session may open by name (the palette); pages about one record are left out. */
 export function permittedRoutes(session: Session): ManifestRoute[] {
-  return ROUTES.filter((route) => can(session, route.permission));
+  return ROUTES.filter((route) => !route.detail && can(session, route.permission));
 }
 
 export function isActive(pathname: string, path: string): boolean {

@@ -1,4 +1,4 @@
-import { JobsBody } from "@/page/feature-bodies";
+import { JobsBody } from "@/jobs/bodies";
 import { guardedPage, routeMetadata } from "@/page/guarded-page";
 
 export const generateMetadata = routeMetadata("/jobs");

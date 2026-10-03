@@ -28,7 +28,11 @@ export async function PlaceholderBody({ route }: PageBodyProps) {
 export async function SectionIndexBody({ session, route }: PageBodyProps) {
   const titles = await getTranslations("routes");
   const pages = ROUTES.filter(
-    (entry) => entry.section === route.section && entry !== route && can(session, entry.permission),
+    (entry) =>
+      entry.section === route.section &&
+      entry !== route &&
+      !entry.detail &&
+      can(session, entry.permission),
   );
   return (
     <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

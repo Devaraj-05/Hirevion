@@ -1,0 +1,39 @@
+import type { Job } from "./api";
+
+/** A job as the API returns it, for component tests. */
+export function job(overrides: Partial<Job> = {}): Job {
+  return {
+    id: "j-1",
+    number: 1,
+    reference: "JOB-0001",
+    title: "Backend Engineer",
+    status: "draft",
+    version: 1,
+    department_id: null,
+    department_name: null,
+    team_id: null,
+    team_name: null,
+    location: null,
+    work_model: null,
+    employment_type: "full_time",
+    experience_min: null,
+    experience_max: null,
+    description: "",
+    responsibilities: [],
+    qualifications: [],
+    domain: [],
+    salary_min: null,
+    salary_max: null,
+    salary_currency: null,
+    recruiter_id: "u-asha",
+    recruiter_name: "Asha Rao",
+    hiring_manager_id: null,
+    hiring_manager_name: null,
+    skills: [],
+    jd_document_id: null,
+    latest_document: null,
+    created_at: "2026-10-02T00:00:00Z",
+    updated_at: "2026-10-02T00:00:00Z",
+    ...overrides,
+  };
+}

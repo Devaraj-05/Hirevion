@@ -33,7 +33,9 @@ describe("the route manifest", () => {
   // navigating between its pages, so every page checks its own route.
   it("has every page check its own route", () => {
     for (const page of pageFiles(SHELL)) {
-      const guard = new RegExp(`(requireRoute|guardedPage)\\("${page.path}"[,)]`);
+      // Detail pages ("/jobs/[id]") have brackets, which a pattern reads as a character class.
+      const path = page.path.replace(/[[\]]/g, "\\$&");
+      const guard = new RegExp(`(requireRoute|guardedPage)\\("${path}"[,)]`);
       expect(page.source, page.path).toMatch(guard);
     }
   });

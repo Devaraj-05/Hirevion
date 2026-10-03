@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEV_SESSIONS } from "@/auth/dev-sessions";
 import { routeAt } from "@/auth/manifest";
-import { breadcrumbTrail, isActive, navRoutes, SHORTCUTS } from "./nav";
+import { breadcrumbTrail, isActive, navRoutes, permittedRoutes, SHORTCUTS } from "./nav";
 
 describe("navRoutes", () => {
   it("lists the sidebar sections the session may open, in manifest order", () => {
@@ -10,6 +10,14 @@ describe("navRoutes", () => {
       "/interviews",
       "/reports",
     ]);
+  });
+});
+
+describe("permittedRoutes", () => {
+  it("leaves out pages about one record, which are reached from their lists", () => {
+    const paths = permittedRoutes(DEV_SESSIONS.recruiter).map((route) => route.path);
+    expect(paths).toContain("/jobs/new");
+    expect(paths).not.toContain("/jobs/[id]");
   });
 });
 

@@ -30,6 +30,8 @@ export interface RouteEntry {
   owner: string;
   /** Shown in the sidebar, in this list's order. */
   nav?: true;
+  /** A page about one record ("/jobs/[id]"): guarded, but reached from its list, never listed. */
+  detail?: true;
 }
 
 // Keeps each entry's literal path (for RoutePath) while checking it against RouteEntry.
@@ -60,6 +62,14 @@ export const ROUTES = [
     section: "jobs",
     titleKey: "jobsNew",
     owner: "SP-04",
+  }),
+  route({
+    path: "/jobs/[id]",
+    permission: "jobs.view",
+    section: "jobs",
+    titleKey: "jobsDetail",
+    owner: "SP-04",
+    detail: true,
   }),
   route({
     path: "/candidates",

@@ -18,6 +18,7 @@
     "dashboard": "Dashboard",
     "jobs": "Jobs",
     "jobsNew": "New job",
+    "jobsDetail": "Job",
     "candidates": "Candidates",
     "interviews": "Interviews",
     "interviewTemplates": "Interview templates",
@@ -235,10 +236,171 @@
       "department": "Department",
       "location": "Location",
       "status": "Status",
-      "candidates": "Candidates",
+      "recruiter": "Recruiter",
       "updated": "Updated",
       "emptyTitle": "No jobs yet",
-      "emptyHint": "Jobs appear here once creating them arrives with {owner}."
+      "emptyHint": "Create a job to start hiring.",
+      "noMatchTitle": "No jobs match",
+      "noMatchHint": "Try another search or status.",
+      "search": "Search by title or JOB-0042",
+      "new": "New job",
+      "anyDepartment": "All departments",
+      "open": "Open {title}"
+    },
+    "statuses": {
+      "draft": "Draft",
+      "open": "Open",
+      "paused": "Paused",
+      "closed": "Closed",
+      "archived": "Archived"
+    },
+    "actions": {
+      "open": "Open job",
+      "resume": "Resume",
+      "pause": "Pause",
+      "close": "Close",
+      "archive": "Archive"
+    },
+    "statusChanged": "The job is now {status}.",
+    "incomplete": "Before opening a job, give it a title, a description and at least one required skill.",
+    "workModels": {
+      "onsite": "On-site",
+      "hybrid": "Hybrid",
+      "remote": "Remote"
+    },
+    "employmentTypes": {
+      "full_time": "Full time",
+      "part_time": "Part time",
+      "contract": "Contract",
+      "internship": "Internship",
+      "temporary": "Temporary"
+    },
+    "form": {
+      "basics": "Basics",
+      "assignment": "Assignment",
+      "requirements": "Requirements",
+      "pay": "Salary",
+      "title": "Title",
+      "titleRequired": "Enter the job title.",
+      "department": "Department",
+      "team": "Team",
+      "none": "None",
+      "location": "Location",
+      "workModel": "Work model",
+      "employmentType": "Employment type",
+      "experienceMin": "Minimum experience (years)",
+      "experienceMax": "Maximum experience (years)",
+      "salaryMin": "From",
+      "salaryMax": "To",
+      "salaryCurrency": "Currency",
+      "recruiter": "Recruiter",
+      "hiringManager": "Hiring manager",
+      "description": "Description",
+      "responsibilities": "Responsibilities",
+      "qualifications": "Qualifications",
+      "domain": "Domain",
+      "oneByLine": "One per line.",
+      "optional": "Optional",
+      "create": "Create job",
+      "save": "Save changes",
+      "cancel": "Cancel",
+      "created": "{reference} created.",
+      "saved": "Changes saved.",
+      "invalidNumber": "Enter a number from 0 to 60.",
+      "invalidSalary": "Enter an amount.",
+      "rangeOrder": "The maximum can't be below the minimum.",
+      "currencyFormat": "Use a 3-letter code, such as INR.",
+      "readOnly": "You can view this job, but changing it needs the Create and edit jobs permission."
+    },
+    "skills": {
+      "label": "Skills",
+      "search": "Add a skill",
+      "searchHint": "Type a skill and pick a suggestion, or press Enter to add it as typed.",
+      "importance": "Importance for {name}",
+      "minYears": "Years of {name}",
+      "remove": "Remove {name}",
+      "empty": "No skills yet.",
+      "suggestions": "Suggested skills",
+      "importances": {
+        "required": "Required",
+        "preferred": "Preferred",
+        "optional": "Optional"
+      }
+    },
+    "page": {
+      "tabs": {
+        "details": "Details",
+        "description": "Description",
+        "history": "History"
+      },
+      "loadFailed": "This job couldn't be loaded.",
+      "notFound": "This job doesn't exist, or you can't see it.",
+      "back": "All jobs",
+      "recruiter": "Recruiter: {name}",
+      "version": "Version {version}"
+    },
+    "history": {
+      "caption": "Versions of this job",
+      "version": "Version",
+      "reason": "Change",
+      "when": "When",
+      "reasons": {
+        "created": "Created",
+        "edited": "Edited",
+        "status": "Status changed",
+        "jd-applied": "Description applied"
+      },
+      "empty": "No versions yet."
+    },
+    "description": {
+      "intro": "Paste the job description or upload a PDF, Word (.docx) or text file of up to 10 MB. It's read in the background; nothing in the job changes until you apply what was found.",
+      "paste": "Paste text",
+      "upload": "Upload a file",
+      "text": "Job description",
+      "file": "File",
+      "submit": "Read description",
+      "textRequired": "Paste the job description.",
+      "fileRequired": "Choose a file.",
+      "tooLarge": "Choose a file of at most 10 MB.",
+      "wrongType": "Choose a PDF, Word (.docx) or text file.",
+      "replace": "Send a new description",
+      "source": "Source: {name}",
+      "pasted": "Pasted text",
+      "submitted": "The description was sent. It's being read now.",
+      "statuses": {
+        "uploaded": "Waiting to be read",
+        "scanning": "Checking for viruses",
+        "extracting": "Extracting the text",
+        "parsing": "Reading the requirements",
+        "parsed": "Read",
+        "quarantined": "Quarantined",
+        "failed": "Couldn't be read"
+      },
+      "working": "This usually takes under a minute. You can leave this page.",
+      "quarantined": "This file was flagged as unsafe and set aside. Upload a different file.",
+      "failed": "This description couldn't be read: {reason}.",
+      "retry": "Try again",
+      "retried": "Trying again.",
+      "errors": {
+        "unreadable": "the file couldn't be opened",
+        "too-many-pages": "it has more than 50 pages",
+        "no-text": "no text was found in it",
+        "ai-failed": "the AI service gave an unusable answer",
+        "budget-exceeded": "this month's AI budget is used up",
+        "retries-exhausted": "it failed several times",
+        "unknown": "something went wrong"
+      },
+      "review": {
+        "title": "Review what was found",
+        "hint": "Check and edit each item. Nothing in the job changes until you apply.",
+        "dropped": "{count, plural, one {# item was} other {# items were}} left out because the quote given for it isn't in the description.",
+        "quote": "From the description: “{quote}”",
+        "requiredSkills": "Required skills",
+        "preferredSkills": "Preferred skills",
+        "apply": "Apply to job",
+        "applied": "The description was applied to the job.",
+        "nothing": "Nothing was found to apply."
+      }
     }
   },
   "auth": {
@@ -385,7 +547,7 @@
   "permissionLabels": {
     "dashboard_view": "View the dashboard",
     "jobs_view": "View jobs",
-    "jobs_create": "Create jobs",
+    "jobs_create": "Create and edit jobs",
     "candidates_view": "View candidates",
     "interviews_view": "View interviews",
     "interviews_templates_view": "View interview templates",
