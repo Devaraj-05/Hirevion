@@ -34,7 +34,7 @@ from hirevion_api.jobs.schemas import (
 )
 from hirevion_api.pagination import Page, PageParams, page_params, paginate
 from hirevion_api.routing import api_router
-from hirevion_core.access.errors import Invalid, NotFound
+from hirevion_core.access.errors import Invalid, NotFound, Refused
 from hirevion_core.access.scope import resource_scope
 from hirevion_core.documents import intake
 from hirevion_core.documents.files import MAX_BYTES
@@ -47,6 +47,7 @@ router = api_router(tags=["jobs"])
 
 ViewsJobs = Annotated[Principal, requires("jobs.view")]
 ManagesJobs = Annotated[Principal, requires("jobs.create")]
+RetriesDocuments = Annotated[Principal, requires("jobs.create", "candidates.manage")]
 Idempotent = Annotated[Idempotency, Depends(idempotency)]
 # Enough for any organisation this release serves; SP-22 brings a people search.
 PEOPLE_MAX = 2000
@@ -340,13 +341,17 @@ async def apply_job_description(
 
 @router.post("/documents/{document_id}/retry")
 async def retry_document(
-    document_id: UUID, request: Request, principal: ManagesJobs
+    document_id: UUID, request: Request, principal: RetriesDocuments
 ) -> DocumentResponse:
-    """Sends a document that failed through the pipeline again."""
+    """Sends a document that failed through the pipeline again: a job description needs
+    `jobs.create`, a resume `candidates.manage`."""
     async with own_tenant(request, principal) as session:
         document = await session.get(Document, document_id)
         if document is None or document.job_id is None:
             raise NotFound("document-not-found", "No such document")
+        needed = "jobs.create" if document.kind == "jd" else "candidates.manage"
+        if needed not in principal.permissions:
+            raise Refused("forbidden", "You don't have permission to do this")
         await _reachable(session, principal, document.job_id)
         retried = await intake.retry_document(session, principal.actor(request), document_id)
         await session.flush()

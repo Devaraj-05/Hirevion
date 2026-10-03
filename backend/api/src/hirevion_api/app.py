@@ -23,6 +23,7 @@ from hirevion_api.access.structure import router as structure_router
 from hirevion_api.access.users import router as users_router
 from hirevion_api.auth.csrf import CsrfMiddleware
 from hirevion_api.auth.router import router as auth_router
+from hirevion_api.candidates.routes import router as candidates_router
 from hirevion_api.idempotency import install_idempotency_handler
 from hirevion_api.jobs.routes import router as jobs_router
 from hirevion_api.middleware import (
@@ -136,6 +137,7 @@ def create_app(
     app.include_router(roles_router)
     app.include_router(platform_router)
     app.include_router(jobs_router)
+    app.include_router(candidates_router)
     if telemetry is not None and telemetry.enabled:
         FastAPIInstrumentor.instrument_app(
             app,

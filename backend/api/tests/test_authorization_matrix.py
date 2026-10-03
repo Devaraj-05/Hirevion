@@ -94,7 +94,13 @@ EXPECTED: dict[str, tuple[tuple[str, ...], bool]] = {
     "POST /api/v1/jobs/{job_id}/jd": (("jobs.create",), False),
     "GET /api/v1/jobs/{job_id}/jd": (("jobs.view",), False),
     "POST /api/v1/jobs/{job_id}/jd/apply": (("jobs.create",), False),
-    "POST /api/v1/documents/{document_id}/retry": (("jobs.create",), False),
+    "POST /api/v1/documents/{document_id}/retry": (("jobs.create", "candidates.manage"), False),
+    "GET /api/v1/documents/{document_id}/download": (("candidates.view", "jobs.view"), False),
+    "POST /api/v1/jobs/{job_id}/resumes": (("candidates.manage",), False),
+    "GET /api/v1/jobs/{job_id}/resumes": (("candidates.view",), False),
+    "GET /api/v1/jobs/{job_id}/applications": (("candidates.view",), False),
+    "GET /api/v1/candidates": (("candidates.view",), False),
+    "GET /api/v1/candidates/{candidate_id}": (("candidates.view",), False),
     "GET /api/v1/skills": (("jobs.view",), False),
 }
 

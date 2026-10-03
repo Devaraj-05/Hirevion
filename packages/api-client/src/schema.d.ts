@@ -266,6 +266,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Candidates
+         * @description The candidates the reader reaches, most recently updated first.
+         */
+        get: operations["list_candidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/candidates/{candidate_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Candidate
+         * @description A candidate's parsed profile with its evidence, their applications and resumes.
+         */
+        get: operations["get_candidate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/departments": {
         parameters: {
             query?: never;
@@ -307,6 +347,26 @@ export interface paths {
         patch: operations["update_department"];
         trace?: never;
     };
+    "/api/v1/documents/{document_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Document
+         * @description A 5-minute link to the original file (audited for resumes).
+         */
+        get: operations["download_document"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/documents/{document_id}/retry": {
         parameters: {
             query?: never;
@@ -318,7 +378,8 @@ export interface paths {
         put?: never;
         /**
          * Retry Document
-         * @description Sends a document that failed through the pipeline again.
+         * @description Sends a document that failed through the pipeline again: a job description needs
+         *     `jobs.create`, a resume `candidates.manage`.
          */
         post: operations["retry_document"];
         delete?: never;
@@ -429,6 +490,26 @@ export interface paths {
         patch: operations["update_job"];
         trace?: never;
     };
+    "/api/v1/jobs/{job_id}/applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Applications
+         * @description The job's candidates, newest application first.
+         */
+        get: operations["list_applications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs/{job_id}/jd": {
         parameters: {
             query?: never;
@@ -467,6 +548,30 @@ export interface paths {
          * @description Writes the reviewed fields into the job, as a new version (PRD §12).
          */
         post: operations["apply_job_description"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{job_id}/resumes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Resumes
+         * @description The job's resumes and archives, newest first, with their progress.
+         */
+        get: operations["list_resumes"];
+        put?: never;
+        /**
+         * Upload Resume
+         * @description Takes one resume, or a ZIP of them; each is read in the background (PRD §13).
+         */
+        post: operations["upload_resume"];
         delete?: never;
         options?: never;
         head?: never;
@@ -936,6 +1041,27 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ApplicationResponse */
+        ApplicationResponse: {
+            candidate: components["schemas"]["CandidateSummary"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Document Id */
+            document_id: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Stage
+             * @enum {string}
+             */
+            stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold";
+        };
         /** Body_submit_job_description */
         Body_submit_job_description: {
             /**
@@ -948,6 +1074,164 @@ export interface components {
              * @description The description, pasted.
              */
             text?: string | null;
+        };
+        /** Body_upload_resume */
+        Body_upload_resume: {
+            /**
+             * File
+             * @description A PDF, DOCX, TXT, JPG, PNG or TIFF resume, or a ZIP.
+             */
+            file: string;
+        };
+        /** CandidateApplication */
+        CandidateApplication: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Job Reference */
+            job_reference: string;
+            /** Job Title */
+            job_title: string;
+            /**
+             * Stage
+             * @enum {string}
+             */
+            stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold";
+        };
+        /** CandidateDocument */
+        CandidateDocument: {
+            /** Content Type */
+            content_type: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Filename */
+            filename: string | null;
+            /** Flags */
+            flags: {
+                [key: string]: unknown;
+            };
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Size */
+            size: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "uploaded" | "scanning" | "extracting" | "parsing" | "parsed" | "quarantined" | "failed";
+        };
+        /** CandidateRef */
+        CandidateRef: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+        };
+        /** CandidateResponse */
+        CandidateResponse: {
+            /** Applications */
+            applications: components["schemas"]["CandidateApplication"][];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Documents */
+            documents: components["schemas"]["CandidateDocument"][];
+            /** Email */
+            email: string | null;
+            /** Flags */
+            flags: {
+                [key: string]: unknown;
+            };
+            /** Headline */
+            headline: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Location */
+            location: string | null;
+            /** Name */
+            name: string;
+            /** Phone */
+            phone: string | null;
+            /** Profile */
+            profile: {
+                [key: string]: unknown;
+            };
+            /** Skill Details */
+            skill_details: components["schemas"]["CandidateSkillResponse"][];
+            /** Skills */
+            skills: string[];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** CandidateSkillResponse */
+        CandidateSkillResponse: {
+            /** Name */
+            name: string;
+            /** Skill Id */
+            skill_id: string | null;
+            /** Years */
+            years: number | null;
+        };
+        /** CandidateSummary */
+        CandidateSummary: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Email */
+            email: string | null;
+            /** Flags */
+            flags: {
+                [key: string]: unknown;
+            };
+            /** Headline */
+            headline: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Location */
+            location: string | null;
+            /** Name */
+            name: string;
+            /** Skills */
+            skills: string[];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** Choice */
         Choice: {
@@ -1508,6 +1792,26 @@ export interface components {
             /** Reason */
             reason?: string | null;
         };
+        /** Page[ApplicationResponse] */
+        Page_ApplicationResponse_: {
+            /** Items */
+            items: components["schemas"]["ApplicationResponse"][];
+            /**
+             * Next Cursor
+             * @description Pass as `cursor` to get the next page; null on the last page.
+             */
+            next_cursor: string | null;
+        };
+        /** Page[CandidateSummary] */
+        Page_CandidateSummary_: {
+            /** Items */
+            items: components["schemas"]["CandidateSummary"][];
+            /**
+             * Next Cursor
+             * @description Pass as `cursor` to get the next page; null on the last page.
+             */
+            next_cursor: string | null;
+        };
         /** Page[JobSummary] */
         Page_JobSummary_: {
             /** Items */
@@ -1522,6 +1826,16 @@ export interface components {
         Page_OrganizationListingResponse_: {
             /** Items */
             items: components["schemas"]["OrganizationListingResponse"][];
+            /**
+             * Next Cursor
+             * @description Pass as `cursor` to get the next page; null on the last page.
+             */
+            next_cursor: string | null;
+        };
+        /** Page[ResumeDocumentResponse] */
+        Page_ResumeDocumentResponse_: {
+            /** Items */
+            items: components["schemas"]["ResumeDocumentResponse"][];
             /**
              * Next Cursor
              * @description Pass as `cursor` to get the next page; null on the last page.
@@ -1600,6 +1914,54 @@ export interface components {
              * @constant
              */
             status: "ok";
+        };
+        /**
+         * ResumeDocumentResponse
+         * @description A resume or ZIP archive uploaded to a job, and how far the pipeline got with it.
+         */
+        ResumeDocumentResponse: {
+            /** Attempts */
+            attempts: number;
+            candidate: components["schemas"]["CandidateRef"] | null;
+            /** Content Type */
+            content_type: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Error Code */
+            error_code: string | null;
+            /** Filename */
+            filename: string | null;
+            /** Flags */
+            flags: {
+                [key: string]: unknown;
+            };
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "resume" | "archive";
+            /** Parent Id */
+            parent_id: string | null;
+            /** Size */
+            size: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "uploaded" | "scanning" | "extracting" | "parsing" | "parsed" | "quarantined" | "failed";
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** RoleCreate */
         RoleCreate: {
@@ -2449,6 +2811,92 @@ export interface operations {
             };
         };
     };
+    list_candidates: {
+        parameters: {
+            query?: {
+                /** @description Part of the name or email, or the phone. */
+                q?: string | null;
+                job_id?: string | null;
+                /** @description How many items to return. */
+                limit?: number;
+                /** @description `next_cursor` from the previous page. */
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_CandidateSummary_"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_candidate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_departments: {
         parameters: {
             query?: {
@@ -2556,6 +3004,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DepartmentResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    download_document: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            307: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Client error, as an RFC 9457 problem */
@@ -2909,6 +3397,51 @@ export interface operations {
             };
         };
     };
+    list_applications: {
+        parameters: {
+            query?: {
+                /** @description How many items to return. */
+                limit?: number;
+                /** @description `next_cursor` from the previous page. */
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ApplicationResponse_"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     get_job_description: {
         parameters: {
             query?: never;
@@ -3018,6 +3551,101 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_resumes: {
+        parameters: {
+            query?: {
+                status?: ("uploaded" | "scanning" | "extracting" | "parsing" | "parsed" | "quarantined" | "failed") | null;
+                /** @description Only this archive's entries. */
+                parent_id?: string | null;
+                /** @description How many items to return. */
+                limit?: number;
+                /** @description `next_cursor` from the previous page. */
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ResumeDocumentResponse_"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    upload_resume: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required. A unique value (a UUID is ideal) per logical create; send the same value when retrying it. */
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_resume"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResumeDocumentResponse"];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */
