@@ -17,9 +17,11 @@ from hirevion_api.authz import Principal, requires
 from hirevion_api.deps import get_storage
 from hirevion_api.idempotency import Idempotency, idempotency
 from hirevion_api.jobs.schemas import (
+    Choice,
     DocumentResponse,
     JdApply,
     JdResponse,
+    JobChoices,
     JobCreate,
     JobFields,
     JobResponse,
@@ -39,13 +41,15 @@ from hirevion_core.documents.files import MAX_BYTES
 from hirevion_core.jobs import jobs
 from hirevion_core.jobs.jobs import JobDetail, JobFilters
 from hirevion_core.jobs.taxonomy import search_skills
-from hirevion_core.models import Department, Document, Job, User
+from hirevion_core.models import Department, Document, Job, Team, User
 
 router = api_router(tags=["jobs"])
 
 ViewsJobs = Annotated[Principal, requires("jobs.view")]
 ManagesJobs = Annotated[Principal, requires("jobs.create")]
 Idempotent = Annotated[Idempotency, Depends(idempotency)]
+# Enough for any organisation this release serves; SP-22 brings a people search.
+PEOPLE_MAX = 2000
 
 
 def reference(number: int) -> str:
@@ -205,6 +209,27 @@ async def create_job(
 
         return await idem.run(
             session, principal.organization_id, idempotency_scope(principal), create
+        )
+
+
+# Declared before /jobs/{job_id}, which would otherwise take "choices" for an id.
+@router.get("/jobs/choices")
+async def job_choices(request: Request, principal: ViewsJobs) -> JobChoices:
+    """The departments, teams and people a job can be assigned to."""
+    async with own_tenant(request, principal) as session:
+        departments = await session.scalars(
+            select(Department).where(Department.archived_at.is_(None)).order_by(Department.name)
+        )
+        teams = await session.scalars(
+            select(Team).where(Team.archived_at.is_(None)).order_by(Team.name)
+        )
+        people = await session.scalars(
+            select(User).where(User.status == "active").order_by(User.name).limit(PEOPLE_MAX)
+        )
+        return JobChoices(
+            departments=[Choice.model_validate(row) for row in departments],
+            teams=[Choice.model_validate(row) for row in teams],
+            people=[Choice.model_validate(row) for row in people],
         )
 
 

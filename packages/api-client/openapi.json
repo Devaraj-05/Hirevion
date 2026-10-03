@@ -32,6 +32,25 @@
         "title": "Body_submit_job_description",
         "type": "object"
       },
+      "Choice": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "Choice",
+        "type": "object"
+      },
       "DepartmentCreate": {
         "additionalProperties": false,
         "properties": {
@@ -666,6 +685,39 @@
           "extraction"
         ],
         "title": "JdResponse",
+        "type": "object"
+      },
+      "JobChoices": {
+        "description": "What the job form picks from: live departments and teams, and active people.",
+        "properties": {
+          "departments": {
+            "items": {
+              "$ref": "#/components/schemas/Choice"
+            },
+            "title": "Departments",
+            "type": "array"
+          },
+          "people": {
+            "items": {
+              "$ref": "#/components/schemas/Choice"
+            },
+            "title": "People",
+            "type": "array"
+          },
+          "teams": {
+            "items": {
+              "$ref": "#/components/schemas/Choice"
+            },
+            "title": "Teams",
+            "type": "array"
+          }
+        },
+        "required": [
+          "departments",
+          "teams",
+          "people"
+        ],
+        "title": "JobChoices",
         "type": "object"
       },
       "JobCreate": {
@@ -4447,6 +4499,48 @@
           }
         },
         "summary": "Create Job",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/api/v1/jobs/choices": {
+      "get": {
+        "description": "The departments, teams and people a job can be assigned to.",
+        "operationId": "job_choices",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobChoices"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Job Choices",
         "tags": [
           "jobs"
         ]

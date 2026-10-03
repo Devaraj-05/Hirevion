@@ -185,3 +185,18 @@ class SkillSuggestion(BaseModel):
     id: UUID
     name: str
     category: str
+
+
+class Choice(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    name: str
+
+
+class JobChoices(BaseModel):
+    """What the job form picks from: live departments and teams, and active people."""
+
+    departments: list[Choice]
+    teams: list[Choice]
+    people: list[Choice]

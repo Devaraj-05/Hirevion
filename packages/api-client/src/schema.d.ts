@@ -388,6 +388,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/jobs/choices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Job Choices
+         * @description The departments, teams and people a job can be assigned to.
+         */
+        get: operations["job_choices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs/{job_id}": {
         parameters: {
             query?: never;
@@ -929,6 +949,16 @@ export interface components {
              */
             text?: string | null;
         };
+        /** Choice */
+        Choice: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+        };
         /** DepartmentCreate */
         DepartmentCreate: {
             /** Description */
@@ -1106,6 +1136,18 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /**
+         * JobChoices
+         * @description What the job form picks from: live departments and teams, and active people.
+         */
+        JobChoices: {
+            /** Departments */
+            departments: components["schemas"]["Choice"][];
+            /** People */
+            people: components["schemas"]["Choice"][];
+            /** Teams */
+            teams: components["schemas"]["Choice"][];
         };
         /** JobCreate */
         JobCreate: {
@@ -2723,6 +2765,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    job_choices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobChoices"];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */

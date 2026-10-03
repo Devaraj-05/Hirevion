@@ -8,6 +8,7 @@ from uuid import UUID
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
+from sqlalchemy import func
 
 from hirevion_core.ai import build_ai
 from hirevion_core.ai.mock import MockLLM
@@ -15,7 +16,7 @@ from hirevion_core.ai.settings import AiSettings
 from hirevion_core.db.session import Database
 from hirevion_core.documents.pipeline import DocumentServices, process_document
 from hirevion_core.documents.scan import FakeScanner
-from hirevion_core.models import Document
+from hirevion_core.models import Department, Document, Team
 from hirevion_core.storage.paths import BlobPath
 
 pytestmark = pytest.mark.db
@@ -253,3 +254,20 @@ async def test_skills_are_suggested(recruiter: AsyncClient) -> None:
     answer = (await recruiter.get("/api/v1/skills", params={"q": "kube"})).json()
     assert answer[0]["name"] == "Kubernetes"
     assert (await recruiter.get("/api/v1/skills", params={"q": " "})).json() == []
+
+
+async def test_the_form_choices(
+    signed_in, acme: UUID, make_user, blobs: MemoryBlobs, app_db: Database
+) -> None:
+    user = await make_user(acme, roles=["recruiter"])
+    client = await signed_in(acme, user)
+    async with app_db.tenant(acme) as session:
+        department = Department(organization_id=acme, name="Engineering")
+        session.add(department)
+        await session.flush()
+        session.add(Team(organization_id=acme, name="Platform", department_id=department.id))
+        session.add(Department(organization_id=acme, name="Old", archived_at=func.now()))
+    choices = (await client.get("/api/v1/jobs/choices")).json()
+    assert [d["name"] for d in choices["departments"]] == ["Engineering"]
+    assert [t["name"] for t in choices["teams"]] == ["Platform"]
+    assert str(user) in [p["id"] for p in choices["people"]]

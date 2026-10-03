@@ -86,6 +86,7 @@ EXPECTED: dict[str, tuple[tuple[str, ...], bool]] = {
     ),
     "GET /api/v1/jobs": (("jobs.view",), False),
     "POST /api/v1/jobs": (("jobs.create",), False),
+    "GET /api/v1/jobs/choices": (("jobs.view",), False),
     "GET /api/v1/jobs/{job_id}": (("jobs.view",), False),
     "PATCH /api/v1/jobs/{job_id}": (("jobs.create",), False),
     "POST /api/v1/jobs/{job_id}/status": (("jobs.create",), False),
