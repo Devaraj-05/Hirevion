@@ -271,3 +271,13 @@ async def test_the_form_choices(
     assert [d["name"] for d in choices["departments"]] == ["Engineering"]
     assert [t["name"] for t in choices["teams"]] == ["Platform"]
     assert str(user) in [p["id"] for p in choices["people"]]
+
+
+async def test_uploads_need_blob_storage(signed_in, acme: UUID, make_user) -> None:
+    client = await signed_in(acme, await make_user(acme, roles=["recruiter"]))
+    job = await new_job(client)
+    answer = await client.post(
+        f"/api/v1/jobs/{job['id']}/jd",
+        files={"file": ("jd.txt", b"We need a Go developer.", "text/plain")},
+    )
+    assert (answer.status_code, answer.json()["code"]) == (503, "storage-unavailable")

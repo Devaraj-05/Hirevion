@@ -17,7 +17,7 @@ from uuid import UUID
 from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
 from azure.storage.blob import BlobSasPermissions, ContentSettings, CorsRule, generate_blob_sas
 from azure.storage.blob.aio import BlobServiceClient, ContainerClient
-from pydantic import SecretStr
+from pydantic import SecretStr, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from hirevion_core.settings import repo_env_file
@@ -63,6 +63,15 @@ class StorageSettings(BaseSettings):
 
 def load_storage_settings() -> StorageSettings:
     return StorageSettings(_env_file=repo_env_file())  # type: ignore[call-arg]
+
+
+def load_optional_storage() -> StorageService | None:
+    """Blob storage when `AZURE_STORAGE_*` is configured; None where it isn't (CI's API-only
+    jobs), so everything but file uploads keeps working."""
+    try:
+        return StorageService(load_storage_settings())
+    except ValidationError:
+        return None
 
 
 def _client(settings: StorageSettings) -> BlobServiceClient:

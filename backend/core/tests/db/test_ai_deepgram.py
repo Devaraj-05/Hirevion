@@ -3,6 +3,7 @@
 import json
 from collections.abc import Awaitable, Callable
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 from uuid import UUID
 
@@ -15,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from hirevion_core.ai import build_ai
 from hirevion_core.ai.deepgram import Deepgram
-from hirevion_core.ai.mock import MOCK_PRICES
+from hirevion_core.ai.mock import MOCK_PRICES, MockLLM
 from hirevion_core.ai.openai_compat import OpenAICompatible
 from hirevion_core.ai.recorder import Recorder
 from hirevion_core.ai.settings import AiSettings
@@ -190,3 +191,13 @@ async def test_build_ai_wires_each_profile(app_db: Database) -> None:
         assert ai.embeddings is ai.llm and ai.vision is ai.llm and ai.ocr is ai.llm
         assert isinstance(ai.stt, Deepgram) and ai.tts is ai.stt
         await ai.aclose()
+
+
+async def test_the_mock_profile_reads_scripted_answers_from_a_file(
+    app_db: Database, tmp_path: Path
+) -> None:
+    scripts = tmp_path / "scripts.json"
+    scripts.write_text(json.dumps({"jd.extract": {"title": "Scripted"}}), encoding="utf-8")
+    ai = build_ai(AiSettings(profile="mock", mock_scripts=scripts), app_db, prices=MOCK_PRICES)
+    assert isinstance(ai.llm, MockLLM)
+    assert ai.llm.scripted == {"jd.extract": {"title": "Scripted"}}

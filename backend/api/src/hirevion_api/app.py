@@ -48,7 +48,7 @@ from hirevion_core.identity.settings import IdentitySettings, load_identity_sett
 from hirevion_core.mail.runner import run_workers
 from hirevion_core.ratelimit import RateRule
 from hirevion_core.settings import CoreSettings, load_core_settings
-from hirevion_core.storage.service import StorageService, load_storage_settings
+from hirevion_core.storage.service import load_optional_storage
 from hirevion_core.telemetry import Telemetry, instrument_engine
 
 # Routes that take file uploads, and so a larger body.
@@ -93,8 +93,9 @@ def create_app(
                     workers = asyncio.create_task(run_workers(resolved, stop))
                     stack.push_async_callback(_stop_workers, stop, workers)
             if app.state.storage is None:
-                app.state.storage = StorageService(load_storage_settings())
-                stack.push_async_callback(app.state.storage.aclose)
+                app.state.storage = load_optional_storage()
+                if app.state.storage is not None:
+                    stack.push_async_callback(app.state.storage.aclose)
             if identity_settings.hibp_enabled:
                 session = aiohttp.ClientSession()
                 stack.push_async_callback(session.close)

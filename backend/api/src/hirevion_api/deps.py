@@ -7,6 +7,7 @@ from typing import cast
 from fastapi import Request
 from redis.asyncio import Redis
 
+from hirevion_api.problems import ProblemError
 from hirevion_core.db.session import Database
 from hirevion_core.documents.intake import BlobStore
 
@@ -33,5 +34,10 @@ def client_ip(request: Request) -> str:
 def get_storage(request: Request) -> BlobStore:
     storage = getattr(request.app.state, "storage", None)
     if storage is None:
-        raise RuntimeError("The API has no blob storage; start it through its lifespan.")
+        raise ProblemError(
+            503,
+            "storage-unavailable",
+            "File storage unavailable",
+            "This server has no file storage configured, so it can't take uploads.",
+        )
     return cast(BlobStore, storage)

@@ -7,6 +7,7 @@ They run inside the API process (`HV_API_RUN_WORKERS`, on by default) or alone w
 from __future__ import annotations
 
 import asyncio
+import logging
 from functools import partial
 
 from redis.asyncio import Redis
@@ -23,7 +24,24 @@ from hirevion_core.mail.sender import SmtpSender
 from hirevion_core.mail.settings import MailSettings, load_mail_settings
 from hirevion_core.outbox import OutboxRelay
 from hirevion_core.settings import CoreSettings
-from hirevion_core.storage.service import StorageService, load_storage_settings
+from hirevion_core.storage.paths import BlobPath
+from hirevion_core.storage.service import load_optional_storage
+
+log = logging.getLogger(__name__)
+
+
+class NoStorage:
+    """Where no blob storage is configured: a file can't be read, so its document is retried
+    and then marked failed; pasted descriptions need no storage."""
+
+    async def put(self, path: BlobPath, data: bytes, content_type: str) -> None:
+        raise RuntimeError("no blob storage is configured (AZURE_STORAGE_*)")
+
+    async def get(self, path: BlobPath) -> bytes:
+        raise RuntimeError("no blob storage is configured (AZURE_STORAGE_*)")
+
+    async def delete(self, path: BlobPath) -> None:
+        raise RuntimeError("no blob storage is configured (AZURE_STORAGE_*)")
 
 
 async def run_workers(
@@ -33,25 +51,33 @@ async def run_workers(
     relay_db = create_database(core, "relay")
     app_db = create_database(core, "app")
     redis = Redis.from_url(core.valkey_url())
-    storage = StorageService(load_storage_settings())
+    storage = load_optional_storage()
     try:
-        documents = load_document_settings()
-        services = DocumentServices(
-            db=app_db,
-            blobs=storage,
-            scanner=ClamdScanner(documents.clamav_host, documents.clamav_port),
-            ai=build_ai(load_ai_settings(), app_db),
-            scan=documents.documents_scan,
-        )
-        await asyncio.gather(
+        workers = [
             OutboxRelay(relay_db, redis).run_forever(stop),
             MailConsumer(redis, SmtpSender(mail or load_mail_settings())).run_forever(stop),
-            DocumentConsumer(
+        ]
+        try:
+            documents = load_document_settings()
+            services = DocumentServices(
+                db=app_db,
+                blobs=storage or NoStorage(),
+                scanner=ClamdScanner(documents.clamav_host, documents.clamav_port),
+                ai=build_ai(load_ai_settings(), app_db),
+                scan=documents.documents_scan,
+            )
+        except ValueError:
+            # Missing AI keys or bad document settings stop documents only, not email.
+            log.exception("Documents won't be processed: their services can't start")
+        else:
+            consumer = DocumentConsumer(
                 redis, partial(handle_event, services), on_give_up=partial(give_up, services)
-            ).run_forever(stop),
-        )
+            )
+            workers.append(consumer.run_forever(stop))
+        await asyncio.gather(*workers)
     finally:
-        await storage.aclose()
+        if storage is not None:
+            await storage.aclose()
         await redis.aclose()
         await app_db.dispose()
         await relay_db.dispose()

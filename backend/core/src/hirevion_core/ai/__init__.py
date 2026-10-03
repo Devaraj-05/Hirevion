@@ -10,6 +10,7 @@ Every call is budget-checked and recorded in `ai_invocations` with its usage and
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 
 from hirevion_core.ai.deepgram import Deepgram
@@ -59,8 +60,11 @@ def build_ai(settings: AiSettings, db: Database, prices: PriceBook | None = None
     """The services for `settings.profile`, recording through `db` (the app role)."""
     recorder = Recorder(db, prices or PriceBook.load(), settings)
     if settings.profile == "mock":
+        llm = MockLLM(recorder, settings)
+        if settings.mock_scripts is not None:
+            llm.scripted.update(json.loads(settings.mock_scripts.read_text(encoding="utf-8")))
         return AiServices(
-            llm=MockLLM(recorder, settings),
+            llm=llm,
             embeddings=MockEmbeddings(recorder, settings),
             stt=MockSpeechToText(recorder, settings),
             tts=MockTextToSpeech(recorder, settings),

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from pathlib import Path
 from typing import Literal
 
 from pydantic import AliasChoices, Field, SecretStr
@@ -59,6 +60,10 @@ class AiSettings(BaseSettings):
     stt_model: str = Field("nova-3", validation_alias=_env("stt_model", "HV_STT_MODEL"))
     stt_language: str = Field("en", validation_alias=_env("stt_language", "HV_STT_LANGUAGE"))
     tts_voice: str = Field("aura-2-thalia-en", validation_alias=_env("tts_voice", "HV_TTS_VOICE"))
+    # The mock profile's fixed answers, as a JSON file of {purpose: answer} (end-to-end tests).
+    mock_scripts: Path | None = Field(
+        None, validation_alias=_env("mock_scripts", "HV_AI_MOCK_SCRIPTS")
+    )
     # The monthly AI spend allowed to an organisation that has no `ai.cost.usd` quota row.
     monthly_budget_usd: Decimal = Field(
         Decimal("50"), validation_alias=_env("monthly_budget_usd", "HV_AI_MONTHLY_BUDGET_USD")
