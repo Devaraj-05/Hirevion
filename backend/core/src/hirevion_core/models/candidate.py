@@ -118,6 +118,17 @@ class Application(IdMixin, TenantMixin, TimestampMixin, Base):
         ForeignKeyConstraint(
             ["organization_id", "document_id"], ["documents.organization_id", "documents.id"]
         ),
+        ForeignKeyConstraint(
+            ["organization_id", "recruiter_id"], ["users.organization_id", "users.id"]
+        ),
+        ForeignKeyConstraint(
+            ["organization_id", "hiring_manager_id"], ["users.organization_id", "users.id"]
+        ),
+        ForeignKeyConstraint(
+            ["organization_id", "screening_result_id"],
+            ["screening_results.organization_id", "screening_results.id"],
+            use_alter=True,
+        ),
         CheckConstraint(_in("stage", APPLICATION_STAGES), name="stage"),
         CheckConstraint(_in("source", APPLICATION_SOURCES), name="source"),
     )
@@ -127,4 +138,8 @@ class Application(IdMixin, TenantMixin, TimestampMixin, Base):
     document_id: Mapped[UUID | None]
     stage: Mapped[str] = mapped_column(Text, server_default="uploaded")
     source: Mapped[str] = mapped_column(Text, server_default="upload")
+    # Who looks after this candidate for this job; the job's recruiter and manager when unset.
+    recruiter_id: Mapped[UUID | None]
+    hiring_manager_id: Mapped[UUID | None]
+    screening_result_id: Mapped[UUID | None]
     created_by: Mapped[UUID | None]
