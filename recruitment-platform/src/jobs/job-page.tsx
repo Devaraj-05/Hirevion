@@ -29,6 +29,7 @@ import { STATUS_TONES, statusActions } from "./status";
  * and its versions. `canEdit` is the reader's `jobs.create`; the API checks it again. */
 export function JobPage({ id, canEdit }: { id: string; canEdit: boolean }) {
   const t = useTranslations("jobs");
+  const titles = useTranslations("routes");
   const problems = useAdminProblem();
   const queryClient = useQueryClient();
   const job = useJob(id);
@@ -48,19 +49,31 @@ export function JobPage({ id, canEdit }: { id: string; canEdit: boolean }) {
     },
   });
 
-  if (job.isPending) return <Skeleton className="h-64 w-full" />;
+  // The job's title is the page's h1; until it's known, the page's own name is.
+  const placeholderTitle = <h1 className="sr-only">{titles("jobsDetail")}</h1>;
+  if (job.isPending) {
+    return (
+      <>
+        {placeholderTitle}
+        <Skeleton className="h-64 w-full" />
+      </>
+    );
+  }
   if (job.isError) {
     const missing = isApiProblem(job.error) && job.error.status === 404;
     return (
-      <EmptyState
-        icon={<SearchX />}
-        title={missing ? t("page.notFound") : t("page.loadFailed")}
-        action={
-          <Button asChild variant="secondary">
-            <Link href="/jobs">{t("page.back")}</Link>
-          </Button>
-        }
-      />
+      <>
+        {placeholderTitle}
+        <EmptyState
+          icon={<SearchX />}
+          title={missing ? t("page.notFound") : t("page.loadFailed")}
+          action={
+            <Button asChild variant="secondary">
+              <Link href="/jobs">{t("page.back")}</Link>
+            </Button>
+          }
+        />
+      </>
     );
   }
 
@@ -76,7 +89,7 @@ export function JobPage({ id, canEdit }: { id: string; canEdit: boolean }) {
       </Link>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="grid gap-1">
-          <h2 className="font-semibold text-xl">{current.title}</h2>
+          <h1 className="font-semibold text-2xl tracking-tight">{current.title}</h1>
           <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-sm">
             <span>{current.reference}</span>
             <Badge tone={STATUS_TONES[current.status]}>{t(`statuses.${current.status}`)}</Badge>

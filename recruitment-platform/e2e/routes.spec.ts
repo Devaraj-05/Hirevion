@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { DEV_SESSIONS } from "../src/auth/dev-sessions";
 import { ROUTES } from "../src/auth/manifest";
 import { can, ROLES } from "../src/auth/permissions";
-import { messages, signInAs } from "./support";
+import { messages, samplePath, signInAs } from "./support";
 
 // Every IA route for every role (SP-03 exit criterion): it renders, or is refused with 403.
 for (const role of ROLES) {
@@ -14,7 +14,7 @@ for (const role of ROLES) {
     for (const route of ROUTES) {
       const allowed = can(DEV_SESSIONS[role], route.permission);
       test(`${route.path} is ${allowed ? "shown" : "refused"}`, async ({ page }) => {
-        const response = await page.goto(route.path);
+        const response = await page.goto(samplePath(route.path));
         const heading = page.getByRole("heading", { level: 1 });
         if (allowed) {
           expect(response?.status()).toBe(200);

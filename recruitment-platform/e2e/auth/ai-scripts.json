@@ -1,0 +1,20 @@
+{
+  "jd.extract": {
+    "title": "Platform Engineer",
+    "required_skills": [
+      { "name": "Python", "quote": "4+ years of Python" },
+      { "name": "Kubernetes", "quote": "Experience with Kubernetes" }
+    ],
+    "preferred_skills": [{ "name": "Go", "quote": "Go" }],
+    "experience_min": 4,
+    "experience_max": null,
+    "responsibilities": [
+      { "text": "Run Kubernetes clusters", "quote": "Run Kubernetes clusters" },
+      { "text": "Build internal tools in Python", "quote": "Build internal tools in Python" }
+    ],
+    "qualifications": [],
+    "domain": [],
+    "location": null,
+    "work_model": null
+  }
+}

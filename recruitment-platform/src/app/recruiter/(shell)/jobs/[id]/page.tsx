@@ -1,9 +1,11 @@
+import { getTranslations } from "next-intl/server";
 import { AdminDevNotice } from "@/admin/dev-notice";
 import { Forbidden } from "@/auth/forbidden";
 import { can } from "@/auth/permissions";
 import { requireRoute } from "@/auth/server";
 import { JobPage } from "@/jobs/job-page";
 import { routeMetadata } from "@/page/guarded-page";
+import { PageHeader } from "@/page/page-header";
 
 export const generateMetadata = routeMetadata("/jobs/[id]");
 
@@ -11,7 +13,15 @@ export const generateMetadata = routeMetadata("/jobs/[id]");
 export default async function JobDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await requireRoute("/jobs/[id]");
   if (!session) return <Forbidden />;
-  if (session.source === "dev") return <AdminDevNotice />;
+  if (session.source === "dev") {
+    const titles = await getTranslations("routes");
+    return (
+      <>
+        <PageHeader title={titles("jobsDetail")} />
+        <AdminDevNotice />
+      </>
+    );
+  }
   const { id } = await params;
   return <JobPage id={id} canEdit={can(session, "jobs.create")} />;
 }

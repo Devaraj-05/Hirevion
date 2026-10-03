@@ -32,3 +32,8 @@ export async function watchForProblems(page: Page): Promise<() => Promise<string
     return [...problems, ...csp.map((violation) => `csp: ${violation}`)];
   };
 }
+
+/** A manifest path with a sample id in its dynamic segment ("/jobs/[id]" -> "/jobs/<uuid>"). */
+export function samplePath(path: string): string {
+  return path.replace("[id]", "0190f1a2-0000-7000-8000-000000000000");
+}

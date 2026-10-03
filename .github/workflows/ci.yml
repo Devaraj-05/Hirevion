@@ -176,6 +176,11 @@ jobs:
       HV_HIBP_ENABLED: "false"
       HV_WEB_ORIGIN: http://app.hirevion.localhost:3100
       OTEL_SDK_DISABLED: "true"
+      # Job descriptions are read with the mock AI and its scripted answer; there's no ClamAV
+      # here, and pasted descriptions have no file to scan anyway.
+      HV_AI_PROFILE: mock
+      HV_AI_MOCK_SCRIPTS: recruitment-platform/e2e/auth/ai-scripts.json
+      HV_DOCUMENTS_SCAN: "false"
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v6
@@ -208,7 +213,7 @@ jobs:
           exit 1
       - name: Install Chromium for Playwright
         run: pnpm --filter @hirevion/recruitment-platform exec playwright install --with-deps chromium
-      - name: Sign-in, password reset, email change, sessions and CSRF
+      - name: Sign-in, accounts, organisations, jobs and job descriptions
         run: pnpm --filter @hirevion/recruitment-platform e2e
         env:
           HV_E2E_API: "1"

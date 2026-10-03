@@ -2,12 +2,12 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { ROUTES } from "../src/auth/manifest";
 import { PORTAL_PAGES } from "../src/portal/pages";
-import { APP, PORTAL, signInAs, watchForProblems } from "./support";
+import { APP, PORTAL, samplePath, signInAs, watchForProblems } from "./support";
 
 const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
 const PAGES = [
-  ...ROUTES.map((route) => `${APP}${route.path}`),
+  ...ROUTES.map((route) => `${APP}${samplePath(route.path)}`),
   `${APP}/login`,
   `${APP}/forgot-password`,
   `${APP}/reset-password/e2e-token`,
