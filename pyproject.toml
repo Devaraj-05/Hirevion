@@ -84,6 +84,6 @@ python_version = "3.12"
 strict = true
 
 [[tool.mypy.overrides]]
-# pypdfium2 ships no type information.
-module = ["pypdfium2", "pypdfium2.*"]
+# pypdfium2 and reportlab ship no type information.
+module = ["pypdfium2", "pypdfium2.*", "reportlab", "reportlab.*"]
 ignore_missing_imports = true

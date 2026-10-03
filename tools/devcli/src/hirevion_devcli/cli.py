@@ -326,6 +326,59 @@ def reset_limits_command() -> None:
     console.print(f"Cleared {removed} rate-limit and lockout entries.")
 
 
+RESUMES_DIR = Path("tools/devcli/.cache/resumes")
+RESUME_REPORT = Path("docs/evals/2026-10-resume-parse.md")
+
+
+@app.command("synth-resumes")
+def synth_resumes_command(
+    out: Annotated[Path, typer.Option(help="Where to write the files.")] = RESUMES_DIR,
+    count: Annotated[int, typer.Option(min=1, max=200)] = 200,
+    seed: Annotated[int, typer.Option(help="Same seed, same resumes.")] = 7,
+) -> None:
+    """Write the synthetic resumes, with their true values, for `hv eval-resumes`."""
+    from .synthetic_resumes import generate
+
+    target = out if out.is_absolute() else repo_root() / out
+    truths = generate(target, count=count, seed=seed)
+    console.print(f"Wrote {len(truths)} resumes and bundle.zip to {target}.")
+
+
+@app.command("eval-resumes")
+def eval_resumes_command(
+    directory: Annotated[
+        Path, typer.Option("--dir", help="From `hv synth-resumes`.")
+    ] = RESUMES_DIR,
+    limit: Annotated[int | None, typer.Option(min=1, help="Only the first N resumes.")] = None,
+    parallel: Annotated[int, typer.Option(min=1, max=8)] = 4,
+    report: Annotated[Path, typer.Option(help="Where to write the results.")] = RESUME_REPORT,
+) -> None:
+    """Run the resume pipeline over the synthetic set with the configured AI, and score it."""
+    from .resume_eval import TARGET_CONTACT, TARGET_OVERALL, evaluate
+
+    _require_env(repo_root())
+    source = directory if directory.is_absolute() else repo_root() / directory
+    if not (source / "truth.jsonl").exists():
+        console.print(f"No synthetic set in {source}; run `uv run hv synth-resumes` first.")
+        raise typer.Exit(code=1)
+    result, profile, model = asyncio.run(
+        evaluate(source, limit=limit, parallel=parallel, log=console.print)
+    )
+    target = report if report.is_absolute() else repo_root() / report
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(result.markdown(profile, model), encoding="utf-8", newline="\n")
+    table = Table("Field", "Precision", "Recall", "F1")
+    for name, score in [*result.fields.items(), ("overall", result.overall)]:
+        table.add_row(name, f"{score.precision:.3f}", f"{score.recall:.3f}", f"{score.f1:.3f}")
+    console.print(table)
+    console.print(
+        f"Targets: F1 >= {TARGET_OVERALL} overall, >= {TARGET_CONTACT} for name, email, phone: "
+        f"{'met' if result.met() else 'NOT met'}. Report: {target}"
+    )
+    if not result.met():
+        raise typer.Exit(code=1)
+
+
 @app.command()
 def worker() -> None:
     """Relay the outbox and send email until Ctrl+C (for an API with HV_API_RUN_WORKERS=false)."""

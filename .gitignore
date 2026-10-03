@@ -36,6 +36,7 @@ Thumbs.db
 # Local runtime data
 infrastructure/local/data/
 tools/voice_bench/.cache/
+tools/devcli/.cache/
 *.log
 
 # Claude Code personal settings

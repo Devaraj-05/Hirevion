@@ -156,8 +156,11 @@ async def submit_resume_file(
     data: bytes,
     filename: str,
     blobs: BlobStore,
+    *,
+    publish: bool = True,
 ) -> Document:
-    """A resume, or a ZIP of resumes (kind `archive`), for a job (PRD §13)."""
+    """A resume, or a ZIP of resumes (kind `archive`), for a job (PRD §13). `publish=False`
+    leaves queueing to the caller (the evaluation runs the pipeline itself)."""
     job = await _job(session, job_id)
     try:
         kind = check(data, set(RESUME_TYPES | {"zip"}), max_bytes=MAX_ARCHIVE_BYTES)
@@ -184,7 +187,8 @@ async def submit_resume_file(
     await blobs.put(BlobPath(actor.organization_id, key), data, CONTENT_TYPES[kind])
     session.add(document)
     await session.flush()
-    await queue(session, document)
+    if publish:
+        await queue(session, document)
     await record(
         session,
         actor,
