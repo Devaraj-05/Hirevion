@@ -20,6 +20,7 @@
     "jobsNew": "New job",
     "jobsDetail": "Job",
     "candidates": "Candidates",
+    "candidatesDetail": "Candidate",
     "interviews": "Interviews",
     "interviewTemplates": "Interview templates",
     "questions": "Question library",
@@ -331,7 +332,9 @@
       "tabs": {
         "details": "Details",
         "description": "Description",
-        "history": "History"
+        "history": "History",
+        "resumes": "Resumes",
+        "candidates": "Candidates"
       },
       "loadFailed": "This job couldn't be loaded.",
       "notFound": "This job doesn't exist, or you can't see it.",
@@ -371,6 +374,7 @@
         "uploaded": "Waiting to be read",
         "scanning": "Checking for viruses",
         "extracting": "Extracting the text",
+        "ocr": "Reading scanned pages",
         "parsing": "Reading the requirements",
         "parsed": "Read",
         "quarantined": "Quarantined",
@@ -388,7 +392,11 @@
         "ai-failed": "the AI service gave an unusable answer",
         "budget-exceeded": "this month's AI budget is used up",
         "retries-exhausted": "it failed several times",
-        "unknown": "something went wrong"
+        "unknown": "something went wrong",
+        "ocr-failed": "the scanned pages couldn't be read",
+        "image-too-large": "the image is too large",
+        "archive-too-large": "the ZIP holds too much",
+        "archive-bomb": "the ZIP looks unsafe"
       },
       "review": {
         "title": "Review what was found",
@@ -401,6 +409,49 @@
         "applied": "The description was applied to the job.",
         "nothing": "Nothing was found to apply."
       }
+    },
+    "resumes": {
+      "intro": "Upload resumes as PDF, Word (.docx), text, JPG, PNG or TIFF files of up to 10 MB each, or a ZIP of them up to 50 MB. Each is read in the background into a candidate for this job.",
+      "choose": "Choose files",
+      "drop": "Or drop files here",
+      "uploading": "Uploading",
+      "queued": "Waiting",
+      "sent": "Sent",
+      "failedUpload": "Not sent: {reason}",
+      "uploads": "Uploads",
+      "caption": "Resumes for this job",
+      "file": "File",
+      "status": "Status",
+      "candidate": "Candidate",
+      "uploaded": "Uploaded",
+      "retry": "Try again",
+      "retryNamed": "Try {name} again",
+      "entries": "{count, plural, one {# resume} other {# resumes}} inside",
+      "skipped": "Skipped: {names}",
+      "empty": "No resumes yet.",
+      "readOnly": "You can see the resumes, but uploading them needs the Upload resumes and manage candidates permission.",
+      "statuses": {
+        "uploaded": "Waiting to be read",
+        "scanning": "Checking for viruses",
+        "extracting": "Extracting the text",
+        "ocr": "Reading scanned pages",
+        "parsing": "Reading the resume",
+        "parsed": "Read",
+        "quarantined": "Quarantined",
+        "failed": "Couldn't be read"
+      },
+      "failedReason": "Couldn't be read: {reason}",
+      "quarantinedHint": "Flagged as unsafe and set aside",
+      "dropZone": "Resume uploads"
+    },
+    "applications": {
+      "caption": "Candidates for this job",
+      "name": "Name",
+      "headline": "Current role",
+      "skills": "Skills",
+      "stage": "Stage",
+      "applied": "Added",
+      "empty": "No candidates yet. Upload resumes on the Resumes tab."
     }
   },
   "auth": {
@@ -812,6 +863,91 @@
       "emptyTitle": "No organisations match",
       "emptyHint": "Change the filters, or create one.",
       "actionsColumn": "Actions"
+    }
+  },
+  "candidates": {
+    "table": {
+      "caption": "Candidates",
+      "name": "Name",
+      "headline": "Current role",
+      "location": "Location",
+      "skills": "Skills",
+      "updated": "Updated",
+      "search": "Search by name, email or phone",
+      "anyJob": "All jobs",
+      "job": "Job",
+      "open": "Open {name}",
+      "emptyTitle": "No candidates yet",
+      "emptyHint": "Upload resumes on a job's Resumes tab.",
+      "noMatchTitle": "No candidates match",
+      "noMatchHint": "Try another search or job.",
+      "stageLater": "Candidates appear by stage once screening arrives (SP-05). The All tab lists everyone."
+    },
+    "flags": {
+      "injection": "Contains instructions aimed at AI screening",
+      "hidden_text": "Has hidden text",
+      "metadata_text": "Has unusual text in its file details",
+      "zero_width": "Has invisible characters",
+      "low_ocr_confidence": "Scanned text may be inaccurate",
+      "possible_duplicate_of": "May be a duplicate of another candidate",
+      "duplicate_of": "Same file as an earlier upload"
+    },
+    "page": {
+      "back": "All candidates",
+      "loadFailed": "This candidate couldn't be loaded.",
+      "notFound": "This candidate doesn't exist, or you can't see them.",
+      "tabs": {
+        "profile": "Profile",
+        "resumes": "Resumes",
+        "applications": "Applications"
+      },
+      "warnings": "Things to check"
+    },
+    "profile": {
+      "contact": "Contact",
+      "email": "Email",
+      "phone": "Phone",
+      "location": "Location",
+      "summary": "Summary",
+      "skills": "Skills",
+      "experience": "Experience",
+      "education": "Education",
+      "certifications": "Certifications",
+      "projects": "Projects",
+      "achievements": "Achievements",
+      "languages": "Languages",
+      "links": "Links",
+      "years": "{years, plural, one {# year} other {# years}}",
+      "totalExperience": "{years, plural, one {# year} other {# years}} of experience",
+      "current": "present",
+      "evidence": "From the resume, page {page}: “{quote}”",
+      "evidenceNoPage": "From the resume: “{quote}”",
+      "nothing": "Nothing found."
+    },
+    "documents": {
+      "caption": "Resumes",
+      "file": "File",
+      "status": "Status",
+      "uploaded": "Uploaded",
+      "download": "Download {name}",
+      "unnamed": "Resume"
+    },
+    "applications": {
+      "caption": "Applications",
+      "job": "Job",
+      "stage": "Stage",
+      "applied": "Applied",
+      "empty": "No applications."
+    },
+    "stages": {
+      "uploaded": "Uploaded",
+      "parsed": "Parsed",
+      "screened": "Screened",
+      "ranked": "Ranked",
+      "review": "Recruiter review",
+      "shortlisted": "Shortlisted",
+      "rejected": "Rejected",
+      "on_hold": "On hold"
     }
   }
 }

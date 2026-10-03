@@ -19,15 +19,27 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useAdminProblem } from "@/admin/problems";
 import { type JobStatus, setJobStatus } from "./api";
+import { ApplicationsPanel } from "./applications-panel";
 import { DescriptionPanel } from "./description-panel";
 import { HistoryPanel } from "./history-panel";
 import { JobForm } from "./job-form";
 import { keys, useJob } from "./queries";
+import { ResumesPanel } from "./resumes-panel";
 import { STATUS_TONES, statusActions } from "./status";
 
-/** One job (PRD §11–12): its status and the moves from it, then its details, its description
- * and its versions. `canEdit` is the reader's `jobs.create`; the API checks it again. */
-export function JobPage({ id, canEdit }: { id: string; canEdit: boolean }) {
+/** One job (PRD §11–13): its status and the moves from it, then its details, its description,
+ * its resumes and candidates, and its versions. `canEdit` is the reader's `jobs.create`; the API checks it again. */
+export function JobPage({
+  id,
+  canEdit,
+  canViewCandidates = false,
+  canManageCandidates = false,
+}: {
+  id: string;
+  canEdit: boolean;
+  canViewCandidates?: boolean;
+  canManageCandidates?: boolean;
+}) {
   const t = useTranslations("jobs");
   const titles = useTranslations("routes");
   const problems = useAdminProblem();
@@ -123,6 +135,12 @@ export function JobPage({ id, canEdit }: { id: string; canEdit: boolean }) {
         <TabsList label={current.title}>
           <TabsTrigger value="details">{t("page.tabs.details")}</TabsTrigger>
           <TabsTrigger value="description">{t("page.tabs.description")}</TabsTrigger>
+          {canViewCandidates ? (
+            <>
+              <TabsTrigger value="resumes">{t("page.tabs.resumes")}</TabsTrigger>
+              <TabsTrigger value="candidates">{t("page.tabs.candidates")}</TabsTrigger>
+            </>
+          ) : null}
           <TabsTrigger value="history">{t("page.tabs.history")}</TabsTrigger>
         </TabsList>
         <TabsContent value="details">
@@ -131,6 +149,16 @@ export function JobPage({ id, canEdit }: { id: string; canEdit: boolean }) {
         <TabsContent value="description">
           <DescriptionPanel job={current} canEdit={canEdit} />
         </TabsContent>
+        {canViewCandidates ? (
+          <>
+            <TabsContent value="resumes">
+              <ResumesPanel jobId={id} canUpload={canManageCandidates} />
+            </TabsContent>
+            <TabsContent value="candidates">
+              <ApplicationsPanel jobId={id} />
+            </TabsContent>
+          </>
+        ) : null}
         <TabsContent value="history">
           <HistoryPanel jobId={id} />
         </TabsContent>

@@ -80,6 +80,14 @@ export const ROUTES = [
     nav: true,
   }),
   route({
+    path: "/candidates/[id]",
+    permission: "candidates.view",
+    section: "candidates",
+    titleKey: "candidatesDetail",
+    owner: "SP-04",
+    detail: true,
+  }),
+  route({
     path: "/interviews",
     permission: "interviews.view",
     section: "interviews",

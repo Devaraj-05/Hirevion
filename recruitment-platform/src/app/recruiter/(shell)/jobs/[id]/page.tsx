@@ -23,5 +23,12 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
     );
   }
   const { id } = await params;
-  return <JobPage id={id} canEdit={can(session, "jobs.create")} />;
+  return (
+    <JobPage
+      id={id}
+      canEdit={can(session, "jobs.create")}
+      canViewCandidates={can(session, "candidates.view")}
+      canManageCandidates={can(session, "candidates.manage")}
+    />
+  );
 }
