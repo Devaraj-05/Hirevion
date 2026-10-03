@@ -27,7 +27,6 @@ log = logging.getLogger(__name__)
 
 DOCUMENTS_STREAM = stream_name(DOCUMENTS_TOPIC)
 DEAD_LETTER_STREAM = "hv:dead:documents"
-_DONE_PREFIX = "hv:documents:done:"
 _DONE_TTL_SECONDS = 7 * 86_400
 _BATCH = 10
 
@@ -38,18 +37,26 @@ def _text(value: Any) -> str:
     return value.decode("utf-8") if isinstance(value, bytes) else str(value)
 
 
-class DocumentConsumer:
+class StreamConsumer:
+    """Consumes one outbox topic's stream (`documents`, `screening`, ...)."""
+
     def __init__(
         self,
         redis: Redis,
         handler: Handler,
         *,
+        topic: str = DOCUMENTS_TOPIC,
         on_give_up: Handler | None = None,
-        group: str = "documents",
+        group: str | None = None,
         consumer: str | None = None,
         retry_idle_ms: int = 60_000,
         max_deliveries: int = 5,
     ) -> None:
+        self._topic = topic
+        self._stream = stream_name(topic)
+        self._dead_letter = f"hv:dead:{topic}"
+        self._done_prefix = f"hv:{topic}:done:"
+        group = group or topic
         self._redis = redis
         self._handler = handler
         self._on_give_up = on_give_up
@@ -63,7 +70,7 @@ class DocumentConsumer:
         if self._group_ready:
             return
         try:
-            await self._redis.xgroup_create(DOCUMENTS_STREAM, self._group, id="0", mkstream=True)
+            await self._redis.xgroup_create(self._stream, self._group, id="0", mkstream=True)
         except ResponseError as error:
             if "BUSYGROUP" not in str(error):
                 raise
@@ -74,7 +81,7 @@ class DocumentConsumer:
         await self._ensure_group()
         handled = 0
         claimed: Any = await self._redis.xautoclaim(
-            DOCUMENTS_STREAM,
+            self._stream,
             self._group,
             self._consumer,
             min_idle_time=self._retry_idle_ms,
@@ -84,7 +91,7 @@ class DocumentConsumer:
         for message_id, fields in claimed[1]:
             handled += await self._handle(_text(message_id), fields)
         fresh: Any = await self._redis.xreadgroup(
-            self._group, self._consumer, {DOCUMENTS_STREAM: ">"}, count=_BATCH, block=block_ms
+            self._group, self._consumer, {self._stream: ">"}, count=_BATCH, block=block_ms
         )
         for _stream, messages in fresh or []:
             for message_id, fields in messages:
@@ -96,7 +103,7 @@ class DocumentConsumer:
             try:
                 await self.run_once(block_ms=block_ms)
             except Exception:
-                log.exception("Reading the documents stream failed; retrying in 1s")
+                log.exception("Reading the %s stream failed; retrying in 1s", self._topic)
                 await asyncio.sleep(1)
 
     async def _handle(self, message_id: str, raw: Mapping[Any, Any]) -> int:
@@ -106,22 +113,27 @@ class DocumentConsumer:
         payload: dict[str, Any] = json.loads(fields["payload"])
         if await self._deliveries(message_id) > self._max_deliveries:
             entry: dict[Any, Any] = dict(fields)
-            await self._redis.xadd(DEAD_LETTER_STREAM, entry, maxlen=10_000, approximate=True)
+            await self._redis.xadd(self._dead_letter, entry, maxlen=10_000, approximate=True)
             if self._on_give_up is not None:
                 await self._on_give_up(organization_id, payload)
             await self._finish(message_id)
             log.error(
-                "Gave up on document event %s after %d attempts", event_id, self._max_deliveries
+                "Gave up on %s event %s after %d attempts",
+                self._topic,
+                event_id,
+                self._max_deliveries,
             )
             return 0
-        done_key = _DONE_PREFIX + event_id
+        done_key = self._done_prefix + event_id
         if await self._redis.exists(done_key):
             await self._finish(message_id)
             return 0
         try:
             await self._handler(organization_id, payload)
         except Exception:
-            log.warning("Document event %s failed; it will be retried", event_id, exc_info=True)
+            log.warning(
+                "%s event %s failed; it will be retried", self._topic, event_id, exc_info=True
+            )
             return 0
         await self._redis.set(done_key, "1", ex=_DONE_TTL_SECONDS)
         await self._finish(message_id)
@@ -129,10 +141,14 @@ class DocumentConsumer:
 
     async def _deliveries(self, message_id: str) -> int:
         pending = await self._redis.xpending_range(
-            DOCUMENTS_STREAM, self._group, min=message_id, max=message_id, count=1
+            self._stream, self._group, min=message_id, max=message_id, count=1
         )
         return int(pending[0]["times_delivered"]) if pending else 1
 
     async def _finish(self, message_id: str) -> None:
-        await self._redis.xack(DOCUMENTS_STREAM, self._group, message_id)
-        await self._redis.xdel(DOCUMENTS_STREAM, message_id)
+        await self._redis.xack(self._stream, self._group, message_id)
+        await self._redis.xdel(self._stream, message_id)
+
+
+# The documents consumer is the first user of the class, and keeps its name.
+DocumentConsumer = StreamConsumer

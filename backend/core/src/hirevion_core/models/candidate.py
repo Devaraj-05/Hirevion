@@ -129,6 +129,7 @@ class Application(IdMixin, TenantMixin, TimestampMixin, Base):
             ["screening_results.organization_id", "screening_results.id"],
             use_alter=True,
         ),
+        Index("ix_applications_job_id_rank", "job_id", "rank"),
         CheckConstraint(_in("stage", APPLICATION_STAGES), name="stage"),
         CheckConstraint(_in("source", APPLICATION_SOURCES), name="source"),
     )
@@ -142,4 +143,6 @@ class Application(IdMixin, TenantMixin, TimestampMixin, Base):
     recruiter_id: Mapped[UUID | None]
     hiring_manager_id: Mapped[UUID | None]
     screening_result_id: Mapped[UUID | None]
+    # Place in the job's ranking (1 is best); null until screened.
+    rank: Mapped[int | None] = mapped_column(Integer)
     created_by: Mapped[UUID | None]

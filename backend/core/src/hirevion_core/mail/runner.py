@@ -1,4 +1,4 @@
-"""The background workers: the outbox relay, the mail consumer and the documents consumer.
+"""The background workers: the outbox relay, and the mail, documents and screening consumers.
 
 They run inside the API process (`HV_API_RUN_WORKERS`, on by default) or alone with
 `uv run hv worker`. SP-18's worker takes them over later.
@@ -15,7 +15,7 @@ from redis.asyncio import Redis
 from hirevion_core.ai import build_ai
 from hirevion_core.ai.settings import load_ai_settings
 from hirevion_core.db.session import create_database
-from hirevion_core.documents.consumer import DocumentConsumer
+from hirevion_core.documents.consumer import DocumentConsumer, StreamConsumer
 from hirevion_core.documents.pipeline import DocumentServices, give_up, handle_event
 from hirevion_core.documents.scan import ClamdScanner
 from hirevion_core.documents.settings import load_document_settings
@@ -23,6 +23,7 @@ from hirevion_core.mail.consumer import MailConsumer
 from hirevion_core.mail.sender import SmtpSender
 from hirevion_core.mail.settings import MailSettings, load_mail_settings
 from hirevion_core.outbox import OutboxRelay
+from hirevion_core.screening.runner import SCREENING_TOPIC, handle_screening_event
 from hirevion_core.settings import CoreSettings
 from hirevion_core.storage.paths import BlobPath
 from hirevion_core.storage.service import load_optional_storage
@@ -74,6 +75,12 @@ async def run_workers(
                 redis, partial(handle_event, services), on_give_up=partial(give_up, services)
             )
             workers.append(consumer.run_forever(stop))
+            screening = StreamConsumer(
+                redis,
+                partial(handle_screening_event, app_db, services.ai),
+                topic=SCREENING_TOPIC,
+            )
+            workers.append(screening.run_forever(stop))
         await asyncio.gather(*workers)
     finally:
         if storage is not None:

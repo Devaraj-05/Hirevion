@@ -162,6 +162,8 @@ def upgrade() -> None:
 
     for column in ("recruiter_id", "hiring_manager_id", "screening_result_id"):
         op.add_column("applications", sa.Column(column, sa.Uuid(), nullable=True))
+    op.add_column("applications", sa.Column("rank", sa.Integer(), nullable=True))
+    op.create_index("ix_applications_job_id_rank", "applications", ["job_id", "rank"])
     for column in ("recruiter_id", "hiring_manager_id"):
         op.create_foreign_key(
             op.f(f"fk_applications_organization_id_{column}_users"),
@@ -191,7 +193,8 @@ def downgrade() -> None:
             "applications",
             type_="foreignkey",
         )
-    for column in ("screening_result_id", "hiring_manager_id", "recruiter_id"):
+    op.drop_index("ix_applications_job_id_rank", "applications")
+    for column in ("rank", "screening_result_id", "hiring_manager_id", "recruiter_id"):
         op.drop_column("applications", column)
     op.drop_table("application_history")
     op.drop_table("screening_results")
