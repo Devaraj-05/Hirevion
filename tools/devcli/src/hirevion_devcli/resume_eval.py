@@ -389,7 +389,7 @@ async def evaluate(
         log(f"Organisation {actor.organization_id}; scanner: {scanner_name}")
         log(f"AI profile: {ai_settings.profile}")
         blobs = _MemoryBlobs()
-        services = DocumentServices(db=db, blobs=blobs, scanner=scanner, ai=ai)
+        services = DocumentServices(db=db, blobs=blobs, scanner=scanner, ai=ai, queue_entries=False)
         async with db.tenant(actor.organization_id) as session:
             job = await jobs.create_job(session, actor, JobChanges(title="Resume evaluation"))
 

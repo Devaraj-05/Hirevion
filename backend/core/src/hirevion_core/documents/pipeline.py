@@ -56,6 +56,9 @@ class DocumentServices:
     scanner: Scanner
     ai: AiServices
     scan: bool = True
+    # Whether an archive's entries are queued for the consumer; the evaluation, which runs the
+    # pipeline itself, turns it off.
+    queue_entries: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -442,7 +445,8 @@ async def _expand(
                 )
                 session.add(child)
                 await session.flush()
-                await queue(session, child)
+                if services.queue_entries:
+                    await queue(session, child)
     await _set(
         services,
         organization_id,
