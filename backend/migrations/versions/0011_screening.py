@@ -93,7 +93,7 @@ def upgrade() -> None:
         unique=True,
         postgresql_where=sa.text("job_id IS NOT NULL"),
     )
-    _tenant("screening_configs", ["SELECT", "INSERT", "UPDATE"])
+    _tenant("screening_configs", ["SELECT", "INSERT", "UPDATE", "DELETE"])
 
     op.create_table(
         "screening_results",

@@ -54,6 +54,14 @@ _HEADINGS: dict[str, tuple[str, ...]] = {
     "certifications": ("certifications", "certificates", "licenses"),
     "benefits": ("benefits", "perks", "what we offer", "why join us", "compensation"),
     "location": ("location", "work location", "work model"),
+    "personal": (
+        "personal details",
+        "personal information",
+        "personal profile",
+        "personal data",
+        "personal particulars",
+    ),
+    "languages": ("languages", "languages known"),
 }
 _HEADING_LINE = re.compile(r"^[ \t#*•\-]*([A-Za-z][A-Za-z '\u2019\-]{1,40}?)[ \t]*:?[ \t]*$", re.M)
 _LOOKUP = {heading: name for name, headings in _HEADINGS.items() for heading in headings}
