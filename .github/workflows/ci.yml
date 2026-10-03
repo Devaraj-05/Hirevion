@@ -217,6 +217,17 @@ jobs:
         run: pnpm --filter @hirevion/recruitment-platform e2e
         env:
           HV_E2E_API: "1"
+      # `uv run` holds uv's cache lock while the API runs, and setup-uv's post step prunes that
+      # cache: left running, the API made the prune time out and fail the job.
+      - name: Stop the API
+        if: always()
+        run: |
+          pkill -TERM -f "hv api" || true
+          for _ in $(seq 1 20); do
+            pgrep -f "hv api" > /dev/null || exit 0
+            sleep 1
+          done
+          pkill -KILL -f "hv api" || true
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
