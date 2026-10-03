@@ -299,6 +299,24 @@ How the pipeline works is in [ADR-0015](../architecture/adr/0015-jobs-and-docume
 - **Without blob storage** (`AZURE_STORAGE_*` unset), uploads answer 503
   `storage-unavailable`, and pasted descriptions still work.
 
+### Resumes and candidates
+
+- **On a job's Resumes tab:**
+  - Pick or drop PDF, DOCX, TXT, JPG, PNG or TIFF files (10 MB each), or a ZIP of them (up to 50 MB and 200 entries).
+  - Each file is sent in its own request, three at a time.
+  - The list follows each resume through `scanning`, `extracting`, `ocr`, `parsing` and `parsed`, nesting an archive's entries under it.
+  - Failed ones offer "Try again".
+- **Candidates** appear on the job's Candidates tab and under Candidates.
+  - A candidate's page shows every parsed item with "From the resume, page N", and their resumes and applications.
+  - Flags (hidden text, injection attempts, possible duplicates, low OCR confidence) are shown as things to check.
+- **Permissions:** uploading needs `candidates.manage` ("Upload resumes and manage candidates": org admins and recruiters); reading needs `candidates.view`.
+- **Personal data:** Aadhaar and PAN numbers are masked before anything is stored or parsed. A scanned resume's page image still goes to the OCR service before masking (ADR-0015).
+- **The synthetic set and the F1 evaluation:**
+  - `uv run hv synth-resumes` writes 200 made-up resumes and `truth.jsonl` to `tools/devcli/.cache/resumes`.
+  - `uv run hv eval-resumes` runs them through the pipeline in an organisation of its own, scores 14 fields, checks the exit criteria and writes `docs/evals/2026-10-resume-parse.md`. It uses the AI profile in `.env`; with `HV_AI_PROFILE=mock`, only the exit criteria mean anything.
+  - The anti-virus test file is uploaded from memory, because Windows Defender removes it from disk.
+- **The end-to-end suite** uploads a resume too: keep Azurite up (it is in the `core` profile).
+
 ## Desktop app (`ai-interviewer-desktop`)
 
 The candidate app is Tauri 2: a React webview (`src/`) plus Rust (`src-tauri/`), which also

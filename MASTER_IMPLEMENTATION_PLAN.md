@@ -1598,13 +1598,13 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 10 | 10 dashboard KPIs and 7 filters | SP-03, SP-21 |
 | 11 | 17 job fields; 5 statuses | SP-04 (Screening Configuration field → SP-05, Interview Template field → SP-06) |
 | 12 | JD formats (PDF, DOCX, TXT, text); 10-step pipeline; 8 extracted items; recruiter review/edit | SP-04 (§6.6) |
-| 13 | Single, bulk, PDF, DOCX, TXT, image/OCR; 10-step pipeline including malware scan | SP-04 (§6.6) |
-| 14 | 16 parsed fields; evidence references | SP-04 |
+| 13 | Single, bulk, PDF, DOCX, TXT, image/OCR; 10-step pipeline including malware scan | SP-04b (§6.6; ZIP bulk upload, per-entry scanning, ADR-0015) |
+| 14 | 16 parsed fields; evidence references | SP-04b (page, section and verified quote per item; F1 in `docs/evals/`) |
 | 15 | 4 inputs; 9 evaluation factors; 6 combination methods | SP-05 (§6.7) |
 | 16 | 9 ranking output fields; explainable, with evidence per factor | SP-05 |
 | 17 | Configurable weights; Required/Preferred/Optional skills | SP-05, SP-22 (organisation defaults) |
 | 18 | 6 workflow stages; 8 actions; override audit | SP-05 |
-| 19 | 13 candidate-profile sections | SP-04, SP-05, SP-17 |
+| 19 | 13 candidate-profile sections | SP-04b (profile, resume, parsed profile, applications, jobs), SP-05, SP-17 |
 | 20 | 13 Candidate 360 tabs | SP-17 |
 | 21 | 13 template fields; example weights and difficulty distribution | SP-06 |
 | 22 | 10 question fields; 8 question types | SP-06 (time limits and follow-up rules honoured in SP-09) |

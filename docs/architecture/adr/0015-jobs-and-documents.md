@@ -48,3 +48,27 @@
   - the dead-letter stream and `retries-exhausted` documents;
   - AI cost per description (`ai_invocations`);
   - ClamAV's signature updates on first start.
+
+## Addendum: resumes and candidates (SP-04b, 2026-10-03)
+
+- **Resumes** use the same table, consumer and statuses, plus `ocr`:
+  - PDF, DOCX, TXT, JPG, PNG and TIFF files of up to 10 MB;
+  - ZIP archives (kind `archive`) of up to 50 MB, at most 200 entries, 200 MB uncompressed and a compression ratio of 100. Nested archives and other types are skipped with a reason.
+  - An archive isn't scanned whole: each entry becomes a resume document of its own and is scanned before anything reads it, so one infected file doesn't sink a batch.
+- **Hidden text** is left out of what the AI reads and flagged: white, sub-3-pt or off-page PDF text, and hidden, white or tiny Word runs. So are zero-width characters, long metadata and instruction-like phrases ("ignore previous instructions", "rank me first"). The flags reach the candidate, and recruiters see them.
+- **OCR:**
+  - images, and PDF pages with almost no text layer (rendered at 200 dpi), go to the OCR service one page at a time;
+  - a page image can't be masked before it's read, so it goes to the OCR service unmasked; its text is masked before it's stored or parsed;
+  - OCR call records keep only the character count and confidence, never the text.
+- **PII:** the built-in recognisers mask Aadhaar and PAN before storage and before the parse. The parse also requires the email and phone it returns to be ones the text contains.
+- **The parse** (`resume.parse`, prompt `resume-parse-v1`) returns PRD §14's fields. Every item carries its quote, and the page and section it came from.
+- **De-duplication:** the same email, then the same phone, then a near-identical name (trigram similarity of at least 0.92) with no conflicting contact. A similar name with a conflicting contact is a new candidate flagged `possible_duplicate_of`. An exact copy of a resume already parsed reuses that result, with no AI call.
+- **Candidates and applications:** the latest resume sets the candidate's profile, skills (normalised to the taxonomy) and embedding. Each job a resume is uploaded to gets an application at stage `parsed`. Reads go through the resource scope via the applications' jobs. Downloads are 5-minute signed links, audited for resumes.
+- **The evaluation** (`hv synth-resumes`, `hv eval-resumes`) runs the real pipeline over 200 synthetic resumes with true values and scores 14 fields.
+  - **Checked so far (mock AI, 2026-10-03):**
+    - all 200 reach a final status;
+    - ClamAV quarantines EICAR;
+    - all 10 injection samples are flagged;
+    - no raw Aadhaar number is stored in documents, candidates or AI records;
+    - the 10 ZIP copies are reused without an AI call.
+  - **Not yet measured:** the F1 targets, which need a live run with a valid Gemini key (`docs/evals/2026-10-resume-parse.md`).
