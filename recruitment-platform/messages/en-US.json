@@ -549,6 +549,7 @@
     "jobs_view": "View jobs",
     "jobs_create": "Create and edit jobs",
     "candidates_view": "View candidates",
+    "candidates_manage": "Upload resumes and manage candidates",
     "interviews_view": "View interviews",
     "interviews_templates_view": "View interview templates",
     "questions_view": "View the question library",

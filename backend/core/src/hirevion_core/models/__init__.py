@@ -3,6 +3,7 @@
 from hirevion_core.models.ai_invocation import AiInvocation
 from hirevion_core.models.audit_log import AuditLog
 from hirevion_core.models.auth_token import AuthToken
+from hirevion_core.models.candidate import Application, Candidate, CandidateSkill
 from hirevion_core.models.department import Department
 from hirevion_core.models.document import Document
 from hirevion_core.models.feature_flag import FeatureFlag
@@ -20,8 +21,11 @@ from hirevion_core.models.web_session import WebSession
 
 __all__ = [
     "AiInvocation",
+    "Application",
     "AuditLog",
     "AuthToken",
+    "Candidate",
+    "CandidateSkill",
     "Department",
     "Document",
     "FeatureFlag",
