@@ -64,6 +64,35 @@ async def _replace_skills(
         position += 1
 
 
+async def ensure_application(
+    session: AsyncSession, document: Document, candidate: Candidate
+) -> None:
+    """Links the resume to its candidate, and the candidate to the resume's job."""
+    document.candidate_id = candidate.id
+    if document.job_id is None:
+        return
+    application = await session.scalar(
+        select(Application).where(
+            Application.job_id == document.job_id, Application.candidate_id == candidate.id
+        )
+    )
+    if application is None:
+        session.add(
+            Application(
+                organization_id=document.organization_id,
+                candidate_id=candidate.id,
+                job_id=document.job_id,
+                document_id=document.id,
+                stage="parsed",
+                created_by=document.created_by,
+            )
+        )
+    else:
+        application.document_id = document.id
+        if application.stage == "uploaded":
+            application.stage = "parsed"
+
+
 async def build(
     session: AsyncSession,
     document: Document,
@@ -100,28 +129,7 @@ async def build(
     await session.flush()
     await _replace_skills(session, candidate, list(profile.get("skills") or []))
 
-    document.candidate_id = candidate.id
-    if document.job_id is not None:
-        application = await session.scalar(
-            select(Application).where(
-                Application.job_id == document.job_id, Application.candidate_id == candidate.id
-            )
-        )
-        if application is None:
-            session.add(
-                Application(
-                    organization_id=document.organization_id,
-                    candidate_id=candidate.id,
-                    job_id=document.job_id,
-                    document_id=document.id,
-                    stage="parsed",
-                    created_by=document.created_by,
-                )
-            )
-        else:
-            application.document_id = document.id
-            if application.stage == "uploaded":
-                application.stage = "parsed"
+    await ensure_application(session, document, candidate)
     await session.flush()
     await _audit.append(
         session,

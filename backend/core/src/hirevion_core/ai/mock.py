@@ -2,7 +2,8 @@
 
 Each mock goes through `Recorder` like a real backend, so recording, metering and budgets are
 tested exactly as they run in production. `failures` makes the next calls fail; `scripted`
-returns a fixed value per purpose (for schemas the generic faker can't satisfy).
+returns a fixed value per purpose (for schemas the generic faker can't satisfy), or for the LLM
+a function of the messages.
 """
 
 from __future__ import annotations
@@ -143,6 +144,8 @@ class MockLLM(_Mock):
         async def run() -> LlmResult[T]:
             self._begin()
             scripted = self.scripted.get(ctx.purpose)
+            if callable(scripted):  # an answer that depends on what was asked
+                scripted = scripted(messages)
             value = (
                 schema.model_validate(scripted) if scripted is not None else fake_instance(schema)
             )

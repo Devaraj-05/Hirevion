@@ -17,6 +17,8 @@ class ApiSettings(BaseSettings):
     max_body_bytes: int = 1_048_576
     # File uploads (a job description, resumes): 10 MiB files plus the multipart framing.
     max_upload_bytes: int = 11 * 1_048_576
+    # Resumes: a ZIP of up to 50 MiB plus the framing.
+    max_archive_upload_bytes: int = 51 * 1_048_576
     # Requests per window per client IP, across the whole API.
     ip_rate_limit: int = 600
     ip_rate_window_seconds: int = 60

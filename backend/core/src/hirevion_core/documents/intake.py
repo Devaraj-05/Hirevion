@@ -12,7 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from hirevion_core.access.actor import Actor
 from hirevion_core.access.audit import record
 from hirevion_core.access.errors import Conflict, Invalid, NotFound
-from hirevion_core.documents.files import DocumentRejected, check
+from hirevion_core.documents.archive import MAX_ARCHIVE_BYTES
+from hirevion_core.documents.files import MAX_BYTES, DocumentRejected, check
 from hirevion_core.ids import uuid7
 from hirevion_core.models import Document, Job
 from hirevion_core.outbox import publish_event
@@ -28,11 +29,18 @@ CONTENT_TYPES = {
     "png": "image/png",
     "jpeg": "image/jpeg",
     "tiff": "image/tiff",
+    "zip": "application/zip",
 }
 _REJECTIONS = {
     "empty": "The file is empty",
     "too-large": "Upload a file of at most 10 MB",
     "unsupported-type": "Upload a PDF, Word (.docx) or text file",
+}
+RESUME_TYPES = frozenset({"pdf", "docx", "txt", "png", "jpeg", "tiff"})
+_RESUME_REJECTIONS = {
+    "empty": "The file is empty",
+    "too-large": "Upload files of at most 10 MB, or ZIP archives of at most 50 MB",
+    "unsupported-type": "Upload a PDF, Word (.docx), text, JPG, PNG or TIFF file, or a ZIP of them",
 }
 
 
@@ -137,6 +145,53 @@ async def submit_jd_file(
         "job",
         job.id,
         details={"document_id": str(document.id), "source": "file", "type": kind},
+    )
+    return document
+
+
+async def submit_resume_file(
+    session: AsyncSession,
+    actor: Actor,
+    job_id: UUID,
+    data: bytes,
+    filename: str,
+    blobs: BlobStore,
+) -> Document:
+    """A resume, or a ZIP of resumes (kind `archive`), for a job (PRD §13)."""
+    job = await _job(session, job_id)
+    try:
+        kind = check(data, set(RESUME_TYPES | {"zip"}), max_bytes=MAX_ARCHIVE_BYTES)
+        if kind != "zip" and len(data) > MAX_BYTES:
+            raise DocumentRejected("too-large")
+    except DocumentRejected as error:
+        message = _RESUME_REJECTIONS.get(error.code, "Unsupported file")
+        raise Invalid(error.code, message, field="file") from error
+    document_id = uuid7()
+    key = f"jobs/{job.id}/resumes/{document_id}.{kind}"
+    document = Document(
+        id=document_id,
+        organization_id=actor.organization_id,
+        kind="archive" if kind == "zip" else "resume",
+        job_id=job.id,
+        filename=filename.replace("\\", "/").rsplit("/", 1)[-1][:255] or None,
+        content_type=CONTENT_TYPES[kind],
+        size=len(data),
+        sha256=hashlib.sha256(data).hexdigest(),
+        blob_path=key,
+        status="uploaded",
+        created_by=actor.user_id,
+    )
+    await blobs.put(BlobPath(actor.organization_id, key), data, CONTENT_TYPES[kind])
+    session.add(document)
+    await session.flush()
+    await queue(session, document)
+    await record(
+        session,
+        actor,
+        "resume.uploaded",
+        "job",
+        job.id,
+        details={"document_id": str(document.id), "type": kind},
     )
     return document
 

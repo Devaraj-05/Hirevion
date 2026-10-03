@@ -51,8 +51,9 @@ from hirevion_core.settings import CoreSettings, load_core_settings
 from hirevion_core.storage.service import load_optional_storage
 from hirevion_core.telemetry import Telemetry, instrument_engine
 
-# Routes that take file uploads, and so a larger body.
-UPLOAD_PATHS = re.compile(rf"{API_PREFIX}/jobs/[^/]+/(?:jd|resumes)")
+# Routes that take file uploads, and so a larger body: a description, or a resume or ZIP of them.
+DESCRIPTION_UPLOAD = re.compile(rf"{API_PREFIX}/jobs/[^/]+/jd")
+RESUME_UPLOAD = re.compile(rf"{API_PREFIX}/jobs/[^/]+/resumes")
 
 
 def create_app(
@@ -154,8 +155,10 @@ def create_app(
     app.add_middleware(
         BodySizeLimitMiddleware,
         max_bytes=settings.max_body_bytes,
-        upload_paths=UPLOAD_PATHS,
-        upload_max_bytes=settings.max_upload_bytes,
+        upload_limits=[
+            (DESCRIPTION_UPLOAD, settings.max_upload_bytes),
+            (RESUME_UPLOAD, settings.max_archive_upload_bytes),
+        ],
     )
     app.add_middleware(RateLimitMiddleware, rule=ip_rule)
     app.add_middleware(HostCheckMiddleware, allowed_hosts=settings.hosts)

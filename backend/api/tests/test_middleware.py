@@ -88,3 +88,17 @@ async def test_upload_routes_take_larger_bodies(
     assert too_large.status_code == 413
     elsewhere = await client.post("/api/v1/test/echo", content=b"x" * 11)
     assert elsewhere.status_code == 413
+
+
+async def test_resume_uploads_take_zip_archives(
+    client_for: Callable[[FastAPI], AsyncClient],
+) -> None:
+    client = client_with(
+        client_for, max_body_bytes=10, max_upload_bytes=100, max_archive_upload_bytes=200
+    )
+    resumes = "/api/v1/jobs/0190f1a2-0000-7000-8000-000000000000/resumes"
+    description = "/api/v1/jobs/0190f1a2-0000-7000-8000-000000000000/jd"
+
+    assert (await client.post(resumes, content=b"x" * 200)).status_code != 413
+    assert (await client.post(resumes, content=b"x" * 201)).status_code == 413
+    assert (await client.post(description, content=b"x" * 150)).status_code == 413
