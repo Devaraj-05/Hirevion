@@ -366,6 +366,7 @@ class OpenAICompatible:
             [{"role": "user", "content": content}],
             _OcrReading,
             DEFAULT_TIMEOUT,
-            lambda value: {"text": value.text, "confidence": _clamp(value.confidence)},
+            # A page image may show raw identity numbers: keep how much was read, not the text.
+            lambda value: {"characters": len(value.text), "confidence": _clamp(value.confidence)},
         )
         return OcrPage(reply.value.text, _clamp(reply.value.confidence), model)

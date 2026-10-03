@@ -121,7 +121,8 @@ async def test_every_service_records_its_own_usage(
     assert rows["tts"]["characters"] == spoken.characters == len("Welcome to your interview.")
     assert rows["tts"]["output"] == {"characters": spoken.characters}
     assert rows["vision"]["output"] == seen.value.model_dump(mode="json")
-    assert rows["ocr"]["output"] == {"text": page.text, "confidence": page.confidence}
+    # A scanned resume holds raw identity numbers, so OCR keeps no text (ADR-0015).
+    assert rows["ocr"]["output"] == {"characters": len(page.text), "confidence": page.confidence}
 
     used = await meters(admin_engine, org)
     assert {"ai.embedding.input_tokens", "ai.stt.seconds", "ai.tts.characters"} <= set(used)

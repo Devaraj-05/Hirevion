@@ -271,5 +271,5 @@ class MockOCR(_Mock):
             model,
             run,
             lambda r: Usage(input_tokens=max(1, len(image) // 100), model_version=r.model),
-            lambda r: {"text": r.text, "confidence": r.confidence},
+            lambda r: {"characters": len(r.text), "confidence": r.confidence},
         )

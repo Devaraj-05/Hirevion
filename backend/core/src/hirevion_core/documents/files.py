@@ -8,7 +8,7 @@ from typing import Literal
 
 from charset_normalizer import from_bytes
 
-FileKind = Literal["pdf", "docx", "txt", "png", "jpeg", "tiff"]
+FileKind = Literal["pdf", "docx", "txt", "png", "jpeg", "tiff", "zip"]
 
 MAX_BYTES = 10 * 1024 * 1024
 
@@ -46,7 +46,7 @@ def sniff(data: bytes) -> FileKind | None:
     if data.startswith(b"%PDF-"):
         return "pdf"
     if data.startswith(b"PK\x03\x04"):
-        return "docx" if _is_docx(data) else None
+        return "docx" if _is_docx(data) else "zip"
     if data.startswith(b"\x89PNG\r\n\x1a\n"):
         return "png"
     if data.startswith(b"\xff\xd8\xff"):

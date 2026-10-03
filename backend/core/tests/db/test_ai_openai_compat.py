@@ -327,10 +327,7 @@ async def test_ocr_reads_text_and_clamps_confidence(
     page = await backend.read_page(AiContext(org, "resume.ocr"), b"\xff\xd8 jpeg", "image/jpeg")
     assert (page.text, page.confidence) == ("Priya Sharma, Python", 1.0)
     [row] = await rows(admin_engine, org)
-    assert (row["service"], row["output"]) == (
-        "ocr",
-        {"text": "Priya Sharma, Python", "confidence": 1.0},
-    )
+    assert (row["service"], row["output"]) == ("ocr", {"characters": 20, "confidence": 1.0})
 
 
 async def test_unsupported_images_are_refused(backend: OpenAICompatible) -> None:
