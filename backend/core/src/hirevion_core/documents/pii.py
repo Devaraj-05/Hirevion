@@ -1,7 +1,7 @@
 """Personal data in resumes (ADR-0015): built-in recognisers for Indian identity numbers and
 contact details, and the masking applied before text is stored or sent to an AI service.
 
-Aadhaar numbers (12 digits, first 2–9, Verhoeff-valid) and PANs keep only their last four
+Aadhaar numbers (12 digits, the first 2 to 9, Verhoeff-valid) and PANs keep only their last four
 characters. Phones, emails and dates of birth are found (for checking parsed contact details,
 and for SP-05's blind mode) but left in place.
 """

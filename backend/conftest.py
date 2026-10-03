@@ -191,19 +191,47 @@ async def relay_db(core_settings: CoreSettings, migrated_database: str) -> Async
 EICAR = rb"X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
 
 
+def text_ops(*lines: str) -> str:
+    """Content-stream operators that show `lines` in 12-point Helvetica, top down."""
+    return "\n".join(
+        f"BT /F1 12 Tf 72 {720 - 18 * index} Td ({line}) Tj ET" for index, line in enumerate(lines)
+    )
+
+
 def pdf(*lines: str) -> bytes:
     """A one-page PDF showing `lines` in Helvetica."""
-    text_ops = "\n".join(
-        f"BT /F1 12 Tf 72 {720 - 18 * index} Td ({line}) Tj ET" for index, line in enumerate(lines)
-    ).encode("latin-1")
+    return pdf_pages(text_ops(*lines))
+
+
+def pdf_pages(*streams: str, title: str | None = None) -> bytes:
+    """A PDF with one page per content stream (an empty stream is a blank page, as a scan with
+    no text layer looks), and optionally a document title in its metadata."""
+    count = len(streams)
+    font = 3 + 2 * count
     objects = [
         b"<< /Type /Catalog /Pages 2 0 R >>",
-        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
-        b"/Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
-        b"<< /Length " + str(len(text_ops)).encode() + b" >>\nstream\n" + text_ops + b"\nendstream",
-        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+        (
+            "<< /Type /Pages /Kids ["
+            + " ".join(f"{3 + 2 * index} 0 R" for index in range(count))
+            + f"] /Count {count} >>"
+        ).encode(),
     ]
+    for index, stream in enumerate(streams):
+        body = stream.encode("latin-1")
+        objects.append(
+            (
+                "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+                f"/Resources << /Font << /F1 {font} 0 R >> >> /Contents {4 + 2 * index} 0 R >>"
+            ).encode()
+        )
+        objects.append(
+            b"<< /Length " + str(len(body)).encode() + b" >>\nstream\n" + body + b"\nendstream"
+        )
+    objects.append(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
+    info = None
+    if title is not None:
+        objects.append(f"<< /Title ({title}) >>".encode("latin-1"))
+        info = len(objects)
     out = bytearray(b"%PDF-1.4\n")
     offsets = []
     for number, body in enumerate(objects, start=1):
@@ -213,8 +241,10 @@ def pdf(*lines: str) -> bytes:
     out += f"xref\n0 {len(objects) + 1}\n0000000000 65535 f \n".encode()
     for offset in offsets:
         out += f"{offset:010d} 00000 n \n".encode()
+    trailer_info = f" /Info {info} 0 R" if info is not None else ""
     out += (
-        f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n"
+        f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R{trailer_info} >>\n"
+        f"startxref\n{xref}\n%%EOF\n"
     ).encode()
     return bytes(out)
 
@@ -234,6 +264,11 @@ def docx(*paragraphs: str) -> bytes:
 @pytest.fixture
 def make_pdf() -> Callable[..., bytes]:
     return pdf
+
+
+@pytest.fixture
+def make_pdf_pages() -> Callable[..., bytes]:
+    return pdf_pages
 
 
 @pytest.fixture
