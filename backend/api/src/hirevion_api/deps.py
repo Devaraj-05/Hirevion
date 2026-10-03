@@ -8,6 +8,7 @@ from fastapi import Request
 from redis.asyncio import Redis
 
 from hirevion_core.db.session import Database
+from hirevion_core.documents.intake import BlobStore
 
 
 def get_db(request: Request) -> Database:
@@ -27,3 +28,10 @@ def get_redis(request: Request) -> Redis:
 def client_ip(request: Request) -> str:
     """The caller's address; X-Forwarded-For counts only from `HV_API_TRUSTED_PROXIES`."""
     return request.client.host if request.client else "unknown"
+
+
+def get_storage(request: Request) -> BlobStore:
+    storage = getattr(request.app.state, "storage", None)
+    if storage is None:
+        raise RuntimeError("The API has no blob storage; start it through its lifespan.")
+    return cast(BlobStore, storage)

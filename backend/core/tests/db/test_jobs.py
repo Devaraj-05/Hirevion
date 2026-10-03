@@ -14,9 +14,11 @@ from hirevion_core.access.actor import Actor
 from hirevion_core.access.errors import Conflict, Invalid, NotFound
 from hirevion_core.access.scope import resource_scope
 from hirevion_core.db.session import Database
+from hirevion_core.documents import intake
 from hirevion_core.identity.permissions import permissions_for
 from hirevion_core.jobs import jobs
 from hirevion_core.jobs.jobs import JobChanges, JobFilters, SkillInput
+from hirevion_core.models import Document
 
 pytestmark = pytest.mark.db
 
@@ -197,3 +199,42 @@ async def test_a_team_limited_user_sees_their_teams_jobs_and_their_own(
             await session.scalars(jobs.jobs_statement(wide, JobFilters(query="team")))
         ).all()
         assert [job.id for job in searched] == [team_job.id]
+
+
+async def test_applying_a_reviewed_description(
+    app_db: Database, admin_engine: AsyncEngine, acme: Actor
+) -> None:
+    async with app_db.tenant(acme.organization_id) as session:
+        job = await jobs.create_job(session, acme, JobChanges(title="Engineer"))
+        pending = await intake.submit_jd_text(session, acme, job.id, "Build APIs in Python.")
+    async with app_db.tenant(acme.organization_id) as session:
+        with pytest.raises(Conflict) as early:
+            await jobs.apply_jd(session, acme, job.id, pending.id, JobChanges())
+    assert early.value.code == "not-parsed"
+
+    async with app_db.tenant(acme.organization_id) as session:
+        document = await session.get_one(Document, pending.id)
+        document.status, document.text = "parsed", "Build APIs in Python."
+    async with app_db.tenant(acme.organization_id) as session:
+        applied = await jobs.apply_jd(
+            session,
+            acme,
+            job.id,
+            pending.id,
+            JobChanges(title="Python Engineer", skills=[SkillInput("Python")]),
+        )
+        versions = await jobs.list_versions(session, job.id)
+
+    # The description defaults to the document's text when the job has none.
+    assert (applied.title, applied.description) == ("Python Engineer", "Build APIs in Python.")
+    assert applied.jd_document_id == pending.id
+    assert versions[-1].reason == "jd-applied"
+    assert (await audit(admin_engine, acme.organization_id))[-1][0] == "job.jd_applied"
+    async with admin_engine.connect() as conn:
+        payloads = (
+            await conn.execute(
+                text("SELECT payload FROM outbox_events WHERE organization_id = :org"),
+                {"org": acme.organization_id},
+            )
+        ).scalars()
+        assert {"action": "embed-job", "job_id": str(job.id)} in list(payloads)

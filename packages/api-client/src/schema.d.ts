@@ -307,6 +307,26 @@ export interface paths {
         patch: operations["update_department"];
         trace?: never;
     };
+    "/api/v1/documents/{document_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retry Document
+         * @description Sends a document that failed through the pipeline again.
+         */
+        post: operations["retry_document"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health/live": {
         parameters: {
             query?: never;
@@ -339,6 +359,129 @@ export interface paths {
          * @description PostgreSQL and Valkey answer; 503 `service-unavailable` names what doesn't.
          */
         get: operations["get_readiness"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Jobs
+         * @description The jobs the reader reaches, most recently changed first.
+         */
+        get: operations["list_jobs"];
+        put?: never;
+        /** Create Job */
+        post: operations["create_job"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Job */
+        get: operations["get_job"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Job
+         * @description Changes the fields sent; a change writes a new version.
+         */
+        patch: operations["update_job"];
+        trace?: never;
+    };
+    "/api/v1/jobs/{job_id}/jd": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Job Description
+         * @description The job's latest description: its progress, and once read, what was found in it.
+         */
+        get: operations["get_job_description"];
+        put?: never;
+        /**
+         * Submit Job Description
+         * @description Takes a description as a file or as text; it's read in the background (PRD §12).
+         */
+        post: operations["submit_job_description"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{job_id}/jd/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply Job Description
+         * @description Writes the reviewed fields into the job, as a new version (PRD §12).
+         */
+        post: operations["apply_job_description"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{job_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change Job Status
+         * @description Opens, pauses, closes or archives the job (PRD §11).
+         */
+        post: operations["change_job_status"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{job_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Job Versions */
+        get: operations["list_job_versions"];
         put?: never;
         post?: never;
         delete?: never;
@@ -520,6 +663,26 @@ export interface paths {
          *     request. Built-in roles can't be changed.
          */
         patch: operations["update_role"];
+        trace?: never;
+    };
+    "/api/v1/skills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Suggest Skills
+         * @description Skills from the shared taxonomy for a typed name (prefix matches first).
+         */
+        get: operations["suggest_skills"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/teams": {
@@ -753,6 +916,19 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Body_submit_job_description */
+        Body_submit_job_description: {
+            /**
+             * File
+             * @description A PDF, DOCX or TXT file.
+             */
+            file?: string | null;
+            /**
+             * Text
+             * @description The description, pasted.
+             */
+            text?: string | null;
+        };
         /** DepartmentCreate */
         DepartmentCreate: {
             /** Description */
@@ -788,6 +964,39 @@ export interface components {
             /** Name */
             name?: string | null;
         };
+        /** DocumentResponse */
+        DocumentResponse: {
+            /** Attempts */
+            attempts: number;
+            /** Content Type */
+            content_type: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Error Code */
+            error_code: string | null;
+            /** Filename */
+            filename: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Size */
+            size: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "uploaded" | "scanning" | "extracting" | "parsing" | "parsed" | "quarantined" | "failed";
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /** EmailChangeRequest */
         EmailChangeRequest: {
             /** New Email */
@@ -804,6 +1013,331 @@ export interface components {
         ForgotPasswordRequest: {
             /** Email */
             email: string;
+        };
+        /**
+         * JdApply
+         * @description The recruiter's reviewed fields from a parsed description.
+         */
+        JdApply: {
+            /** Department Id */
+            department_id?: string | null;
+            /** Description */
+            description?: string | null;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** Domain */
+            domain?: string[] | null;
+            /** Employment Type */
+            employment_type?: ("full_time" | "part_time" | "contract" | "internship" | "temporary") | null;
+            /** Experience Max */
+            experience_max?: number | null;
+            /** Experience Min */
+            experience_min?: number | null;
+            /** Hiring Manager Id */
+            hiring_manager_id?: string | null;
+            /** Location */
+            location?: string | null;
+            /** Qualifications */
+            qualifications?: string[] | null;
+            /** Recruiter Id */
+            recruiter_id?: string | null;
+            /** Responsibilities */
+            responsibilities?: string[] | null;
+            /** Salary Currency */
+            salary_currency?: string | null;
+            /** Salary Max */
+            salary_max?: number | null;
+            /** Salary Min */
+            salary_min?: number | null;
+            /** Skills */
+            skills?: components["schemas"]["SkillBody"][] | null;
+            /** Team Id */
+            team_id?: string | null;
+            /** Title */
+            title?: string | null;
+            /** Work Model */
+            work_model?: ("onsite" | "hybrid" | "remote") | null;
+        };
+        /**
+         * JdResponse
+         * @description The latest description of a job: what was read from it, for review.
+         */
+        JdResponse: {
+            /** Attempts */
+            attempts: number;
+            /** Content Type */
+            content_type: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Error Code */
+            error_code: string | null;
+            /** Extraction */
+            extraction: {
+                [key: string]: unknown;
+            } | null;
+            /** Filename */
+            filename: string | null;
+            /** Flags */
+            flags: {
+                [key: string]: unknown;
+            };
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Size */
+            size: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "uploaded" | "scanning" | "extracting" | "parsing" | "parsed" | "quarantined" | "failed";
+            /** Text */
+            text: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** JobCreate */
+        JobCreate: {
+            /** Department Id */
+            department_id?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Domain */
+            domain?: string[] | null;
+            /** Employment Type */
+            employment_type?: ("full_time" | "part_time" | "contract" | "internship" | "temporary") | null;
+            /** Experience Max */
+            experience_max?: number | null;
+            /** Experience Min */
+            experience_min?: number | null;
+            /** Hiring Manager Id */
+            hiring_manager_id?: string | null;
+            /** Location */
+            location?: string | null;
+            /** Qualifications */
+            qualifications?: string[] | null;
+            /** Recruiter Id */
+            recruiter_id?: string | null;
+            /** Responsibilities */
+            responsibilities?: string[] | null;
+            /** Salary Currency */
+            salary_currency?: string | null;
+            /** Salary Max */
+            salary_max?: number | null;
+            /** Salary Min */
+            salary_min?: number | null;
+            /** Skills */
+            skills?: components["schemas"]["SkillBody"][] | null;
+            /** Team Id */
+            team_id?: string | null;
+            /** Title */
+            title: string;
+            /** Work Model */
+            work_model?: ("onsite" | "hybrid" | "remote") | null;
+        };
+        /**
+         * JobFields
+         * @description The editable fields of a job; on an update, only the fields sent change.
+         */
+        JobFields: {
+            /** Department Id */
+            department_id?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Domain */
+            domain?: string[] | null;
+            /** Employment Type */
+            employment_type?: ("full_time" | "part_time" | "contract" | "internship" | "temporary") | null;
+            /** Experience Max */
+            experience_max?: number | null;
+            /** Experience Min */
+            experience_min?: number | null;
+            /** Hiring Manager Id */
+            hiring_manager_id?: string | null;
+            /** Location */
+            location?: string | null;
+            /** Qualifications */
+            qualifications?: string[] | null;
+            /** Recruiter Id */
+            recruiter_id?: string | null;
+            /** Responsibilities */
+            responsibilities?: string[] | null;
+            /** Salary Currency */
+            salary_currency?: string | null;
+            /** Salary Max */
+            salary_max?: number | null;
+            /** Salary Min */
+            salary_min?: number | null;
+            /** Skills */
+            skills?: components["schemas"]["SkillBody"][] | null;
+            /** Team Id */
+            team_id?: string | null;
+            /** Title */
+            title?: string | null;
+            /** Work Model */
+            work_model?: ("onsite" | "hybrid" | "remote") | null;
+        };
+        /** JobResponse */
+        JobResponse: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Department Id */
+            department_id: string | null;
+            /** Department Name */
+            department_name: string | null;
+            /** Description */
+            description: string;
+            /** Domain */
+            domain: string[];
+            /**
+             * Employment Type
+             * @enum {string}
+             */
+            employment_type: "full_time" | "part_time" | "contract" | "internship" | "temporary";
+            /** Experience Max */
+            experience_max: number | null;
+            /** Experience Min */
+            experience_min: number | null;
+            /** Hiring Manager Id */
+            hiring_manager_id: string | null;
+            /** Hiring Manager Name */
+            hiring_manager_name: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Jd Document Id */
+            jd_document_id: string | null;
+            latest_document: components["schemas"]["DocumentResponse"] | null;
+            /** Location */
+            location: string | null;
+            /** Number */
+            number: number;
+            /** Qualifications */
+            qualifications: string[];
+            /** Recruiter Id */
+            recruiter_id: string | null;
+            /** Recruiter Name */
+            recruiter_name: string | null;
+            /** Reference */
+            reference: string;
+            /** Responsibilities */
+            responsibilities: string[];
+            /** Salary Currency */
+            salary_currency: string | null;
+            /** Salary Max */
+            salary_max: number | null;
+            /** Salary Min */
+            salary_min: number | null;
+            /** Skills */
+            skills: components["schemas"]["SkillResponse"][];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "open" | "paused" | "closed" | "archived";
+            /** Team Id */
+            team_id: string | null;
+            /** Team Name */
+            team_name: string | null;
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Version */
+            version: number;
+            /** Work Model */
+            work_model: ("onsite" | "hybrid" | "remote") | null;
+        };
+        /** JobStatusChange */
+        JobStatusChange: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "open" | "paused" | "closed" | "archived";
+        };
+        /** JobSummary */
+        JobSummary: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Department Id */
+            department_id: string | null;
+            /** Department Name */
+            department_name: string | null;
+            /**
+             * Employment Type
+             * @enum {string}
+             */
+            employment_type: "full_time" | "part_time" | "contract" | "internship" | "temporary";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Location */
+            location: string | null;
+            /** Number */
+            number: number;
+            /** Recruiter Id */
+            recruiter_id: string | null;
+            /** Recruiter Name */
+            recruiter_name: string | null;
+            /** Reference */
+            reference: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "open" | "paused" | "closed" | "archived";
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Work Model */
+            work_model: ("onsite" | "hybrid" | "remote") | null;
+        };
+        /** JobVersionResponse */
+        JobVersionResponse: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by: string | null;
+            /** Reason */
+            reason: string;
+            /** Snapshot */
+            snapshot: {
+                [key: string]: unknown;
+            };
+            /** Version */
+            version: number;
         };
         /** Liveness */
         Liveness: {
@@ -931,6 +1465,16 @@ export interface components {
         OrganizationSuspend: {
             /** Reason */
             reason?: string | null;
+        };
+        /** Page[JobSummary] */
+        Page_JobSummary_: {
+            /** Items */
+            items: components["schemas"]["JobSummary"][];
+            /**
+             * Next Cursor
+             * @description Pass as `cursor` to get the next page; null on the last page.
+             */
+            next_cursor: string | null;
         };
         /** Page[OrganizationListingResponse] */
         Page_OrganizationListingResponse_: {
@@ -1151,6 +1695,45 @@ export interface components {
         SessionUser: {
             /** Email */
             email: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+        };
+        /** SkillBody */
+        SkillBody: {
+            /**
+             * Importance
+             * @default required
+             * @enum {string}
+             */
+            importance: "required" | "preferred" | "optional";
+            /** Min Years */
+            min_years?: number | null;
+            /** Name */
+            name: string;
+        };
+        /** SkillResponse */
+        SkillResponse: {
+            /**
+             * Importance
+             * @enum {string}
+             */
+            importance: "required" | "preferred" | "optional";
+            /** Min Years */
+            min_years: number | null;
+            /** Name */
+            name: string;
+            /** Skill Id */
+            skill_id: string | null;
+        };
+        /** SkillSuggestion */
+        SkillSuggestion: {
+            /** Category */
+            category: string;
             /**
              * Id
              * Format: uuid
@@ -1953,6 +2536,46 @@ export interface operations {
             };
         };
     };
+    retry_document: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     get_liveness: {
         parameters: {
             query?: never;
@@ -2007,6 +2630,398 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Readiness"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_jobs: {
+        parameters: {
+            query?: {
+                status?: ("draft" | "open" | "paused" | "closed" | "archived") | null;
+                department_id?: string | null;
+                recruiter_id?: string | null;
+                /** @description Part of the title, or JOB-0042. */
+                q?: string | null;
+                /** @description How many items to return. */
+                limit?: number;
+                /** @description `next_cursor` from the previous page. */
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_JobSummary_"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_job: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required. A unique value (a UUID is ideal) per logical create; send the same value when retrying it. */
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_job: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_job: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobFields"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_job_description: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JdResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    submit_job_description: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required. A unique value (a UUID is ideal) per logical create; send the same value when retrying it. */
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_submit_job_description"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    apply_job_description: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JdApply"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    change_job_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobStatusChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_job_versions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobVersionResponse"][];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */
@@ -2507,6 +3522,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RoleResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    suggest_skills: {
+        parameters: {
+            query: {
+                /** @description The start of a skill or alias. */
+                q: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillSuggestion"][];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */

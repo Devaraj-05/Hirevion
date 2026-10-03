@@ -22,6 +22,7 @@ from fastapi import FastAPI, Header, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.datastructures import UploadFile as StarletteUploadFile
 
 from hirevion_api.problems import ProblemError
 from hirevion_core.idempotency import (
@@ -82,6 +83,24 @@ class Idempotency:
         return result
 
 
+async def _body(request: Request) -> bytes:
+    """The request body, or for a form FastAPI has already read (an upload), its fields."""
+    try:
+        return await request.body()
+    except RuntimeError:  # the stream went to the form parser
+        form = await request.form()  # parsed once, then cached
+    parts: list[bytes] = []
+    for name, value in form.multi_items():
+        if isinstance(value, StarletteUploadFile):
+            content = await value.read()
+            await value.seek(0)
+            digest = hashlib.sha256(content).hexdigest()
+            parts.append(f"{name}=file:{value.filename}:{digest}".encode())
+        else:
+            parts.append(f"{name}={value}".encode())
+    return b"\n".join(parts)
+
+
 async def idempotency(
     request: Request,
     idempotency_key: Annotated[
@@ -112,7 +131,7 @@ async def idempotency(
             "Idempotency key invalid",
             "Use 8 to 255 characters from A-Z, a-z, 0-9, '_', '.', ':' and '-'.",
         )
-    body = await request.body()
+    body = await _body(request)
     fingerprint = hashlib.sha256(
         b"\n".join((request.method.encode(), request.url.path.encode(), body))
     ).digest()

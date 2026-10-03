@@ -15,6 +15,8 @@ class ApiSettings(BaseSettings):
     # Proxies whose X-Forwarded-For is believed (Caddy reaches `hv api` from loopback).
     trusted_proxies: str = "127.0.0.1"
     max_body_bytes: int = 1_048_576
+    # File uploads (a job description, resumes): 10 MiB files plus the multipart framing.
+    max_upload_bytes: int = 11 * 1_048_576
     # Requests per window per client IP, across the whole API.
     ip_rate_limit: int = 600
     ip_rate_window_seconds: int = 60

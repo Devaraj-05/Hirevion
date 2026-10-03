@@ -74,3 +74,17 @@ async def test_forwarded_for_is_trusted_only_from_proxies(
     }
     wary = client_with(client_for, trusted_proxies="10.0.0.1")
     assert (await wary.get("/api/v1/test/ip", headers=forwarded)).json() == {"ip": "127.0.0.1"}
+
+
+async def test_upload_routes_take_larger_bodies(
+    client_for: Callable[[FastAPI], AsyncClient],
+) -> None:
+    client = client_with(client_for, max_body_bytes=10, max_upload_bytes=100)
+    upload = "/api/v1/jobs/0190f1a2-0000-7000-8000-000000000000/jd"
+
+    fits = await client.post(upload, content=b"x" * 100)
+    assert fits.status_code != 413
+    too_large = await client.post(upload, content=b"x" * 101)
+    assert too_large.status_code == 413
+    elsewhere = await client.post("/api/v1/test/echo", content=b"x" * 11)
+    assert elsewhere.status_code == 413

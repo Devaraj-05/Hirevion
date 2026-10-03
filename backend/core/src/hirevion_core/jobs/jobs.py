@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Sequence
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, fields, replace
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -20,9 +20,11 @@ from hirevion_core.access.actor import Actor
 from hirevion_core.access.audit import record
 from hirevion_core.access.errors import Conflict, Invalid, NotFound
 from hirevion_core.access.scope import ResourceScope, scope_clause
+from hirevion_core.documents.intake import DOCUMENTS_TOPIC
 from hirevion_core.jobs.taxonomy import resolve_skills
 from hirevion_core.models import Department, Document, Job, JobSkill, JobVersion, Team, User
 from hirevion_core.models.job import EMPLOYMENT_TYPES, SKILL_IMPORTANCE, WORK_MODELS
+from hirevion_core.outbox import publish_event
 
 TITLE_MAX = 200
 DESCRIPTION_MAX = 50_000
@@ -395,6 +397,40 @@ async def set_status(session: AsyncSession, actor: Actor, job_id: UUID, status: 
         "job",
         job.id,
         details={"from": previous, "to": status},
+    )
+    return job
+
+
+async def apply_jd(
+    session: AsyncSession, actor: Actor, job_id: UUID, document_id: UUID, changes: JobChanges
+) -> Job:
+    """Writes the recruiter's reviewed version of a parsed description into the job (PRD §12),
+    then asks the documents consumer to re-embed the job."""
+    job = await _job(session, job_id)
+    document = await session.get(Document, document_id)
+    if document is None or document.job_id != job.id or document.kind != "jd":
+        raise NotFound("document-not-found", "No such document")
+    if document.status != "parsed":
+        raise Conflict("not-parsed", "The description hasn't been read yet")
+    if isinstance(changes.description, Unset) and not job.description.strip() and document.text:
+        changes = replace(changes, description=document.text)
+    changed = await _apply(session, job, changes)
+    job.jd_document_id = document.id
+    await bump(session, actor, job, "jd-applied")
+    await record(
+        session,
+        actor,
+        "job.jd_applied",
+        "job",
+        job.id,
+        details={"document_id": str(document.id), "fields": changed},
+    )
+    await publish_event(
+        session,
+        job.organization_id,
+        DOCUMENTS_TOPIC,
+        {"action": "embed-job", "job_id": str(job.id)},
+        key=str(job.id),
     )
     return job
 

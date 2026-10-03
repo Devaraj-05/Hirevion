@@ -7,6 +7,7 @@ the standard error format and security headers.
 from __future__ import annotations
 
 import logging
+import re
 
 from opentelemetry import trace
 from starlette.exceptions import HTTPException
@@ -62,18 +63,30 @@ class _BodyTooLarge(HTTPException):
 
 
 class BodySizeLimitMiddleware:
-    """Refuses bodies over `max_bytes`, whether declared in Content-Length or streamed."""
+    """Refuses bodies over `max_bytes`, whether declared in Content-Length or streamed. Paths
+    matching `upload_paths` (file uploads) may send up to `upload_max_bytes` instead."""
 
-    def __init__(self, app: ASGIApp, max_bytes: int) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        max_bytes: int,
+        upload_paths: re.Pattern[str] | None = None,
+        upload_max_bytes: int = 0,
+    ) -> None:
         self.app = app
         self.max_bytes = max_bytes
+        self.upload_paths = upload_paths
+        self.upload_max_bytes = upload_max_bytes
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
+        limit = self.max_bytes
+        if self.upload_paths is not None and self.upload_paths.fullmatch(scope.get("path", "")):
+            limit = max(limit, self.upload_max_bytes)
         declared = _header(scope, b"content-length")
-        if declared is not None and declared.isdigit() and int(declared) > self.max_bytes:
+        if declared is not None and declared.isdigit() and int(declared) > limit:
             response = problem_response(
                 413,
                 "payload-too-large",
@@ -91,7 +104,7 @@ class BodySizeLimitMiddleware:
             message = await receive()
             if message["type"] == "http.request":
                 received += len(message.get("body", b""))
-                if received > self.max_bytes:
+                if received > limit:
                     raise _BodyTooLarge()
             return message
 

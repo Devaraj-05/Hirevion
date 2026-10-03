@@ -8,6 +8,7 @@ dependencies = [
   "hirevion-core",
   "opentelemetry-api>=1.44",
   "opentelemetry-instrumentation-fastapi>=0.65b0",
+  "python-multipart>=0.0.20",
   "uvicorn>=0.54",
 ]
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager, suppress
 from importlib.metadata import version
@@ -23,6 +24,7 @@ from hirevion_api.access.users import router as users_router
 from hirevion_api.auth.csrf import CsrfMiddleware
 from hirevion_api.auth.router import router as auth_router
 from hirevion_api.idempotency import install_idempotency_handler
+from hirevion_api.jobs.routes import router as jobs_router
 from hirevion_api.middleware import (
     BodySizeLimitMiddleware,
     HostCheckMiddleware,
@@ -34,6 +36,7 @@ from hirevion_api.ratelimit import RateLimitMiddleware
 from hirevion_api.routing import API_PREFIX, build_openapi, operation_id
 from hirevion_api.settings import ApiSettings, load_api_settings
 from hirevion_core.db.session import Database, create_database
+from hirevion_core.documents.intake import BlobStore
 from hirevion_core.identity.breach import (
     CompositeChecker,
     HibpChecker,
@@ -45,7 +48,11 @@ from hirevion_core.identity.settings import IdentitySettings, load_identity_sett
 from hirevion_core.mail.runner import run_workers
 from hirevion_core.ratelimit import RateRule
 from hirevion_core.settings import CoreSettings, load_core_settings
+from hirevion_core.storage.service import StorageService, load_storage_settings
 from hirevion_core.telemetry import Telemetry, instrument_engine
+
+# Routes that take file uploads, and so a larger body.
+UPLOAD_PATHS = re.compile(rf"{API_PREFIX}/jobs/[^/]+/(?:jd|resumes)")
 
 
 def create_app(
@@ -56,6 +63,7 @@ def create_app(
     redis: Redis | None = None,
     telemetry: Telemetry | None = None,
     identity: IdentitySettings | None = None,
+    storage: BlobStore | None = None,
 ) -> FastAPI:
     """Build the API. Injected `db` and `redis` are used as they are and never closed here;
     otherwise the lifespan opens them from `core` (loaded from `.env` when not given), and also
@@ -84,6 +92,9 @@ def create_app(
                     stop = asyncio.Event()
                     workers = asyncio.create_task(run_workers(resolved, stop))
                     stack.push_async_callback(_stop_workers, stop, workers)
+            if app.state.storage is None:
+                app.state.storage = StorageService(load_storage_settings())
+                stack.push_async_callback(app.state.storage.aclose)
             if identity_settings.hibp_enabled:
                 session = aiohttp.ClientSession()
                 stack.push_async_callback(session.close)
@@ -105,6 +116,7 @@ def create_app(
     )
     app.state.db = db
     app.state.redis = redis
+    app.state.storage = storage
     app.state.identity = identity_settings
     # The bundled list always applies; the lifespan adds Have I Been Pwned when enabled.
     app.state.password_policy = PasswordPolicy(CompositeChecker(local_passwords))
@@ -121,6 +133,7 @@ def create_app(
     app.include_router(users_router)
     app.include_router(roles_router)
     app.include_router(platform_router)
+    app.include_router(jobs_router)
     if telemetry is not None and telemetry.enabled:
         FastAPIInstrumentor.instrument_app(
             app,
@@ -137,7 +150,12 @@ def create_app(
     app.add_middleware(CsrfMiddleware, allowed_origins=settings.origins)
     app.add_middleware(UnhandledErrorMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
-    app.add_middleware(BodySizeLimitMiddleware, max_bytes=settings.max_body_bytes)
+    app.add_middleware(
+        BodySizeLimitMiddleware,
+        max_bytes=settings.max_body_bytes,
+        upload_paths=UPLOAD_PATHS,
+        upload_max_bytes=settings.max_upload_bytes,
+    )
     app.add_middleware(RateLimitMiddleware, rule=ip_rule)
     app.add_middleware(HostCheckMiddleware, allowed_hosts=settings.hosts)
     app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=settings.proxies)

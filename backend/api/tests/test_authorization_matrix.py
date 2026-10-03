@@ -84,6 +84,17 @@ EXPECTED: dict[str, tuple[tuple[str, ...], bool]] = {
         ("platform.organizations.manage",),
         True,
     ),
+    "GET /api/v1/jobs": (("jobs.view",), False),
+    "POST /api/v1/jobs": (("jobs.create",), False),
+    "GET /api/v1/jobs/{job_id}": (("jobs.view",), False),
+    "PATCH /api/v1/jobs/{job_id}": (("jobs.create",), False),
+    "POST /api/v1/jobs/{job_id}/status": (("jobs.create",), False),
+    "GET /api/v1/jobs/{job_id}/versions": (("jobs.view",), False),
+    "POST /api/v1/jobs/{job_id}/jd": (("jobs.create",), False),
+    "GET /api/v1/jobs/{job_id}/jd": (("jobs.view",), False),
+    "POST /api/v1/jobs/{job_id}/jd/apply": (("jobs.create",), False),
+    "POST /api/v1/documents/{document_id}/retry": (("jobs.create",), False),
+    "GET /api/v1/skills": (("jobs.view",), False),
 }
 
 
