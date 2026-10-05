@@ -12,7 +12,7 @@ from dataclasses import dataclass, field, fields
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Select, and_, func, select
+from sqlalchemy import Select, and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -465,6 +465,33 @@ async def list_versions(session: AsyncSession, template_id: UUID) -> list[Interv
         .order_by(InterviewTemplateVersion.version)
     )
     return list(rows.all())
+
+
+async def describe(
+    session: AsyncSession, rows: Sequence[InterviewTemplate]
+) -> list[TemplateDetail]:
+    """Each template with its current version, in one query."""
+    if not rows:
+        return []
+    versions = {
+        version.template_id: version
+        for version in (
+            await session.scalars(
+                select(InterviewTemplateVersion).where(
+                    or_(
+                        *(
+                            and_(
+                                InterviewTemplateVersion.template_id == t.id,
+                                InterviewTemplateVersion.version == t.current_version,
+                            )
+                            for t in rows
+                        )
+                    )
+                )
+            )
+        ).all()
+    }
+    return [TemplateDetail(template, versions[template.id]) for template in rows]
 
 
 def templates_statement(status: str | None, query: str | None) -> Select[InterviewTemplate]:

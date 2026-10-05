@@ -759,6 +759,33 @@
         "title": "Choice",
         "type": "object"
       },
+      "CodingSettings": {
+        "properties": {
+          "languages": {
+            "items": {
+              "enum": [
+                "python",
+                "javascript",
+                "typescript",
+                "sql"
+              ],
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Languages",
+            "type": "array"
+          },
+          "starter_code": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Starter Code",
+            "type": "object"
+          }
+        },
+        "title": "CodingSettings",
+        "type": "object"
+      },
       "DecisionRequest": {
         "additionalProperties": false,
         "properties": {
@@ -1031,6 +1058,31 @@
         "title": "EmailVerifyRequest",
         "type": "object"
       },
+      "FollowUpRule": {
+        "properties": {
+          "prompt": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "when": {
+            "enum": [
+              "strong",
+              "partial",
+              "weak"
+            ],
+            "title": "When",
+            "type": "string"
+          }
+        },
+        "required": [
+          "when",
+          "prompt"
+        ],
+        "title": "FollowUpRule",
+        "type": "object"
+      },
       "ForgotPasswordRequest": {
         "properties": {
           "email": {
@@ -1045,6 +1097,122 @@
           "email"
         ],
         "title": "ForgotPasswordRequest",
+        "type": "object"
+      },
+      "GenerateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "candidate_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidate Id"
+          },
+          "count": {
+            "default": 5,
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "experience_level": {
+            "default": "mid",
+            "enum": [
+              "junior",
+              "mid",
+              "senior",
+              "lead"
+            ],
+            "title": "Experience Level",
+            "type": "string"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "skills": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Skills",
+            "type": "array"
+          },
+          "template_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Id"
+          },
+          "types": {
+            "items": {
+              "enum": [
+                "technical",
+                "conceptual",
+                "scenario",
+                "system_design",
+                "coding",
+                "resume_based",
+                "project_based",
+                "problem_solving"
+              ],
+              "type": "string"
+            },
+            "title": "Types",
+            "type": "array"
+          }
+        },
+        "required": [
+          "skills"
+        ],
+        "title": "GenerateRequest",
+        "type": "object"
+      },
+      "GenerateResponse": {
+        "properties": {
+          "drafts": {
+            "items": {
+              "$ref": "#/components/schemas/QuestionResponse"
+            },
+            "title": "Drafts",
+            "type": "array"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "drafts",
+          "skipped",
+          "model"
+        ],
+        "title": "GenerateResponse",
         "type": "object"
       },
       "HistoryEntry": {
@@ -1142,6 +1310,289 @@
           "created_at"
         ],
         "title": "HistoryEntry",
+        "type": "object"
+      },
+      "InterviewDefaults": {
+        "description": "The organisation's defaults for new templates, and what each proctoring level means.",
+        "properties": {
+          "adaptive_follow_ups": {
+            "title": "Adaptive Follow Ups",
+            "type": "boolean"
+          },
+          "coding": {
+            "additionalProperties": true,
+            "title": "Coding",
+            "type": "object"
+          },
+          "difficulty": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Difficulty",
+            "type": "object"
+          },
+          "duration_minutes": {
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "proctoring_level": {
+            "enum": [
+              "off",
+              "basic",
+              "standard",
+              "strict"
+            ],
+            "title": "Proctoring Level",
+            "type": "string"
+          },
+          "proctoring_presets": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Proctoring Presets",
+            "type": "object"
+          },
+          "question_count": {
+            "title": "Question Count",
+            "type": "integer"
+          },
+          "question_types": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Question Types",
+            "type": "array"
+          },
+          "recording": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Recording",
+            "type": "object"
+          },
+          "rubric": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Rubric",
+            "type": "array"
+          },
+          "third_eye": {
+            "enum": [
+              "off",
+              "optional",
+              "required"
+            ],
+            "title": "Third Eye",
+            "type": "string"
+          },
+          "use_jd": {
+            "title": "Use Jd",
+            "type": "boolean"
+          },
+          "use_resume": {
+            "title": "Use Resume",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "duration_minutes",
+          "question_count",
+          "difficulty",
+          "question_types",
+          "use_resume",
+          "use_jd",
+          "adaptive_follow_ups",
+          "coding",
+          "proctoring_level",
+          "third_eye",
+          "recording",
+          "rubric",
+          "proctoring_presets"
+        ],
+        "title": "InterviewDefaults",
+        "type": "object"
+      },
+      "InterviewDefaultsUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "adaptive_follow_ups": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adaptive Follow Ups"
+          },
+          "coding": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TemplateCoding"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "difficulty": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "propertyNames": {
+                  "enum": [
+                    "easy",
+                    "medium",
+                    "hard"
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Difficulty"
+          },
+          "duration_minutes": {
+            "anyOf": [
+              {
+                "maximum": 180.0,
+                "minimum": 15.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Minutes"
+          },
+          "proctoring_level": {
+            "anyOf": [
+              {
+                "enum": [
+                  "off",
+                  "basic",
+                  "standard",
+                  "strict"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proctoring Level"
+          },
+          "question_count": {
+            "anyOf": [
+              {
+                "maximum": 50.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question Count"
+          },
+          "question_types": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "technical",
+                    "conceptual",
+                    "scenario",
+                    "system_design",
+                    "coding",
+                    "resume_based",
+                    "project_based",
+                    "problem_solving"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question Types"
+          },
+          "recording": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Recording"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rubric": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RubricWeight"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rubric"
+          },
+          "third_eye": {
+            "anyOf": [
+              {
+                "enum": [
+                  "off",
+                  "optional",
+                  "required"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Third Eye"
+          },
+          "use_jd": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Use Jd"
+          },
+          "use_resume": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Use Resume"
+          }
+        },
+        "title": "InterviewDefaultsUpdate",
         "type": "object"
       },
       "JdApply": {
@@ -2607,6 +3058,95 @@
         "title": "LoginRequest",
         "type": "object"
       },
+      "MatrixPreview": {
+        "additionalProperties": false,
+        "description": "Unsaved template settings, for a live skill-matrix preview.",
+        "properties": {
+          "difficulty": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "propertyNames": {
+              "enum": [
+                "easy",
+                "medium",
+                "hard"
+              ]
+            },
+            "title": "Difficulty",
+            "type": "object"
+          },
+          "question_count": {
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Question Count",
+            "type": "integer"
+          },
+          "skills": {
+            "items": {
+              "$ref": "#/components/schemas/SkillWeight"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Skills",
+            "type": "array"
+          }
+        },
+        "required": [
+          "question_count",
+          "skills",
+          "difficulty"
+        ],
+        "title": "MatrixPreview",
+        "type": "object"
+      },
+      "MatrixRowResponse": {
+        "properties": {
+          "available": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Available",
+            "type": "object"
+          },
+          "by_difficulty": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "By Difficulty",
+            "type": "object"
+          },
+          "gaps": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Gaps",
+            "type": "object"
+          },
+          "questions": {
+            "title": "Questions",
+            "type": "integer"
+          },
+          "skill": {
+            "title": "Skill",
+            "type": "string"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "skill",
+          "weight",
+          "questions",
+          "by_difficulty",
+          "available",
+          "gaps"
+        ],
+        "title": "MatrixRowResponse",
+        "type": "object"
+      },
       "MemberResponse": {
         "properties": {
           "email": {
@@ -3019,6 +3559,35 @@
         "title": "Page[OrganizationListingResponse]",
         "type": "object"
       },
+      "Page_QuestionResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/QuestionResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` to get the next page; null on the last page.",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "Page[QuestionResponse]",
+        "type": "object"
+      },
       "Page_RankedApplication_": {
         "properties": {
           "items": {
@@ -3075,6 +3644,35 @@
           "next_cursor"
         ],
         "title": "Page[ResumeDocumentResponse]",
+        "type": "object"
+      },
+      "Page_TemplateSummary_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` to get the next page; null on the last page.",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "Page[TemplateSummary]",
         "type": "object"
       },
       "Page_UserResponse_": {
@@ -3190,6 +3788,26 @@
         "title": "PermissionResponse",
         "type": "object"
       },
+      "PinnedQuestion": {
+        "properties": {
+          "question_id": {
+            "format": "uuid",
+            "title": "Question Id",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "question_id",
+          "version"
+        ],
+        "title": "PinnedQuestion",
+        "type": "object"
+      },
       "Problem": {
         "additionalProperties": true,
         "description": "An RFC 9457 problem; codes may add extension members (e.g. `errors`, `checks`).",
@@ -3254,6 +3872,591 @@
           "code"
         ],
         "title": "Problem",
+        "type": "object"
+      },
+      "QuestionBody": {
+        "additionalProperties": false,
+        "description": "A question's content (PRD §22); saving it writes a new version.",
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "enum": [
+                  "technical",
+                  "coding",
+                  "system_design",
+                  "resume_based",
+                  "custom"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "coding": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CodingSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "difficulty": {
+            "enum": [
+              "easy",
+              "medium",
+              "hard"
+            ],
+            "title": "Difficulty",
+            "type": "string"
+          },
+          "expected_concepts": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Expected Concepts",
+            "type": "array"
+          },
+          "follow_up_rules": {
+            "items": {
+              "$ref": "#/components/schemas/FollowUpRule"
+            },
+            "maxItems": 6,
+            "title": "Follow Up Rules",
+            "type": "array"
+          },
+          "rubric": {
+            "items": {
+              "$ref": "#/components/schemas/RubricCriterion"
+            },
+            "maxItems": 10,
+            "title": "Rubric",
+            "type": "array"
+          },
+          "skill_name": {
+            "maxLength": 100,
+            "title": "Skill Name",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 4000,
+            "title": "Text",
+            "type": "string"
+          },
+          "time_limit_seconds": {
+            "anyOf": [
+              {
+                "maximum": 3600.0,
+                "minimum": 30.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time Limit Seconds"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic"
+          },
+          "type": {
+            "enum": [
+              "technical",
+              "conceptual",
+              "scenario",
+              "system_design",
+              "coding",
+              "resume_based",
+              "project_based",
+              "problem_solving"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "skill_name",
+          "difficulty",
+          "type"
+        ],
+        "title": "QuestionBody",
+        "type": "object"
+      },
+      "QuestionCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "enum": [
+                  "technical",
+                  "coding",
+                  "system_design",
+                  "resume_based",
+                  "custom"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "coding": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CodingSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "difficulty": {
+            "enum": [
+              "easy",
+              "medium",
+              "hard"
+            ],
+            "title": "Difficulty",
+            "type": "string"
+          },
+          "expected_concepts": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Expected Concepts",
+            "type": "array"
+          },
+          "follow_up_rules": {
+            "items": {
+              "$ref": "#/components/schemas/FollowUpRule"
+            },
+            "maxItems": 6,
+            "title": "Follow Up Rules",
+            "type": "array"
+          },
+          "rubric": {
+            "items": {
+              "$ref": "#/components/schemas/RubricCriterion"
+            },
+            "maxItems": 10,
+            "title": "Rubric",
+            "type": "array"
+          },
+          "skill_name": {
+            "maxLength": 100,
+            "title": "Skill Name",
+            "type": "string"
+          },
+          "status": {
+            "default": "approved",
+            "enum": [
+              "draft",
+              "approved"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 4000,
+            "title": "Text",
+            "type": "string"
+          },
+          "time_limit_seconds": {
+            "anyOf": [
+              {
+                "maximum": 3600.0,
+                "minimum": 30.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time Limit Seconds"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic"
+          },
+          "type": {
+            "enum": [
+              "technical",
+              "conceptual",
+              "scenario",
+              "system_design",
+              "coding",
+              "resume_based",
+              "project_based",
+              "problem_solving"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "skill_name",
+          "difficulty",
+          "type"
+        ],
+        "title": "QuestionCreate",
+        "type": "object"
+      },
+      "QuestionResponse": {
+        "properties": {
+          "approved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "category": {
+            "enum": [
+              "technical",
+              "coding",
+              "system_design",
+              "resume_based",
+              "custom"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "coding": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coding"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "difficulty": {
+            "enum": [
+              "easy",
+              "medium",
+              "hard"
+            ],
+            "title": "Difficulty",
+            "type": "string"
+          },
+          "expected_concepts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Expected Concepts",
+            "type": "array"
+          },
+          "follow_up_rules": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Follow Up Rules",
+            "type": "array"
+          },
+          "generation": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generation"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "rubric": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Rubric",
+            "type": "array"
+          },
+          "skill_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skill Id"
+          },
+          "skill_name": {
+            "title": "Skill Name",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "manual",
+              "ai"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "approved",
+              "archived"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "time_limit_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time Limit Seconds"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic"
+          },
+          "type": {
+            "enum": [
+              "technical",
+              "conceptual",
+              "scenario",
+              "system_design",
+              "coding",
+              "resume_based",
+              "project_based",
+              "problem_solving"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "category",
+          "status",
+          "source",
+          "version",
+          "text",
+          "skill_name",
+          "skill_id",
+          "topic",
+          "difficulty",
+          "type",
+          "expected_concepts",
+          "rubric",
+          "time_limit_seconds",
+          "follow_up_rules",
+          "coding",
+          "generation",
+          "approved_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "QuestionResponse",
+        "type": "object"
+      },
+      "QuestionVersionResponse": {
+        "properties": {
+          "coding": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coding"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "difficulty": {
+            "enum": [
+              "easy",
+              "medium",
+              "hard"
+            ],
+            "title": "Difficulty",
+            "type": "string"
+          },
+          "expected_concepts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Expected Concepts",
+            "type": "array"
+          },
+          "follow_up_rules": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Follow Up Rules",
+            "type": "array"
+          },
+          "rubric": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Rubric",
+            "type": "array"
+          },
+          "skill_name": {
+            "title": "Skill Name",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "time_limit_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time Limit Seconds"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic"
+          },
+          "type": {
+            "enum": [
+              "technical",
+              "conceptual",
+              "scenario",
+              "system_design",
+              "coding",
+              "resume_based",
+              "project_based",
+              "problem_solving"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "text",
+          "skill_name",
+          "topic",
+          "difficulty",
+          "type",
+          "expected_concepts",
+          "rubric",
+          "time_limit_seconds",
+          "follow_up_rules",
+          "coding",
+          "created_by",
+          "created_at"
+        ],
+        "title": "QuestionVersionResponse",
         "type": "object"
       },
       "RankedApplication": {
@@ -3404,6 +4607,27 @@
           "checks"
         ],
         "title": "Readiness",
+        "type": "object"
+      },
+      "Recording": {
+        "properties": {
+          "audio": {
+            "default": true,
+            "title": "Audio",
+            "type": "boolean"
+          },
+          "camera": {
+            "default": true,
+            "title": "Camera",
+            "type": "boolean"
+          },
+          "screen": {
+            "default": true,
+            "title": "Screen",
+            "type": "boolean"
+          }
+        },
+        "title": "Recording",
         "type": "object"
       },
       "ResumeDocumentResponse": {
@@ -3837,6 +5061,54 @@
           }
         },
         "title": "RoleUpdate",
+        "type": "object"
+      },
+      "RubricCriterion": {
+        "properties": {
+          "criterion": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Criterion",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Description",
+            "type": "string"
+          },
+          "weight": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Weight",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "criterion",
+          "weight"
+        ],
+        "title": "RubricCriterion",
+        "type": "object"
+      },
+      "RubricWeight": {
+        "properties": {
+          "dimension": {
+            "title": "Dimension",
+            "type": "string"
+          },
+          "weight": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Weight",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dimension",
+          "weight"
+        ],
+        "title": "RubricWeight",
         "type": "object"
       },
       "ScreenAccepted": {
@@ -4431,6 +5703,28 @@
         "title": "SkillSuggestion",
         "type": "object"
       },
+      "SkillWeight": {
+        "properties": {
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "weight": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Weight",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "weight"
+        ],
+        "title": "SkillWeight",
+        "type": "object"
+      },
       "StepUpRequest": {
         "properties": {
           "password": {
@@ -4638,6 +5932,797 @@
           }
         },
         "title": "TeamUpdate",
+        "type": "object"
+      },
+      "TemplateBody": {
+        "additionalProperties": false,
+        "description": "A template's fields (PRD §21). On an update, only the fields sent change; every update\nwrites a new version and leaves the old ones as they were (PRD §80).",
+        "properties": {
+          "adaptive_follow_ups": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adaptive Follow Ups"
+          },
+          "coding": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TemplateCoding"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "difficulty": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "propertyNames": {
+                  "enum": [
+                    "easy",
+                    "medium",
+                    "hard"
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Difficulty"
+          },
+          "duration_minutes": {
+            "anyOf": [
+              {
+                "maximum": 180.0,
+                "minimum": 15.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Minutes"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "proctoring_level": {
+            "anyOf": [
+              {
+                "enum": [
+                  "off",
+                  "basic",
+                  "standard",
+                  "strict"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proctoring Level"
+          },
+          "question_count": {
+            "anyOf": [
+              {
+                "maximum": 50.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question Count"
+          },
+          "question_types": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "technical",
+                    "conceptual",
+                    "scenario",
+                    "system_design",
+                    "coding",
+                    "resume_based",
+                    "project_based",
+                    "problem_solving"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question Types"
+          },
+          "questions": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PinnedQuestion"
+                },
+                "maxItems": 50,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Questions"
+          },
+          "recording": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Recording"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rubric": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RubricWeight"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rubric"
+          },
+          "skills": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SkillWeight"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skills"
+          },
+          "third_eye": {
+            "anyOf": [
+              {
+                "enum": [
+                  "off",
+                  "optional",
+                  "required"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Third Eye"
+          },
+          "use_jd": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Use Jd"
+          },
+          "use_resume": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Use Resume"
+          }
+        },
+        "title": "TemplateBody",
+        "type": "object"
+      },
+      "TemplateCoding": {
+        "properties": {
+          "enabled": {
+            "default": false,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "languages": {
+            "items": {
+              "enum": [
+                "python",
+                "javascript",
+                "typescript",
+                "sql"
+              ],
+              "type": "string"
+            },
+            "title": "Languages",
+            "type": "array"
+          },
+          "minutes": {
+            "default": 20,
+            "maximum": 90.0,
+            "minimum": 5.0,
+            "title": "Minutes",
+            "type": "integer"
+          }
+        },
+        "title": "TemplateCoding",
+        "type": "object"
+      },
+      "TemplateCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "adaptive_follow_ups": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adaptive Follow Ups"
+          },
+          "coding": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TemplateCoding"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "difficulty": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "propertyNames": {
+                  "enum": [
+                    "easy",
+                    "medium",
+                    "hard"
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Difficulty"
+          },
+          "duration_minutes": {
+            "anyOf": [
+              {
+                "maximum": 180.0,
+                "minimum": 15.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Minutes"
+          },
+          "name": {
+            "maxLength": 200,
+            "title": "Name",
+            "type": "string"
+          },
+          "proctoring_level": {
+            "anyOf": [
+              {
+                "enum": [
+                  "off",
+                  "basic",
+                  "standard",
+                  "strict"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proctoring Level"
+          },
+          "question_count": {
+            "anyOf": [
+              {
+                "maximum": 50.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question Count"
+          },
+          "question_types": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "technical",
+                    "conceptual",
+                    "scenario",
+                    "system_design",
+                    "coding",
+                    "resume_based",
+                    "project_based",
+                    "problem_solving"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question Types"
+          },
+          "questions": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PinnedQuestion"
+                },
+                "maxItems": 50,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Questions"
+          },
+          "recording": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Recording"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rubric": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RubricWeight"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rubric"
+          },
+          "skills": {
+            "items": {
+              "$ref": "#/components/schemas/SkillWeight"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Skills",
+            "type": "array"
+          },
+          "third_eye": {
+            "anyOf": [
+              {
+                "enum": [
+                  "off",
+                  "optional",
+                  "required"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Third Eye"
+          },
+          "use_jd": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Use Jd"
+          },
+          "use_resume": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Use Resume"
+          }
+        },
+        "required": [
+          "name",
+          "skills"
+        ],
+        "title": "TemplateCreate",
+        "type": "object"
+      },
+      "TemplateResponse": {
+        "properties": {
+          "coding": {
+            "title": "Coding",
+            "type": "boolean"
+          },
+          "current": {
+            "$ref": "#/components/schemas/TemplateVersionResponse"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "duration_minutes": {
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "proctoring_level": {
+            "enum": [
+              "off",
+              "basic",
+              "standard",
+              "strict"
+            ],
+            "title": "Proctoring Level",
+            "type": "string"
+          },
+          "question_count": {
+            "title": "Question Count",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "archived"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "third_eye": {
+            "enum": [
+              "off",
+              "optional",
+              "required"
+            ],
+            "title": "Third Eye",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "status",
+          "version",
+          "duration_minutes",
+          "question_count",
+          "proctoring_level",
+          "third_eye",
+          "coding",
+          "updated_at",
+          "current"
+        ],
+        "title": "TemplateResponse",
+        "type": "object"
+      },
+      "TemplateSummary": {
+        "properties": {
+          "coding": {
+            "title": "Coding",
+            "type": "boolean"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "duration_minutes": {
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "proctoring_level": {
+            "enum": [
+              "off",
+              "basic",
+              "standard",
+              "strict"
+            ],
+            "title": "Proctoring Level",
+            "type": "string"
+          },
+          "question_count": {
+            "title": "Question Count",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "archived"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "third_eye": {
+            "enum": [
+              "off",
+              "optional",
+              "required"
+            ],
+            "title": "Third Eye",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "status",
+          "version",
+          "duration_minutes",
+          "question_count",
+          "proctoring_level",
+          "third_eye",
+          "coding",
+          "updated_at"
+        ],
+        "title": "TemplateSummary",
+        "type": "object"
+      },
+      "TemplateVersionResponse": {
+        "properties": {
+          "adaptive_follow_ups": {
+            "title": "Adaptive Follow Ups",
+            "type": "boolean"
+          },
+          "coding": {
+            "additionalProperties": true,
+            "title": "Coding",
+            "type": "object"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "difficulty": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Difficulty",
+            "type": "object"
+          },
+          "duration_minutes": {
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "proctoring_level": {
+            "enum": [
+              "off",
+              "basic",
+              "standard",
+              "strict"
+            ],
+            "title": "Proctoring Level",
+            "type": "string"
+          },
+          "question_count": {
+            "title": "Question Count",
+            "type": "integer"
+          },
+          "question_types": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Question Types",
+            "type": "array"
+          },
+          "questions": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "recording": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Recording",
+            "type": "object"
+          },
+          "rubric": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Rubric",
+            "type": "array"
+          },
+          "skills": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Skills",
+            "type": "array"
+          },
+          "third_eye": {
+            "enum": [
+              "off",
+              "optional",
+              "required"
+            ],
+            "title": "Third Eye",
+            "type": "string"
+          },
+          "use_jd": {
+            "title": "Use Jd",
+            "type": "boolean"
+          },
+          "use_resume": {
+            "title": "Use Resume",
+            "type": "boolean"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "name",
+          "duration_minutes",
+          "question_count",
+          "skills",
+          "difficulty",
+          "question_types",
+          "use_resume",
+          "use_jd",
+          "adaptive_follow_ups",
+          "coding",
+          "proctoring_level",
+          "third_eye",
+          "recording",
+          "rubric",
+          "questions",
+          "created_by",
+          "created_at"
+        ],
+        "title": "TemplateVersionResponse",
         "type": "object"
       },
       "TokenPasswordRequest": {
@@ -6192,6 +8277,668 @@
         "summary": "Get Readiness",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/interview-defaults": {
+      "get": {
+        "description": "What new templates start from, and what each proctoring level turns on.",
+        "operationId": "get_interview_defaults",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewDefaults"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Get Interview Defaults",
+        "tags": [
+          "interviews"
+        ]
+      },
+      "put": {
+        "description": "Changes the defaults sent; existing templates keep their settings.",
+        "operationId": "update_interview_defaults",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InterviewDefaultsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewDefaults"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Update Interview Defaults",
+        "tags": [
+          "interviews"
+        ]
+      }
+    },
+    "/api/v1/interview-templates": {
+      "get": {
+        "description": "The templates, most recently changed first.",
+        "operationId": "list_templates",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "active",
+              "pattern": "^(active|archived)$",
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Part of the name.",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Part of the name.",
+              "title": "Q"
+            }
+          },
+          {
+            "description": "How many items to return.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "description": "How many items to return.",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "`next_cursor` from the previous page.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`next_cursor` from the previous page.",
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_TemplateSummary_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "List Templates",
+        "tags": [
+          "interviews"
+        ]
+      },
+      "post": {
+        "description": "A new template, starting from the organisation's interview defaults.",
+        "operationId": "create_template",
+        "parameters": [
+          {
+            "description": "Required. A unique value (a UUID is ideal) per logical create; send the same value when retrying it.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Required. A unique value (a UUID is ideal) per logical create; send the same value when retrying it.",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplateCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Create Template",
+        "tags": [
+          "interviews"
+        ]
+      }
+    },
+    "/api/v1/interview-templates/skill-matrix": {
+      "post": {
+        "description": "The skill matrix for unsaved settings, while a template is being edited.",
+        "operationId": "preview_skill_matrix",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatrixPreview"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MatrixRowResponse"
+                  },
+                  "title": "Response Preview Skill Matrix",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Preview Skill Matrix",
+        "tags": [
+          "interviews"
+        ]
+      }
+    },
+    "/api/v1/interview-templates/{template_id}": {
+      "get": {
+        "operationId": "get_template",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Get Template",
+        "tags": [
+          "interviews"
+        ]
+      },
+      "patch": {
+        "description": "Saves the fields sent as the template's next version (PRD §80): interviews that pinned an\nearlier version keep it.",
+        "operationId": "update_template",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Update Template",
+        "tags": [
+          "interviews"
+        ]
+      }
+    },
+    "/api/v1/interview-templates/{template_id}/archive": {
+      "post": {
+        "description": "Hides the template from new interviews; scheduled ones keep their version.",
+        "operationId": "archive_template",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Archive Template",
+        "tags": [
+          "interviews"
+        ]
+      }
+    },
+    "/api/v1/interview-templates/{template_id}/restore": {
+      "post": {
+        "operationId": "restore_template",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Restore Template",
+        "tags": [
+          "interviews"
+        ]
+      }
+    },
+    "/api/v1/interview-templates/{template_id}/skill-matrix": {
+      "get": {
+        "description": "How the current version's questions split across skills and difficulties, against the\napproved library questions available for each.",
+        "operationId": "template_skill_matrix",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MatrixRowResponse"
+                  },
+                  "title": "Response Template Skill Matrix",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Template Skill Matrix",
+        "tags": [
+          "interviews"
+        ]
+      }
+    },
+    "/api/v1/interview-templates/{template_id}/versions": {
+      "get": {
+        "operationId": "template_versions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TemplateVersionResponse"
+                  },
+                  "title": "Response Template Versions",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Template Versions",
+        "tags": [
+          "interviews"
         ]
       }
     },
@@ -8205,6 +10952,666 @@
         "summary": "Suspend Organization",
         "tags": [
           "platform"
+        ]
+      }
+    },
+    "/api/v1/questions": {
+      "get": {
+        "description": "The library, most recently changed first. Archived questions show only when asked for.",
+        "operationId": "list_questions",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "technical",
+                    "coding",
+                    "system_design",
+                    "resume_based",
+                    "custom"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "technical",
+                    "conceptual",
+                    "scenario",
+                    "system_design",
+                    "coding",
+                    "resume_based",
+                    "project_based",
+                    "problem_solving"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "difficulty",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "easy",
+                    "medium",
+                    "hard"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Difficulty"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "draft",
+                    "approved",
+                    "archived"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "skill",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Skill"
+            }
+          },
+          {
+            "description": "Words in the text or topic.",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Words in the text or topic.",
+              "title": "Q"
+            }
+          },
+          {
+            "description": "How many items to return.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "description": "How many items to return.",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "`next_cursor` from the previous page.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`next_cursor` from the previous page.",
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_QuestionResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "List Questions",
+        "tags": [
+          "interviews"
+        ]
+      },
+      "post": {
+        "description": "Adds a question; it's approved for use unless saved as a draft.",
+        "operationId": "create_question",
+        "parameters": [
+          {
+            "description": "Required. A unique value (a UUID is ideal) per logical create; send the same value when retrying it.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Required. A unique value (a UUID is ideal) per logical create; send the same value when retrying it.",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuestionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Create Question",
+        "tags": [
+          "interviews"
+        ]
+      }
+    },
+    "/api/v1/questions/generate": {
+      "post": {
+        "description": "Drafts questions with AI from the job, a candidate's work history, the skills, the level\nand a template (PRD §23). They're saved as drafts: none is used until a recruiter approves\nit. The AI call happens outside any database transaction.",
+        "operationId": "generate_questions",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Generate Questions",
+        "tags": [
+          "interviews"
+        ]
+      }
+    },
+    "/api/v1/questions/{question_id}": {
+      "get": {
+        "operationId": "get_question",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Question Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Get Question",
+        "tags": [
+          "interviews"
+        ]
+      },
+      "put": {
+        "description": "Saves the question as its next version; earlier versions stay as they were.",
+        "operationId": "update_question",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Question Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuestionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Update Question",
+        "tags": [
+          "interviews"
+        ]
+      }
+    },
+    "/api/v1/questions/{question_id}/approve": {
+      "post": {
+        "description": "Makes a draft usable in templates and interviews.",
+        "operationId": "approve_question",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Question Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Approve Question",
+        "tags": [
+          "interviews"
+        ]
+      }
+    },
+    "/api/v1/questions/{question_id}/archive": {
+      "post": {
+        "description": "Hides the question from new use; templates that pinned it keep their version.",
+        "operationId": "archive_question",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Question Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Archive Question",
+        "tags": [
+          "interviews"
+        ]
+      }
+    },
+    "/api/v1/questions/{question_id}/restore": {
+      "post": {
+        "description": "Brings an archived question back as a draft, to be approved again.",
+        "operationId": "restore_question",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Question Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Restore Question",
+        "tags": [
+          "interviews"
+        ]
+      }
+    },
+    "/api/v1/questions/{question_id}/versions": {
+      "get": {
+        "operationId": "question_versions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Question Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/QuestionVersionResponse"
+                  },
+                  "title": "Response Question Versions",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Question Versions",
+        "tags": [
+          "interviews"
         ]
       }
     },

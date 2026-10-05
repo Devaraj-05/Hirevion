@@ -488,6 +488,171 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/interview-defaults": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Interview Defaults
+         * @description What new templates start from, and what each proctoring level turns on.
+         */
+        get: operations["get_interview_defaults"];
+        /**
+         * Update Interview Defaults
+         * @description Changes the defaults sent; existing templates keep their settings.
+         */
+        put: operations["update_interview_defaults"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interview-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Templates
+         * @description The templates, most recently changed first.
+         */
+        get: operations["list_templates"];
+        put?: never;
+        /**
+         * Create Template
+         * @description A new template, starting from the organisation's interview defaults.
+         */
+        post: operations["create_template"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interview-templates/skill-matrix": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview Skill Matrix
+         * @description The skill matrix for unsaved settings, while a template is being edited.
+         */
+        post: operations["preview_skill_matrix"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interview-templates/{template_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Template */
+        get: operations["get_template"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Template
+         * @description Saves the fields sent as the template's next version (PRD §80): interviews that pinned an
+         *     earlier version keep it.
+         */
+        patch: operations["update_template"];
+        trace?: never;
+    };
+    "/api/v1/interview-templates/{template_id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Archive Template
+         * @description Hides the template from new interviews; scheduled ones keep their version.
+         */
+        post: operations["archive_template"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interview-templates/{template_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore Template */
+        post: operations["restore_template"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interview-templates/{template_id}/skill-matrix": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Template Skill Matrix
+         * @description How the current version's questions split across skills and difficulties, against the
+         *     approved library questions available for each.
+         */
+        get: operations["template_skill_matrix"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interview-templates/{template_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Template Versions */
+        get: operations["template_versions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs": {
         parameters: {
             query?: never;
@@ -924,6 +1089,150 @@ export interface paths {
          * @description Suspends an organisation: its users' sessions end and nobody there can sign in.
          */
         post: operations["suspend_organization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Questions
+         * @description The library, most recently changed first. Archived questions show only when asked for.
+         */
+        get: operations["list_questions"];
+        put?: never;
+        /**
+         * Create Question
+         * @description Adds a question; it's approved for use unless saved as a draft.
+         */
+        post: operations["create_question"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/questions/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate Questions
+         * @description Drafts questions with AI from the job, a candidate's work history, the skills, the level
+         *     and a template (PRD §23). They're saved as drafts: none is used until a recruiter approves
+         *     it. The AI call happens outside any database transaction.
+         */
+        post: operations["generate_questions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/questions/{question_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Question */
+        get: operations["get_question"];
+        /**
+         * Update Question
+         * @description Saves the question as its next version; earlier versions stay as they were.
+         */
+        put: operations["update_question"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/questions/{question_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve Question
+         * @description Makes a draft usable in templates and interviews.
+         */
+        post: operations["approve_question"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/questions/{question_id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Archive Question
+         * @description Hides the question from new use; templates that pinned it keep their version.
+         */
+        post: operations["archive_question"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/questions/{question_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore Question
+         * @description Brings an archived question back as a draft, to be approved again.
+         */
+        post: operations["restore_question"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/questions/{question_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Question Versions */
+        get: operations["question_versions"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1536,6 +1845,15 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** CodingSettings */
+        CodingSettings: {
+            /** Languages */
+            languages?: ("python" | "javascript" | "typescript" | "sql")[];
+            /** Starter Code */
+            starter_code?: {
+                [key: string]: string;
+            };
+        };
         /** DecisionRequest */
         DecisionRequest: {
             /**
@@ -1626,10 +1944,53 @@ export interface components {
             /** Token */
             token: string;
         };
+        /** FollowUpRule */
+        FollowUpRule: {
+            /** Prompt */
+            prompt: string;
+            /**
+             * When
+             * @enum {string}
+             */
+            when: "strong" | "partial" | "weak";
+        };
         /** ForgotPasswordRequest */
         ForgotPasswordRequest: {
             /** Email */
             email: string;
+        };
+        /** GenerateRequest */
+        GenerateRequest: {
+            /** Candidate Id */
+            candidate_id?: string | null;
+            /**
+             * Count
+             * @default 5
+             */
+            count: number;
+            /**
+             * Experience Level
+             * @default mid
+             * @enum {string}
+             */
+            experience_level: "junior" | "mid" | "senior" | "lead";
+            /** Job Id */
+            job_id?: string | null;
+            /** Skills */
+            skills: string[];
+            /** Template Id */
+            template_id?: string | null;
+            /** Types */
+            types?: ("technical" | "conceptual" | "scenario" | "system_design" | "coding" | "resume_based" | "project_based" | "problem_solving")[];
+        };
+        /** GenerateResponse */
+        GenerateResponse: {
+            /** Drafts */
+            drafts: components["schemas"]["QuestionResponse"][];
+            /** Model */
+            model: string;
+            /** Skipped */
+            skipped: number;
         };
         /** HistoryEntry */
         HistoryEntry: {
@@ -1654,6 +2015,81 @@ export interface components {
             score: number | null;
             /** To Stage */
             to_stage: string | null;
+        };
+        /**
+         * InterviewDefaults
+         * @description The organisation's defaults for new templates, and what each proctoring level means.
+         */
+        InterviewDefaults: {
+            /** Adaptive Follow Ups */
+            adaptive_follow_ups: boolean;
+            /** Coding */
+            coding: {
+                [key: string]: unknown;
+            };
+            /** Difficulty */
+            difficulty: {
+                [key: string]: number;
+            };
+            /** Duration Minutes */
+            duration_minutes: number;
+            /**
+             * Proctoring Level
+             * @enum {string}
+             */
+            proctoring_level: "off" | "basic" | "standard" | "strict";
+            /** Proctoring Presets */
+            proctoring_presets: {
+                [key: string]: string[];
+            };
+            /** Question Count */
+            question_count: number;
+            /** Question Types */
+            question_types: string[];
+            /** Recording */
+            recording: {
+                [key: string]: boolean;
+            };
+            /** Rubric */
+            rubric: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Third Eye
+             * @enum {string}
+             */
+            third_eye: "off" | "optional" | "required";
+            /** Use Jd */
+            use_jd: boolean;
+            /** Use Resume */
+            use_resume: boolean;
+        };
+        /** InterviewDefaultsUpdate */
+        InterviewDefaultsUpdate: {
+            /** Adaptive Follow Ups */
+            adaptive_follow_ups?: boolean | null;
+            coding?: components["schemas"]["TemplateCoding"] | null;
+            /** Difficulty */
+            difficulty?: {
+                [key: string]: number;
+            } | null;
+            /** Duration Minutes */
+            duration_minutes?: number | null;
+            /** Proctoring Level */
+            proctoring_level?: ("off" | "basic" | "standard" | "strict") | null;
+            /** Question Count */
+            question_count?: number | null;
+            /** Question Types */
+            question_types?: ("technical" | "conceptual" | "scenario" | "system_design" | "coding" | "resume_based" | "project_based" | "problem_solving")[] | null;
+            recording?: components["schemas"]["Recording"] | null;
+            /** Rubric */
+            rubric?: components["schemas"]["RubricWeight"][] | null;
+            /** Third Eye */
+            third_eye?: ("off" | "optional" | "required") | null;
+            /** Use Jd */
+            use_jd?: boolean | null;
+            /** Use Resume */
+            use_resume?: boolean | null;
         };
         /**
          * JdApply
@@ -2008,6 +2444,41 @@ export interface components {
             /** Password */
             password: string;
         };
+        /**
+         * MatrixPreview
+         * @description Unsaved template settings, for a live skill-matrix preview.
+         */
+        MatrixPreview: {
+            /** Difficulty */
+            difficulty: {
+                [key: string]: number;
+            };
+            /** Question Count */
+            question_count: number;
+            /** Skills */
+            skills: components["schemas"]["SkillWeight"][];
+        };
+        /** MatrixRowResponse */
+        MatrixRowResponse: {
+            /** Available */
+            available: {
+                [key: string]: number;
+            };
+            /** By Difficulty */
+            by_difficulty: {
+                [key: string]: number;
+            };
+            /** Gaps */
+            gaps: {
+                [key: string]: number;
+            };
+            /** Questions */
+            questions: number;
+            /** Skill */
+            skill: string;
+            /** Weight */
+            weight: number;
+        };
         /** MemberResponse */
         MemberResponse: {
             /** Email */
@@ -2159,6 +2630,16 @@ export interface components {
              */
             next_cursor: string | null;
         };
+        /** Page[QuestionResponse] */
+        Page_QuestionResponse_: {
+            /** Items */
+            items: components["schemas"]["QuestionResponse"][];
+            /**
+             * Next Cursor
+             * @description Pass as `cursor` to get the next page; null on the last page.
+             */
+            next_cursor: string | null;
+        };
         /** Page[RankedApplication] */
         Page_RankedApplication_: {
             /** Items */
@@ -2173,6 +2654,16 @@ export interface components {
         Page_ResumeDocumentResponse_: {
             /** Items */
             items: components["schemas"]["ResumeDocumentResponse"][];
+            /**
+             * Next Cursor
+             * @description Pass as `cursor` to get the next page; null on the last page.
+             */
+            next_cursor: string | null;
+        };
+        /** Page[TemplateSummary] */
+        Page_TemplateSummary_: {
+            /** Items */
+            items: components["schemas"]["TemplateSummary"][];
             /**
              * Next Cursor
              * @description Pass as `cursor` to get the next page; null on the last page.
@@ -2209,6 +2700,16 @@ export interface components {
              */
             name: "dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view";
         };
+        /** PinnedQuestion */
+        PinnedQuestion: {
+            /**
+             * Question Id
+             * Format: uuid
+             */
+            question_id: string;
+            /** Version */
+            version: number;
+        };
         /**
          * Problem
          * @description An RFC 9457 problem; codes may add extension members (e.g. `errors`, `checks`).
@@ -2239,6 +2740,194 @@ export interface components {
             type: string;
         } & {
             [key: string]: unknown;
+        };
+        /**
+         * QuestionBody
+         * @description A question's content (PRD §22); saving it writes a new version.
+         */
+        QuestionBody: {
+            /** Category */
+            category?: ("technical" | "coding" | "system_design" | "resume_based" | "custom") | null;
+            coding?: components["schemas"]["CodingSettings"] | null;
+            /**
+             * Difficulty
+             * @enum {string}
+             */
+            difficulty: "easy" | "medium" | "hard";
+            /** Expected Concepts */
+            expected_concepts?: string[];
+            /** Follow Up Rules */
+            follow_up_rules?: components["schemas"]["FollowUpRule"][];
+            /** Rubric */
+            rubric?: components["schemas"]["RubricCriterion"][];
+            /** Skill Name */
+            skill_name: string;
+            /** Text */
+            text: string;
+            /** Time Limit Seconds */
+            time_limit_seconds?: number | null;
+            /** Topic */
+            topic?: string | null;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "technical" | "conceptual" | "scenario" | "system_design" | "coding" | "resume_based" | "project_based" | "problem_solving";
+        };
+        /** QuestionCreate */
+        QuestionCreate: {
+            /** Category */
+            category?: ("technical" | "coding" | "system_design" | "resume_based" | "custom") | null;
+            coding?: components["schemas"]["CodingSettings"] | null;
+            /**
+             * Difficulty
+             * @enum {string}
+             */
+            difficulty: "easy" | "medium" | "hard";
+            /** Expected Concepts */
+            expected_concepts?: string[];
+            /** Follow Up Rules */
+            follow_up_rules?: components["schemas"]["FollowUpRule"][];
+            /** Rubric */
+            rubric?: components["schemas"]["RubricCriterion"][];
+            /** Skill Name */
+            skill_name: string;
+            /**
+             * Status
+             * @default approved
+             * @enum {string}
+             */
+            status: "draft" | "approved";
+            /** Text */
+            text: string;
+            /** Time Limit Seconds */
+            time_limit_seconds?: number | null;
+            /** Topic */
+            topic?: string | null;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "technical" | "conceptual" | "scenario" | "system_design" | "coding" | "resume_based" | "project_based" | "problem_solving";
+        };
+        /** QuestionResponse */
+        QuestionResponse: {
+            /** Approved At */
+            approved_at: string | null;
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "technical" | "coding" | "system_design" | "resume_based" | "custom";
+            /** Coding */
+            coding: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Difficulty
+             * @enum {string}
+             */
+            difficulty: "easy" | "medium" | "hard";
+            /** Expected Concepts */
+            expected_concepts: string[];
+            /** Follow Up Rules */
+            follow_up_rules: {
+                [key: string]: unknown;
+            }[];
+            /** Generation */
+            generation: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Rubric */
+            rubric: {
+                [key: string]: unknown;
+            }[];
+            /** Skill Id */
+            skill_id: string | null;
+            /** Skill Name */
+            skill_name: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "manual" | "ai";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "approved" | "archived";
+            /** Text */
+            text: string;
+            /** Time Limit Seconds */
+            time_limit_seconds: number | null;
+            /** Topic */
+            topic: string | null;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "technical" | "conceptual" | "scenario" | "system_design" | "coding" | "resume_based" | "project_based" | "problem_solving";
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Version */
+            version: number;
+        };
+        /** QuestionVersionResponse */
+        QuestionVersionResponse: {
+            /** Coding */
+            coding: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by: string | null;
+            /**
+             * Difficulty
+             * @enum {string}
+             */
+            difficulty: "easy" | "medium" | "hard";
+            /** Expected Concepts */
+            expected_concepts: string[];
+            /** Follow Up Rules */
+            follow_up_rules: {
+                [key: string]: unknown;
+            }[];
+            /** Rubric */
+            rubric: {
+                [key: string]: unknown;
+            }[];
+            /** Skill Name */
+            skill_name: string;
+            /** Text */
+            text: string;
+            /** Time Limit Seconds */
+            time_limit_seconds: number | null;
+            /** Topic */
+            topic: string | null;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "technical" | "conceptual" | "scenario" | "system_design" | "coding" | "resume_based" | "project_based" | "problem_solving";
+            /** Version */
+            version: number;
         };
         /** RankedApplication */
         RankedApplication: {
@@ -2287,6 +2976,24 @@ export interface components {
              * @constant
              */
             status: "ok";
+        };
+        /** Recording */
+        Recording: {
+            /**
+             * Audio
+             * @default true
+             */
+            audio: boolean;
+            /**
+             * Camera
+             * @default true
+             */
+            camera: boolean;
+            /**
+             * Screen
+             * @default true
+             */
+            screen: boolean;
         };
         /**
          * ResumeDocumentResponse
@@ -2397,6 +3104,25 @@ export interface components {
             name?: string | null;
             /** Permissions */
             permissions?: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[] | null;
+        };
+        /** RubricCriterion */
+        RubricCriterion: {
+            /** Criterion */
+            criterion: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Weight */
+            weight: number;
+        };
+        /** RubricWeight */
+        RubricWeight: {
+            /** Dimension */
+            dimension: string;
+            /** Weight */
+            weight: number;
         };
         /** ScreenAccepted */
         ScreenAccepted: {
@@ -2628,6 +3354,13 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** SkillWeight */
+        SkillWeight: {
+            /** Name */
+            name: string;
+            /** Weight */
+            weight: number;
+        };
         /** StepUpRequest */
         StepUpRequest: {
             /** Password */
@@ -2687,6 +3420,236 @@ export interface components {
             description?: string | null;
             /** Name */
             name?: string | null;
+        };
+        /**
+         * TemplateBody
+         * @description A template's fields (PRD §21). On an update, only the fields sent change; every update
+         *     writes a new version and leaves the old ones as they were (PRD §80).
+         */
+        TemplateBody: {
+            /** Adaptive Follow Ups */
+            adaptive_follow_ups?: boolean | null;
+            coding?: components["schemas"]["TemplateCoding"] | null;
+            /** Description */
+            description?: string | null;
+            /** Difficulty */
+            difficulty?: {
+                [key: string]: number;
+            } | null;
+            /** Duration Minutes */
+            duration_minutes?: number | null;
+            /** Name */
+            name?: string | null;
+            /** Proctoring Level */
+            proctoring_level?: ("off" | "basic" | "standard" | "strict") | null;
+            /** Question Count */
+            question_count?: number | null;
+            /** Question Types */
+            question_types?: ("technical" | "conceptual" | "scenario" | "system_design" | "coding" | "resume_based" | "project_based" | "problem_solving")[] | null;
+            /** Questions */
+            questions?: components["schemas"]["PinnedQuestion"][] | null;
+            recording?: components["schemas"]["Recording"] | null;
+            /** Rubric */
+            rubric?: components["schemas"]["RubricWeight"][] | null;
+            /** Skills */
+            skills?: components["schemas"]["SkillWeight"][] | null;
+            /** Third Eye */
+            third_eye?: ("off" | "optional" | "required") | null;
+            /** Use Jd */
+            use_jd?: boolean | null;
+            /** Use Resume */
+            use_resume?: boolean | null;
+        };
+        /** TemplateCoding */
+        TemplateCoding: {
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /** Languages */
+            languages?: ("python" | "javascript" | "typescript" | "sql")[];
+            /**
+             * Minutes
+             * @default 20
+             */
+            minutes: number;
+        };
+        /** TemplateCreate */
+        TemplateCreate: {
+            /** Adaptive Follow Ups */
+            adaptive_follow_ups?: boolean | null;
+            coding?: components["schemas"]["TemplateCoding"] | null;
+            /** Description */
+            description?: string | null;
+            /** Difficulty */
+            difficulty?: {
+                [key: string]: number;
+            } | null;
+            /** Duration Minutes */
+            duration_minutes?: number | null;
+            /** Name */
+            name: string;
+            /** Proctoring Level */
+            proctoring_level?: ("off" | "basic" | "standard" | "strict") | null;
+            /** Question Count */
+            question_count?: number | null;
+            /** Question Types */
+            question_types?: ("technical" | "conceptual" | "scenario" | "system_design" | "coding" | "resume_based" | "project_based" | "problem_solving")[] | null;
+            /** Questions */
+            questions?: components["schemas"]["PinnedQuestion"][] | null;
+            recording?: components["schemas"]["Recording"] | null;
+            /** Rubric */
+            rubric?: components["schemas"]["RubricWeight"][] | null;
+            /** Skills */
+            skills: components["schemas"]["SkillWeight"][];
+            /** Third Eye */
+            third_eye?: ("off" | "optional" | "required") | null;
+            /** Use Jd */
+            use_jd?: boolean | null;
+            /** Use Resume */
+            use_resume?: boolean | null;
+        };
+        /** TemplateResponse */
+        TemplateResponse: {
+            /** Coding */
+            coding: boolean;
+            current: components["schemas"]["TemplateVersionResponse"];
+            /** Description */
+            description: string;
+            /** Duration Minutes */
+            duration_minutes: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Proctoring Level
+             * @enum {string}
+             */
+            proctoring_level: "off" | "basic" | "standard" | "strict";
+            /** Question Count */
+            question_count: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "archived";
+            /**
+             * Third Eye
+             * @enum {string}
+             */
+            third_eye: "off" | "optional" | "required";
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Version */
+            version: number;
+        };
+        /** TemplateSummary */
+        TemplateSummary: {
+            /** Coding */
+            coding: boolean;
+            /** Description */
+            description: string;
+            /** Duration Minutes */
+            duration_minutes: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Proctoring Level
+             * @enum {string}
+             */
+            proctoring_level: "off" | "basic" | "standard" | "strict";
+            /** Question Count */
+            question_count: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "archived";
+            /**
+             * Third Eye
+             * @enum {string}
+             */
+            third_eye: "off" | "optional" | "required";
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Version */
+            version: number;
+        };
+        /** TemplateVersionResponse */
+        TemplateVersionResponse: {
+            /** Adaptive Follow Ups */
+            adaptive_follow_ups: boolean;
+            /** Coding */
+            coding: {
+                [key: string]: unknown;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by: string | null;
+            /** Difficulty */
+            difficulty: {
+                [key: string]: number;
+            };
+            /** Duration Minutes */
+            duration_minutes: number;
+            /** Name */
+            name: string;
+            /**
+             * Proctoring Level
+             * @enum {string}
+             */
+            proctoring_level: "off" | "basic" | "standard" | "strict";
+            /** Question Count */
+            question_count: number;
+            /** Question Types */
+            question_types: string[];
+            /** Questions */
+            questions: {
+                [key: string]: unknown;
+            }[];
+            /** Recording */
+            recording: {
+                [key: string]: boolean;
+            };
+            /** Rubric */
+            rubric: {
+                [key: string]: unknown;
+            }[];
+            /** Skills */
+            skills: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Third Eye
+             * @enum {string}
+             */
+            third_eye: "off" | "optional" | "required";
+            /** Use Jd */
+            use_jd: boolean;
+            /** Use Resume */
+            use_resume: boolean;
+            /** Version */
+            version: number;
         };
         /** TokenPasswordRequest */
         TokenPasswordRequest: {
@@ -3772,6 +4735,463 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Readiness"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_interview_defaults: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterviewDefaults"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_interview_defaults: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InterviewDefaultsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterviewDefaults"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_templates: {
+        parameters: {
+            query?: {
+                status?: string;
+                /** @description Part of the name. */
+                q?: string | null;
+                /** @description How many items to return. */
+                limit?: number;
+                /** @description `next_cursor` from the previous page. */
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_TemplateSummary_"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_template: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required. A unique value (a UUID is ideal) per logical create; send the same value when retrying it. */
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    preview_skill_matrix: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MatrixPreview"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatrixRowResponse"][];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    archive_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    restore_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    template_skill_matrix: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatrixRowResponse"][];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    template_versions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateVersionResponse"][];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */
@@ -5017,6 +6437,387 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrganizationListingResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_questions: {
+        parameters: {
+            query?: {
+                category?: ("technical" | "coding" | "system_design" | "resume_based" | "custom") | null;
+                type?: ("technical" | "conceptual" | "scenario" | "system_design" | "coding" | "resume_based" | "project_based" | "problem_solving") | null;
+                difficulty?: ("easy" | "medium" | "hard") | null;
+                status?: ("draft" | "approved" | "archived") | null;
+                skill?: string | null;
+                /** @description Words in the text or topic. */
+                q?: string | null;
+                /** @description How many items to return. */
+                limit?: number;
+                /** @description `next_cursor` from the previous page. */
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_QuestionResponse_"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_question: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required. A unique value (a UUID is ideal) per logical create; send the same value when retrying it. */
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuestionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    generate_questions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerateResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_question: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_question: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuestionBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    approve_question: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    archive_question: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    restore_question: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    question_versions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionVersionResponse"][];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */

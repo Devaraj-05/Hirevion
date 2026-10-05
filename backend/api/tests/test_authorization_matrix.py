@@ -115,6 +115,41 @@ EXPECTED: dict[str, tuple[tuple[str, ...], bool]] = {
     "POST /api/v1/candidates/{candidate_id}/reject": (("candidates.manage",), False),
     "GET /api/v1/jobs/{job_id}/screening-results/export": (("candidates.view",), True),
     "GET /api/v1/skills": (("jobs.view",), False),
+    "GET /api/v1/questions": (("questions.view",), False),
+    "POST /api/v1/questions": (("questions.manage",), False),
+    "POST /api/v1/questions/generate": (("questions.manage",), False),
+    "GET /api/v1/questions/{question_id}": (("questions.view",), False),
+    "PUT /api/v1/questions/{question_id}": (("questions.manage",), False),
+    "GET /api/v1/questions/{question_id}/versions": (("questions.view",), False),
+    "POST /api/v1/questions/{question_id}/approve": (("questions.manage",), False),
+    "POST /api/v1/questions/{question_id}/archive": (("questions.manage",), False),
+    "POST /api/v1/questions/{question_id}/restore": (("questions.manage",), False),
+    "GET /api/v1/interview-templates": (("interviews.templates.view",), False),
+    "POST /api/v1/interview-templates": (("interviews.templates.manage",), False),
+    "POST /api/v1/interview-templates/skill-matrix": (("interviews.templates.view",), False),
+    "GET /api/v1/interview-templates/{template_id}": (("interviews.templates.view",), False),
+    "PATCH /api/v1/interview-templates/{template_id}": (("interviews.templates.manage",), False),
+    "GET /api/v1/interview-templates/{template_id}/versions": (
+        ("interviews.templates.view",),
+        False,
+    ),
+    "GET /api/v1/interview-templates/{template_id}/skill-matrix": (
+        ("interviews.templates.view",),
+        False,
+    ),
+    "POST /api/v1/interview-templates/{template_id}/archive": (
+        ("interviews.templates.manage",),
+        False,
+    ),
+    "POST /api/v1/interview-templates/{template_id}/restore": (
+        ("interviews.templates.manage",),
+        False,
+    ),
+    "GET /api/v1/interview-defaults": (
+        ("interviews.templates.view", "admin.organization.manage"),
+        False,
+    ),
+    "PUT /api/v1/interview-defaults": (("admin.organization.manage",), False),
 }
 
 

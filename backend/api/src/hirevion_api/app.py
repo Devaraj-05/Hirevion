@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import re
 from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager, suppress
@@ -25,6 +26,7 @@ from hirevion_api.auth.csrf import CsrfMiddleware
 from hirevion_api.auth.router import router as auth_router
 from hirevion_api.candidates.routes import router as candidates_router
 from hirevion_api.idempotency import install_idempotency_handler
+from hirevion_api.interviews.routes import router as interviews_router
 from hirevion_api.jobs.routes import router as jobs_router
 from hirevion_api.middleware import (
     BodySizeLimitMiddleware,
@@ -37,6 +39,8 @@ from hirevion_api.ratelimit import RateLimitMiddleware
 from hirevion_api.routing import API_PREFIX, build_openapi, operation_id
 from hirevion_api.screening.routes import router as screening_router
 from hirevion_api.settings import ApiSettings, load_api_settings
+from hirevion_core.ai import AiServices, build_ai
+from hirevion_core.ai.settings import load_ai_settings
 from hirevion_core.db.session import Database, create_database
 from hirevion_core.documents.intake import BlobStore
 from hirevion_core.identity.breach import (
@@ -53,6 +57,8 @@ from hirevion_core.settings import CoreSettings, load_core_settings
 from hirevion_core.storage.service import load_optional_storage
 from hirevion_core.telemetry import Telemetry, instrument_engine
 
+log = logging.getLogger(__name__)
+
 # Routes that take file uploads, and so a larger body: a description, or a resume or ZIP of them.
 DESCRIPTION_UPLOAD = re.compile(rf"{API_PREFIX}/jobs/[^/]+/jd")
 RESUME_UPLOAD = re.compile(rf"{API_PREFIX}/jobs/[^/]+/resumes")
@@ -67,11 +73,13 @@ def create_app(
     telemetry: Telemetry | None = None,
     identity: IdentitySettings | None = None,
     storage: BlobStore | None = None,
+    ai: AiServices | None = None,
 ) -> FastAPI:
     """Build the API. Injected `db` and `redis` are used as they are and never closed here;
     otherwise the lifespan opens them from `core` (loaded from `.env` when not given), and also
     runs the background workers (`HV_API_RUN_WORKERS`). `telemetry` traces requests and
-    queries; the lifespan shuts it down on exit."""
+    queries; the lifespan shuts it down on exit. `ai` is built from `.env` when not given; the
+    routes that need it answer 503 when it can't be (missing keys)."""
     settings = api or load_api_settings()
     identity_settings = identity or load_identity_settings()
     local_passwords = LocalListChecker.from_package()
@@ -99,6 +107,13 @@ def create_app(
                 app.state.storage = load_optional_storage()
                 if app.state.storage is not None:
                     stack.push_async_callback(app.state.storage.aclose)
+            if app.state.ai is None:
+                try:
+                    app.state.ai = build_ai(load_ai_settings(), app.state.db)
+                except ValueError:
+                    log.exception("AI features are off: the AI services can't start")
+                else:
+                    stack.push_async_callback(app.state.ai.aclose)
             if identity_settings.hibp_enabled:
                 session = aiohttp.ClientSession()
                 stack.push_async_callback(session.close)
@@ -121,6 +136,7 @@ def create_app(
     app.state.db = db
     app.state.redis = redis
     app.state.storage = storage
+    app.state.ai = ai
     app.state.identity = identity_settings
     # The bundled list always applies; the lifespan adds Have I Been Pwned when enabled.
     app.state.password_policy = PasswordPolicy(CompositeChecker(local_passwords))
@@ -140,6 +156,7 @@ def create_app(
     app.include_router(jobs_router)
     app.include_router(candidates_router)
     app.include_router(screening_router)
+    app.include_router(interviews_router)
     if telemetry is not None and telemetry.enabled:
         FastAPIInstrumentor.instrument_app(
             app,
