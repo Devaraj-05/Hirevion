@@ -8,6 +8,13 @@ from hirevion_core.models.department import Department
 from hirevion_core.models.document import Document
 from hirevion_core.models.feature_flag import FeatureFlag
 from hirevion_core.models.idempotency_key import IdempotencyKey
+from hirevion_core.models.interview_config import (
+    InterviewTemplate,
+    InterviewTemplateVersion,
+    OrganizationSettings,
+    Question,
+    QuestionVersion,
+)
 from hirevion_core.models.job import Job, JobSkill, JobVersion
 from hirevion_core.models.organization import Organization
 from hirevion_core.models.outbox_event import OutboxEvent
@@ -32,11 +39,16 @@ __all__ = [
     "Document",
     "FeatureFlag",
     "IdempotencyKey",
+    "InterviewTemplate",
+    "InterviewTemplateVersion",
     "Job",
     "JobSkill",
     "JobVersion",
     "Organization",
+    "OrganizationSettings",
     "OutboxEvent",
+    "Question",
+    "QuestionVersion",
     "Quota",
     "Role",
     "RolePermission",
