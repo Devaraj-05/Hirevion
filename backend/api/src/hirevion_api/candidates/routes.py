@@ -5,7 +5,7 @@ job or candidate outside it doesn't exist for the reader (ADR-0014)."""
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Annotated, Protocol, cast
+from typing import Annotated, Literal, Protocol, cast
 from uuid import UUID
 
 from fastapi import Depends, File, Query, Request, UploadFile
@@ -233,13 +233,19 @@ async def list_candidates(
         str | None, Query(max_length=200, description="Part of the name or email, or the phone.")
     ] = None,
     job_id: UUID | None = None,
+    stage_group: Annotated[
+        Literal["screening", "shortlisted", "interview", "completed", "decision"] | None,
+        Query(description="The /candidates tab: candidates with an application at that stage."),
+    ] = None,
 ) -> Page[CandidateSummary]:
     """The candidates the reader reaches, most recently updated first."""
     async with own_tenant(request, principal) as session:
         scope = await resource_scope(session, principal.user_id)
         rows, next_cursor = await paginate(
             session,
-            candidates.candidates_statement(scope, CandidateFilters(query=q, job_id=job_id)),
+            candidates.candidates_statement(
+                scope, CandidateFilters(query=q, job_id=job_id, stage_group=stage_group)
+            ),
             [Candidate.updated_at, Candidate.id],
             page,
             descending=True,

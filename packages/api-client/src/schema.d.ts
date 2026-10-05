@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+    "/api/v1/applications/{application_id}/screening": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Application Screening
+         * @description One application's screening in full: every factor with its evidence, and its history.
+         */
+        get: operations["application_screening"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/email/change": {
         parameters: {
             query?: never;
@@ -306,6 +326,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/candidates/{candidate_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject Candidate
+         * @description Rejects the candidate for `job_id`, with a reason (PRD §90).
+         */
+        post: operations["reject_candidate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/candidates/{candidate_id}/shortlist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Shortlist Candidate
+         * @description Shortlists the candidate for `job_id` (PRD §90).
+         */
+        post: operations["shortlist_candidate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/departments": {
         parameters: {
             query?: never;
@@ -510,6 +570,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/jobs/{job_id}/applications/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Act On Applications
+         * @description Shortlist, reject, hold, review or assign, for one candidate or many (PRD §18).
+         */
+        post: operations["act_on_applications"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs/{job_id}/jd": {
         parameters: {
             query?: never;
@@ -572,6 +652,115 @@ export interface paths {
          * @description Takes one resume, or a ZIP of them; each is read in the background (PRD §13).
          */
         post: operations["upload_resume"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{job_id}/screen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Screen Job
+         * @description Screens the job's candidates in the background (PRD §90). Results that are still current
+         *     are reused, so screening again costs nothing for unchanged candidates.
+         */
+        post: operations["screen_job"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{job_id}/screening-config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Job Screening Config
+         * @description The weights, knock-outs and blind mode the job's screening uses.
+         */
+        get: operations["get_job_screening_config"];
+        /**
+         * Update Job Screening Config
+         * @description Gives the job its own configuration (starting from what it inherited).
+         */
+        put: operations["update_job_screening_config"];
+        post?: never;
+        /**
+         * Reset Job Screening Config
+         * @description Drops the job's own configuration: it uses the organisation's default again.
+         */
+        delete: operations["reset_job_screening_config"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{job_id}/screening-results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Screening Results
+         * @description The job's screened candidates, best first (PRD §16).
+         */
+        get: operations["screening_results"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{job_id}/screening-results/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Screening Results
+         * @description The ranking as CSV or XLSX (PRD §18 "Export"); needs a recent password, and is audited.
+         */
+        get: operations["export_screening_results"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{job_id}/screening-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Screening Summary
+         * @description How far screening has got: for progress while it runs.
+         */
+        get: operations["screening_summary"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -788,6 +977,27 @@ export interface paths {
          *     request. Built-in roles can't be changed.
          */
         patch: operations["update_role"];
+        trace?: never;
+    };
+    "/api/v1/screening-config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Screening Defaults
+         * @description The organisation's default screening configuration.
+         */
+        get: operations["get_screening_defaults"];
+        /** Update Screening Defaults */
+        put: operations["update_screening_defaults"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/skills": {
@@ -1041,6 +1251,28 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActionRequest */
+        ActionRequest: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "shortlist" | "reject" | "hold" | "review" | "assign_recruiter" | "assign_hiring_manager";
+            /** Application Ids */
+            application_ids: string[];
+            /** Reason */
+            reason?: string | null;
+            /**
+             * User Id
+             * @description For the assign actions; null clears.
+             */
+            user_id?: string | null;
+        };
+        /** ActionResult */
+        ActionResult: {
+            /** Applications */
+            applications: components["schemas"]["ApplicationState"][];
+        };
         /** ApplicationResponse */
         ApplicationResponse: {
             candidate: components["schemas"]["CandidateSummary"];
@@ -1056,6 +1288,49 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Stage
+             * @enum {string}
+             */
+            stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold";
+        };
+        /** ApplicationScreening */
+        ApplicationScreening: {
+            /**
+             * Application Id
+             * Format: uuid
+             */
+            application_id: string;
+            candidate: components["schemas"]["CandidateBrief"];
+            /** History */
+            history: components["schemas"]["HistoryEntry"][];
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Rank */
+            rank: number | null;
+            result: components["schemas"]["ScreeningResultResponse"] | null;
+            /**
+             * Stage
+             * @enum {string}
+             */
+            stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold";
+        };
+        /** ApplicationState */
+        ApplicationState: {
+            /** Hiring Manager Id */
+            hiring_manager_id: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Rank */
+            rank: number | null;
+            /** Recruiter Id */
+            recruiter_id: string | null;
             /**
              * Stage
              * @enum {string}
@@ -1109,6 +1384,24 @@ export interface components {
              * @enum {string}
              */
             stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold";
+        };
+        /** CandidateBrief */
+        CandidateBrief: {
+            /** Flags */
+            flags: {
+                [key: string]: unknown;
+            };
+            /** Headline */
+            headline: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Location */
+            location: string | null;
+            /** Name */
+            name: string;
         };
         /** CandidateDocument */
         CandidateDocument: {
@@ -1243,6 +1536,16 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** DecisionRequest */
+        DecisionRequest: {
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Reason */
+            reason?: string | null;
+        };
         /** DepartmentCreate */
         DepartmentCreate: {
             /** Description */
@@ -1327,6 +1630,30 @@ export interface components {
         ForgotPasswordRequest: {
             /** Email */
             email: string;
+        };
+        /** HistoryEntry */
+        HistoryEntry: {
+            /** Action */
+            action: string;
+            /** Actor Id */
+            actor_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** From Stage */
+            from_stage: string | null;
+            /** Override */
+            override: boolean;
+            /** Rank */
+            rank: number | null;
+            /** Reason */
+            reason: string | null;
+            /** Score */
+            score: number | null;
+            /** To Stage */
+            to_stage: string | null;
         };
         /**
          * JdApply
@@ -1832,6 +2159,16 @@ export interface components {
              */
             next_cursor: string | null;
         };
+        /** Page[RankedApplication] */
+        Page_RankedApplication_: {
+            /** Items */
+            items: components["schemas"]["RankedApplication"][];
+            /**
+             * Next Cursor
+             * @description Pass as `cursor` to get the next page; null on the last page.
+             */
+            next_cursor: string | null;
+        };
         /** Page[ResumeDocumentResponse] */
         Page_ResumeDocumentResponse_: {
             /** Items */
@@ -1902,6 +2239,42 @@ export interface components {
             type: string;
         } & {
             [key: string]: unknown;
+        };
+        /** RankedApplication */
+        RankedApplication: {
+            /**
+             * Application Id
+             * Format: uuid
+             */
+            application_id: string;
+            candidate: components["schemas"]["CandidateBrief"];
+            /** Experience */
+            experience: {
+                [key: string]: unknown;
+            };
+            /** Hiring Manager Id */
+            hiring_manager_id: string | null;
+            /** Knockouts */
+            knockouts: string[];
+            /** Rank */
+            rank: number | null;
+            /** Recruiter Id */
+            recruiter_id: string | null;
+            /** Score */
+            score: number | null;
+            /** Screened At */
+            screened_at: string | null;
+            /** Semantic Similarity */
+            semantic_similarity: number | null;
+            /** Skill Match */
+            skill_match: {
+                [key: string]: unknown;
+            };
+            /**
+             * Stage
+             * @enum {string}
+             */
+            stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold";
         };
         /** Readiness */
         Readiness: {
@@ -2024,6 +2397,115 @@ export interface components {
             name?: string | null;
             /** Permissions */
             permissions?: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.templates.view" | "questions.view" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[] | null;
+        };
+        /** ScreenAccepted */
+        ScreenAccepted: {
+            /** Queued */
+            queued: number;
+        };
+        /** ScreenRequest */
+        ScreenRequest: {
+            /**
+             * Application Ids
+             * @description Only these; all of the job's otherwise.
+             */
+            application_ids?: string[] | null;
+        };
+        /** ScreeningConfigResponse */
+        ScreeningConfigResponse: {
+            /** Blind */
+            blind: boolean;
+            /** Inherited */
+            inherited: boolean;
+            /** Knockouts */
+            knockouts: {
+                [key: string]: boolean;
+            };
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "job" | "organization" | "default";
+            /** Version */
+            version: number;
+            /** Weights */
+            weights: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * ScreeningConfigUpdate
+         * @description Only the fields sent change; a job's first save starts from what it inherited.
+         */
+        ScreeningConfigUpdate: {
+            /** Blind */
+            blind?: boolean | null;
+            /** Knockouts */
+            knockouts?: {
+                [key: string]: boolean;
+            } | null;
+            /** Weights */
+            weights?: {
+                [key: string]: number;
+            } | null;
+        };
+        /** ScreeningResultResponse */
+        ScreeningResultResponse: {
+            /** Concerns */
+            concerns: string[];
+            /** Config Version */
+            config_version: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Experience */
+            experience: {
+                [key: string]: unknown;
+            };
+            /** Factors */
+            factors: {
+                [key: string]: unknown;
+            };
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Job Version */
+            job_version: number;
+            /** Knockouts */
+            knockouts: string[];
+            /** Missing */
+            missing: string[];
+            /** Model */
+            model: string;
+            /** Prompt Version */
+            prompt_version: string;
+            /** Score */
+            score: number;
+            /** Semantic Similarity */
+            semantic_similarity: number | null;
+            /** Skill Match */
+            skill_match: {
+                [key: string]: unknown;
+            };
+            /** Strengths */
+            strengths: string[];
+        };
+        /** ScreeningSummary */
+        ScreeningSummary: {
+            /** Applications */
+            applications: number;
+            /** Screened */
+            screened: number;
+            /** Stages */
+            stages: {
+                [key: string]: number;
+            };
+            /** Waiting */
+            waiting: number;
         };
         /** ServerTime */
         ServerTime: {
@@ -2305,6 +2787,46 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    application_screening: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationScreening"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     change_email: {
         parameters: {
             query?: never;
@@ -2817,6 +3339,8 @@ export interface operations {
                 /** @description Part of the name or email, or the phone. */
                 q?: string | null;
                 job_id?: string | null;
+                /** @description The /candidates tab: candidates with an application at that stage. */
+                stage_group?: ("screening" | "shortlisted" | "interview" | "completed" | "decision") | null;
                 /** @description How many items to return. */
                 limit?: number;
                 /** @description `next_cursor` from the previous page. */
@@ -2875,6 +3399,94 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CandidateResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    reject_candidate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationState"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    shortlist_candidate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationState"];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */
@@ -3442,6 +4054,50 @@ export interface operations {
             };
         };
     };
+    act_on_applications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionResult"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     get_job_description: {
         parameters: {
             query?: never;
@@ -3646,6 +4302,302 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResumeDocumentResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    screen_job: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScreenRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenAccepted"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_job_screening_config: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreeningConfigResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_job_screening_config: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScreeningConfigUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreeningConfigResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    reset_job_screening_config: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreeningConfigResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    screening_results: {
+        parameters: {
+            query?: {
+                stage?: string | null;
+                /** @description How many items to return. */
+                limit?: number;
+                /** @description `next_cursor` from the previous page. */
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_RankedApplication_"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    export_screening_results: {
+        parameters: {
+            query?: {
+                format?: "csv" | "xlsx";
+            };
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    screening_summary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreeningSummary"];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */
@@ -4230,6 +5182,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RoleResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_screening_defaults: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreeningConfigResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_screening_defaults: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScreeningConfigUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreeningConfigResponse"];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */

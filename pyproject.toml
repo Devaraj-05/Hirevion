@@ -39,6 +39,7 @@ dev = [
   "pytest-asyncio>=0.24",
   "respx>=0.21",
   "ruff>=0.6",
+  "types-openpyxl>=3.1",
   "types-pyyaml>=6.0",
 ]
 

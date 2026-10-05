@@ -1,6 +1,80 @@
 {
   "components": {
     "schemas": {
+      "ActionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "shortlist",
+              "reject",
+              "hold",
+              "review",
+              "assign_recruiter",
+              "assign_hiring_manager"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "application_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Application Ids",
+            "type": "array"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For the assign actions; null clears.",
+            "title": "User Id"
+          }
+        },
+        "required": [
+          "application_ids",
+          "action"
+        ],
+        "title": "ActionRequest",
+        "type": "object"
+      },
+      "ActionResult": {
+        "properties": {
+          "applications": {
+            "items": {
+              "$ref": "#/components/schemas/ApplicationState"
+            },
+            "title": "Applications",
+            "type": "array"
+          }
+        },
+        "required": [
+          "applications"
+        ],
+        "title": "ActionResult",
+        "type": "object"
+      },
       "ApplicationResponse": {
         "properties": {
           "candidate": {
@@ -51,6 +125,143 @@
           "created_at"
         ],
         "title": "ApplicationResponse",
+        "type": "object"
+      },
+      "ApplicationScreening": {
+        "properties": {
+          "application_id": {
+            "format": "uuid",
+            "title": "Application Id",
+            "type": "string"
+          },
+          "candidate": {
+            "$ref": "#/components/schemas/CandidateBrief"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryEntry"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScreeningResultResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stage": {
+            "enum": [
+              "uploaded",
+              "parsed",
+              "screened",
+              "ranked",
+              "review",
+              "shortlisted",
+              "rejected",
+              "on_hold"
+            ],
+            "title": "Stage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "application_id",
+          "job_id",
+          "stage",
+          "rank",
+          "candidate",
+          "result",
+          "history"
+        ],
+        "title": "ApplicationScreening",
+        "type": "object"
+      },
+      "ApplicationState": {
+        "properties": {
+          "hiring_manager_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hiring Manager Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "recruiter_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recruiter Id"
+          },
+          "stage": {
+            "enum": [
+              "uploaded",
+              "parsed",
+              "screened",
+              "ranked",
+              "review",
+              "shortlisted",
+              "rejected",
+              "on_hold"
+            ],
+            "title": "Stage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "stage",
+          "rank",
+          "recruiter_id",
+          "hiring_manager_id"
+        ],
+        "title": "ApplicationState",
         "type": "object"
       },
       "Body_submit_job_description": {
@@ -148,6 +359,55 @@
           "created_at"
         ],
         "title": "CandidateApplication",
+        "type": "object"
+      },
+      "CandidateBrief": {
+        "properties": {
+          "flags": {
+            "additionalProperties": true,
+            "title": "Flags",
+            "type": "object"
+          },
+          "headline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Headline"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "headline",
+          "location",
+          "flags"
+        ],
+        "title": "CandidateBrief",
         "type": "object"
       },
       "CandidateDocument": {
@@ -499,6 +759,33 @@
         "title": "Choice",
         "type": "object"
       },
+      "DecisionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "title": "DecisionRequest",
+        "type": "object"
+      },
       "DepartmentCreate": {
         "additionalProperties": false,
         "properties": {
@@ -758,6 +1045,103 @@
           "email"
         ],
         "title": "ForgotPasswordRequest",
+        "type": "object"
+      },
+      "HistoryEntry": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "actor_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "from_stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Stage"
+          },
+          "override": {
+            "title": "Override",
+            "type": "boolean"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "to_stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Stage"
+          }
+        },
+        "required": [
+          "from_stage",
+          "to_stage",
+          "action",
+          "reason",
+          "score",
+          "rank",
+          "override",
+          "actor_id",
+          "created_at"
+        ],
+        "title": "HistoryEntry",
         "type": "object"
       },
       "JdApply": {
@@ -2635,6 +3019,35 @@
         "title": "Page[OrganizationListingResponse]",
         "type": "object"
       },
+      "Page_RankedApplication_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RankedApplication"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` to get the next page; null on the last page.",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "Page[RankedApplication]",
+        "type": "object"
+      },
       "Page_ResumeDocumentResponse_": {
         "properties": {
           "items": {
@@ -2839,6 +3252,134 @@
           "code"
         ],
         "title": "Problem",
+        "type": "object"
+      },
+      "RankedApplication": {
+        "properties": {
+          "application_id": {
+            "format": "uuid",
+            "title": "Application Id",
+            "type": "string"
+          },
+          "candidate": {
+            "$ref": "#/components/schemas/CandidateBrief"
+          },
+          "experience": {
+            "additionalProperties": true,
+            "title": "Experience",
+            "type": "object"
+          },
+          "hiring_manager_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hiring Manager Id"
+          },
+          "knockouts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Knockouts",
+            "type": "array"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "recruiter_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recruiter Id"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "screened_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Screened At"
+          },
+          "semantic_similarity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Semantic Similarity"
+          },
+          "skill_match": {
+            "additionalProperties": true,
+            "title": "Skill Match",
+            "type": "object"
+          },
+          "stage": {
+            "enum": [
+              "uploaded",
+              "parsed",
+              "screened",
+              "ranked",
+              "review",
+              "shortlisted",
+              "rejected",
+              "on_hold"
+            ],
+            "title": "Stage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "application_id",
+          "rank",
+          "stage",
+          "score",
+          "candidate",
+          "skill_match",
+          "experience",
+          "knockouts",
+          "semantic_similarity",
+          "recruiter_id",
+          "hiring_manager_id",
+          "screened_at"
+        ],
+        "title": "RankedApplication",
         "type": "object"
       },
       "Readiness": {
@@ -3288,6 +3829,276 @@
           }
         },
         "title": "RoleUpdate",
+        "type": "object"
+      },
+      "ScreenAccepted": {
+        "properties": {
+          "queued": {
+            "title": "Queued",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "queued"
+        ],
+        "title": "ScreenAccepted",
+        "type": "object"
+      },
+      "ScreenRequest": {
+        "properties": {
+          "application_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "maxItems": 500,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only these; all of the job's otherwise.",
+            "title": "Application Ids"
+          }
+        },
+        "title": "ScreenRequest",
+        "type": "object"
+      },
+      "ScreeningConfigResponse": {
+        "properties": {
+          "blind": {
+            "title": "Blind",
+            "type": "boolean"
+          },
+          "inherited": {
+            "title": "Inherited",
+            "type": "boolean"
+          },
+          "knockouts": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Knockouts",
+            "type": "object"
+          },
+          "source": {
+            "enum": [
+              "job",
+              "organization",
+              "default"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "weights": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Weights",
+            "type": "object"
+          }
+        },
+        "required": [
+          "weights",
+          "knockouts",
+          "blind",
+          "version",
+          "inherited",
+          "source"
+        ],
+        "title": "ScreeningConfigResponse",
+        "type": "object"
+      },
+      "ScreeningConfigUpdate": {
+        "additionalProperties": false,
+        "description": "Only the fields sent change; a job's first save starts from what it inherited.",
+        "properties": {
+          "blind": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blind"
+          },
+          "knockouts": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "boolean"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Knockouts"
+          },
+          "weights": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weights"
+          }
+        },
+        "title": "ScreeningConfigUpdate",
+        "type": "object"
+      },
+      "ScreeningResultResponse": {
+        "properties": {
+          "concerns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Concerns",
+            "type": "array"
+          },
+          "config_version": {
+            "title": "Config Version",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "experience": {
+            "additionalProperties": true,
+            "title": "Experience",
+            "type": "object"
+          },
+          "factors": {
+            "additionalProperties": true,
+            "title": "Factors",
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "job_version": {
+            "title": "Job Version",
+            "type": "integer"
+          },
+          "knockouts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Knockouts",
+            "type": "array"
+          },
+          "missing": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt_version": {
+            "title": "Prompt Version",
+            "type": "string"
+          },
+          "score": {
+            "title": "Score",
+            "type": "integer"
+          },
+          "semantic_similarity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Semantic Similarity"
+          },
+          "skill_match": {
+            "additionalProperties": true,
+            "title": "Skill Match",
+            "type": "object"
+          },
+          "strengths": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Strengths",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "score",
+          "factors",
+          "skill_match",
+          "experience",
+          "strengths",
+          "concerns",
+          "missing",
+          "knockouts",
+          "semantic_similarity",
+          "job_version",
+          "config_version",
+          "prompt_version",
+          "model",
+          "created_at"
+        ],
+        "title": "ScreeningResultResponse",
+        "type": "object"
+      },
+      "ScreeningSummary": {
+        "properties": {
+          "applications": {
+            "title": "Applications",
+            "type": "integer"
+          },
+          "screened": {
+            "title": "Screened",
+            "type": "integer"
+          },
+          "stages": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Stages",
+            "type": "object"
+          },
+          "waiting": {
+            "title": "Waiting",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "applications",
+          "screened",
+          "waiting",
+          "stages"
+        ],
+        "title": "ScreeningSummary",
         "type": "object"
       },
       "ServerTime": {
@@ -4054,6 +4865,60 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/applications/{application_id}/screening": {
+      "get": {
+        "description": "One application's screening in full: every factor with its evidence, and its history.",
+        "operationId": "application_screening",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "application_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Application Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationScreening"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Application Screening",
+        "tags": [
+          "screening"
+        ]
+      }
+    },
     "/api/v1/auth/email/change": {
       "post": {
         "description": "Sends a confirmation link to the new address. An address already in use gets the same\nanswer, and nothing is sent.",
@@ -4661,6 +5526,31 @@
             }
           },
           {
+            "description": "The /candidates tab: candidates with an application at that stage.",
+            "in": "query",
+            "name": "stage_group",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "screening",
+                    "shortlisted",
+                    "interview",
+                    "completed",
+                    "decision"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The /candidates tab: candidates with an application at that stage.",
+              "title": "Stage Group"
+            }
+          },
+          {
             "description": "How many items to return.",
             "in": "query",
             "name": "limit",
@@ -4783,6 +5673,134 @@
         "summary": "Get Candidate",
         "tags": [
           "candidates"
+        ]
+      }
+    },
+    "/api/v1/candidates/{candidate_id}/reject": {
+      "post": {
+        "description": "Rejects the candidate for `job_id`, with a reason (PRD §90).",
+        "operationId": "reject_candidate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Reject Candidate",
+        "tags": [
+          "screening"
+        ]
+      }
+    },
+    "/api/v1/candidates/{candidate_id}/shortlist": {
+      "post": {
+        "description": "Shortlists the candidate for `job_id` (PRD §90).",
+        "operationId": "shortlist_candidate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Shortlist Candidate",
+        "tags": [
+          "screening"
         ]
       }
     },
@@ -5633,6 +6651,70 @@
         ]
       }
     },
+    "/api/v1/jobs/{job_id}/applications/actions": {
+      "post": {
+        "description": "Shortlist, reject, hold, review or assign, for one candidate or many (PRD §18).",
+        "operationId": "act_on_applications",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Act On Applications",
+        "tags": [
+          "screening"
+        ]
+      }
+    },
     "/api/v1/jobs/{job_id}/jd": {
       "get": {
         "description": "The job's latest description: its progress, and once read, what was found in it.",
@@ -6038,6 +7120,462 @@
         "summary": "Upload Resume",
         "tags": [
           "candidates"
+        ]
+      }
+    },
+    "/api/v1/jobs/{job_id}/screen": {
+      "post": {
+        "description": "Screens the job's candidates in the background (PRD §90). Results that are still current\nare reused, so screening again costs nothing for unchanged candidates.",
+        "operationId": "screen_job",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScreenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenAccepted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Screen Job",
+        "tags": [
+          "screening"
+        ]
+      }
+    },
+    "/api/v1/jobs/{job_id}/screening-config": {
+      "delete": {
+        "description": "Drops the job's own configuration: it uses the organisation's default again.",
+        "operationId": "reset_job_screening_config",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreeningConfigResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Reset Job Screening Config",
+        "tags": [
+          "screening"
+        ]
+      },
+      "get": {
+        "description": "The weights, knock-outs and blind mode the job's screening uses.",
+        "operationId": "get_job_screening_config",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreeningConfigResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Get Job Screening Config",
+        "tags": [
+          "screening"
+        ]
+      },
+      "put": {
+        "description": "Gives the job its own configuration (starting from what it inherited).",
+        "operationId": "update_job_screening_config",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScreeningConfigUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreeningConfigResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Update Job Screening Config",
+        "tags": [
+          "screening"
+        ]
+      }
+    },
+    "/api/v1/jobs/{job_id}/screening-results": {
+      "get": {
+        "description": "The job's screened candidates, best first (PRD §16).",
+        "operationId": "screening_results",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "stage",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Stage"
+            }
+          },
+          {
+            "description": "How many items to return.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "description": "How many items to return.",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "`next_cursor` from the previous page.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`next_cursor` from the previous page.",
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_RankedApplication_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Screening Results",
+        "tags": [
+          "screening"
+        ]
+      }
+    },
+    "/api/v1/jobs/{job_id}/screening-results/export": {
+      "get": {
+        "description": "The ranking as CSV or XLSX (PRD §18 \"Export\"); needs a recent password, and is audited.",
+        "operationId": "export_screening_results",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "csv",
+              "enum": [
+                "csv",
+                "xlsx"
+              ],
+              "title": "Format",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Export Screening Results",
+        "tags": [
+          "screening"
+        ]
+      }
+    },
+    "/api/v1/jobs/{job_id}/screening-summary": {
+      "get": {
+        "description": "How far screening has got: for progress while it runs.",
+        "operationId": "screening_summary",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreeningSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Screening Summary",
+        "tags": [
+          "screening"
         ]
       }
     },
@@ -6882,6 +8420,97 @@
         "summary": "Update Role",
         "tags": [
           "roles"
+        ]
+      }
+    },
+    "/api/v1/screening-config": {
+      "get": {
+        "description": "The organisation's default screening configuration.",
+        "operationId": "get_screening_defaults",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreeningConfigResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Get Screening Defaults",
+        "tags": [
+          "screening"
+        ]
+      },
+      "put": {
+        "operationId": "update_screening_defaults",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScreeningConfigUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreeningConfigResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Update Screening Defaults",
+        "tags": [
+          "screening"
         ]
       }
     },

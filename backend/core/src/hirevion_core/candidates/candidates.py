@@ -20,6 +20,18 @@ class CandidateFilters:
     query: str | None = None
     """Part of the name or email, or the phone's digits."""
     job_id: UUID | None = None
+    stage_group: str | None = None
+    """One of `STAGE_GROUPS`: candidates with an application in one of its stages."""
+
+
+# The /candidates tabs (PRD §7). Interviews (SP-07) and decisions (SP-17) fill the later ones.
+STAGE_GROUPS: dict[str, tuple[str, ...]] = {
+    "screening": ("uploaded", "parsed", "screened", "ranked", "review", "on_hold"),
+    "shortlisted": ("shortlisted",),
+    "interview": (),
+    "completed": (),
+    "decision": ("rejected",),
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,15 +61,13 @@ def candidates_statement(scope: ResourceScope, filters: CandidateFilters) -> Sel
         statement = statement.where(
             or_(applied_to_a_reachable_job, Candidate.created_by == scope.user_id)
         )
-    if filters.job_id is not None:
-        statement = statement.where(
-            exists(
-                select(Application.id).where(
-                    Application.candidate_id == Candidate.id,
-                    Application.job_id == filters.job_id,
-                )
-            )
-        )
+    if filters.job_id is not None or filters.stage_group is not None:
+        applied = select(Application.id).where(Application.candidate_id == Candidate.id)
+        if filters.job_id is not None:
+            applied = applied.where(Application.job_id == filters.job_id)
+        if filters.stage_group is not None:
+            applied = applied.where(Application.stage.in_(STAGE_GROUPS[filters.stage_group]))
+        statement = statement.where(exists(applied))
     if filters.query and filters.query.strip():
         query = filters.query.strip()
         conditions: list[ColumnElement[bool]] = [
