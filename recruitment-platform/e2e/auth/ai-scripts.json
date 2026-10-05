@@ -103,5 +103,59 @@
     "strengths": ["Builds data pipelines in Python"],
     "concerns": [],
     "missing_requirements": []
+  },
+  "questions.generate": {
+    "questions": [
+      {
+        "text": "How would you find out why a Python web endpoint became slow in production?",
+        "skill_name": "Python",
+        "topic": "Performance",
+        "difficulty": "medium",
+        "type": "scenario",
+        "expected_concepts": ["profiling", "measurement before change"],
+        "rubric": [
+          {
+            "criterion": "Correctness",
+            "weight": 60
+          },
+          {
+            "criterion": "Depth",
+            "weight": 40
+          }
+        ],
+        "time_limit_seconds": 300,
+        "follow_up_rules": [
+          {
+            "when": "weak",
+            "prompt": "Which tool would you reach for first?"
+          }
+        ]
+      },
+      {
+        "text": "Explain how Python's garbage collector deals with reference cycles.",
+        "skill_name": "Python",
+        "topic": "Runtime",
+        "difficulty": "hard",
+        "type": "conceptual",
+        "expected_concepts": ["profiling", "measurement before change"],
+        "rubric": [
+          {
+            "criterion": "Correctness",
+            "weight": 60
+          },
+          {
+            "criterion": "Depth",
+            "weight": 40
+          }
+        ],
+        "time_limit_seconds": 300,
+        "follow_up_rules": [
+          {
+            "when": "weak",
+            "prompt": "Which tool would you reach for first?"
+          }
+        ]
+      }
+    ]
   }
 }
