@@ -3,6 +3,7 @@ import { Building } from "lucide-react";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { AdminDevNotice } from "@/admin/dev-notice";
+import { InterviewDefaultsCard } from "@/interviews/defaults-card";
 import type { PageBodyProps } from "@/page/bodies";
 import { OrganizationsPanel } from "@/platform/organizations/organizations-panel";
 import { ScreeningDefaults } from "@/screening/settings-form";
@@ -45,6 +46,7 @@ export async function OrganizationBody({ session }: PageBodyProps) {
     <div className="grid gap-6">
       <OrganizationForm />
       <ScreeningDefaults />
+      <InterviewDefaultsCard />
     </div>
   );
 }

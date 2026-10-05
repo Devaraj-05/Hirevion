@@ -103,6 +103,21 @@ export const ROUTES = [
     owner: "SP-06",
   }),
   route({
+    path: "/interviews/templates/new",
+    permission: "interviews.templates.manage",
+    section: "interviews",
+    titleKey: "interviewTemplatesNew",
+    owner: "SP-06",
+  }),
+  route({
+    path: "/interviews/templates/[id]",
+    permission: "interviews.templates.view",
+    section: "interviews",
+    titleKey: "interviewTemplatesDetail",
+    owner: "SP-06",
+    detail: true,
+  }),
+  route({
     path: "/questions",
     permission: "questions.view",
     section: "questions",

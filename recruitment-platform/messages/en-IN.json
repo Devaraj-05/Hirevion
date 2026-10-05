@@ -23,6 +23,8 @@
     "candidatesDetail": "Candidate",
     "interviews": "Interviews",
     "interviewTemplates": "Interview templates",
+    "interviewTemplatesNew": "New interview template",
+    "interviewTemplatesDetail": "Interview template",
     "questions": "Question library",
     "reports": "Reports",
     "reportsInterview": "Interview reports",
@@ -687,7 +689,13 @@
       "unknown-permission": "A custom role can't hold one of these permissions.",
       "invalid-timezone": "Choose a time zone from the list.",
       "invalid-website": "Use a web address starting https://",
-      "invalid-slug": "Use 3 to 40 lower-case letters, digits and hyphens, not starting or ending with one."
+      "invalid-slug": "Use 3 to 40 lower-case letters, digits and hyphens, not starting or ending with one.",
+      "ai-unavailable": "The AI service isn't available just now. Try again shortly.",
+      "ai-budget-exceeded": "This month's AI budget is spent. Ask an admin to raise it.",
+      "question-not-approved": "Only approved questions can be pinned. Approve the draft first.",
+      "question-archived": "Restore the question before changing it.",
+      "template-archived": "Restore the template before editing it.",
+      "duplicate-skill": "A skill is listed twice."
     },
     "users": {
       "caption": "Users",
@@ -1045,6 +1053,289 @@
       "close": "Close",
       "historyEntry": "{action}: {from} → {to}",
       "override": "against the ranking"
+    }
+  },
+  "questions": {
+    "aiDraft": "AI draft",
+    "statuses": {
+      "draft": "Draft",
+      "approved": "Approved",
+      "archived": "Archived"
+    },
+    "types": {
+      "technical": "Technical",
+      "conceptual": "Conceptual",
+      "scenario": "Scenario",
+      "problem_solving": "Problem solving",
+      "system_design": "System design",
+      "coding": "Coding",
+      "resume_based": "Resume-based",
+      "project_based": "Project-based"
+    },
+    "categories": {
+      "technical": "Technical",
+      "coding": "Coding",
+      "system_design": "System design",
+      "resume_based": "Resume-based",
+      "custom": "Custom"
+    },
+    "difficulties": {
+      "easy": "Easy",
+      "medium": "Medium",
+      "hard": "Hard"
+    },
+    "languages": {
+      "python": "Python",
+      "javascript": "JavaScript",
+      "typescript": "TypeScript",
+      "sql": "SQL"
+    },
+    "fields": {
+      "text": "Question",
+      "skill": "Skill",
+      "topic": "Topic (optional)",
+      "type": "Type",
+      "category": "Category",
+      "difficulty": "Difficulty",
+      "timeLimit": "Time limit in seconds (optional)",
+      "languages": "Languages",
+      "concepts": "Expected concepts",
+      "rubric": "Rubric",
+      "followUps": "Follow-up questions"
+    },
+    "followUps": {
+      "strong": "After a strong answer",
+      "partial": "After a partial answer",
+      "weak": "After a weak answer"
+    },
+    "table": {
+      "question": "Question",
+      "open": "Open question: {text}",
+      "status": "Status",
+      "updated": "Updated",
+      "search": "Search questions",
+      "anyStatus": "Approved and drafts",
+      "anyType": "Any type",
+      "anyDifficulty": "Any difficulty",
+      "generate": "Generate with AI",
+      "new": "New question",
+      "caption": "Question library",
+      "noMatchTitle": "No questions match",
+      "noMatchHint": "Try other words or filters.",
+      "emptyTitle": "No questions yet",
+      "emptyHint": "Add questions yourself, or have the AI draft some for you to review."
+    },
+    "editor": {
+      "newTitle": "New question",
+      "editTitle": "Question",
+      "savedVersion": "Saved as version {version}.",
+      "created": "Question added.",
+      "approved": "Question approved.",
+      "archived": "Question archived.",
+      "restored": "Question restored as a draft.",
+      "textTooShort": "Write the question in full (at least 10 characters).",
+      "skillRequired": "Name the skill it tests.",
+      "timeRange": "Use 30 to 3600 seconds.",
+      "rubricTotal": "Name each criterion and make the weights add up to 100.",
+      "version": "Version {version}",
+      "draftHint": "Drafts can't be used until they're approved.",
+      "categoryFromType": "From the type",
+      "onePerLine": "One per line.",
+      "criterion": "Criterion {number}",
+      "criterionPlaceholder": "For example, correctness",
+      "weight": "Weight of criterion {number}",
+      "removeCriterion": "Remove criterion {number}",
+      "addCriterion": "Add criterion",
+      "rubricTotalNow": "Total: {total} of 100",
+      "restore": "Restore",
+      "saveVersion": "Save as a new version",
+      "saveApproved": "Save and approve",
+      "saveDraft": "Save as draft",
+      "approve": "Approve",
+      "archive": "Archive",
+      "versions": "Versions",
+      "versionLine": "Version {version} · {date}"
+    },
+    "generate": {
+      "title": "Generate questions with AI",
+      "intro": "The AI drafts questions from what you choose. Each one stays a draft until you review and approve it.",
+      "skills": "Skills (separate with commas)",
+      "skillsPlaceholder": "Python, SQL",
+      "skillsRequired": "Enter 1 to 10 skills.",
+      "count": "How many (1 to 10)",
+      "level": "Experience level",
+      "levels": {
+        "junior": "Junior",
+        "mid": "Mid-level",
+        "senior": "Senior",
+        "lead": "Lead"
+      },
+      "job": "Job (optional)",
+      "candidate": "Candidate (optional)",
+      "candidateHint": "Only the candidate's work history is sent, never their name or contact details.",
+      "template": "Template (optional)",
+      "none": "None",
+      "types": "Question types (optional)",
+      "submit": "Generate drafts",
+      "working": "Generating…",
+      "done": "{count, plural, =0 {No new drafts} one {# draft added} other {# drafts added}}{skipped, plural, =0 {} one { (# left out as a repeat)} other { (# left out as repeats)}}."
+    }
+  },
+  "interviews": {
+    "settings": {
+      "duration": "Duration in minutes",
+      "questionCount": "Number of questions",
+      "difficulty": "Difficulty mix (%)",
+      "totalNow": "Total: {total} of 100",
+      "questionTypes": "Question types",
+      "context": "What the interview uses",
+      "useResume": "Ask about the candidate's resume",
+      "useJd": "Use the job description",
+      "adaptive": "Adaptive follow-up questions",
+      "coding": "Coding",
+      "codingEnabled": "Include a coding exercise",
+      "codingLanguages": "Languages",
+      "codingMinutes": "Minutes for coding",
+      "proctoring": "Proctoring",
+      "levels": {
+        "off": "Off",
+        "basic": "Basic",
+        "standard": "Standard",
+        "strict": "Strict"
+      },
+      "levelHints": {
+        "off": "No proctoring checks.",
+        "basic": "Face and window focus.",
+        "standard": "Adds gaze, phone, app and display checks.",
+        "strict": "Every check, including audio and the third eye."
+      },
+      "presetNone": "No proctoring checks.",
+      "presetChecks": "Checks: {checks}.",
+      "checks": {
+        "face": "face",
+        "focus": "window focus",
+        "gaze": "gaze",
+        "phone": "phone",
+        "processes": "apps",
+        "displays": "displays",
+        "audio": "audio",
+        "third_eye": "third eye"
+      },
+      "thirdEye": "Third eye (phone camera)",
+      "thirdEyeModes": {
+        "off": "Off",
+        "optional": "Optional",
+        "required": "Required"
+      },
+      "recording": "Recording",
+      "tracks": {
+        "screen": "Screen",
+        "camera": "Camera",
+        "audio": "Audio"
+      },
+      "rubric": "Evaluation rubric (%)",
+      "rubricHint": "How much each dimension counts in the evaluation. The weights must add up to 100.",
+      "dimensions": {
+        "relevance": "Relevance",
+        "correctness": "Correctness",
+        "completeness": "Completeness",
+        "technical_depth": "Technical depth",
+        "reasoning": "Reasoning",
+        "clarity": "Clarity",
+        "communication": "Communication",
+        "evidence": "Evidence"
+      },
+      "problems": {
+        "duration": "Use 15 to 180 minutes.",
+        "count": "Use 1 to 50 questions.",
+        "difficulty": "The difficulty mix must add up to 100 (now {total}).",
+        "types": "Choose at least one question type.",
+        "coding": "Choose a language and 5 to 90 minutes.",
+        "rubric": "The rubric must add up to 100 (now {total})."
+      }
+    },
+    "templates": {
+      "name": "Name",
+      "nameRequired": "Enter a name.",
+      "description": "Description (optional)",
+      "skills": "Skills and weights (%)",
+      "skillName": "Skill {number}",
+      "skillPlaceholder": "For example, Python",
+      "skillWeight": "Weight of skill {number}",
+      "removeSkill": "Remove skill {number}",
+      "addSkill": "Add skill",
+      "skillTotal": "Total: {total} of 100",
+      "skillsWrong": "Name every skill and make the weights add up to 100 (now {total}).",
+      "tooManyPinned": "Pin at most {count} questions, the number this template asks.",
+      "pinned": "Pinned questions",
+      "pinnedHint": "Approved library questions that every interview from this template asks. Each stays at the version you pinned.",
+      "nonePinned": "No pinned questions: interviews choose from the library and write their own.",
+      "loadingQuestion": "Loading…",
+      "pinnedVersion": "Version {version}",
+      "newerVersion": "version {version} is newer",
+      "unpin": "Unpin",
+      "findQuestion": "Find an approved question",
+      "findPlaceholder": "Search the library",
+      "results": "Matching questions",
+      "pin": "Pin",
+      "saveVersion": "Save as version {version}",
+      "create": "Create template",
+      "created": "Template created.",
+      "savedVersion": "Saved as version {version}.",
+      "versionHint": "Earlier versions stay as they were for the interviews that use them.",
+      "archived": "Template archived.",
+      "restored": "Template restored.",
+      "notFound": "This template doesn't exist, or you can't see it.",
+      "loadFailed": "This template couldn't be loaded.",
+      "back": "All templates",
+      "statuses": {
+        "active": "Active",
+        "archived": "Archived"
+      },
+      "version": "Version {version}",
+      "restore": "Restore",
+      "archive": "Archive",
+      "archivedNote": "Archived templates can't be edited or used for new interviews.",
+      "tabs": {
+        "settings": "Settings",
+        "matrix": "Skill matrix",
+        "versions": "Versions"
+      },
+      "versionLine": "Version {version} · {date}",
+      "versionSummary": "{minutes} minutes · {count} questions · {proctoring} proctoring · Third eye: {thirdEye}",
+      "open": "Open {name}",
+      "length": "Length",
+      "lengthValue": "{minutes} min · {count} questions",
+      "withCoding": "Coding",
+      "versionColumn": "Version",
+      "updated": "Updated",
+      "search": "Search templates",
+      "statusFilter": "Status",
+      "new": "New template",
+      "caption": "Interview templates",
+      "noMatchTitle": "No templates match",
+      "noMatchHint": "Try other words, or show the active templates.",
+      "emptyTitle": "No templates yet",
+      "emptyHint": "Create a template to set how interviews run."
+    },
+    "matrix": {
+      "title": "Skill matrix",
+      "intro": "How the questions split across skills and difficulties, against the approved library questions available for each.",
+      "skill": "Skill",
+      "weight": "Weight",
+      "questions": "Questions",
+      "library": "Library",
+      "ofAvailable": "{needed} ({available} in library)",
+      "percent": "{weight}%",
+      "short": "{count} short",
+      "covered": "Covered",
+      "empty": "Add skills to see the matrix."
+    },
+    "defaults": {
+      "title": "Interview defaults",
+      "intro": "New templates start from these settings. Existing templates keep their own.",
+      "save": "Save defaults",
+      "saved": "Interview defaults saved."
     }
   }
 }
