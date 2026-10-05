@@ -317,6 +317,20 @@ How the pipeline works is in [ADR-0015](../architecture/adr/0015-jobs-and-docume
   - The anti-virus test file is uploaded from memory, because Windows Defender removes it from disk.
 - **The end-to-end suite** uploads a resume too: keep Azurite up (it is in the `core` profile).
 
+### Screening and ranking
+
+How it works is in [ADR-0016](../architecture/adr/0016-screening-and-ranking.md).
+
+- **A job's Screening tab** sets the weights (they must add up to 100), the knock-out flags and blind mode. A job inherits the organisation's defaults (Administration → Organisation → Screening defaults) until it saves its own; "Use the default settings" goes back.
+- **A job's Ranking tab:**
+  - "Screen candidates" queues every candidate; the `screening` consumer in `hv api` (or `hv worker`) assesses each with the AI, and the tab shows progress.
+  - "Screen again" after changing settings re-screens; unchanged candidates reuse their results without an AI call.
+  - Click a name to see each factor's score and the resume quotes behind it, strengths, concerns and missing requirements.
+  - Select candidates to shortlist, hold, mark for review or reject in bulk. Rejections, and decisions against the ranking, ask for a reason.
+  - "Download CSV/Excel" asks for your password if you haven't confirmed it in the last few minutes.
+- **Permissions:** `candidates.view` reads; `candidates.manage` screens and acts; `jobs.create` edits a job's settings; `admin.organization.manage` edits the defaults.
+- **Evaluating the ranking:** `uv run hv eval-screening` after `hv eval-resumes` (see `docs/evals/2026-10-screening.md`).
+
 ## Desktop app (`ai-interviewer-desktop`)
 
 The candidate app is Tauri 2: a React webview (`src/`) plus Rust (`src-tauri/`), which also
