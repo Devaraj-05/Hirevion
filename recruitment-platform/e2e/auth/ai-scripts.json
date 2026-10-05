@@ -70,5 +70,38 @@
         "quote": "Data Engineer, Globex Analytics"
       }
     ]
+  },
+  "screening.assess": {
+    "roles": {
+      "score": 85,
+      "evidence": [
+        {
+          "quote": "Data Engineer, Globex Analytics"
+        }
+      ]
+    },
+    "projects": {
+      "score": 70,
+      "evidence": [
+        {
+          "quote": "Data Engineer, Globex Analytics"
+        }
+      ]
+    },
+    "domain": {
+      "score": 60,
+      "evidence": []
+    },
+    "education": {
+      "score": 100,
+      "evidence": []
+    },
+    "location": {
+      "score": 100,
+      "evidence": []
+    },
+    "strengths": ["Builds data pipelines in Python"],
+    "concerns": [],
+    "missing_requirements": []
   }
 }
