@@ -49,6 +49,30 @@ TITLES = (
     "Engineering Manager",
     "Product Engineer",
 )
+# People cluster by role, as real candidates do: each gets a family's typical skills and titles,
+# plus a few others. The screening evaluation builds its jobs from these families.
+FAMILIES: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
+    "backend": (
+        ("Python", "Django", "PostgreSQL", "Docker", "REST", "Redis", "FastAPI", "Apache Kafka"),
+        ("Backend Engineer", "Software Engineer", "Senior Software Engineer"),
+    ),
+    "frontend": (
+        ("JavaScript", "TypeScript", "React", "CSS", "HTML", "Next.js", "Redux", "Jest"),
+        ("Frontend Developer", "Full Stack Developer", "Software Engineer"),
+    ),
+    "data": (
+        ("SQL", "Python", "Apache Spark", "Apache Airflow", "Pandas", "Tableau", "dbt"),
+        ("Data Engineer", "Data Analyst"),
+    ),
+    "devops": (
+        ("Kubernetes", "Docker", "Terraform", "Amazon Web Services", "Linux", "Jenkins"),
+        ("DevOps Engineer", "Site Reliability Engineer"),
+    ),
+    "ml": (
+        ("Python", "PyTorch", "TensorFlow", "scikit-learn", "NumPy", "Pandas", "SQL"),
+        ("Machine Learning Engineer", "Data Scientist"),
+    ),
+}
 COMPANY_SUFFIXES = ("Technologies", "Software", "Systems", "Labs", "Analytics", "Solutions")
 DEGREES = ("B.Tech", "B.E.", "M.Tech", "MCA", "B.Sc", "M.Sc", "MBA")
 FIELDS = ("Computer Science", "Information Technology", "Electronics", "Mathematics", "Statistics")
@@ -93,6 +117,7 @@ class Position:
 class Truth:
     file: str
     format: str
+    family: str
     name: str
     email: str
     phone: str
@@ -151,6 +176,8 @@ def person(index: int, rng: random.Random, fake: Faker, skills: list[str]) -> Tr
     name = f"{first} {last}"
     city = fake.city()
     digits = str(rng.randint(6, 9)) + "".join(str(rng.randint(0, 9)) for _ in range(9))
+    family = rng.choice(list(FAMILIES))
+    family_skills, family_titles = FAMILIES[family]
     year = 2026
     positions: list[Position] = []
     for number in range(rng.randint(1, 3)):
@@ -158,9 +185,16 @@ def person(index: int, rng: random.Random, fake: Faker, skills: list[str]) -> Tr
         end = None if number == 0 else year
         start = year - length
         company = f"{fake.last_name()} {rng.choice(COMPANY_SUFFIXES)}"
-        positions.append(Position(rng.choice(TITLES), company, start, end))
+        title = rng.choice(family_titles) if rng.random() < 0.8 else rng.choice(TITLES)
+        positions.append(Position(title, company, start, end))
         year = start - rng.randint(0, 1)
-    chosen_skills = rng.sample(skills, rng.randint(4, 8))
+    others = [skill for skill in skills if skill not in family_skills]
+    chosen_skills = list(
+        dict.fromkeys(
+            rng.sample(list(family_skills), rng.randint(3, 5))
+            + rng.sample(others, rng.randint(1, 3))
+        )
+    )
     projects = [
         f"{rng.choice(PROJECT_WORDS[0])} {rng.choice(PROJECT_WORDS[1])}"
         for _ in range(rng.randint(0, 2))
@@ -169,6 +203,7 @@ def person(index: int, rng: random.Random, fake: Faker, skills: list[str]) -> Tr
     truth = Truth(
         file="",
         format=FORMATS[index],
+        family=family,
         name=name,
         email=f"{first.lower()}.{last.lower()}{index}@example.test",
         phone=digits,

@@ -379,6 +379,35 @@ def eval_resumes_command(
         raise typer.Exit(code=1)
 
 
+SCREENING_REPORT = Path("docs/evals/2026-10-screening.md")
+
+
+@app.command("eval-screening")
+def eval_screening_command(
+    directory: Annotated[
+        Path, typer.Option("--dir", help="From `hv synth-resumes`.")
+    ] = RESUMES_DIR,
+    limit: Annotated[int, typer.Option(min=10, max=200, help="Candidates per job.")] = 60,
+    report: Annotated[Path, typer.Option(help="Where to write the results.")] = SCREENING_REPORT,
+) -> None:
+    """Rank the evaluation candidates for three made-up jobs and score the ranking (run
+    `hv eval-resumes` first)."""
+    from .screening_eval import TARGET_NDCG, evaluate
+
+    _require_env(repo_root())
+    source = directory if directory.is_absolute() else repo_root() / directory
+    result, profile = asyncio.run(evaluate(source / "truth.jsonl", limit=limit, log=console.print))
+    target = report if report.is_absolute() else repo_root() / report
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(result.markdown(profile), encoding="utf-8")
+    console.print(
+        f"Mean NDCG@10 {result.ndcg:.3f} (target {TARGET_NDCG}): "
+        f"{'met' if result.met() else 'NOT met'}. Report: {target}"
+    )
+    if not result.met():
+        raise typer.Exit(code=1)
+
+
 @app.command()
 def worker() -> None:
     """Relay the outbox and send email until Ctrl+C (for an API with HV_API_RUN_WORKERS=false)."""
