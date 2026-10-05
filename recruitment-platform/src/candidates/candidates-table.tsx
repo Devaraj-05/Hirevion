@@ -18,7 +18,7 @@ import { useCursorPage } from "@/data/use-cursor-page";
 import { useUrlTableState } from "@/data/use-url-table-state";
 import { listJobs } from "@/jobs/api";
 import { useTableLabels } from "@/page/use-table-labels";
-import { type CandidateSummary, listCandidates } from "./api";
+import { type CandidateSummary, listCandidates, type StageGroup } from "./api";
 import { FlagBadges } from "./flags";
 import { keys } from "./queries";
 
@@ -28,7 +28,7 @@ const JOB_OPTIONS = 100;
 const candidateName = (candidate: CandidateSummary) => candidate.name;
 
 /** The organisation's candidates the reader reaches (PRD §19), newest first. The stage tabs
- * belong to screening (SP-05); until it lands, only "All" lists anyone. */
+ * filter by application stage; the interview ones fill once interviews arrive (SP-07). */
 export function CandidatesTable() {
   const t = useTranslations("candidates.table");
   const format = useFormatter();
@@ -36,15 +36,21 @@ export function CandidatesTable() {
   const { sorting, setSorting, filters, setFilters } = useUrlTableState(FILTERS);
   const viewStore = useMemo(() => localViewStore(), []);
   const [search, setSearch] = useState(filters.q ?? "");
-  const byStage = Boolean(filters.stage);
+  // Interviews (SP-07) bring the later tabs' candidates; until then they're explained, not empty.
+  const stage = (filters.stage || undefined) as StageGroup | undefined;
+  const later = stage === "interview" || stage === "completed";
   const jobs = useQuery({
     queryKey: ["jobs", "list", "options"],
     queryFn: () => listJobs({ limit: JOB_OPTIONS }),
     retry: false,
   });
-  const query = { q: filters.q || undefined, job_id: filters.job || undefined };
-  const page = useCursorPage([...keys.list, query, byStage], (cursor) =>
-    byStage
+  const query = {
+    q: filters.q || undefined,
+    job_id: filters.job || undefined,
+    stage_group: stage,
+  };
+  const page = useCursorPage([...keys.list, query], (cursor) =>
+    later
       ? Promise.resolve({ items: [], next_cursor: null })
       : listCandidates({ ...query, cursor, limit: PAGE_SIZE }),
   );
@@ -88,7 +94,7 @@ export function CandidatesTable() {
     [t, format],
   );
 
-  if (byStage) {
+  if (later) {
     return <EmptyState icon={<Layers />} title={t("stageLater")} />;
   }
 

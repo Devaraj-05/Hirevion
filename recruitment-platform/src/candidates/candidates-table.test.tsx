@@ -53,10 +53,20 @@ describe("CandidatesTable", () => {
     );
   });
 
-  it("explains that stages arrive with screening", async () => {
+  it("filters by the stage tab, and explains the tabs interviews will fill", async () => {
     resetNavigation("/candidates", "stage=shortlisted");
+    const first = renderAdmin(<CandidatesTable />);
+    await waitFor(() =>
+      expect(api.listCandidates).toHaveBeenCalledWith(
+        expect.objectContaining({ stage_group: "shortlisted" }),
+      ),
+    );
+    first.unmount();
+
+    vi.mocked(api.listCandidates).mockClear();
+    resetNavigation("/candidates", "stage=interview");
     renderAdmin(<CandidatesTable />);
-    expect(await screen.findByText(/once screening arrives/)).toBeInTheDocument();
+    expect(await screen.findByText(/once interviews arrive/)).toBeInTheDocument();
     expect(api.listCandidates).not.toHaveBeenCalled();
   });
 });

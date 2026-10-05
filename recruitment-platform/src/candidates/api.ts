@@ -12,6 +12,7 @@ export type CandidateSummary = Schemas["CandidateSummary"];
 export type Candidate = Schemas["CandidateResponse"];
 export type Application = Schemas["ApplicationResponse"];
 export type Stage = Application["stage"];
+export type StageGroup = "screening" | "shortlisted" | "interview" | "completed" | "decision";
 
 export interface Page<T> {
   items: T[];
@@ -83,7 +84,11 @@ export async function listApplications(
 }
 
 export async function listCandidates(
-  query: Paging & { q?: string | undefined; job_id?: string | undefined } = {},
+  query: Paging & {
+    q?: string | undefined;
+    job_id?: string | undefined;
+    stage_group?: StageGroup | undefined;
+  } = {},
 ): Promise<Page<CandidateSummary>> {
   return required(
     (await apiClient().GET("/api/v1/candidates", { params: { query: cleanQuery(query) } })).data,

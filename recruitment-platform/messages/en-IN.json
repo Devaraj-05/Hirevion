@@ -334,7 +334,9 @@
         "description": "Description",
         "history": "History",
         "resumes": "Resumes",
-        "candidates": "Candidates"
+        "candidates": "Candidates",
+        "screening": "Screening",
+        "ranking": "Ranking"
       },
       "loadFailed": "This job couldn't be loaded.",
       "notFound": "This job doesn't exist, or you can't see it.",
@@ -881,7 +883,7 @@
       "emptyHint": "Upload resumes on a job's Resumes tab.",
       "noMatchTitle": "No candidates match",
       "noMatchHint": "Try another search or job.",
-      "stageLater": "Candidates appear by stage once screening arrives (SP-05). The All tab lists everyone."
+      "stageLater": "Candidates reach this stage once interviews arrive (SP-07)."
     },
     "flags": {
       "injection": "Contains instructions aimed at AI screening",
@@ -948,6 +950,99 @@
       "shortlisted": "Shortlisted",
       "rejected": "Rejected",
       "on_hold": "On hold"
+    }
+  },
+  "screening": {
+    "factors": {
+      "required_skills": "Required skills",
+      "experience": "Experience",
+      "projects": "Projects and relevant roles",
+      "preferred_skills": "Preferred skills",
+      "domain": "Domain experience",
+      "education": "Education",
+      "location": "Location and work model"
+    },
+    "settings": {
+      "title": "Screening settings",
+      "jobIntro": "How this job's candidates are weighed. Weights must add up to 100.",
+      "defaultsTitle": "Screening defaults",
+      "defaultsIntro": "Every job uses these unless it has its own settings. Weights must add up to 100.",
+      "weights": "Weights",
+      "total": "Total: {total} of 100",
+      "totalWrong": "The weights must add up to 100 (now {total}).",
+      "knockouts": "Flags (never rejections)",
+      "knockoutRequired": "Flag candidates missing a required skill",
+      "knockoutExperience": "Flag candidates below the minimum experience",
+      "blind": "Blind screening",
+      "blindHint": "The AI never sees names, contact details, dates of birth or personal details.",
+      "save": "Save settings",
+      "saved": "Screening settings saved.",
+      "inherited": "This job uses the default settings.",
+      "own": "This job has its own settings.",
+      "reset": "Use the default settings",
+      "resetDone": "This job uses the default settings again.",
+      "readOnly": "You can see these settings, but changing them needs the Create and edit jobs permission.",
+      "version": "Version {version}"
+    },
+    "ranking": {
+      "screen": "Screen candidates",
+      "screenAgain": "Screen again",
+      "queued": "{count, plural, one {# candidate is} other {# candidates are}} being screened.",
+      "progress": "{screened} of {total} screened",
+      "waiting": "{count, plural, one {# candidate hasn't} other {# candidates haven't}} been screened yet.",
+      "empty": "No screened candidates yet. Upload resumes, then screen them.",
+      "caption": "Ranked candidates for this job",
+      "select": "Select {name}",
+      "selectAll": "Select all on this page",
+      "rank": "Rank",
+      "candidate": "Candidate",
+      "score": "Match",
+      "skills": "Required skills",
+      "experience": "Experience",
+      "stage": "Stage",
+      "flags": "Flags",
+      "open": "Explain {name}'s ranking",
+      "selected": "{count, plural, one {# selected} other {# selected}}",
+      "export": "Export",
+      "exportCsv": "Download CSV",
+      "exportXlsx": "Download Excel",
+      "knockout": "Flagged",
+      "semantic": "Similarity {value}"
+    },
+    "actions": {
+      "shortlist": "Shortlist",
+      "reject": "Reject",
+      "hold": "Hold",
+      "review": "Mark for review",
+      "assign_recruiter": "Assign recruiter",
+      "assign_hiring_manager": "Assign hiring manager",
+      "done": "{count, plural, one {# candidate} other {# candidates}} updated.",
+      "reasonTitle": "Give a reason",
+      "reasonHint": "Rejections and decisions against the ranking need a reason; it's kept in the history.",
+      "reason": "Reason",
+      "confirm": "Confirm",
+      "cancel": "Cancel",
+      "createInterview": "Interviews are created once interview scheduling arrives (SP-07)."
+    },
+    "evidence": {
+      "title": "Why {name} ranks #{rank}",
+      "titleUnranked": "{name}'s screening",
+      "factor": "{name}: {score}",
+      "weight": "weight {weight}",
+      "unsupported": "No supporting quotes found; score capped",
+      "quote": "From the resume: “{quote}”",
+      "matched": "Has: {skills}",
+      "missing": "Missing: {skills}",
+      "strengths": "Strengths",
+      "concerns": "Concerns",
+      "missingRequirements": "Missing requirements",
+      "knockouts": "Flags",
+      "history": "History",
+      "model": "Assessed by {model} with {prompt}",
+      "noResult": "Not screened yet.",
+      "close": "Close",
+      "historyEntry": "{action}: {from} → {to}",
+      "override": "against the ranking"
     }
   }
 }

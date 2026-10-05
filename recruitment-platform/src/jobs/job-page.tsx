@@ -18,6 +18,8 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useAdminProblem } from "@/admin/problems";
+import { RankingPanel } from "@/screening/ranking-panel";
+import { JobScreeningSettings } from "@/screening/settings-form";
 import { type JobStatus, setJobStatus } from "./api";
 import { ApplicationsPanel } from "./applications-panel";
 import { DescriptionPanel } from "./description-panel";
@@ -139,8 +141,10 @@ export function JobPage({
             <>
               <TabsTrigger value="resumes">{t("page.tabs.resumes")}</TabsTrigger>
               <TabsTrigger value="candidates">{t("page.tabs.candidates")}</TabsTrigger>
+              <TabsTrigger value="ranking">{t("page.tabs.ranking")}</TabsTrigger>
             </>
           ) : null}
+          <TabsTrigger value="screening">{t("page.tabs.screening")}</TabsTrigger>
           <TabsTrigger value="history">{t("page.tabs.history")}</TabsTrigger>
         </TabsList>
         <TabsContent value="details">
@@ -157,8 +161,18 @@ export function JobPage({
             <TabsContent value="candidates">
               <ApplicationsPanel jobId={id} />
             </TabsContent>
+            <TabsContent value="ranking">
+              <RankingPanel
+                jobId={id}
+                jobReference={current.reference}
+                canManage={canManageCandidates}
+              />
+            </TabsContent>
           </>
         ) : null}
+        <TabsContent value="screening">
+          <JobScreeningSettings jobId={id} canEdit={canEdit} />
+        </TabsContent>
         <TabsContent value="history">
           <HistoryPanel jobId={id} />
         </TabsContent>

@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server";
 import { AdminDevNotice } from "@/admin/dev-notice";
 import type { PageBodyProps } from "@/page/bodies";
 import { OrganizationsPanel } from "@/platform/organizations/organizations-panel";
+import { ScreeningDefaults } from "@/screening/settings-form";
 import { OrganizationForm } from "./organization/organization-form";
 import { RolesPanel } from "./roles/roles-panel";
 import { DepartmentsPanel } from "./structure/departments-panel";
@@ -40,7 +41,12 @@ export async function OrganizationBody({ session }: PageBodyProps) {
       />
     );
   }
-  return <OrganizationForm />;
+  return (
+    <div className="grid gap-6">
+      <OrganizationForm />
+      <ScreeningDefaults />
+    </div>
+  );
 }
 
 export async function DepartmentsBody({ session }: PageBodyProps) {
