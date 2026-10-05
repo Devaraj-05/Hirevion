@@ -1594,7 +1594,7 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 8 | Web: email/password, Entra ID, OIDC, SAML, MFA, sessions, password reset, RBAC, rate limiting | SP-02a (email/password, sessions, password reset, rate limiting), SP-02b (RBAC), SP-19 (Entra ID, OIDC, SAML, MFA) |
 | 8 | Desktop: email/password, short-lived token, interview session token, device/session binding, expiry; no master credentials | SP-07, SP-08, §13 |
 | 9 | Organisation profile, departments, teams, users, roles, permissions | SP-02 |
-| 9 | Branding, default screening/interview config, proctoring policies, AI config, retention, integrations | SP-22, SP-20 |
+| 9 | Branding, default screening/interview config, proctoring policies, AI config, retention, integrations | SP-05 (screening defaults), SP-06 (interview defaults and proctoring presets), SP-22, SP-20 |
 | 10 | 10 dashboard KPIs and 7 filters | SP-03, SP-21 |
 | 11 | 17 job fields; 5 statuses | SP-04 (Screening Configuration field → SP-05, Interview Template field → SP-06) |
 | 12 | JD formats (PDF, DOCX, TXT, text); 10-step pipeline; 8 extracted items; recruiter review/edit | SP-04 (§6.6) |
@@ -1606,9 +1606,9 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 18 | 6 workflow stages; 8 actions; override audit | SP-05 (7 actions; "Create interview" → SP-07) |
 | 19 | 13 candidate-profile sections | SP-04b (profile, resume, parsed profile, applications, jobs), SP-05, SP-17 |
 | 20 | 13 Candidate 360 tabs | SP-17 |
-| 21 | 13 template fields; example weights and difficulty distribution | SP-06 |
-| 22 | 10 question fields; 8 question types | SP-06 (time limits and follow-up rules honoured in SP-09) |
-| 23 | AI question generation from 6 inputs; review before reuse | SP-06 |
+| 21 | 13 template fields; example weights and difficulty distribution | SP-06 (ADR-0017; skill-matrix preview; built-in defaults 20/50/30) |
+| 22 | 10 question fields; 8 question types | SP-06 (versioned library, §7 categories, approval; time limits and follow-up rules honoured in SP-09) |
+| 23 | AI question generation from 6 inputs; review before reuse | SP-06 (`questions.generate` drafts, approved by a recruiter; candidate work history only, never contact details) |
 | 24 | Assignment: 3 inputs → 9 system fields | SP-07 |
 | 25 | 8 invitation contents | SP-07 |
 | 26 | 9 startup steps (`AI-Interview.exe`) | SP-08 |
@@ -1665,7 +1665,7 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 77 | 9 webhook events; 5 security measures | SP-18 |
 | 78 | AIProvider (5) and 5 services | SP-01 |
 | 79 | 8 governance fields | SP-10 |
-| 80 | Immutable template versions; interviews pin a version | SP-06 |
+| 80 | Immutable template versions; interviews pin a version | SP-06 (insert-only version tables for templates and questions); pinning by interviews in SP-07 |
 | 81 | Tenant scoping; server-side authorisation | SP-01, SP-02 |
 | 82 | 15 security requirements; SOC 2 / ISO 27001 target | §9, SP-01/02/07/08/12/16/23 (certifications need the cloud and an audit period) |
 | 83 | 10 disclosures; 6 policies | SP-07, SP-08, SP-22, `docs/policies/` |

@@ -331,6 +331,29 @@ How it works is in [ADR-0016](../architecture/adr/0016-screening-and-ranking.md)
 - **Permissions:** `candidates.view` reads; `candidates.manage` screens and acts; `jobs.create` edits a job's settings; `admin.organization.manage` edits the defaults.
 - **Evaluating the ranking:** `uv run hv eval-screening` after `hv eval-resumes` (see `docs/evals/2026-10-screening.md`).
 
+### Question library and interview templates
+
+How it works is in [ADR-0017](../architecture/adr/0017-interview-configuration.md).
+
+- **Question library (`/questions`):**
+  - The tabs are the categories. Filter by status, type and difficulty, or search the text and topic.
+  - "New question" saves it approved, or as a draft. Every later save is a new version, listed at the bottom of the question.
+  - Only approved questions can be pinned to templates. Archived ones are hidden until you filter for them; restoring one makes it a draft again.
+- **Generate with AI:**
+  - Choose the skills, how many, the level, and optionally a job, a candidate and a template. The library's questions for those skills go along so the AI avoids repeats.
+  - The results arrive as drafts marked "AI draft". Open each one, edit it if needed, and approve it.
+  - The API makes the call with the AI profile in `.env`. With `HV_AI_PROFILE=mock`, `HV_AI_MOCK_SCRIPTS` supplies the answer (the end-to-end suite uses `recruitment-platform/e2e/auth/ai-scripts.json`).
+  - Without working AI keys, generation answers "AI unavailable"; everything else works.
+- **Templates (`/interviews/templates`):**
+  - A new template starts from the organisation's interview defaults (Administration → Organisation → Interview defaults).
+  - Skill weights, the difficulty mix and the rubric must each add up to 100.
+  - The skill matrix under the form shows how many questions each skill gets at each difficulty, against the approved library questions available; "short" means the interview will write the rest.
+  - Saving an existing template creates the next version. The Versions tab lists them all, and interviews keep the version they were scheduled with. Archive a template to stop new interviews using it.
+- **Permissions:**
+  - `questions.view` and `questions.manage` for the library;
+  - `interviews.templates.view` and `interviews.templates.manage` for templates;
+  - `admin.organization.manage` to change the defaults.
+
 ## Desktop app (`ai-interviewer-desktop`)
 
 The candidate app is Tauri 2: a React webview (`src/`) plus Rust (`src-tauri/`), which also
