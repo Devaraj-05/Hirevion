@@ -109,7 +109,8 @@ def _check(fields: QuestionFields) -> _Clean:
     concepts = [c.strip()[:200] for c in fields.expected_concepts if c.strip()]
     if len(concepts) > 20:
         raise Invalid("too-many", "Up to 20 expected concepts", field="expected_concepts")
-    rubric = []
+    rubric: list[dict[str, Any]] = []
+    total = 0
     for item in fields.rubric:
         criterion = str(item.get("criterion", "")).strip()
         weight = item.get("weight")
@@ -124,7 +125,8 @@ def _check(fields: QuestionFields) -> _Clean:
                 "description": str(item.get("description", "")).strip()[:500],
             }
         )
-    if rubric and sum(item["weight"] for item in rubric) != 100:
+        total += weight
+    if rubric and total != 100:
         raise Invalid("rubric-total", "The rubric's weights must add up to 100", field="rubric")
     limit = fields.time_limit_seconds
     if limit is not None and not 30 <= limit <= 3600:
