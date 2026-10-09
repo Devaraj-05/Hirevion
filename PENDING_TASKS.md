@@ -35,8 +35,9 @@
 
 | Part | State |
 |---|---|
-| SP-00 to SP-06 (foundations, backend core, identity, web shell, jobs and resumes, screening, interview configuration) | Merged to `main` (PRs #1–#4 merged 2026-10-09) |
-| A0, C0, D0 contract reviews; A1 SP-07a; A2 SP-07c; C1–C3 SP-09 | Built on the cloud branch `claude/busy-mccarthy-t8re1u` (2026-10-09) |
+| SP-00 to SP-06 (foundations, backend core, identity, web shell, jobs and resumes, screening, interview configuration) | Merged to `main` (PRs #1–#5 merged 2026-10-09) |
+| B1 SP-08a (desktop sign-in, device keys, system check) | Merged to `main` (PR #6, 2026-10-09) |
+| A0, C0, D0 contract reviews; A1 SP-07a; A2 SP-07c; C1–C3 SP-09 | Built on the cloud branch `claude/busy-mccarthy-t8re1u` (PR #7); integrated with SP-08a on `integrate/cloud-lanes` on 2026-10-09 |
 | D1 H0 catch-up | Partly done on the cloud branch: policy drafts, threat models SP-01 to SP-06 and the traceability check. CI gates, the dashboard KPIs and the SP-04a to SP-06 review remain (see D1 below) |
 | The rest of section 7 | Not started |
 
@@ -60,6 +61,14 @@ What the cloud branch adds:
   - `hv trace --check` (`tools/devcli/src/hirevion_devcli/trace.py`, with its tests), run in CI.
 
 ## 3. The team: four lanes running at once
+
+**Change, 2026-10-09 evening (product owner):**
+- The Claude Code cloud credits are used up.
+- **Every lane now runs on the local Windows PC.** The main session coordinates; lanes A, C and D run as background subagents in git worktrees, like lane B's parallel parts. Everything merges into one branch (`main`).
+- **Pace.** The account's usage limit, which resets about every five hours, sets the pace more than the number of agents.
+  - Run about three subagents at a time.
+  - Give each a narrow brief.
+  - Resume a stopped subagent instead of restarting it, so its context isn't rebuilt.
 
 | Lane | Runs on | Builds |
 |---|---|---|

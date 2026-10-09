@@ -4,6 +4,7 @@
 !uv.lock
 !tools/devcli/pyproject.toml
 !tools/voice_bench/pyproject.toml
+!tools/interview-simulator/pyproject.toml
 !backend/interview_agent/pyproject.toml
 !backend/core/pyproject.toml
 !backend/core/src/

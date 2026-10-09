@@ -16,6 +16,7 @@ WORKDIR /src
 COPY pyproject.toml uv.lock ./
 COPY tools/devcli/pyproject.toml tools/devcli/
 COPY tools/voice_bench/pyproject.toml tools/voice_bench/
+COPY tools/interview-simulator/pyproject.toml tools/interview-simulator/
 COPY backend/interview_agent/pyproject.toml backend/interview_agent/
 COPY backend/core backend/core
 COPY backend/api backend/api
