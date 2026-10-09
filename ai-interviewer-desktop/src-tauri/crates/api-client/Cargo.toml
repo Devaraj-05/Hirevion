@@ -10,3 +10,19 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+hv-security = { path = "../security" }
+# rustls with ring and the OS verifier (the Windows certificate store), wired up by hand so
+# no aws-lc (OpenSSL-licensed parts) enters the build.
+reqwest = { version = "0.13.5", default-features = false, features = ["rustls-no-provider"] }
+rustls = { version = "0.23.31", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+rustls-platform-verifier = "0.7.1"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"
+thiserror = "2.0.17"
+tokio = { version = "1.47.1", features = ["sync"] }
+url = "2.5.7"
+
+[dev-dependencies]
+tokio = { version = "1.47.1", features = ["macros", "rt-multi-thread"] }
+uuid = { version = "1.18.1", features = ["v4"] }
+wiremock = "0.6.5"
