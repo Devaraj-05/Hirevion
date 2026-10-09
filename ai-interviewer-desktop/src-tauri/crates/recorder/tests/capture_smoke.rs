@@ -1,71 +1,126 @@
-//! Records the primary display for about three seconds. Needs an interactive desktop and a
-//! GPU, so it is ignored by default:
-//!     cargo test -p hv-recorder --test capture_smoke -- --ignored
+//! Real screen captures. They need an interactive desktop and a GPU, so they are ignored by
+//! default; run them on the development PC with
+//!     cargo test -p hv-recorder --test capture_smoke -- --ignored --test-threads=1
 
 #![cfg(windows)]
 
 use hv_recorder::mp4::looks_like_mp4;
-use hv_recorder::recorder::{Recorder, RecorderConfig};
-use hv_recorder::writer::RateControl;
-use hv_screen_capture::geometry::Size;
-use std::time::Duration;
+use hv_recorder::recorder::{RecordedSegment, Recorder, RecorderConfig, SegmentSink, ServerClock};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+#[derive(Default)]
+struct Collect {
+    segments: Mutex<Vec<RecordedSegment>>,
+    failures: Mutex<Vec<String>>,
+}
+
+impl SegmentSink for Collect {
+    fn segment(&self, segment: RecordedSegment) {
+        self.segments.lock().expect("lock").push(segment);
+    }
+
+    fn display_failed(&self, track: &str, error: &str) {
+        self.failures
+            .lock()
+            .expect("lock")
+            .push(format!("{track}: {error}"));
+    }
+}
+
+/// A fake server clock running 5 s ahead of local time.
+fn server_clock() -> ServerClock {
+    Arc::new(|| local_ms() + 5_000)
+}
+
+fn local_ms() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |d| i64::try_from(d.as_millis()).expect("fits"))
+}
+
+#[test]
+#[ignore = "needs an interactive desktop and a GPU; about 12 s"]
+fn records_a_ten_second_segment_of_the_primary_display() {
+    let sink = Arc::new(Collect::default());
+    let config = RecorderConfig {
+        all_displays: false,
+        ..RecorderConfig::default()
+    };
+    let before = local_ms() + 5_000;
+    let recorder = Recorder::start(config, sink.clone(), server_clock()).expect("recorder starts");
+    assert_eq!(recorder.tracks(), ["screen-1"]);
+    // Start-up (GPU device, capture session, first frame, encoder) takes under a second.
+    std::thread::sleep(Duration::from_millis(11_500));
+    assert!(recorder.is_recording());
+    let reports = recorder.stop();
+
+    assert!(sink.failures.lock().expect("lock").is_empty());
+    let report = &reports[0];
+    assert!(report.error.is_none(), "{:?}", report.error);
+    let segments = sink.segments.lock().expect("lock");
+    let first = segments.iter().find(|s| s.seq == 0).expect("segment 0");
+    assert_eq!(first.track, "screen-1");
+    assert_eq!(first.frames, 150, "exactly 10 s at 15 fps");
+    assert_eq!(first.duration_ms, 10_000);
+    assert!(first.valid_mp4 && looks_like_mp4(&first.bytes));
+    assert!(
+        (first.started_at_ms - before).abs() < 2_000,
+        "stamped in server time: {} vs {before}",
+        first.started_at_ms
+    );
+    // Constant quality 50 at 1080p: well under the contract's 50 MB.
+    assert!(
+        first.bytes.len() < 20_000_000,
+        "{} bytes",
+        first.bytes.len()
+    );
+    let frames: u32 = segments.iter().map(|s| s.frames).sum();
+    assert_eq!(u64::from(frames), report.frames_written);
+    if let Some(second) = segments.iter().find(|s| s.seq == 1) {
+        let gap = second.started_at_ms - first.started_at_ms;
+        assert!((gap - 10_000).abs() < 100, "segments 10 s apart: {gap}");
+    }
+}
 
 #[test]
 #[ignore = "needs an interactive desktop and a GPU"]
-fn records_one_second_segments_of_the_primary_display() {
-    let out = std::env::temp_dir().join(format!("hv-capture-smoke-{}", std::process::id()));
+fn records_one_second_segments_of_every_display() {
+    let sink = Arc::new(Collect::default());
     let config = RecorderConfig {
-        out_dir: out.clone(),
-        fps: 15,
         segment_seconds: 1,
-        max_size: Size {
-            width: 1920,
-            height: 1080,
-        },
-        bitrate: 1_500_000,
-        rate_control: RateControl::Vbr,
         gop_seconds: 1,
-        hardware: true,
-        border: true,
-        all_displays: false,
-        on_segment: None,
+        ..RecorderConfig::default()
     };
-
-    let recorder = Recorder::start(config).expect("recorder starts");
-    // Start-up (GPU device, capture session, first frame, encoder) takes under a second.
+    let recorder = Recorder::start(config, sink.clone(), server_clock()).expect("recorder starts");
+    let tracks = recorder.tracks().to_vec();
     std::thread::sleep(Duration::from_millis(4_500));
     let reports = recorder.stop();
 
-    assert_eq!(reports.len(), 1, "only the primary display is recorded");
-    let report = &reports[0];
-    assert!(
-        report.error.is_none(),
-        "recording failed: {:?}",
-        report.error
-    );
-    assert!(
-        report.segments.len() >= 3,
-        "only {} segments",
-        report.segments.len()
-    );
-    for segment in &report.segments {
-        let bytes = std::fs::read(&segment.path).expect("segment saved");
+    assert_eq!(tracks[0], "screen-1");
+    let segments = sink.segments.lock().expect("lock");
+    for report in &reports {
         assert!(
-            looks_like_mp4(&bytes),
-            "{} is not a complete MP4",
-            segment.path.display()
+            report.error.is_none(),
+            "{}: {:?}",
+            report.track,
+            report.error
         );
-        assert_eq!(bytes.len(), segment.bytes);
+        let mine: Vec<&RecordedSegment> = segments
+            .iter()
+            .filter(|s| s.track == report.track)
+            .collect();
+        assert!(
+            mine.len() >= 3,
+            "{}: only {} segments",
+            report.track,
+            mine.len()
+        );
+        assert!(mine.iter().all(|s| s.valid_mp4));
+        let seqs: Vec<u64> = mine.iter().map(|s| s.seq).collect();
+        let expected: Vec<u64> = (0..seqs.len() as u64).collect();
+        assert_eq!(seqs, expected, "seq starts at 0 and has no gaps");
+        let frames: u32 = mine.iter().map(|s| s.frames).sum();
+        assert_eq!(u64::from(frames), report.frames_written);
     }
-    let frames: u32 = report.segments.iter().map(|segment| segment.frames).sum();
-    assert_eq!(
-        u64::from(frames),
-        report.frames_written,
-        "every encoded frame is in a saved segment"
-    );
-    assert!(
-        frames >= 45,
-        "only {frames} frames; expected 3+ seconds at 15 fps"
-    );
-    let _ = std::fs::remove_dir_all(out);
 }
