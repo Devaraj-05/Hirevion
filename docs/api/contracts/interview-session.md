@@ -104,7 +104,7 @@ Body:
 
 | Call | Body | Answer |
 |---|---|---|
-| `GET /interviews/{id}/session` | — | `{ "state": {…, as in start} }` (for recovery after a restart) |
+| `GET /interviews/{id}/session` | — | `{ "state": {…, as in start} }` (for recovery after a restart; the clock offset comes from `GET /time`) |
 | `POST /interviews/{id}/answer` (text-answer mode, PRD §90) | `{ "question_id": "uuid", "text": "…" }` | `202` |
 | `POST /interviews/{id}/workspace` (code or whiteboard snapshot) | `{ "question_id", "kind": "code" \| "whiteboard", "language": "python", "content": "…" }` | `202` |
 | `POST /interviews/{id}/complete` | `{ "reason": "finished" \| "candidate_ended" }` | `200 { "status": "completed" }` |

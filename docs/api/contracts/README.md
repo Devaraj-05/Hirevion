@@ -49,7 +49,7 @@
 - **Refresh tokens:** opaque, rotating, valid at most 8 hours from sign-in. Using one twice revokes the whole family.
 - **On the desktop:** the access and session tokens stay in Rust memory; the refresh token is kept in the DPAPI vault. None of them ever reaches the webview.
 
-**Clock.** `GET /clock` (already built) returns the server time. The desktop keeps an offset and stamps every event and proof in server time.
+**Clock.** `GET /time` (already built) returns the server time as `received_at_ms` and `sent_at_ms`. The desktop keeps an offset and stamps every event and proof in server time.
 
 **Idempotency.** A retried batch or segment is recognised by its sequence numbers (the proctoring and recording contracts say how), so retrying is always safe.
 
