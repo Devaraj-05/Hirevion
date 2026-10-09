@@ -176,6 +176,10 @@ Each application has its own build, tests and release pipeline.
 - **Solo pace:** Claude Code subagents do most of the implementation while you review and test on real hardware. At that pace, the full-feature local build lands around **Nov 10 (aggressive) to Nov 28 (expected)**; see §15.
 - **Oct 15:** your earlier "Full GA on Oct 15" can't coexist with today's direction (local-first, nothing skipped, solo). What Oct 15 can realistically be (aggressive) is **CP3**: the complete core hiring loop — PRD §104 MVP plus live monitoring, reports and third-eye — running end-to-end locally.
 - **Recommendation**, to confirm in the Cloud Migration Plan: start that plan at CP3, so the core loop goes live in phases around late October or early November while CP4–CP6 continue. **Quality gates never move; dates do.**
+- **Re-plan, 2026-10-09:**
+  - **Pace so far:** SP-00 to SP-06 (8 parts) took 6 active days, built one lane at a time, inline. Four green PRs are waiting to be merged.
+  - **Behind the aggressive dates; the expected ones are still reachable**, but only with the three parallel lanes and daily merges (§15). The one-lane estimate is in §15 too.
+  - **The rest of the work is in [PENDING_TASKS.md](PENDING_TASKS.md).**
 
 ## 4. Scope boundaries
 
@@ -1175,8 +1179,12 @@ Each SP gets its own detailed TDD plan before work starts. "CP" is the checkpoin
 - **Exit criteria:**
   - Editing a template that's in use creates v+1, while existing interviews keep their pinned version.
   - Generated questions reach the library only after approval.
+- **Status, 2026-10-09:** built (PR #4, ADR-0017). It missed the job's "Interview Template" field (PRD §11), which moves to SP-07a.
 
-**SP-07 Assignment, invitations & candidate access** (CP2; depends on SP-06 and SP-02)
+**SP-07 Assignment, invitations & candidate access** (CP2; depends on SP-06 and SP-02). Built in three parts:
+- SP-07a: interviews, assignment, invitations, reminders and rescheduling, plus the job's interview template field.
+- SP-07b: the candidate portal and candidate requests.
+- SP-07c: candidate desktop auth (DPoP, tokens, one-time codes) and the desktop release registry.
 - **Deliverables:**
   - Single and bulk assignment producing all 9 §24 outputs, with a policy snapshot.
   - The interview state machine.
@@ -1192,7 +1200,9 @@ Each SP gets its own detailed TDD plan before work starts. "CP" is the checkpoin
   - Replay and stolen-token tests fail as they should.
   - An outdated app version is rejected at login.
 
-**SP-08 Desktop foundation** (CP2; depends on SP-07)
+**SP-08 Desktop foundation** (CP2; depends on SP-07c for real sign-in only). Built in two parts:
+- SP-08a: the app, the security and api-client crates, the update gate and system checks. It starts against a stub sign-in, without waiting for SP-07.
+- SP-08b: consent, the interview UI shell, installers, signing and crash reporting.
 - **Deliverables:** the §6.4 flow from launch to "Ready", plus completion and exit:
   - The Tauri app with branding.
   - The `security` and `api-client` crates.
@@ -1214,7 +1224,12 @@ Each SP gets its own detailed TDD plan before work starts. "CP" is the checkpoin
   - An update is signature-verified.
   - A downgrade is refused.
 
-**SP-09 AI interview engine** (CP2; depends on SP-06–08 and SP-01)
+**SP-09 AI interview engine** (CP2; depends on SP-06 and SP-01; the desktop client from SP-08 only for the CP2 demo). Built in three parts:
+- SP-09a: rooms, the voice pipeline, the state machine and the simulator.
+- SP-09b: the orchestrator components.
+- SP-09c: transcripts, events and crash recovery.
+
+It starts with the interview simulator as its client.
 - **Deliverables:** everything in §6.8:
   - Rooms, tokens and agent dispatch.
   - The voice pipeline.
@@ -1454,6 +1469,51 @@ A checkpoint is a demo plus quality gates, not a promised date.
 - You test the latest desktop build on real hardware every day.
 - Every week we re-plan against actual progress.
 
+**Re-plan, 2026-10-09** (the first weekly re-plan, after SP-06).
+
+What actually happened:
+- **One lane, inline.** Every part ran inline in one session, one at a time; the parallel lanes above never started.
+- **Desktop not started.** The desktop lane — the riskiest remaining work — hasn't begun.
+- **Nothing merged since SP-02b.** PRs #1–#4 are stacked and waiting.
+
+The current dates:
+
+| CP | Original (expected) | Re-plan, three lanes | Re-plan, one lane |
+|---|---|---|---|
+| 2 | Oct 16 | Oct 24 | Nov 3 |
+| 3 | Oct 22 | Nov 1 | Nov 15 |
+| 4 | Nov 5 | Nov 10 | Nov 27 |
+| 5 | Nov 17 | Nov 16 | Dec 6 |
+| 6 | Nov 28 | Nov 25 | Dec 15 |
+
+- **Assumptions:**
+  - work every day from 2026-10-10;
+  - PRs merged within a day of going green;
+  - the Gemini key fixed before SP-09.
+- **One-lane basis:** about 0.75 active days per backend/web part and about 1.5 per desktop or native part, over the roughly 27 parts left.
+
+How the work runs from now (details in [PENDING_TASKS.md](PENDING_TASKS.md)):
+
+| Lane | Order | Where it runs |
+|---|---|---|
+| **A** backend and web | SP-07a, SP-07b, SP-07c, SP-18, SP-19, then SP-17, SP-20, SP-21, SP-22 | Local, or a cloud session with Postgres and Valkey |
+| **B** desktop and native | SP-08a, SP-08b, SP-11, SP-12, SP-15a, SP-13, SP-15b | Local on the Windows PC only (Tauri, Rust, webcams, Media Foundation) |
+| **C** AI and realtime | SP-09a–c, SP-10, SP-14, SP-16 | Local or cloud with the `mock` profile; live tuning needs the AI keys |
+
+**Starting early.** SP-08a and SP-09a don't wait for SP-07c:
+- SP-08a uses a stub sign-in;
+- SP-09a uses the interview simulator as its client.
+
+**Merging:**
+- Each part opens its PR against `main`, and stacking is at most one deep.
+- The user merges green PRs daily; a lane doesn't start its next part on a stack more than one deep.
+
+**Shared files across lanes:**
+- **Migrations:** one linear Alembic chain, so renumber yours when rebasing onto `main`.
+- **Generated files:** regenerate `openapi.json` and `schema.d.ts` after a rebase.
+- **Message catalogues:** each lane edits only its own namespace in the message files.
+- **Permissions:** the permission catalogue and the authorisation matrix change only in lane A, or in a lane A follow-up.
+
 ## 16. Verification & quality gates
 
 - **Every sub-project:**
@@ -1461,6 +1521,15 @@ A checkpoint is a demo plus quality gates, not a promised date.
   - Unit and integration tests against real Postgres/Redis in Docker, plus contract tests.
   - Green CI.
   - Code review via `superpowers:requesting-code-review`.
+- **Definition of done for every part.** Tightened on 2026-10-09: SP-04a to SP-06 skipped the review, coverage, scans, threat models and traceability below, and those gaps are now catch-up item H0 in [PENDING_TASKS.md](PENDING_TASKS.md). A part is done when all of these hold:
+  1. A short plan exists.
+  2. Failing tests came first, including for web components.
+  3. Lint, types and tests pass locally, plus an end-to-end test of the part's main path.
+  4. `/code-review` has run on the diff and its findings are fixed.
+  5. The ADR, runbook, Appendix A rows, threat-model section and PENDING_TASKS.md are updated.
+  6. A PR is open against `main` and CI is green.
+
+  The CI gates promised below (coverage ≥ 85% on domain modules, Semgrep, Bandit, dependency, container and license scans, the traceability check) go in as H0.4–H0.5, before CP2 rather than at SP-23.
 - **Web:**
   - Playwright end-to-end tests for every critical flow, with axe accessibility checks.
   - Vitest component tests.
@@ -1575,6 +1644,10 @@ A checkpoint is a demo plus quality gates, not a promised date.
 | SmartScreen / antivirus false positives | Sign early and submit binaries to Microsoft. No code injection; keyboard hooks only when a policy requires them. |
 | DPDP compliance | Consent, DSR and retention built in; counsel review of policies; a sub-processor register. |
 | Single-person knowledge risk | ADRs, runbooks, CLAUDE.md conventions, and specs and plans kept in the repo. |
+| Unmerged stacked PRs (four at once, 2026-10-09) | Merge daily, in order; stack at most one deep; open each PR against `main`. |
+| No real-model validation yet (the Gemini key has been invalid since 2026-10-03) | Fix the key before SP-09. Run the resume and screening evaluations and the live provider tests, and tune prompts before building the interview engine on top of them. |
+| The desktop lane started late (no native work since the SP-00 spikes) | Start SP-08a now against a stub sign-in, so capture, recording and proctoring risks surface before CP2. |
+| Merge conflicts once lanes run in parallel | The shared-file rules in §15. Rebase onto `main` before each PR, then regenerate the generated files. |
 
 ---
 
@@ -1592,11 +1665,11 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 6 | Six roles and their responsibilities, including Hiring Manager input and reviewers on assigned interviews | SP-02 (roles and scopes), SP-07 (reviewers), SP-17 (HM input), SP-22 (super admin) |
 | 7 | IA: Dashboard; Jobs ×7; Candidates ×6; Interviews ×4; Question Library ×5; Reports ×4; Administration ×7 | SP-03 plus the owning SPs (§6.2) |
 | 8 | Web: email/password, Entra ID, OIDC, SAML, MFA, sessions, password reset, RBAC, rate limiting | SP-02a (email/password, sessions, password reset, rate limiting), SP-02b (RBAC), SP-19 (Entra ID, OIDC, SAML, MFA) |
-| 8 | Desktop: email/password, short-lived token, interview session token, device/session binding, expiry; no master credentials | SP-07, SP-08, §13 |
+| 8 | Desktop: email/password, short-lived token, interview session token, device/session binding, expiry; no master credentials | SP-07c, SP-08, §13 |
 | 9 | Organisation profile, departments, teams, users, roles, permissions | SP-02 |
 | 9 | Branding, default screening/interview config, proctoring policies, AI config, retention, integrations | SP-05 (screening defaults), SP-06 (interview defaults and proctoring presets), SP-22, SP-20 |
-| 10 | 10 dashboard KPIs and 7 filters | SP-03, SP-21 |
-| 11 | 17 job fields; 5 statuses | SP-04 (Screening Configuration field → SP-05, Interview Template field → SP-06) |
+| 10 | 10 dashboard KPIs and 7 filters | SP-03, SP-21 (KPIs wired from real data as modules land: catch-up H0.2) |
+| 11 | 17 job fields; 5 statuses | SP-04 (Screening Configuration field → SP-05; Interview Template field → SP-07a, missed in SP-06) |
 | 12 | JD formats (PDF, DOCX, TXT, text); 10-step pipeline; 8 extracted items; recruiter review/edit | SP-04 (§6.6) |
 | 13 | Single, bulk, PDF, DOCX, TXT, image/OCR; 10-step pipeline including malware scan | SP-04b (§6.6; ZIP bulk upload, per-entry scanning, ADR-0015) |
 | 14 | 16 parsed fields; evidence references | SP-04b (page, section and verified quote per item; F1 in `docs/evals/`) |
@@ -1609,11 +1682,11 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 21 | 13 template fields; example weights and difficulty distribution | SP-06 (ADR-0017; skill-matrix preview; built-in defaults 20/50/30) |
 | 22 | 10 question fields; 8 question types | SP-06 (versioned library, §7 categories, approval; time limits and follow-up rules honoured in SP-09) |
 | 23 | AI question generation from 6 inputs; review before reuse | SP-06 (`questions.generate` drafts, approved by a recruiter; candidate work history only, never contact details) |
-| 24 | Assignment: 3 inputs → 9 system fields | SP-07 |
-| 25 | 8 invitation contents | SP-07 |
+| 24 | Assignment: 3 inputs → 9 system fields | SP-07a |
+| 25 | 8 invitation contents | SP-07a (email), SP-07b (portal pages it links to) |
 | 26 | 9 startup steps (`AI-Interview.exe`) | SP-08 |
 | 27 | Tauri, React, TypeScript, Rust, Monaco | SP-08, SP-16 |
-| 28 | 6 login verifications; short-lived credentials | SP-07, SP-08 |
+| 28 | 6 login verifications; short-lived credentials | SP-07c, SP-08 |
 | 29 | 11 system checks; policy-driven mandatory checks | SP-08 |
 | 30 | 6 instructions (configurable); 10 consent items | SP-08, SP-22 |
 | 31 | Fullscreen; 5 monitored states | SP-08, SP-11 |
@@ -1668,7 +1741,7 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 80 | Immutable template versions; interviews pin a version | SP-06 (insert-only version tables for templates and questions); pinning by interviews in SP-07 |
 | 81 | Tenant scoping; server-side authorisation | SP-01, SP-02 |
 | 82 | 15 security requirements; SOC 2 / ISO 27001 target | §9, SP-01/02/07/08/12/16/23 (certifications need the cloud and an audit period) |
-| 83 | 10 disclosures; 6 policies | SP-07, SP-08, SP-22, `docs/policies/` |
+| 83 | 10 disclosures; 6 policies | SP-07b (portal notices), SP-08, SP-22, `docs/policies/` (drafts: H0.7) |
 | 84 | Organisation-configurable retention (6 classes) | SP-22 |
 | 85 | Postgres (8), Redis (5), Blob (9); path layout; short-lived SAS | SP-01, SP-12 |
 | 86 | Gateway, Recruitment/Interview/Proctor APIs, orchestrator, workers | SP-01 (Caddy locally; route groups), SP-09 |
@@ -1684,7 +1757,7 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 96 | 14 observability signals | SP-01, SP-23 |
 | 97 | 16 audited actions | SP-01 plus the owning SPs; audit-coverage test in SP-23 |
 | 98 | Unified timeline (8 sources) | SP-17 |
-| 99 | 5 configurable candidate-visible items; internal reports stay confidential | SP-17, SP-07 (portal) |
+| 99 | 5 configurable candidate-visible items; internal reports stay confidential | SP-17, SP-07b (portal) |
 | 100 | 10 → 10k growth path; independent scaling; performance targets | Architecture (§5–6), SP-23 local capacity; cloud-scale tests in the Cloud plan |
 | 101 | Web: 4 accessibility items; desktop: 4; proctoring adjustments for accommodations | SP-03, SP-08, SP-22, SP-23 |
 | 102 | 4 kinds of externalised text; English first | SP-03, SP-22 |

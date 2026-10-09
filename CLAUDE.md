@@ -5,6 +5,7 @@ Hirevion is an enterprise AI recruitment and interview platform with two separat
 - Requirements: `AI_Recruitment_Platform_Complete_PRD.md` (cited as §n).
 - Architecture, sub-projects, schedule and PRD traceability: `MASTER_IMPLEMENTATION_PLAN.md`. It is the source of truth for sequencing, and its §13 "Global constraints" apply to every change.
 - Detailed per-sub-project plans live in `docs/superpowers/plans/`.
+- What's left, in order, with each part's definition of done and lane: `PENDING_TASKS.md`. Read it before starting new work, and update it when a part lands.
 
 ## Git identity & attribution (MANDATORY)
 
