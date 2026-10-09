@@ -1,0 +1,7 @@
+{% extends "_layout.html.j2" %}
+{% block body %}
+<p>Hello {{ name }},</p>
+<p>Someone signed in to the Hirevion AI Interview app with your email on a computer we haven't seen before. If it was you, enter this code in the app:</p>
+<p style="font-size:28px;letter-spacing:6px;font-weight:600;margin:16px 0">{{ code }}</p>
+<p>It works once and expires in {{ minutes }} minutes. If it wasn't you, don't share the code, and change your password from the candidate portal.</p>
+{% endblock %}

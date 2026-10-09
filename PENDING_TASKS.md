@@ -36,7 +36,7 @@
 | Part | State |
 |---|---|
 | SP-00 to SP-06 (foundations, backend core, identity, web shell, jobs and resumes, screening, interview configuration) | Merged to `main` (PRs #1–#4 merged 2026-10-09) |
-| A0, C0, D0 contract reviews; A1 SP-07a | Built on the cloud branch (2026-10-09) |
+| A0, C0, D0 contract reviews; A1 SP-07a; A2 SP-07c | Built on the cloud branch (2026-10-09) |
 | The rest of section 7 | Not started |
 
 ## 3. The team: four lanes running at once
@@ -192,7 +192,7 @@ Dates are targets in IST. A box is ticked in the PR that merges the part.
     - the invitation reaches Mailpit with all eight contents;
     - editing the template afterwards leaves the interview on its pinned version;
     - bulk assignment reports what it skipped.
-- [ ] **A2 SP-07c Desktop candidate auth and releases (Oct 10–11).**
+- [x] **A2 SP-07c Desktop candidate auth and releases (Oct 10–11).**
   - **Login:** checks §28's six items.
   - **Device binding:**
     - an email one-time code on a new device (an organisation setting);

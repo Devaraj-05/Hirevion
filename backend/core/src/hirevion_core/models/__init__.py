@@ -5,7 +5,13 @@ from hirevion_core.models.audit_log import AuditLog
 from hirevion_core.models.auth_token import AuthToken
 from hirevion_core.models.candidate import Application, Candidate, CandidateSkill
 from hirevion_core.models.candidate_account import CandidateAccount, CandidateToken
+from hirevion_core.models.candidate_device import (
+    CandidateDevice,
+    CandidateOtp,
+    CandidateRefreshToken,
+)
 from hirevion_core.models.department import Department
+from hirevion_core.models.desktop_release import DesktopChannel, DesktopRelease
 from hirevion_core.models.document import Document
 from hirevion_core.models.feature_flag import FeatureFlag
 from hirevion_core.models.idempotency_key import IdempotencyKey
@@ -42,9 +48,14 @@ __all__ = [
     "AuthToken",
     "Candidate",
     "CandidateAccount",
+    "CandidateDevice",
+    "CandidateOtp",
+    "CandidateRefreshToken",
     "CandidateSkill",
     "CandidateToken",
     "Department",
+    "DesktopChannel",
+    "DesktopRelease",
     "Document",
     "FeatureFlag",
     "IdempotencyKey",

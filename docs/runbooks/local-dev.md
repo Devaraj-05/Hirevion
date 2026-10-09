@@ -365,6 +365,17 @@ How it works is in [ADR-0020](../architecture/adr/0020-interviews-and-invitation
 - **The dashboard** counts scheduled, live and completed interviews under its filters.
 - **Permissions:** `interviews.view` reads (interviewers see only interviews they review); `interviews.manage` changes.
 
+### Candidate desktop sign-in and releases
+
+How it works is in [ADR-0021](../architecture/adr/0021-candidate-desktop-auth.md); the wire format is `docs/api/contracts/candidate-auth.md`.
+
+- **Signing key:** `HV_CANDIDATE_TOKEN_KEY` in `.env` (`uv run hv env-sync` adds one). Without it the API makes one at start-up, and every candidate is signed out when it restarts.
+- **A candidate who can sign in** needs an active account (they set a password from the invitation email; SP-07b's portal) and an interview they were invited to, in an open job, inside its window.
+- **New devices:** with Administration → Organisation → "Ask for an emailed code on a new computer" on (the default), a device's first sign-in sends a 6-digit code to Mailpit instead of signing in.
+- **Releases (`/platform/desktop-releases`, super admins):** set each channel's oldest allowed version (older apps get `426` at sign-in) and its download address; add builds as drafts with their update bundle's URL and minisign signature, then publish them. A rollout below 100% reaches that share of devices, the same ones each time.
+- **Trying the API by hand:** every request needs a DPoP proof signed by a P-256 key (see `backend/api/tests/test_candidate_auth_api.py`'s `Desktop` class for a complete client).
+- **Stuck candidate:** `uv run hv reset-limits` clears lockouts; a reused refresh token revokes the device's sign-in (they sign in again).
+
 ## Desktop app (`ai-interviewer-desktop`)
 
 The candidate app is Tauri 2: a React webview (`src/`) plus Rust (`src-tauri/`), which also

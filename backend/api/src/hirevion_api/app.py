@@ -24,7 +24,9 @@ from hirevion_api.access.structure import router as structure_router
 from hirevion_api.access.users import router as users_router
 from hirevion_api.auth.csrf import CsrfMiddleware
 from hirevion_api.auth.router import router as auth_router
+from hirevion_api.candidate_auth.routes import router as candidate_auth_router
 from hirevion_api.candidates.routes import router as candidates_router
+from hirevion_api.desktop_admin import router as desktop_admin_router
 from hirevion_api.idempotency import install_idempotency_handler
 from hirevion_api.interviews.assigned import router as assigned_interviews_router
 from hirevion_api.interviews.routes import router as interviews_router
@@ -42,6 +44,11 @@ from hirevion_api.screening.routes import router as screening_router
 from hirevion_api.settings import ApiSettings, load_api_settings
 from hirevion_core.ai import AiServices, build_ai
 from hirevion_core.ai.settings import load_ai_settings
+from hirevion_core.candidate_access.tokens import (
+    CandidateAuthSettings,
+    TokenSigner,
+    load_candidate_auth_settings,
+)
 from hirevion_core.db.session import Database, create_database
 from hirevion_core.documents.intake import BlobStore
 from hirevion_core.identity.breach import (
@@ -75,6 +82,7 @@ def create_app(
     identity: IdentitySettings | None = None,
     storage: BlobStore | None = None,
     ai: AiServices | None = None,
+    candidate_auth: CandidateAuthSettings | None = None,
 ) -> FastAPI:
     """Build the API. Injected `db` and `redis` are used as they are and never closed here;
     otherwise the lifespan opens them from `core` (loaded from `.env` when not given), and also
@@ -139,6 +147,8 @@ def create_app(
     app.state.storage = storage
     app.state.ai = ai
     app.state.identity = identity_settings
+    app.state.candidate_auth = candidate_auth or load_candidate_auth_settings()
+    app.state.candidate_signer = TokenSigner.from_settings(app.state.candidate_auth)
     # The bundled list always applies; the lifespan adds Have I Been Pwned when enabled.
     app.state.password_policy = PasswordPolicy(CompositeChecker(local_passwords))
     app.openapi = lambda: build_openapi(app)  # type: ignore[method-assign]
@@ -160,6 +170,8 @@ def create_app(
     app.include_router(interviews_router)
     app.include_router(assigned_interviews_router)
     app.include_router(dashboard.router)
+    app.include_router(candidate_auth_router)
+    app.include_router(desktop_admin_router)
     if telemetry is not None and telemetry.enabled:
         FastAPIInstrumentor.instrument_app(
             app,

@@ -286,6 +286,147 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/candidate-auth/interviews/{interview_id}/session-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Interview Session Token
+         * @description A token for one interview: what the interview, proctoring, recording and third-eye routes
+         *     take.
+         */
+        post: operations["interview_session_token"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/candidate-auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Candidate Login
+         * @description Signs in with PRD §28's six checks; a new device may first need an emailed code.
+         */
+        post: operations["candidate_login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/candidate-auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Candidate Logout
+         * @description Signs this device out: its refresh family is revoked.
+         */
+        post: operations["candidate_logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/candidate-auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Candidate Profile
+         * @description The candidate, their organisation and the interviews they can take now.
+         */
+        get: operations["candidate_profile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/candidate-auth/otp/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resend Candidate Code
+         * @description Emails a new code, at most once a minute.
+         */
+        post: operations["resend_candidate_code"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/candidate-auth/otp/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify Candidate Code
+         * @description Confirms a new device with the emailed code, and signs in.
+         */
+        post: operations["verify_candidate_code"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/candidate-auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refresh Candidate Token
+         * @description A new access token and the next refresh token; the one sent is spent.
+         */
+        post: operations["refresh_candidate_token"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/candidates": {
         parameters: {
             query?: never;
@@ -425,6 +566,47 @@ export interface paths {
          * @description Renames, describes, archives (`archived: true`) or restores a department.
          */
         patch: operations["update_department"];
+        trace?: never;
+    };
+    "/api/v1/desktop/releases/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Check Desktop Release
+         * @description Whether this app version may run, and the newest one this device may have.
+         */
+        get: operations["check_desktop_release"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/desktop/update-manifest/{target}/{arch}/{current_version}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Desktop Update Manifest
+         * @description The Tauri v2 updater's manifest: the newest release for this device, never older than
+         *     the running version; 204 when none applies.
+         */
+        get: operations["desktop_update_manifest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/documents/{document_id}/download": {
@@ -1159,6 +1341,27 @@ export interface paths {
         patch: operations["update_organization"];
         trace?: never;
     };
+    "/api/v1/organization/candidate-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Candidate Access
+         * @description How candidates sign in to the desktop app: whether a new device needs an emailed code.
+         */
+        get: operations["get_candidate_access"];
+        /** Update Candidate Access */
+        put: operations["update_candidate_access"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/permissions": {
         parameters: {
             query?: never;
@@ -1177,6 +1380,70 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/desktop-channels/{channel}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update Desktop Channel
+         * @description Sets the oldest version a channel still lets sign in, and where to download the app.
+         */
+        put: operations["update_desktop_channel"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/desktop-releases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Desktop Releases
+         * @description The channels with their minimum versions, and every release, newest first.
+         */
+        get: operations["list_desktop_releases"];
+        put?: never;
+        /**
+         * Create Desktop Release
+         * @description Registers a build as a draft; publish it to offer it.
+         */
+        post: operations["create_desktop_release"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/desktop-releases/{release_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Desktop Release
+         * @description Publishes or withdraws a release, or changes its rollout or notes.
+         */
+        patch: operations["update_desktop_release"];
         trace?: never;
     };
     "/api/v1/platform/organizations": {
@@ -1748,6 +2015,28 @@ export interface components {
             /** Applications */
             applications: components["schemas"]["ApplicationState"][];
         };
+        /** AppBody */
+        AppBody: {
+            /**
+             * Arch
+             * @default x64
+             * @enum {string}
+             */
+            arch: "x64" | "arm64";
+            /**
+             * Channel
+             * @default stable
+             * @enum {string}
+             */
+            channel: "stable" | "beta";
+            /**
+             * Os
+             * @default
+             */
+            os: string;
+            /** Version */
+            version: string;
+        };
         /** ApplicationResponse */
         ApplicationResponse: {
             candidate: components["schemas"]["CandidateSummary"];
@@ -1883,6 +2172,15 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** CandidateAccessSettings */
+        CandidateAccessSettings: {
+            /**
+             * New Device Otp
+             * @description Email candidates a one-time code when they sign in on a new device.
+             * @default true
+             */
+            new_device_otp: boolean;
+        };
         /** CandidateApplication */
         CandidateApplication: {
             /**
@@ -1909,6 +2207,20 @@ export interface components {
              * @enum {string}
              */
             stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold" | "interview" | "interviewed";
+        };
+        /** CandidateBody */
+        CandidateBody: {
+            /** Email */
+            email: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Locale */
+            locale: string;
+            /** Name */
+            name: string;
         };
         /** CandidateBrief */
         CandidateBrief: {
@@ -1955,6 +2267,45 @@ export interface components {
              * @enum {string}
              */
             status: "uploaded" | "scanning" | "extracting" | "parsing" | "parsed" | "quarantined" | "failed";
+        };
+        /** CandidateInterview */
+        CandidateInterview: {
+            /** Coding */
+            coding: boolean;
+            /** Duration Minutes */
+            duration_minutes: number;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Job Title */
+            job_title: string;
+            /**
+             * Proctoring Level
+             * @enum {string}
+             */
+            proctoring_level: "off" | "basic" | "standard" | "strict";
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "invited" | "in_progress" | "interrupted";
+            /**
+             * Third Eye
+             * @enum {string}
+             */
+            third_eye: "off" | "optional" | "required";
         };
         /** CandidateRef */
         CandidateRef: {
@@ -2051,6 +2402,30 @@ export interface components {
              */
             updated_at: string;
         };
+        /** ChannelResponse */
+        ChannelResponse: {
+            /**
+             * Channel
+             * @enum {string}
+             */
+            channel: "stable" | "beta";
+            /** Download Url */
+            download_url: string;
+            /** Minimum Version */
+            minimum_version: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** ChannelUpdate */
+        ChannelUpdate: {
+            /** Download Url */
+            download_url?: string | null;
+            /** Minimum Version */
+            minimum_version?: string | null;
+        };
         /** Choice */
         Choice: {
             /**
@@ -2127,6 +2502,14 @@ export interface components {
             description?: string | null;
             /** Name */
             name?: string | null;
+        };
+        /** DeviceBody */
+        DeviceBody: {
+            /**
+             * Name
+             * @default
+             */
+            name: string;
         };
         /** DocumentResponse */
         DocumentResponse: {
@@ -2936,6 +3319,15 @@ export interface components {
              */
             status: "ok";
         };
+        /** LoginBody */
+        LoginBody: {
+            app: components["schemas"]["AppBody"];
+            device?: components["schemas"]["DeviceBody"];
+            /** Email */
+            email: string;
+            /** Password */
+            password: string;
+        };
         /** LoginRequest */
         LoginRequest: {
             /** Email */
@@ -3001,6 +3393,18 @@ export interface components {
             email: string;
             /** Name */
             name: string;
+        };
+        /** OrganizationBody */
+        OrganizationBody: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Support Email */
+            support_email: string;
         };
         /** OrganizationCreate */
         OrganizationCreate: {
@@ -3095,6 +3499,42 @@ export interface components {
         OrganizationSuspend: {
             /** Reason */
             reason?: string | null;
+        };
+        /** OtpRequiredResponse */
+        OtpRequiredResponse: {
+            /**
+             * Challenge Id
+             * Format: uuid
+             */
+            challenge_id: string;
+            /** Expires In */
+            expires_in: number;
+            /** Sent To */
+            sent_to: string;
+            /**
+             * Status
+             * @default otp_required
+             * @constant
+             */
+            status: "otp_required";
+        };
+        /** OtpResendBody */
+        OtpResendBody: {
+            /**
+             * Challenge Id
+             * Format: uuid
+             */
+            challenge_id: string;
+        };
+        /** OtpVerifyBody */
+        OtpVerifyBody: {
+            /**
+             * Challenge Id
+             * Format: uuid
+             */
+            challenge_id: string;
+            /** Code */
+            code: string;
         };
         /** Page[ApplicationResponse] */
         Page_ApplicationResponse_: {
@@ -3266,6 +3706,13 @@ export interface components {
             type: string;
         } & {
             [key: string]: unknown;
+        };
+        /** ProfileResponse */
+        ProfileResponse: {
+            candidate: components["schemas"]["CandidateBody"];
+            /** Interviews */
+            interviews: components["schemas"]["CandidateInterview"][];
+            organization: components["schemas"]["OrganizationBody"];
         };
         /**
          * QuestionBody
@@ -3520,6 +3967,142 @@ export interface components {
              * @default true
              */
             screen: boolean;
+        };
+        /** RefreshBody */
+        RefreshBody: {
+            /** Refresh Token */
+            refresh_token: string;
+        };
+        /** RefreshedResponse */
+        RefreshedResponse: {
+            /** Access Token */
+            access_token: string;
+            /** Expires In */
+            expires_in: number;
+            /** Refresh Expires In */
+            refresh_expires_in: number;
+            /** Refresh Token */
+            refresh_token: string;
+            /**
+             * Token Type
+             * @default DPoP
+             * @constant
+             */
+            token_type: "DPoP";
+        };
+        /** ReleaseCheckResponse */
+        ReleaseCheckResponse: {
+            /** Download Url */
+            download_url: string;
+            latest: components["schemas"]["ReleaseLatest"] | null;
+            /** Minimum Version */
+            minimum_version: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "update-available" | "update-required";
+        };
+        /** ReleaseCreate */
+        ReleaseCreate: {
+            /**
+             * Arch
+             * @default x64
+             * @enum {string}
+             */
+            arch: "x64" | "arm64";
+            /**
+             * Channel
+             * @default stable
+             * @enum {string}
+             */
+            channel: "stable" | "beta";
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /**
+             * Rollout Percent
+             * @default 100
+             */
+            rollout_percent: number;
+            /** Signature */
+            signature: string;
+            /** Url */
+            url: string;
+            /** Version */
+            version: string;
+        };
+        /** ReleaseLatest */
+        ReleaseLatest: {
+            /** Notes */
+            notes: string;
+            /** Published At */
+            published_at: string | null;
+            /** Version */
+            version: string;
+        };
+        /** ReleaseRegistry */
+        ReleaseRegistry: {
+            /** Channels */
+            channels: components["schemas"]["ChannelResponse"][];
+            /** Releases */
+            releases: components["schemas"]["ReleaseResponse"][];
+        };
+        /** ReleaseResponse */
+        ReleaseResponse: {
+            /**
+             * Arch
+             * @enum {string}
+             */
+            arch: "x64" | "arm64";
+            /**
+             * Channel
+             * @enum {string}
+             */
+            channel: "stable" | "beta";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Notes */
+            notes: string;
+            /** Published At */
+            published_at: string | null;
+            /** Rollout Percent */
+            rollout_percent: number;
+            /** Signature */
+            signature: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "published" | "withdrawn";
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Url */
+            url: string;
+            /** Version */
+            version: string;
+        };
+        /** ReleaseUpdate */
+        ReleaseUpdate: {
+            /** Notes */
+            notes?: string | null;
+            /** Rollout Percent */
+            rollout_percent?: number | null;
+            /** Status */
+            status?: ("draft" | "published" | "withdrawn") | null;
         };
         /** RescheduleBody */
         RescheduleBody: {
@@ -3792,6 +4375,31 @@ export interface components {
              */
             sent_at_ms: number;
         };
+        /** SessionInterview */
+        SessionInterview: {
+            /** Duration Minutes */
+            duration_minutes: number;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "invited" | "in_progress" | "interrupted";
+        };
         /** SessionItem */
         SessionItem: {
             /**
@@ -3849,6 +4457,23 @@ export interface components {
             roles: string[];
             user: components["schemas"]["SessionUser"];
         };
+        /** SessionTokenResponse */
+        SessionTokenResponse: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            interview: components["schemas"]["SessionInterview"];
+            /** Session Token */
+            session_token: string;
+            /**
+             * Token Type
+             * @default DPoP
+             * @constant
+             */
+            token_type: "DPoP";
+        };
         /** SessionUser */
         SessionUser: {
             /** Email */
@@ -3860,6 +4485,33 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+        };
+        /** SignedInResponse */
+        SignedInResponse: {
+            /** Access Token */
+            access_token: string;
+            candidate: components["schemas"]["CandidateBody"];
+            /** Expires In */
+            expires_in: number;
+            /** Interviews */
+            interviews: components["schemas"]["CandidateInterview"][];
+            organization: components["schemas"]["OrganizationBody"];
+            /** Refresh Expires In */
+            refresh_expires_in: number;
+            /** Refresh Token */
+            refresh_token: string;
+            /**
+             * Status
+             * @default ok
+             * @constant
+             */
+            status: "ok";
+            /**
+             * Token Type
+             * @default DPoP
+             * @constant
+             */
+            token_type: "DPoP";
         };
         /** SkillBody */
         SkillBody: {
@@ -4854,6 +5506,288 @@ export interface operations {
             };
         };
     };
+    interview_session_token: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionTokenResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    candidate_login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignedInResponse"] | components["schemas"]["OtpRequiredResponse"] | components["schemas"]["SignedInResponse"] | components["schemas"]["OtpRequiredResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    candidate_logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    candidate_profile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    resend_candidate_code: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OtpResendBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    verify_candidate_code: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OtpVerifyBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignedInResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    refresh_candidate_token: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefreshBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefreshedResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_candidates: {
         parameters: {
             query?: {
@@ -5184,6 +6118,99 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DepartmentResponse"];
                 };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    check_desktop_release: {
+        parameters: {
+            query: {
+                version: string;
+                channel?: string;
+                arch?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseCheckResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    desktop_update_manifest: {
+        parameters: {
+            query?: {
+                channel?: string;
+            };
+            header?: never;
+            path: {
+                target: string;
+                arch: string;
+                current_version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description No update applies */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Client error, as an RFC 9457 problem */
             "4XX": {
@@ -7157,6 +8184,86 @@ export interface operations {
             };
         };
     };
+    get_candidate_access: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateAccessSettings"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_candidate_access: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CandidateAccessSettings"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateAccessSettings"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_permissions: {
         parameters: {
             query?: never;
@@ -7173,6 +8280,174 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PermissionResponse"][];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_desktop_channel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel: "stable" | "beta";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChannelUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_desktop_releases: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseRegistry"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_desktop_release: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_desktop_release: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                release_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseResponse"];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */

@@ -67,6 +67,14 @@ class OrganizationProfileUpdate(Patch):
         return not_null(value)
 
 
+class CandidateAccessSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    new_device_otp: bool = Field(
+        True, description="Email candidates a one-time code when they sign in on a new device."
+    )
+
+
 # Departments and teams
 
 

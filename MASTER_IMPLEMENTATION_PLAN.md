@@ -1196,7 +1196,7 @@ Each SP gets its own detailed TDD plan before work starts. "CP" is the checkpoin
   - The candidate portal (§6.3).
   - The candidate-auth API: OTP, device registration, DPoP, access/refresh/interview-session tokens, session expiry.
   - The desktop release registry and update manifest.
-- **Status, 2026-10-09:** SP-07a built (ADR-0020): interviews, assignment, invitations, reminders and the job's template field.
+- **Status, 2026-10-09:** SP-07a built (ADR-0020): interviews, assignment, invitations, reminders and the job's template field. SP-07c built (ADR-0021): desktop sign-in, DPoP-bound tokens, new-device codes and the release registry.
 - **Exit criteria:**
   - An invitation reaches Mailpit and the candidate can set a password.
   - Replay and stolen-token tests fail as they should.
@@ -1685,7 +1685,7 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 6 | Six roles and their responsibilities, including Hiring Manager input and reviewers on assigned interviews | SP-02 (roles and scopes), SP-07 (reviewers), SP-17 (HM input), SP-22 (super admin) |
 | 7 | IA: Dashboard; Jobs ×7; Candidates ×6; Interviews ×4; Question Library ×5; Reports ×4; Administration ×7 | SP-03 plus the owning SPs (§6.2) |
 | 8 | Web: email/password, Entra ID, OIDC, SAML, MFA, sessions, password reset, RBAC, rate limiting | SP-02a (email/password, sessions, password reset, rate limiting), SP-02b (RBAC), SP-19 (Entra ID, OIDC, SAML, MFA) |
-| 8 | Desktop: email/password, short-lived token, interview session token, device/session binding, expiry; no master credentials | SP-07c, SP-08, §13 |
+| 8 | Desktop: email/password, short-lived token, interview session token, device/session binding, expiry; no master credentials | SP-07c (ADR-0021: DPoP-bound access, refresh and session tokens, `test_candidate_auth_api.py`), SP-08, §13 |
 | 9 | Organisation profile, departments, teams, users, roles, permissions | SP-02 |
 | 9 | Branding, default screening/interview config, proctoring policies, AI config, retention, integrations | SP-05 (screening defaults), SP-06 (interview defaults and proctoring presets), SP-22, SP-20 |
 | 10 | 10 dashboard KPIs and 7 filters | SP-03, SP-21 (KPIs wired from real data as modules land: catch-up H0.2) |
@@ -1704,9 +1704,9 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 23 | AI question generation from 6 inputs; review before reuse | SP-06 (`questions.generate` drafts, approved by a recruiter; candidate work history only, never contact details) |
 | 24 | Assignment: 3 inputs → 9 system fields | SP-07a (ADR-0020: `hirevion_core.interviews.assignment`, the policy snapshot, `test_interview_assignment.py`) |
 | 25 | 8 invitation contents | SP-07a (`interviews.invitations`, en-IN/en-US templates, the Mailpit test and `e2e/auth/interviews.spec.ts`), SP-07b (portal pages it links to) |
-| 26 | 9 startup steps (`AI-Interview.exe`) | SP-08 |
+| 26 | 9 startup steps (`AI-Interview.exe`) | SP-08 (the version check's server side, the release registry and update manifest: SP-07c) |
 | 27 | Tauri, React, TypeScript, Rust, Monaco | SP-08, SP-16 |
-| 28 | 6 login verifications; short-lived credentials | SP-07c, SP-08 |
+| 28 | 6 login verifications; short-lived credentials | SP-07c (`candidate_access.service`, the six checks in order with their codes), SP-08 |
 | 29 | 11 system checks; policy-driven mandatory checks | SP-08 |
 | 30 | 6 instructions (configurable); 10 consent items | SP-08, SP-22 |
 | 31 | Fullscreen; 5 monitored states | SP-08, SP-11 |

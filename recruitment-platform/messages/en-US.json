@@ -795,7 +795,15 @@
       "platformBody": "Super admins belong to the platform itself. Each organization's profile is its own admins' to edit.",
       "platformLink": "Go to organizations",
       "supportEmail": "Support email",
-      "supportEmailHint": "Candidates write here for help. It's in every invitation and on the candidate portal."
+      "supportEmailHint": "Candidates write here for help. It's in every invitation and on the candidate portal.",
+      "candidateAccess": {
+        "title": "Candidate sign-in",
+        "newDeviceOtp": "Ask for an emailed code on a new computer",
+        "newDeviceOtpHint": "The first time a candidate signs in to the AI Interview app on a computer, they confirm it with a code sent to their email.",
+        "saved": "Candidate sign-in setting saved",
+        "loadFailed": "The candidate sign-in setting didn't load.",
+        "retry": "Try again"
+      }
     },
     "departments": {
       "caption": "Departments",
@@ -881,6 +889,46 @@
       "emptyTitle": "No organizations match",
       "emptyHint": "Change the filters, or create one.",
       "actionsColumn": "Actions"
+    },
+    "releases": {
+      "loadFailed": "The releases didn't load. Try again in a moment.",
+      "channelTitle": "The {channel} channel",
+      "minimum": "Oldest version that may sign in",
+      "minimumHint": "Older apps are asked to update before they sign in.",
+      "download": "Where to download the app",
+      "saveChannel": "Save the channel",
+      "saved": "Saved",
+      "releases": "Releases",
+      "add": "Add a release",
+      "empty": "No releases registered yet.",
+      "caption": "Desktop app releases",
+      "columns": {
+        "version": "Version",
+        "channel": "Channel",
+        "arch": "Architecture",
+        "status": "Status",
+        "rollout": "Rollout (%)",
+        "published": "Published",
+        "actions": "Actions"
+      },
+      "statuses": {
+        "draft": "Draft",
+        "published": "Published",
+        "withdrawn": "Withdrawn"
+      },
+      "percent": "{value}%",
+      "never": "Not yet",
+      "publish": "Publish {version}",
+      "withdraw": "Withdraw {version}",
+      "fullRollout": "Roll out to everyone",
+      "addTitle": "Add a release",
+      "addHint": "It's saved as a draft. Publish it to offer it to the apps.",
+      "url": "Download address of the update bundle (https)",
+      "signature": "The bundle's minisign signature",
+      "notes": "Release notes",
+      "addSubmit": "Add the release",
+      "added": "Release added as a draft",
+      "cancel": "Cancel"
     }
   },
   "candidates": {

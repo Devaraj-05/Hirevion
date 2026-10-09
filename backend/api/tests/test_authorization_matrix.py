@@ -159,6 +159,18 @@ EXPECTED: dict[str, tuple[tuple[str, ...], bool]] = {
     "POST /api/v1/interviews/{interview_id}/cancel": (("interviews.manage",), False),
     "PUT /api/v1/interviews/{interview_id}/reviewers": (("interviews.manage",), False),
     "GET /api/v1/dashboard": (("dashboard.view",), False),
+    "GET /api/v1/organization/candidate-access": (("admin.organization.manage",), False),
+    "PUT /api/v1/organization/candidate-access": (("admin.organization.manage",), False),
+    "GET /api/v1/platform/desktop-releases": (("platform.desktop_releases.manage",), False),
+    "POST /api/v1/platform/desktop-releases": (("platform.desktop_releases.manage",), True),
+    "PATCH /api/v1/platform/desktop-releases/{release_id}": (
+        ("platform.desktop_releases.manage",),
+        True,
+    ),
+    "PUT /api/v1/platform/desktop-channels/{channel}": (
+        ("platform.desktop_releases.manage",),
+        True,
+    ),
 }
 
 

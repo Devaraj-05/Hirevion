@@ -75,6 +75,44 @@
         "title": "ActionResult",
         "type": "object"
       },
+      "AppBody": {
+        "properties": {
+          "arch": {
+            "default": "x64",
+            "enum": [
+              "x64",
+              "arm64"
+            ],
+            "title": "Arch",
+            "type": "string"
+          },
+          "channel": {
+            "default": "stable",
+            "enum": [
+              "stable",
+              "beta"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "os": {
+            "default": "",
+            "maxLength": 100,
+            "title": "Os",
+            "type": "string"
+          },
+          "version": {
+            "maxLength": 40,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "title": "AppBody",
+        "type": "object"
+      },
       "ApplicationResponse": {
         "properties": {
           "candidate": {
@@ -442,6 +480,19 @@
         "title": "CancelBody",
         "type": "object"
       },
+      "CandidateAccessSettings": {
+        "additionalProperties": false,
+        "properties": {
+          "new_device_otp": {
+            "default": true,
+            "description": "Email candidates a one-time code when they sign in on a new device.",
+            "title": "New Device Otp",
+            "type": "boolean"
+          }
+        },
+        "title": "CandidateAccessSettings",
+        "type": "object"
+      },
       "CandidateApplication": {
         "properties": {
           "created_at": {
@@ -493,6 +544,35 @@
           "created_at"
         ],
         "title": "CandidateApplication",
+        "type": "object"
+      },
+      "CandidateBody": {
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "locale": {
+            "title": "Locale",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "email",
+          "locale"
+        ],
+        "title": "CandidateBody",
         "type": "object"
       },
       "CandidateBrief": {
@@ -611,6 +691,78 @@
           "created_at"
         ],
         "title": "CandidateDocument",
+        "type": "object"
+      },
+      "CandidateInterview": {
+        "properties": {
+          "coding": {
+            "title": "Coding",
+            "type": "boolean"
+          },
+          "duration_minutes": {
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "job_title": {
+            "title": "Job Title",
+            "type": "string"
+          },
+          "proctoring_level": {
+            "enum": [
+              "off",
+              "basic",
+              "standard",
+              "strict"
+            ],
+            "title": "Proctoring Level",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "invited",
+              "in_progress",
+              "interrupted"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "third_eye": {
+            "enum": [
+              "off",
+              "optional",
+              "required"
+            ],
+            "title": "Third Eye",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "job_title",
+          "status",
+          "starts_at",
+          "expires_at",
+          "duration_minutes",
+          "third_eye",
+          "proctoring_level",
+          "coding"
+        ],
+        "title": "CandidateInterview",
         "type": "object"
       },
       "CandidateRef": {
@@ -874,6 +1026,70 @@
         "title": "CandidateSummary",
         "type": "object"
       },
+      "ChannelResponse": {
+        "properties": {
+          "channel": {
+            "enum": [
+              "stable",
+              "beta"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "download_url": {
+            "title": "Download Url",
+            "type": "string"
+          },
+          "minimum_version": {
+            "title": "Minimum Version",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel",
+          "minimum_version",
+          "download_url",
+          "updated_at"
+        ],
+        "title": "ChannelResponse",
+        "type": "object"
+      },
+      "ChannelUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "download_url": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Download Url"
+          },
+          "minimum_version": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum Version"
+          }
+        },
+        "title": "ChannelUpdate",
+        "type": "object"
+      },
       "Choice": {
         "properties": {
           "id": {
@@ -1090,6 +1306,18 @@
           }
         },
         "title": "DepartmentUpdate",
+        "type": "object"
+      },
+      "DeviceBody": {
+        "properties": {
+          "name": {
+            "default": "",
+            "maxLength": 100,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "title": "DeviceBody",
         "type": "object"
       },
       "DocumentResponse": {
@@ -3846,6 +4074,34 @@
         "title": "Liveness",
         "type": "object"
       },
+      "LoginBody": {
+        "additionalProperties": false,
+        "properties": {
+          "app": {
+            "$ref": "#/components/schemas/AppBody"
+          },
+          "device": {
+            "$ref": "#/components/schemas/DeviceBody"
+          },
+          "email": {
+            "maxLength": 254,
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 1024,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "app"
+        ],
+        "title": "LoginBody",
+        "type": "object"
+      },
       "LoginRequest": {
         "properties": {
           "email": {
@@ -4014,6 +4270,30 @@
           "email"
         ],
         "title": "OrganizationAdminInvite",
+        "type": "object"
+      },
+      "OrganizationBody": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "support_email": {
+            "title": "Support Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "support_email"
+        ],
+        "title": "OrganizationBody",
         "type": "object"
       },
       "OrganizationCreate": {
@@ -4276,6 +4556,73 @@
           }
         },
         "title": "OrganizationSuspend",
+        "type": "object"
+      },
+      "OtpRequiredResponse": {
+        "properties": {
+          "challenge_id": {
+            "format": "uuid",
+            "title": "Challenge Id",
+            "type": "string"
+          },
+          "expires_in": {
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "sent_to": {
+            "title": "Sent To",
+            "type": "string"
+          },
+          "status": {
+            "const": "otp_required",
+            "default": "otp_required",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "challenge_id",
+          "sent_to",
+          "expires_in"
+        ],
+        "title": "OtpRequiredResponse",
+        "type": "object"
+      },
+      "OtpResendBody": {
+        "additionalProperties": false,
+        "properties": {
+          "challenge_id": {
+            "format": "uuid",
+            "title": "Challenge Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "challenge_id"
+        ],
+        "title": "OtpResendBody",
+        "type": "object"
+      },
+      "OtpVerifyBody": {
+        "additionalProperties": false,
+        "properties": {
+          "challenge_id": {
+            "format": "uuid",
+            "title": "Challenge Id",
+            "type": "string"
+          },
+          "code": {
+            "maxLength": 12,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "challenge_id",
+          "code"
+        ],
+        "title": "OtpVerifyBody",
         "type": "object"
       },
       "Page_ApplicationResponse_": {
@@ -4756,6 +5103,30 @@
           "code"
         ],
         "title": "Problem",
+        "type": "object"
+      },
+      "ProfileResponse": {
+        "properties": {
+          "candidate": {
+            "$ref": "#/components/schemas/CandidateBody"
+          },
+          "interviews": {
+            "items": {
+              "$ref": "#/components/schemas/CandidateInterview"
+            },
+            "title": "Interviews",
+            "type": "array"
+          },
+          "organization": {
+            "$ref": "#/components/schemas/OrganizationBody"
+          }
+        },
+        "required": [
+          "candidate",
+          "organization",
+          "interviews"
+        ],
+        "title": "ProfileResponse",
         "type": "object"
       },
       "QuestionBody": {
@@ -5514,6 +5885,347 @@
           }
         },
         "title": "Recording",
+        "type": "object"
+      },
+      "RefreshBody": {
+        "additionalProperties": false,
+        "properties": {
+          "refresh_token": {
+            "maxLength": 200,
+            "title": "Refresh Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "refresh_token"
+        ],
+        "title": "RefreshBody",
+        "type": "object"
+      },
+      "RefreshedResponse": {
+        "properties": {
+          "access_token": {
+            "title": "Access Token",
+            "type": "string"
+          },
+          "expires_in": {
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "refresh_expires_in": {
+            "title": "Refresh Expires In",
+            "type": "integer"
+          },
+          "refresh_token": {
+            "title": "Refresh Token",
+            "type": "string"
+          },
+          "token_type": {
+            "const": "DPoP",
+            "default": "DPoP",
+            "title": "Token Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "access_token",
+          "expires_in",
+          "refresh_token",
+          "refresh_expires_in"
+        ],
+        "title": "RefreshedResponse",
+        "type": "object"
+      },
+      "ReleaseCheckResponse": {
+        "properties": {
+          "download_url": {
+            "title": "Download Url",
+            "type": "string"
+          },
+          "latest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReleaseLatest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "minimum_version": {
+            "title": "Minimum Version",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "update-available",
+              "update-required"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "latest",
+          "minimum_version",
+          "download_url"
+        ],
+        "title": "ReleaseCheckResponse",
+        "type": "object"
+      },
+      "ReleaseCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "arch": {
+            "default": "x64",
+            "enum": [
+              "x64",
+              "arm64"
+            ],
+            "title": "Arch",
+            "type": "string"
+          },
+          "channel": {
+            "default": "stable",
+            "enum": [
+              "stable",
+              "beta"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "notes": {
+            "default": "",
+            "maxLength": 5000,
+            "title": "Notes",
+            "type": "string"
+          },
+          "rollout_percent": {
+            "default": 100,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Rollout Percent",
+            "type": "integer"
+          },
+          "signature": {
+            "maxLength": 2000,
+            "title": "Signature",
+            "type": "string"
+          },
+          "url": {
+            "maxLength": 500,
+            "title": "Url",
+            "type": "string"
+          },
+          "version": {
+            "maxLength": 40,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "url",
+          "signature"
+        ],
+        "title": "ReleaseCreate",
+        "type": "object"
+      },
+      "ReleaseLatest": {
+        "properties": {
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "notes",
+          "published_at"
+        ],
+        "title": "ReleaseLatest",
+        "type": "object"
+      },
+      "ReleaseRegistry": {
+        "properties": {
+          "channels": {
+            "items": {
+              "$ref": "#/components/schemas/ChannelResponse"
+            },
+            "title": "Channels",
+            "type": "array"
+          },
+          "releases": {
+            "items": {
+              "$ref": "#/components/schemas/ReleaseResponse"
+            },
+            "title": "Releases",
+            "type": "array"
+          }
+        },
+        "required": [
+          "channels",
+          "releases"
+        ],
+        "title": "ReleaseRegistry",
+        "type": "object"
+      },
+      "ReleaseResponse": {
+        "properties": {
+          "arch": {
+            "enum": [
+              "x64",
+              "arm64"
+            ],
+            "title": "Arch",
+            "type": "string"
+          },
+          "channel": {
+            "enum": [
+              "stable",
+              "beta"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "rollout_percent": {
+            "title": "Rollout Percent",
+            "type": "integer"
+          },
+          "signature": {
+            "title": "Signature",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "published",
+              "withdrawn"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "channel",
+          "arch",
+          "notes",
+          "url",
+          "signature",
+          "status",
+          "rollout_percent",
+          "published_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ReleaseResponse",
+        "type": "object"
+      },
+      "ReleaseUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "rollout_percent": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rollout Percent"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "draft",
+                  "published",
+                  "withdrawn"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "title": "ReleaseUpdate",
         "type": "object"
       },
       "RescheduleBody": {
@@ -6342,6 +7054,47 @@
         "title": "ServerTime",
         "type": "object"
       },
+      "SessionInterview": {
+        "properties": {
+          "duration_minutes": {
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "invited",
+              "in_progress",
+              "interrupted"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "starts_at",
+          "expires_at",
+          "duration_minutes"
+        ],
+        "title": "SessionInterview",
+        "type": "object"
+      },
       "SessionItem": {
         "properties": {
           "created_at": {
@@ -6510,6 +7263,35 @@
         "title": "SessionResponse",
         "type": "object"
       },
+      "SessionTokenResponse": {
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "interview": {
+            "$ref": "#/components/schemas/SessionInterview"
+          },
+          "session_token": {
+            "title": "Session Token",
+            "type": "string"
+          },
+          "token_type": {
+            "const": "DPoP",
+            "default": "DPoP",
+            "title": "Token Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_token",
+          "expires_at",
+          "interview"
+        ],
+        "title": "SessionTokenResponse",
+        "type": "object"
+      },
       "SessionUser": {
         "properties": {
           "email": {
@@ -6532,6 +7314,62 @@
           "email"
         ],
         "title": "SessionUser",
+        "type": "object"
+      },
+      "SignedInResponse": {
+        "properties": {
+          "access_token": {
+            "title": "Access Token",
+            "type": "string"
+          },
+          "candidate": {
+            "$ref": "#/components/schemas/CandidateBody"
+          },
+          "expires_in": {
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "interviews": {
+            "items": {
+              "$ref": "#/components/schemas/CandidateInterview"
+            },
+            "title": "Interviews",
+            "type": "array"
+          },
+          "organization": {
+            "$ref": "#/components/schemas/OrganizationBody"
+          },
+          "refresh_expires_in": {
+            "title": "Refresh Expires In",
+            "type": "integer"
+          },
+          "refresh_token": {
+            "title": "Refresh Token",
+            "type": "string"
+          },
+          "status": {
+            "const": "ok",
+            "default": "ok",
+            "title": "Status",
+            "type": "string"
+          },
+          "token_type": {
+            "const": "DPoP",
+            "default": "DPoP",
+            "title": "Token Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "access_token",
+          "expires_in",
+          "refresh_token",
+          "refresh_expires_in",
+          "candidate",
+          "organization",
+          "interviews"
+        ],
+        "title": "SignedInResponse",
         "type": "object"
       },
       "SkillBody": {
@@ -8545,6 +9383,357 @@
         ]
       }
     },
+    "/api/v1/candidate-auth/interviews/{interview_id}/session-token": {
+      "post": {
+        "description": "A token for one interview: what the interview, proctoring, recording and third-eye routes\ntake.",
+        "operationId": "interview_session_token",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionTokenResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Interview Session Token",
+        "tags": [
+          "candidate-auth"
+        ]
+      }
+    },
+    "/api/v1/candidate-auth/login": {
+      "post": {
+        "description": "Signs in with PRD §28's six checks; a new device may first need an emailed code.",
+        "operationId": "candidate_login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SignedInResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OtpRequiredResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SignedInResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OtpRequiredResponse"
+                    }
+                  ],
+                  "title": "Response 200 Candidate Login"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Candidate Login",
+        "tags": [
+          "candidate-auth"
+        ]
+      }
+    },
+    "/api/v1/candidate-auth/logout": {
+      "post": {
+        "description": "Signs this device out: its refresh family is revoked.",
+        "operationId": "candidate_logout",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Candidate Logout",
+        "tags": [
+          "candidate-auth"
+        ]
+      }
+    },
+    "/api/v1/candidate-auth/me": {
+      "get": {
+        "description": "The candidate, their organisation and the interviews they can take now.",
+        "operationId": "candidate_profile",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Candidate Profile",
+        "tags": [
+          "candidate-auth"
+        ]
+      }
+    },
+    "/api/v1/candidate-auth/otp/resend": {
+      "post": {
+        "description": "Emails a new code, at most once a minute.",
+        "operationId": "resend_candidate_code",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OtpResendBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Resend Candidate Code",
+        "tags": [
+          "candidate-auth"
+        ]
+      }
+    },
+    "/api/v1/candidate-auth/otp/verify": {
+      "post": {
+        "description": "Confirms a new device with the emailed code, and signs in.",
+        "operationId": "verify_candidate_code",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OtpVerifyBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignedInResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Verify Candidate Code",
+        "tags": [
+          "candidate-auth"
+        ]
+      }
+    },
+    "/api/v1/candidate-auth/refresh": {
+      "post": {
+        "description": "A new access token and the next refresh token; the one sent is spent.",
+        "operationId": "refresh_candidate_token",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Refresh Candidate Token",
+        "tags": [
+          "candidate-auth"
+        ]
+      }
+    },
     "/api/v1/candidates": {
       "get": {
         "description": "The candidates the reader reaches, most recently updated first.",
@@ -9227,6 +10416,165 @@
         "summary": "Update Department",
         "tags": [
           "structure"
+        ]
+      }
+    },
+    "/api/v1/desktop/releases/check": {
+      "get": {
+        "description": "Whether this app version may run, and the newest one this device may have.",
+        "operationId": "check_desktop_release",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "maxLength": 40,
+              "title": "Version",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "channel",
+            "required": false,
+            "schema": {
+              "default": "stable",
+              "maxLength": 20,
+              "title": "Channel",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "arch",
+            "required": false,
+            "schema": {
+              "default": "x64",
+              "maxLength": 20,
+              "title": "Arch",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseCheckResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Check Desktop Release",
+        "tags": [
+          "candidate-auth"
+        ]
+      }
+    },
+    "/api/v1/desktop/update-manifest/{target}/{arch}/{current_version}": {
+      "get": {
+        "description": "The Tauri v2 updater's manifest: the newest release for this device, never older than\nthe running version; 204 when none applies.",
+        "operationId": "desktop_update_manifest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target",
+            "required": true,
+            "schema": {
+              "title": "Target",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "arch",
+            "required": true,
+            "schema": {
+              "title": "Arch",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "current_version",
+            "required": true,
+            "schema": {
+              "title": "Current Version",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "channel",
+            "required": false,
+            "schema": {
+              "default": "stable",
+              "maxLength": 20,
+              "title": "Channel",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "204": {
+            "description": "No update applies"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Desktop Update Manifest",
+        "tags": [
+          "candidate-auth"
         ]
       }
     },
@@ -12292,6 +13640,97 @@
         ]
       }
     },
+    "/api/v1/organization/candidate-access": {
+      "get": {
+        "description": "How candidates sign in to the desktop app: whether a new device needs an emailed code.",
+        "operationId": "get_candidate_access",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateAccessSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Get Candidate Access",
+        "tags": [
+          "organization"
+        ]
+      },
+      "put": {
+        "operationId": "update_candidate_access",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CandidateAccessSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateAccessSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Update Candidate Access",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
     "/api/v1/permissions": {
       "get": {
         "description": "Every permission a custom role may hold, grouped by area.",
@@ -12335,6 +13774,229 @@
         "summary": "List Permissions",
         "tags": [
           "roles"
+        ]
+      }
+    },
+    "/api/v1/platform/desktop-channels/{channel}": {
+      "put": {
+        "description": "Sets the oldest version a channel still lets sign in, and where to download the app.",
+        "operationId": "update_desktop_channel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel",
+            "required": true,
+            "schema": {
+              "enum": [
+                "stable",
+                "beta"
+              ],
+              "title": "Channel",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChannelUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Update Desktop Channel",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/api/v1/platform/desktop-releases": {
+      "get": {
+        "description": "The channels with their minimum versions, and every release, newest first.",
+        "operationId": "list_desktop_releases",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseRegistry"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "List Desktop Releases",
+        "tags": [
+          "platform"
+        ]
+      },
+      "post": {
+        "description": "Registers a build as a draft; publish it to offer it.",
+        "operationId": "create_desktop_release",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReleaseCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Create Desktop Release",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/api/v1/platform/desktop-releases/{release_id}": {
+      "patch": {
+        "description": "Publishes or withdraws a release, or changes its rollout or notes.",
+        "operationId": "update_desktop_release",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "release_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Release Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReleaseUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Update Desktop Release",
+        "tags": [
+          "platform"
         ]
       }
     },

@@ -32,7 +32,10 @@ from hirevion_core.identity.sessions import SessionContext, is_stepped_up
 from hirevion_core.identity.settings import IdentitySettings
 
 # Routes that need no permission: "public" ones need no session at all, and "self" ones act only
-# on the signed-in user's own account. Everything else must use `requires(...)`.
+# on the signed-in user's own account. The desktop app's routes take no recruiter session at all:
+# "device" ones need a DPoP proof of the device key (ADR-0021), "candidate" ones a candidate's
+# DPoP-bound access token, "interview" ones an interview-session token for the path's interview.
+# Everything else must use `requires(...)`.
 UNGUARDED: dict[str, str] = {
     "GET /api/v1/health/live": "public",
     "GET /api/v1/health/ready": "public",
@@ -50,6 +53,15 @@ UNGUARDED: dict[str, str] = {
     "POST /api/v1/auth/password/change": "self",
     "POST /api/v1/auth/step-up": "self",
     "POST /api/v1/auth/email/change": "self",
+    "POST /api/v1/candidate-auth/login": "device",
+    "POST /api/v1/candidate-auth/otp/verify": "device",
+    "POST /api/v1/candidate-auth/otp/resend": "device",
+    "POST /api/v1/candidate-auth/refresh": "device",
+    "POST /api/v1/candidate-auth/logout": "candidate",
+    "GET /api/v1/candidate-auth/me": "candidate",
+    "POST /api/v1/candidate-auth/interviews/{interview_id}/session-token": "candidate",
+    "GET /api/v1/desktop/releases/check": "public",
+    "GET /api/v1/desktop/update-manifest/{target}/{arch}/{current_version}": "public",
 }
 
 

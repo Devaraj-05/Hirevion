@@ -183,12 +183,17 @@ class InterviewTemplateVersion(Base):
 
 
 class OrganizationSettings(Base):
-    """Per-organisation settings that aren't the profile: the interview defaults (SP-06)."""
+    """Per-organisation settings that aren't the profile: the interview defaults (SP-06) and how
+    candidates sign in (SP-07c)."""
 
     __tablename__ = "organization_settings"
 
     organization_id: Mapped[UUID] = mapped_column(ForeignKey("organizations.id"), primary_key=True)
     interview_defaults: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, server_default=sql_text("'{}'::jsonb")
+    )
+    # How candidates sign in (SP-07c): `new_device_otp` asks for an emailed code on a new device.
+    candidate_access: Mapped[dict[str, Any]] = mapped_column(
         JSONB, server_default=sql_text("'{}'::jsonb")
     )
     updated_by: Mapped[UUID | None]

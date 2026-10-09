@@ -7,6 +7,8 @@ import re
 import secrets
 from pathlib import Path
 
+from hirevion_core.candidate_access.tokens import generate_key_b64
+
 REQUIRED_KEYS: tuple[str, ...] = ("GEMINI_API_KEY", "DEEPGRAM_API_KEY")
 GENERATED_KEYS: dict[str, int] = {
     "POSTGRES_PASSWORD": 32,
@@ -21,6 +23,8 @@ GENERATED_KEYS: dict[str, int] = {
 }
 # Values that must be standard base64 (Azure storage keys): number of random bytes.
 GENERATED_BASE64_KEYS: dict[str, int] = {"AZURE_STORAGE_KEY": 64}
+# Signing keys: base64 PKCS #8 P-256 private keys (the candidate tokens' key, ADR-0021).
+GENERATED_SIGNING_KEYS: tuple[str, ...] = ("HV_CANDIDATE_TOKEN_KEY",)
 _PLACEHOLDER = re.compile(r"^(<.*>|changeme|replace[-_ ]?me|your[-_ ].*)$", re.IGNORECASE)
 
 
@@ -58,6 +62,8 @@ def generate_local_secrets() -> dict[str, str]:
     values = {key: secrets.token_urlsafe(length)[:length] for key, length in GENERATED_KEYS.items()}
     for key, size in GENERATED_BASE64_KEYS.items():
         values[key] = base64.b64encode(secrets.token_bytes(size)).decode("ascii")
+    for key in GENERATED_SIGNING_KEYS:
+        values[key] = generate_key_b64()
     return values
 
 
