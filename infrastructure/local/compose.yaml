@@ -148,8 +148,16 @@ services:
           password: "${VALKEY_PASSWORD}"
         keys:
           "${LIVEKIT_API_KEY:?set in .env}": "${LIVEKIT_API_SECRET:?set in .env}"
+        # Participants joining and leaving drive the interview's interruptions and the agent's
+        # re-dispatch (SP-09); the API checks each delivery's signature.
+        webhook:
+          api_key: "${LIVEKIT_API_KEY:?set in .env}"
+          urls:
+            - http://host.docker.internal:8000/api/v1/livekit/webhook
         logging:
           level: info
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "127.0.0.1:7880:7880"
       - "7881:7881"

@@ -344,6 +344,59 @@ def synth_resumes_command(
     console.print(f"Wrote {len(truths)} resumes and bundle.zip to {target}.")
 
 
+@app.command("trace")
+def trace_command(
+    check_only: Annotated[
+        bool, typer.Option("--check", help="Exit 1 when the checklist has problems.")
+    ] = False,
+) -> None:
+    """Check the PRD traceability checklist (master plan Appendix A) against the code."""
+    from .trace import appendix_rows, check
+
+    root = repo_root()
+    problems = check(root)
+    rows = appendix_rows((root / "MASTER_IMPLEMENTATION_PLAN.md").read_text(encoding="utf-8"))
+    for problem in problems:
+        console.print(f"[red]✗[/red] {problem}")
+    console.print(f"{len(rows)} rows, {len(problems)} problem(s).")
+    if problems and check_only:
+        raise typer.Exit(code=1)
+
+
+@app.command("interview-sim")
+def interview_sim_command(
+    persona_name: Annotated[
+        str,
+        typer.Option("--persona", help="strong, partial, weak, silent, adversarial or cheating."),
+    ] = "strong",
+    api: Annotated[str, typer.Option(help="The running API (`hv api`).")] = "http://127.0.0.1:8000",
+) -> None:
+    """Run one simulated candidate through a text-mode interview on the running API."""
+    from .interview_sim import NotSeeded, run_simulation
+
+    values = _require_env(repo_root())
+    if (os.environ.get("HV_ENVIRONMENT") or values.get("HV_ENVIRONMENT")) == "production":
+        console.print("Refusing to simulate interviews with HV_ENVIRONMENT=production.")
+        raise typer.Exit(code=1)
+    try:
+        run = asyncio.run(run_simulation(persona_name, api))
+    except NotSeeded:
+        console.print("Run `uv run hv seed-identity` first: the simulator uses its recruiter.")
+        raise typer.Exit(code=1) from None
+    except ValueError as error:
+        console.print(str(error))
+        raise typer.Exit(code=1) from None
+    table = Table("#", "Question", "Answer")
+    for index, exchange in enumerate(run.report.exchanges, start=1):
+        table.add_row(str(index), exchange.question[:70], exchange.answer[:50] or "(silence)")
+    console.print(table)
+    console.print(f"{run.report.persona}: {run.report.status}. Transcript: {run.interview_url}")
+    # Unwrapped, for scripts (the end-to-end suite reads it).
+    typer.echo(f"interview_id={run.interview_id}")
+    if not run.report.finished:
+        raise typer.Exit(code=1)
+
+
 @app.command("eval-resumes")
 def eval_resumes_command(
     directory: Annotated[

@@ -21,6 +21,7 @@ vi.mock("./api", async (importOriginal) => ({
 const CHOICES: api.JobChoices = {
   departments: [{ id: "d-eng", name: "Engineering" }],
   teams: [{ id: "t-platform", name: "Platform" }],
+  interview_templates: [{ id: "tpl-1", name: "Backend screen" }],
   people: [
     { id: "u-asha", name: "Asha Rao" },
     { id: "u-ravi", name: "Ravi Kumar" },

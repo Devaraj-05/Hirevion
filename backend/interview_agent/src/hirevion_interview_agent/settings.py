@@ -34,6 +34,8 @@ class AgentSettings(BaseSettings):
     # Start the LLM on interim transcripts before the turn is confirmed (lower latency, more
     # LLM calls when a turn turns out not to be over).
     hv_preemptive_generation: bool = False
+    # The name the API dispatches interviews to (SP-09; explicit dispatch only).
+    hv_agent_name: str = "hirevion-interviewer"
     # Sessions one worker takes before LiveKit stops sending it more (see load.py).
     hv_agent_max_sessions: PositiveInt = 10
     hv_metrics_file: str | None = None

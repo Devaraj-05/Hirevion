@@ -62,7 +62,9 @@ def test_sync_env_handles_env_without_trailing_newline() -> None:
 def test_generated_secrets_are_random_and_long_enough() -> None:
     first = generate_local_secrets()
     second = generate_local_secrets()
-    assert set(first) == set(GENERATED_KEYS) | set(GENERATED_BASE64_KEYS)
+    assert set(first) == set(GENERATED_KEYS) | set(GENERATED_BASE64_KEYS) | {
+        "HV_CANDIDATE_TOKEN_KEY"
+    }
     for key, length in GENERATED_KEYS.items():
         assert len(first[key]) == length
         assert first[key] != second[key]
@@ -103,3 +105,13 @@ def test_generates_passwords_for_the_database_roles() -> None:
 def test_a_seed_password_is_generated_long_enough_for_the_policy() -> None:
     # Sign-in passwords need 15 characters until MFA arrives (SP-02 spec).
     assert len(generate_local_secrets()["HV_SEED_PASSWORD"]) >= 15
+
+
+def test_the_candidate_token_key_is_a_p256_signing_key() -> None:
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+
+    der = base64.b64decode(generate_local_secrets()["HV_CANDIDATE_TOKEN_KEY"], validate=True)
+    key = serialization.load_der_private_key(der, password=None)
+    assert isinstance(key, ec.EllipticCurvePrivateKey)
+    assert isinstance(key.curve, ec.SECP256R1)

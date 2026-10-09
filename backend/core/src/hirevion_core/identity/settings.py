@@ -18,6 +18,12 @@ class IdentitySettings(BaseSettings):
     hibp_enabled: bool = True
     # Where the links in emails point (the recruiter app).
     web_origin: str = "https://app.hirevion.localhost"
+    # The candidate portal (SP-07b): invitation links point here.
+    candidate_origin: str = "https://candidate.hirevion.localhost"
+    # How long a candidate's set-password link works (an invitation can be for next week).
+    candidate_link_hours: int = 168
+    # Shown to candidates when their organisation hasn't set a support email (PRD §25).
+    support_email: str = "support@hirevion.localhost"
     reset_token_minutes: int = 30
     verify_token_hours: int = 24
     set_password_token_hours: int = 72

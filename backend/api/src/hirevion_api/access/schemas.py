@@ -48,11 +48,15 @@ class OrganizationProfileResponse(BaseModel):
     country: str = Field(description="ISO 3166-1 alpha-2 code.")
     timezone: str = Field(description="IANA time zone, e.g. Asia/Kolkata.")
     default_locale: Literal["en-IN", "en-US"]
+    support_email: str | None = Field(
+        None, description="Where candidates write for help (invitations, the portal)."
+    )
 
 
 class OrganizationProfileUpdate(Patch):
     name: Name | None = None
     website: Annotated[str, Field(max_length=300)] | None = None
+    support_email: Annotated[str, Field(max_length=254)] | None = None
     country: Annotated[str, Field(pattern=r"^[A-Z]{2}$")] | None = None
     timezone: Annotated[str, Field(max_length=64)] | None = None
     default_locale: Literal["en-IN", "en-US"] | None = None
@@ -61,6 +65,14 @@ class OrganizationProfileUpdate(Patch):
     @classmethod
     def _present(cls, value: object) -> object:
         return not_null(value)
+
+
+class CandidateAccessSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    new_device_otp: bool = Field(
+        True, description="Email candidates a one-time code when they sign in on a new device."
+    )
 
 
 # Departments and teams

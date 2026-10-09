@@ -311,3 +311,18 @@ export async function inviteOrganizationAdmin(
     body,
   });
 }
+
+/** How candidates sign in to the desktop app (SP-07c): the new-device code. */
+export async function getCandidateAccess() {
+  return required((await apiClient().GET("/api/v1/organization/candidate-access")).data);
+}
+
+export async function saveCandidateAccess(newDeviceOtp: boolean) {
+  return required(
+    (
+      await apiClient().PUT("/api/v1/organization/candidate-access", {
+        body: { new_device_otp: newDeviceOtp },
+      })
+    ).data,
+  );
+}

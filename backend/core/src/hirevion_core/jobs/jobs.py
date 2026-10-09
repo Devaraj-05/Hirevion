@@ -22,7 +22,16 @@ from hirevion_core.access.errors import Conflict, Invalid, NotFound
 from hirevion_core.access.scope import ResourceScope, scope_clause
 from hirevion_core.documents.intake import DOCUMENTS_TOPIC
 from hirevion_core.jobs.taxonomy import resolve_skills
-from hirevion_core.models import Department, Document, Job, JobSkill, JobVersion, Team, User
+from hirevion_core.models import (
+    Department,
+    Document,
+    InterviewTemplate,
+    Job,
+    JobSkill,
+    JobVersion,
+    Team,
+    User,
+)
 from hirevion_core.models.job import EMPLOYMENT_TYPES, SKILL_IMPORTANCE, WORK_MODELS
 from hirevion_core.outbox import publish_event
 
@@ -71,6 +80,8 @@ class JobChanges:
     salary_currency: str | Unset | None = UNSET
     recruiter_id: UUID | Unset | None = UNSET
     hiring_manager_id: UUID | Unset | None = UNSET
+    interview_template_id: UUID | Unset | None = UNSET
+    """PRD §11's "Interview Template": what new interviews for the job use by default."""
     skills: Sequence[SkillInput] | Unset = UNSET
 
 
@@ -92,6 +103,7 @@ class JobDetail:
     recruiter_name: str | None
     hiring_manager_name: str | None
     latest_document: Document | None
+    interview_template_name: str | None = None
 
 
 # Validation
@@ -190,6 +202,18 @@ async def _apply(session: AsyncSession, job: Job, changes: JobChanges) -> list[s
         given = getattr(changes, name)
         if not isinstance(given, Unset):
             values[name] = await _member(session, given, name)
+    if not isinstance(changes.interview_template_id, Unset):
+        template_id = changes.interview_template_id
+        # Only a new choice must be active: a job keeps a default that was archived since.
+        if template_id is not None and template_id != job.interview_template_id:
+            template = await session.get(InterviewTemplate, template_id)
+            if template is None or template.status != "active":
+                raise Invalid(
+                    "invalid-template",
+                    "Choose an active interview template",
+                    field="interview_template_id",
+                )
+        values["interview_template_id"] = template_id
 
     def effective(name: str) -> Any:
         return values.get(name, getattr(job, name))
@@ -463,7 +487,9 @@ async def get_job(session: AsyncSession, job_id: UUID, scope: ResourceScope) -> 
     if job is None:
         raise NotFound("job-not-found", "No such job")
 
-    async def name_of(model: type[Department | Team | User], row_id: UUID | None) -> str | None:
+    async def name_of(
+        model: type[Department | Team | User | InterviewTemplate], row_id: UUID | None
+    ) -> str | None:
         if row_id is None:
             return None
         name = await session.scalar(select(model.name).where(model.id == row_id))
@@ -483,4 +509,5 @@ async def get_job(session: AsyncSession, job_id: UUID, scope: ResourceScope) -> 
         recruiter_name=await name_of(User, job.recruiter_id),
         hiring_manager_name=await name_of(User, job.hiring_manager_id),
         latest_document=latest,
+        interview_template_name=await name_of(InterviewTemplate, job.interview_template_id),
     )

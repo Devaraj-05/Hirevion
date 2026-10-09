@@ -15,7 +15,7 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from redis.asyncio import Redis
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
-from hirevion_api import clock, health
+from hirevion_api import clock, dashboard, health
 from hirevion_api.access.errors import install_access_handlers
 from hirevion_api.access.organization import router as organization_router
 from hirevion_api.access.platform import router as platform_router
@@ -24,8 +24,15 @@ from hirevion_api.access.structure import router as structure_router
 from hirevion_api.access.users import router as users_router
 from hirevion_api.auth.csrf import CsrfMiddleware
 from hirevion_api.auth.router import router as auth_router
+from hirevion_api.candidate_auth.routes import router as candidate_auth_router
 from hirevion_api.candidates.routes import router as candidates_router
+from hirevion_api.desktop_admin import router as desktop_admin_router
 from hirevion_api.idempotency import install_idempotency_handler
+from hirevion_api.interview_session.live import router as interview_live_router
+from hirevion_api.interview_session.recruiter import router as interview_recruiter_router
+from hirevion_api.interview_session.routes import router as interview_session_router
+from hirevion_api.interview_session.webhook import router as livekit_webhook_router
+from hirevion_api.interviews.assigned import router as assigned_interviews_router
 from hirevion_api.interviews.routes import router as interviews_router
 from hirevion_api.jobs.routes import router as jobs_router
 from hirevion_api.middleware import (
@@ -41,6 +48,11 @@ from hirevion_api.screening.routes import router as screening_router
 from hirevion_api.settings import ApiSettings, load_api_settings
 from hirevion_core.ai import AiServices, build_ai
 from hirevion_core.ai.settings import load_ai_settings
+from hirevion_core.candidate_access.tokens import (
+    CandidateAuthSettings,
+    TokenSigner,
+    load_candidate_auth_settings,
+)
 from hirevion_core.db.session import Database, create_database
 from hirevion_core.documents.intake import BlobStore
 from hirevion_core.identity.breach import (
@@ -51,6 +63,7 @@ from hirevion_core.identity.breach import (
 )
 from hirevion_core.identity.passwords import PasswordPolicy
 from hirevion_core.identity.settings import IdentitySettings, load_identity_settings
+from hirevion_core.interview_session.media import MediaControl, build_media
 from hirevion_core.mail.runner import run_workers
 from hirevion_core.ratelimit import RateRule
 from hirevion_core.settings import CoreSettings, load_core_settings
@@ -74,12 +87,15 @@ def create_app(
     identity: IdentitySettings | None = None,
     storage: BlobStore | None = None,
     ai: AiServices | None = None,
+    candidate_auth: CandidateAuthSettings | None = None,
+    media: MediaControl | None = None,
 ) -> FastAPI:
     """Build the API. Injected `db` and `redis` are used as they are and never closed here;
     otherwise the lifespan opens them from `core` (loaded from `.env` when not given), and also
     runs the background workers (`HV_API_RUN_WORKERS`). `telemetry` traces requests and
     queries; the lifespan shuts it down on exit. `ai` is built from `.env` when not given; the
-    routes that need it answer 503 when it can't be (missing keys)."""
+    routes that need it answer 503 when it can't be (missing keys). `media` (LiveKit) likewise:
+    the interview routes answer 503 without it."""
     settings = api or load_api_settings()
     identity_settings = identity or load_identity_settings()
     local_passwords = LocalListChecker.from_package()
@@ -114,6 +130,11 @@ def create_app(
                     log.exception("AI features are off: the AI services can't start")
                 else:
                     stack.push_async_callback(app.state.ai.aclose)
+            if app.state.media is None:
+                try:
+                    app.state.media = build_media()
+                except ValueError:
+                    log.exception("Interviews can't start: the media settings are invalid")
             if identity_settings.hibp_enabled:
                 session = aiohttp.ClientSession()
                 stack.push_async_callback(session.close)
@@ -138,6 +159,10 @@ def create_app(
     app.state.storage = storage
     app.state.ai = ai
     app.state.identity = identity_settings
+    app.state.media = media
+    app.state.allowed_origins = settings.origins
+    app.state.candidate_auth = candidate_auth or load_candidate_auth_settings()
+    app.state.candidate_signer = TokenSigner.from_settings(app.state.candidate_auth)
     # The bundled list always applies; the lifespan adds Have I Been Pwned when enabled.
     app.state.password_policy = PasswordPolicy(CompositeChecker(local_passwords))
     app.openapi = lambda: build_openapi(app)  # type: ignore[method-assign]
@@ -157,6 +182,14 @@ def create_app(
     app.include_router(candidates_router)
     app.include_router(screening_router)
     app.include_router(interviews_router)
+    app.include_router(assigned_interviews_router)
+    app.include_router(dashboard.router)
+    app.include_router(candidate_auth_router)
+    app.include_router(desktop_admin_router)
+    app.include_router(interview_session_router)
+    app.include_router(interview_recruiter_router)
+    app.include_router(livekit_webhook_router)
+    app.include_router(interview_live_router)
     if telemetry is not None and telemetry.enabled:
         FastAPIInstrumentor.instrument_app(
             app,

@@ -1,4 +1,5 @@
-"""The background workers: the outbox relay, and the mail, documents and screening consumers.
+"""The background workers: the outbox relay, the mail, documents, screening and transcript
+consumers, and the interview scheduler.
 
 They run inside the API process (`HV_API_RUN_WORKERS`, on by default) or alone with
 `uv run hv worker`. SP-18's worker takes them over later.
@@ -19,6 +20,10 @@ from hirevion_core.documents.consumer import DocumentConsumer, StreamConsumer
 from hirevion_core.documents.pipeline import DocumentServices, give_up, handle_event
 from hirevion_core.documents.scan import ClamdScanner
 from hirevion_core.documents.settings import load_document_settings
+from hirevion_core.identity.settings import load_identity_settings
+from hirevion_core.interview_session.transcripts import ABANDONED_TOPIC, handle_completed
+from hirevion_core.interview_session.transcripts import TOPIC as COMPLETED_TOPIC
+from hirevion_core.interviews.scheduler import InterviewScheduler
 from hirevion_core.mail.consumer import MailConsumer
 from hirevion_core.mail.sender import SmtpSender
 from hirevion_core.mail.settings import MailSettings, load_mail_settings
@@ -57,6 +62,17 @@ async def run_workers(
         workers = [
             OutboxRelay(relay_db, redis).run_forever(stop),
             MailConsumer(redis, SmtpSender(mail or load_mail_settings())).run_forever(stop),
+            InterviewScheduler(app_db, load_identity_settings()).run_forever(stop),
+            # Transcript artifacts for each completed or abandoned interview (SP-09).
+            *(
+                StreamConsumer(
+                    redis,
+                    partial(handle_completed, app_db, storage),
+                    topic=topic,
+                    group="transcripts",
+                ).run_forever(stop)
+                for topic in (COMPLETED_TOPIC, ABANDONED_TOPIC)
+            ),
         ]
         try:
             documents = load_document_settings()

@@ -56,7 +56,8 @@
     "platformDesktopReleases": "Desktop releases",
     "platformAudit": "Platform audit",
     "platformHealth": "Platform health",
-    "account": "Account"
+    "account": "Account",
+    "interviewsDetail": "Interview"
   },
   "roles": {
     "super_admin": "Super admin",
@@ -313,7 +314,9 @@
       "invalidSalary": "Enter an amount.",
       "rangeOrder": "The maximum can't be below the minimum.",
       "currencyFormat": "Use a 3-letter code, such as INR.",
-      "readOnly": "You can view this job, but changing it needs the Create and edit jobs permission."
+      "readOnly": "You can view this job, but changing it needs the Create and edit jobs permission.",
+      "interviewTemplate": "Interview template",
+      "interviewTemplateHint": "New interviews for this job use it unless someone chooses another."
     },
     "skills": {
       "label": "Skills",
@@ -606,6 +609,7 @@
     "candidates_view": "View candidates",
     "candidates_manage": "Upload resumes and manage candidates",
     "interviews_view": "View interviews",
+    "interviews_manage": "Create, reschedule and cancel interviews",
     "interviews_templates_view": "View interview templates",
     "interviews_templates_manage": "Create and edit interview templates",
     "questions_view": "View the question library",
@@ -789,7 +793,32 @@
       "nameRequired": "Enter the organization's name.",
       "platformTitle": "The platform has no profile",
       "platformBody": "Super admins belong to the platform itself. Each organization's profile is its own admins' to edit.",
-      "platformLink": "Go to organizations"
+      "platformLink": "Go to organizations",
+      "supportEmail": "Support email",
+      "supportEmailHint": "Candidates write here for help. It's in every invitation and on the candidate portal.",
+      "candidateAccess": {
+        "title": "Candidate sign-in",
+        "newDeviceOtp": "Ask for an emailed code on a new computer",
+        "newDeviceOtpHint": "The first time a candidate signs in to the AI Interview app on a computer, they confirm it with a code sent to their email.",
+        "saved": "Candidate sign-in setting saved",
+        "loadFailed": "The candidate sign-in setting didn't load.",
+        "retry": "Try again"
+      },
+      "interviewBriefing": {
+        "title": "Interview briefing",
+        "instructions": "Instructions for candidates",
+        "instructionsHint": "One per line. Candidates read them before the system check; leave this empty to use Hirevion's standard instructions.",
+        "faq": "Questions the AI interviewer can answer",
+        "faqHint": "At the end of an interview candidates may ask questions. The AI answers only from this list, and passes anything else on to your team.",
+        "question": "Question {number}",
+        "answer": "Answer",
+        "remove": "Remove question {number}",
+        "add": "Add a question",
+        "save": "Save briefing",
+        "saved": "Interview briefing saved",
+        "loadFailed": "The interview briefing didn't load. Try again in a moment.",
+        "retry": "Try again"
+      }
     },
     "departments": {
       "caption": "Departments",
@@ -875,6 +904,46 @@
       "emptyTitle": "No organizations match",
       "emptyHint": "Change the filters, or create one.",
       "actionsColumn": "Actions"
+    },
+    "releases": {
+      "loadFailed": "The releases didn't load. Try again in a moment.",
+      "channelTitle": "The {channel} channel",
+      "minimum": "Oldest version that may sign in",
+      "minimumHint": "Older apps are asked to update before they sign in.",
+      "download": "Where to download the app",
+      "saveChannel": "Save the channel",
+      "saved": "Saved",
+      "releases": "Releases",
+      "add": "Add a release",
+      "empty": "No releases registered yet.",
+      "caption": "Desktop app releases",
+      "columns": {
+        "version": "Version",
+        "channel": "Channel",
+        "arch": "Architecture",
+        "status": "Status",
+        "rollout": "Rollout (%)",
+        "published": "Published",
+        "actions": "Actions"
+      },
+      "statuses": {
+        "draft": "Draft",
+        "published": "Published",
+        "withdrawn": "Withdrawn"
+      },
+      "percent": "{value}%",
+      "never": "Not yet",
+      "publish": "Publish {version}",
+      "withdraw": "Withdraw {version}",
+      "fullRollout": "Roll out to everyone",
+      "addTitle": "Add a release",
+      "addHint": "It's saved as a draft. Publish it to offer it to the apps.",
+      "url": "Download address of the update bundle (https)",
+      "signature": "The bundle's minisign signature",
+      "notes": "Release notes",
+      "addSubmit": "Add the release",
+      "added": "Release added as a draft",
+      "cancel": "Cancel"
     }
   },
   "candidates": {
@@ -959,7 +1028,9 @@
       "review": "Recruiter review",
       "shortlisted": "Shortlisted",
       "rejected": "Rejected",
-      "on_hold": "On hold"
+      "on_hold": "On hold",
+      "interview": "Interview",
+      "interviewed": "Interviewed"
     }
   },
   "screening": {
@@ -1017,7 +1088,8 @@
       "exportCsv": "Download CSV",
       "exportXlsx": "Download Excel",
       "knockout": "Flagged",
-      "semantic": "Similarity {value}"
+      "semantic": "Similarity {value}",
+      "createInterview": "Create interview"
     },
     "actions": {
       "shortlist": "Shortlist",
@@ -1336,6 +1408,189 @@
       "intro": "New templates start from these settings. Existing templates keep their own.",
       "save": "Save defaults",
       "saved": "Interview defaults saved."
+    },
+    "assigned": {
+      "candidate": "Candidate",
+      "job": "Job",
+      "window": "Window",
+      "duration": "Duration",
+      "minutes": "{minutes} min",
+      "status": "Status",
+      "open": "Open the interview with {name}",
+      "search": "Search by candidate, job or IV number",
+      "caption": {
+        "upcoming": "Upcoming interviews",
+        "live": "Interviews in progress",
+        "completed": "Completed and closed interviews"
+      },
+      "empty": {
+        "upcoming": "No upcoming interviews",
+        "live": "No interviews in progress",
+        "completed": "No completed interviews yet"
+      },
+      "emptyHint": "Create interviews from a job's ranking: select candidates, then Create interview.",
+      "noMatchTitle": "No interviews match",
+      "noMatchHint": "Try other words, or clear the search.",
+      "statuses": {
+        "scheduled": "Scheduled",
+        "invited": "Invited",
+        "in_progress": "In progress",
+        "interrupted": "Interrupted",
+        "completed": "Completed",
+        "evaluating": "Evaluating",
+        "evaluated": "Evaluated",
+        "expired": "Expired",
+        "cancelled": "Cancelled",
+        "abandoned": "Abandoned"
+      },
+      "back": "All interviews",
+      "pageTitle": "{reference}: {name}",
+      "notFound": "No such interview",
+      "notFoundHint": "It doesn't exist, or it isn't one you can see.",
+      "loadFailed": "The interview didn't load",
+      "loadFailedHint": "Try again in a moment.",
+      "sendInvitation": "Send invitation",
+      "resendInvitation": "Resend invitation",
+      "invitationSent": "Invitation sent",
+      "reschedule": "Reschedule",
+      "cancel": "Cancel interview",
+      "overview": "Overview",
+      "template": "Template",
+      "templateVersion": "{name}, version {version}",
+      "rescheduled": "Rescheduled",
+      "rescheduledCount": "{count, plural, one {once} other {# times}}",
+      "cancelReason": "Why it was cancelled",
+      "policy": "Policy",
+      "proctoring": "Proctoring",
+      "thirdEye": "Third eye",
+      "recording": "Recording",
+      "policyPinned": "Fixed when the interview was created: later changes to the template don't affect it.",
+      "reviewers": "Reviewers",
+      "editReviewers": "Change",
+      "noReviewers": "No reviewers yet.",
+      "emails": "Emails to the candidate",
+      "noEmails": "Nothing sent yet: the interview is scheduled but not invited.",
+      "emailKinds": {
+        "invitation": "Invitation",
+        "reminder": "Reminder",
+        "reschedule": "New window",
+        "cancellation": "Cancellation"
+      },
+      "history": "History",
+      "rescheduleTitle": "Reschedule the interview",
+      "startsAt": "Window opens",
+      "expiresAt": "Window closes",
+      "reasonOptional": "Reason (optional, the candidate sees it)",
+      "reason": "Reason (the candidate sees it)",
+      "close": "Close",
+      "rescheduledToast": "Rescheduled; the candidate has the new window",
+      "cancelTitle": "Cancel the interview",
+      "cancelHint": "The candidate is told, and goes back to the shortlist.",
+      "cancelledToast": "Interview cancelled",
+      "reviewersTitle": "Who reviews this interview",
+      "saveReviewers": "Save reviewers",
+      "reviewersSaved": "Reviewers saved",
+      "emailAfterName": " · {email}",
+      "windowValue": "{start} – {end} ({zone})",
+      "emailLine": "{kind} · {to} · {when}",
+      "eventReason": "— {reason}"
+    },
+    "assign": {
+      "title": "{count, plural, one {Create an interview} other {Create # interviews}}",
+      "description": "Each candidate gets the same template and window, and an email invitation.",
+      "template": "Template",
+      "jobTemplate": "The job's own interview template",
+      "templateOption": "{name} ({minutes} min)",
+      "startsAt": "Window opens",
+      "expiresAt": "Window closes",
+      "invite": "Send the invitations now",
+      "submitInvite": "Create and invite",
+      "submitSchedule": "Create",
+      "cancel": "Cancel",
+      "close": "Close",
+      "created": "{count, plural, one {Interview created} other {# interviews created}}",
+      "skippedTitle": "{count, plural, one {One candidate was left out:} other {# candidates were left out:}}",
+      "skippedLine": "{name}: {reason}",
+      "someone": "A candidate",
+      "skipped": {
+        "no-email": "has no email address to invite",
+        "already-assigned": "already has an interview for this job",
+        "stage": "isn't at a stage that can be interviewed",
+        "job-not-open": "applied to a job that isn't open",
+        "no-template": "applied to a job with no interview template",
+        "template-unavailable": "the template is archived",
+        "application-not-found": "isn't a candidate you can reach",
+        "other": "couldn't be given an interview"
+      }
+    },
+    "session": {
+      "coverage": "Skill coverage",
+      "notStarted": "The interview hasn't started yet.",
+      "required": "Required",
+      "covered": "Covered",
+      "notCovered": "Not covered",
+      "asked": "{asked} of {planned} questions asked",
+      "artifacts": "Transcript files",
+      "transcriptStatus": {
+        "none": "The files are written when the interview ends.",
+        "pending": "The files are being written.",
+        "ready": "The files are ready.",
+        "failed": "The files couldn't be written; the team has been alerted."
+      },
+      "artifactKinds": {
+        "json": "Download JSON",
+        "vtt": "Download captions (VTT)",
+        "txt": "Download text"
+      },
+      "transcript": "Transcript",
+      "live": "Live",
+      "connecting": "Connecting…",
+      "noSegments": "Nothing has been said yet.",
+      "speakers": {
+        "ai": "AI",
+        "candidate": "Candidate"
+      },
+      "sources": {
+        "pinned": "Pinned question",
+        "library": "From the question library",
+        "generated": "Generated for a gap in the library",
+        "resume": "From the resume",
+        "follow_up": "Follow-up",
+        "faq": "Final questions",
+        "system": "Interview script"
+      },
+      "sourceResume": "From the resume: “{quote}”",
+      "sourceResumePage": "From the resume, page {page}: “{quote}”",
+      "sourceSkill": " · {skill}",
+      "sourceDifficulty": " · {difficulty}",
+      "loadFailed": "The transcript didn't load. Try again in a moment.",
+      "retry": "Try again",
+      "accommodations": {
+        "title": "Accommodations",
+        "none": "The candidate hasn't asked for any.",
+        "loadFailed": "The requests didn't load. Try again in a moment.",
+        "statuses": {
+          "requested": "Waiting for a decision",
+          "approved": "Approved",
+          "declined": "Declined"
+        },
+        "kinds": {
+          "extended_time": "Extended time",
+          "text_answers": "Typed answers",
+          "breaks": "Breaks",
+          "assistive_technology": "Assistive technology",
+          "relaxed_gaze": "Relaxed gaze checks",
+          "third_eye_waiver": "No phone camera"
+        },
+        "candidateNote": "The candidate wrote: {note}",
+        "approvedKinds": "Approved: {kinds}",
+        "chooseApproved": "Approve",
+        "note": "Note (optional)",
+        "approve": "Approve selected",
+        "decline": "Decline",
+        "approved": "Accommodations approved",
+        "declined": "Request declined"
+      }
     }
   }
 }

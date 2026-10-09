@@ -63,6 +63,7 @@ class JobFields(BaseModel):
     salary_currency: str | None = Field(None, min_length=3, max_length=3)
     recruiter_id: UUID | None = None
     hiring_manager_id: UUID | None = None
+    interview_template_id: UUID | None = None
     skills: list[SkillBody] | None = Field(None, max_length=100)
 
     @model_validator(mode="after")
@@ -164,6 +165,8 @@ class JobResponse(JobSummary):
     salary_currency: str | None
     hiring_manager_id: UUID | None
     hiring_manager_name: str | None
+    interview_template_id: UUID | None
+    interview_template_name: str | None
     skills: list[SkillResponse]
     jd_document_id: UUID | None
     latest_document: DocumentResponse | None
@@ -200,3 +203,4 @@ class JobChoices(BaseModel):
     departments: list[Choice]
     teams: list[Choice]
     people: list[Choice]
+    interview_templates: list[Choice]

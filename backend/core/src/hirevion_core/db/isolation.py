@@ -8,7 +8,8 @@ It reports every way one tenant's rows could reach another through the applicati
 - a partition an application role can query directly (a partition doesn't apply its parent's
   policies when it is queried by name);
 - an application role that is a superuser or bypasses RLS. This includes `hirevion_auth`, which
-  owns the sign-in lookup functions and so must stay unable to see past its narrow policies.
+  owns the sign-in lookup functions, and `hirevion_scheduler`, which owns the scheduler's
+  listings: both must stay unable to see past their narrow policies.
 """
 
 from __future__ import annotations
@@ -16,9 +17,9 @@ from __future__ import annotations
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from hirevion_core.settings import APP_ROLE, AUTH_ROLE, RELAY_ROLE
+from hirevion_core.settings import APP_ROLE, AUTH_ROLE, RELAY_ROLE, SCHEDULER_ROLE
 
-_APP_ROLES = [APP_ROLE, RELAY_ROLE, AUTH_ROLE]
+_APP_ROLES = [APP_ROLE, RELAY_ROLE, AUTH_ROLE, SCHEDULER_ROLE]
 
 _TENANT_TABLES = text(
     """

@@ -1181,6 +1181,7 @@ Each SP gets its own detailed TDD plan before work starts. "CP" is the checkpoin
   - Generated questions reach the library only after approval.
 - **Status, 2026-10-09:** built (PR #4, ADR-0017). It missed the job's "Interview Template" field (PRD §11), which moves to SP-07a.
 
+
 **SP-07 Assignment, invitations & candidate access** (CP2; depends on SP-06 and SP-02). Built in three parts:
 - SP-07a: interviews, assignment, invitations, reminders and rescheduling, plus the job's interview template field.
 - SP-07b: the candidate portal and candidate requests.
@@ -1195,6 +1196,7 @@ Each SP gets its own detailed TDD plan before work starts. "CP" is the checkpoin
   - The candidate portal (§6.3).
   - The candidate-auth API: OTP, device registration, DPoP, access/refresh/interview-session tokens, session expiry.
   - The desktop release registry and update manifest.
+- **Status, 2026-10-09:** SP-07a built (ADR-0020): interviews, assignment, invitations, reminders and the job's template field. SP-07c built (ADR-0021): desktop sign-in, DPoP-bound tokens, new-device codes and the release registry.
 - **Exit criteria:**
   - An invitation reaches Mailpit and the candidate can set a password.
   - Replay and stolen-token tests fail as they should.
@@ -1683,43 +1685,43 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 6 | Six roles and their responsibilities, including Hiring Manager input and reviewers on assigned interviews | SP-02 (roles and scopes), SP-07 (reviewers), SP-17 (HM input), SP-22 (super admin) |
 | 7 | IA: Dashboard; Jobs ×7; Candidates ×6; Interviews ×4; Question Library ×5; Reports ×4; Administration ×7 | SP-03 plus the owning SPs (§6.2) |
 | 8 | Web: email/password, Entra ID, OIDC, SAML, MFA, sessions, password reset, RBAC, rate limiting | SP-02a (email/password, sessions, password reset, rate limiting), SP-02b (RBAC), SP-19 (Entra ID, OIDC, SAML, MFA) |
-| 8 | Desktop: email/password, short-lived token, interview session token, device/session binding, expiry; no master credentials | SP-07c, SP-08, §13 |
+| 8 | Desktop: email/password, short-lived token, interview session token, device/session binding, expiry; no master credentials | SP-07c (ADR-0021: DPoP-bound access, refresh and session tokens, `test_candidate_auth_api.py`), SP-08, §13 |
 | 9 | Organisation profile, departments, teams, users, roles, permissions | SP-02 |
 | 9 | Branding, default screening/interview config, proctoring policies, AI config, retention, integrations | SP-05 (screening defaults), SP-06 (interview defaults and proctoring presets), SP-22, SP-20 |
 | 10 | 10 dashboard KPIs and 7 filters | SP-03, SP-21 (KPIs wired from real data as modules land: catch-up H0.2) |
-| 11 | 17 job fields; 5 statuses | SP-04 (Screening Configuration field → SP-05; Interview Template field → SP-07a, missed in SP-06) |
+| 11 | 17 job fields; 5 statuses | SP-04 (Screening Configuration field → SP-05; Interview Template field → SP-07a: `jobs.interview_template_id`, the job form's choice) |
 | 12 | JD formats (PDF, DOCX, TXT, text); 10-step pipeline; 8 extracted items; recruiter review/edit | SP-04 (§6.6) |
 | 13 | Single, bulk, PDF, DOCX, TXT, image/OCR; 10-step pipeline including malware scan | SP-04b (§6.6; ZIP bulk upload, per-entry scanning, ADR-0015) |
 | 14 | 16 parsed fields; evidence references | SP-04b (page, section and verified quote per item; F1 in `docs/evals/`) |
 | 15 | 4 inputs; 9 evaluation factors; 6 combination methods | SP-05 (§6.7, ADR-0016) |
 | 16 | 9 ranking output fields; explainable, with evidence per factor | SP-05 (evidence drawer; NDCG in `docs/evals/`) |
 | 17 | Configurable weights; Required/Preferred/Optional skills | SP-05, SP-22 (organisation defaults) |
-| 18 | 6 workflow stages; 8 actions; override audit | SP-05 (7 actions; "Create interview" → SP-07) |
+| 18 | 6 workflow stages; 8 actions; override audit | SP-05 (7 actions), SP-07a ("Create interview" on the ranking, single and bulk) |
 | 19 | 13 candidate-profile sections | SP-04b (profile, resume, parsed profile, applications, jobs), SP-05, SP-17 |
 | 20 | 13 Candidate 360 tabs | SP-17 |
 | 21 | 13 template fields; example weights and difficulty distribution | SP-06 (ADR-0017; skill-matrix preview; built-in defaults 20/50/30) |
 | 22 | 10 question fields; 8 question types | SP-06 (versioned library, §7 categories, approval; time limits and follow-up rules honoured in SP-09) |
-| 23 | AI question generation from 6 inputs; review before reuse | SP-06 (`questions.generate` drafts, approved by a recruiter; candidate work history only, never contact details) |
-| 24 | Assignment: 3 inputs → 9 system fields | SP-07a |
-| 25 | 8 invitation contents | SP-07a (email), SP-07b (portal pages it links to) |
-| 26 | 9 startup steps (`AI-Interview.exe`) | SP-08 |
+| 23 | AI question generation from 6 inputs; review before reuse | SP-06 (`interviews.generation`: drafts approved by a recruiter; candidate work history only, never contact details) |
+| 24 | Assignment: 3 inputs → 9 system fields | SP-07a (ADR-0020: `hirevion_core.interviews.assignment`, the policy snapshot, `test_interview_assignment.py`) |
+| 25 | 8 invitation contents | SP-07a (`interviews.invitations`, en-IN/en-US templates, the Mailpit test and `e2e/auth/interviews.spec.ts`), SP-07b (portal pages it links to) |
+| 26 | 9 startup steps (`AI-Interview.exe`) | SP-08 (the version check's server side, the release registry and update manifest: SP-07c) |
 | 27 | Tauri, React, TypeScript, Rust, Monaco | SP-08, SP-16 |
-| 28 | 6 login verifications; short-lived credentials | SP-07c, SP-08 |
-| 29 | 11 system checks; policy-driven mandatory checks | SP-08 |
-| 30 | 6 instructions (configurable); 10 consent items | SP-08, SP-22 |
+| 28 | 6 login verifications; short-lived credentials | SP-07c (`candidate_access.service`, the six checks in order with their codes), SP-08 |
+| 29 | 11 system checks; policy-driven mandatory checks | SP-08 (the checks on the device), SP-09 (`interview_session.preparation.record_system_check`, mandatory checks from the policy and accommodations: `test_conductor.py`) |
+| 30 | 6 instructions (configurable); 10 consent items | SP-08, SP-09 (the briefing: `interview_session.briefing`, the organisation's instructions in Administration → Organisation, itemised consents against `NOTICE_VERSION`), SP-22 |
 | 31 | Fullscreen; 5 monitored states | SP-08, SP-11 |
-| 32 | UI layout, timer, orb, transcript, editor (language, Run, Submit), status bar, non-coding workspace | SP-08, SP-09, SP-16 |
-| 33 | 6 voice states; streaming STT/TTS | SP-09 |
-| 34 | No single giant prompt; 12 state fields; 9 components | SP-09 (CodingController in SP-16) |
-| 35 | 10 state-machine states | SP-09 (§6.8) |
-| 36 | Resume-based questions with internal source reference | SP-09 |
-| 37 | JD skill coverage tracked | SP-09 |
-| 38 | 5 answer analyses; 4 adaptive behaviours | SP-09, SP-10 |
-| 39 | Easy/Medium/Hard adaptive, keeping coverage | SP-09 |
-| 40 | 5 time signals; plan shrinks while keeping important skills | SP-09 |
-| 41 | 6 transcript-segment fields | SP-09 |
-| 42 | TTS: low latency, streaming, interruption, state tracking, failure handling | SP-09 |
-| 43 | Complete two-sided transcript | SP-09 |
+| 32 | UI layout, timer, orb, transcript, editor (language, Run, Submit), status bar, non-coding workspace | SP-08, SP-09 (`hv.state`: voice, question, time left, workspace; `POST /workspace`), SP-16 |
+| 33 | 6 voice states; streaming STT/TTS | SP-09 (ADR-0030: the agent's `hv.state` voice states incl. `error`; Deepgram streaming STT/TTS through LiveKit, `hirevion_interview_agent.agent`) |
+| 34 | No single giant prompt; 12 state fields; 9 components | SP-09 (`hirevion_core.engine`: `state.InterviewState`, the nine components, `orchestrator.py`; `tests/engine/`), SP-16 (CodingController's runs and grading) |
+| 35 | 10 state-machine states | SP-09 (§6.8; `engine.state.STAGES` recorded with times; `test_orchestrator.py`) |
+| 36 | Resume-based questions with internal source reference | SP-09 (`engine.skills.resume_hooks`, `interview_questions.source`/`source_ref`, the transcript page's source lines) |
+| 37 | JD skill coverage tracked | SP-09 (`engine.completion.CompletionEvaluator`, required JD skills added by `SkillMatrixBuilder`; coverage in `GET /interviews/{id}/transcript`; every persona covers them in `test_interview_session_api.py`) |
+| 38 | 5 answer analyses; 4 adaptive behaviours | SP-09 (`engine.analysis.AnswerAnalyzer`, `engine.followups.FollowUpGenerator`), SP-10 (the async evaluator) |
+| 39 | Easy/Medium/Hard adaptive, keeping coverage | SP-09 (`engine.difficulty.DifficultyController`, the per-skill ladder) |
+| 40 | 5 time signals; plan shrinks while keeping important skills | SP-09 (`engine.timing.TimeController`: deadline, remaining, question limits, coding time; `shrink` keeps uncovered required skills) |
+| 41 | 6 transcript-segment fields | SP-09 (`transcript_segments`, partitioned; `interview_session.transcripts.segment`) |
+| 42 | TTS: low latency, streaming, interruption, state tracking, failure handling | SP-09 (the agent's acknowledgement while analysing, interruptible speech, the pronunciation lexicon in `tts_node`, the `error` state; `hv-voice-bench` measures p95) |
+| 43 | Complete two-sided transcript | SP-09 (both speakers per turn; JSON/VTT/TXT artifacts by the `interview.completed` consumer; the interview page's transcript) |
 | 44 | 8 evaluation dimensions, with evidence | SP-10 |
 | 45 | Coding flow; Python, JavaScript, TypeScript, SQL | SP-16 |
 | 46 | Never on API servers; queue; 6 limits; destroyed after each run | SP-16 |
@@ -1756,18 +1758,18 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 77 | 9 webhook events; 5 security measures | SP-18 |
 | 78 | AIProvider (5) and 5 services | SP-01 |
 | 79 | 8 governance fields | SP-10 |
-| 80 | Immutable template versions; interviews pin a version | SP-06 (insert-only version tables for templates and questions); pinning by interviews in SP-07 |
+| 80 | Immutable template versions; interviews pin a version | SP-06 (insert-only version tables for templates and questions), SP-07a (interviews pin `(template_id, template_version)` and a policy snapshot) |
 | 81 | Tenant scoping; server-side authorisation | SP-01, SP-02 |
 | 82 | 15 security requirements; SOC 2 / ISO 27001 target | §9, SP-01/02/07/08/12/16/23 (certifications need the cloud and an audit period) |
-| 83 | 10 disclosures; 6 policies | SP-07b (portal notices), SP-08, SP-22, `docs/policies/` (drafts: H0.7) |
+| 83 | 10 disclosures; 6 policies | SP-07b (portal notices), SP-08, SP-09 (the itemised notice per policy, consents stored per purpose), SP-22, `docs/policies/` (drafts: H0.7) |
 | 84 | Organisation-configurable retention (6 classes) | SP-22 |
 | 85 | Postgres (8), Redis (5), Blob (9); path layout; short-lived SAS | SP-01, SP-12 |
 | 86 | Gateway, Recruitment/Interview/Proctor APIs, orchestrator, workers | SP-01 (Caddy locally; route groups), SP-09 |
 | 87 | api/worker/realtime/coding services; 15 logical modules | SP-00, SP-01 (§6.1) |
 | 88 | Azure production architecture | Cloud plan |
 | 89 | Every core table | §7; each owning SP |
-| 90 | 20 API groups; the screening, interview and proctoring example endpoints | §8; owning SPs |
-| 91 | 3 WebSocket channels; 10 events | SP-09, SP-14 (§8) |
+| 90 | 20 API groups; the screening, interview and proctoring example endpoints | §8; owning SPs (SP-09: `/interviews/{id}/start`, `/answer`, `/complete`, `/transcript`) |
+| 91 | 3 WebSocket channels; 10 events | SP-09 (`/ws/interviews/{id}`; `AI_SPEAKING`, `CANDIDATE_SPEAKING`, `QUESTION_STARTED`, `ANSWER_RECEIVED`, `INTERVIEW_COMPLETED` on `hv:rt:interview:{id}`), SP-12, SP-13, SP-14 (§8; `/ws/proctoring`, `/ws/recruiter` and the other five events), SP-16 |
 | 92 | Third-eye realtime path | SP-13 |
 | 93 | Repository structure | SP-00 (§12) |
 | 94 | Technology stack (local parts) | §2; Azure part in the Cloud plan |

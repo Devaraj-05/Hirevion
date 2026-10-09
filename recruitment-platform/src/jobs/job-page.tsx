@@ -36,11 +36,13 @@ export function JobPage({
   canEdit,
   canViewCandidates = false,
   canManageCandidates = false,
+  canManageInterviews = false,
 }: {
   id: string;
   canEdit: boolean;
   canViewCandidates?: boolean;
   canManageCandidates?: boolean;
+  canManageInterviews?: boolean;
 }) {
   const t = useTranslations("jobs");
   const titles = useTranslations("routes");
@@ -163,6 +165,8 @@ export function JobPage({
             </TabsContent>
             <TabsContent value="ranking">
               <RankingPanel
+                canCreateInterviews={canManageInterviews}
+                interviewTemplateId={current.interview_template_id}
                 jobId={id}
                 jobReference={current.reference}
                 canManage={canManageCandidates}

@@ -41,7 +41,7 @@ from hirevion_core.documents.files import MAX_BYTES
 from hirevion_core.jobs import jobs
 from hirevion_core.jobs.jobs import JobDetail, JobFilters
 from hirevion_core.jobs.taxonomy import search_skills
-from hirevion_core.models import Department, Document, Job, Team, User
+from hirevion_core.models import Department, Document, InterviewTemplate, Job, Team, User
 
 router = api_router(tags=["jobs"])
 
@@ -51,6 +51,8 @@ RetriesDocuments = Annotated[Principal, requires("jobs.create", "candidates.mana
 Idempotent = Annotated[Idempotency, Depends(idempotency)]
 # Enough for any organisation this release serves; SP-22 brings a people search.
 PEOPLE_MAX = 2000
+# The templates a job can default to; the create-interview dialog reads as many.
+TEMPLATES_MAX = 100
 
 
 def reference(number: int) -> str:
@@ -104,6 +106,8 @@ def job_response(detail: JobDetail) -> JobResponse:
         recruiter_name=detail.recruiter_name,
         hiring_manager_id=job.hiring_manager_id,
         hiring_manager_name=detail.hiring_manager_name,
+        interview_template_id=job.interview_template_id,
+        interview_template_name=detail.interview_template_name,
         skills=[
             SkillResponse(
                 name=skill.name,
@@ -216,7 +220,8 @@ async def create_job(
 # Declared before /jobs/{job_id}, which would otherwise take "choices" for an id.
 @router.get("/jobs/choices")
 async def job_choices(request: Request, principal: ViewsJobs) -> JobChoices:
-    """The departments, teams and people a job can be assigned to."""
+    """The departments, teams and people a job can be assigned to, and the active interview
+    templates it can default to."""
     async with own_tenant(request, principal) as session:
         departments = await session.scalars(
             select(Department).where(Department.archived_at.is_(None)).order_by(Department.name)
@@ -227,10 +232,17 @@ async def job_choices(request: Request, principal: ViewsJobs) -> JobChoices:
         people = await session.scalars(
             select(User).where(User.status == "active").order_by(User.name).limit(PEOPLE_MAX)
         )
+        interview_templates = await session.scalars(
+            select(InterviewTemplate)
+            .where(InterviewTemplate.status == "active")
+            .order_by(InterviewTemplate.name)
+            .limit(TEMPLATES_MAX)
+        )
         return JobChoices(
             departments=[Choice.model_validate(row) for row in departments],
             teams=[Choice.model_validate(row) for row in teams],
             people=[Choice.model_validate(row) for row in people],
+            interview_templates=[Choice.model_validate(row) for row in interview_templates],
         )
 
 

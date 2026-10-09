@@ -150,6 +150,38 @@ EXPECTED: dict[str, tuple[tuple[str, ...], bool]] = {
         False,
     ),
     "PUT /api/v1/interview-defaults": (("admin.organization.manage",), False),
+    "GET /api/v1/interviews": (("interviews.view",), False),
+    "POST /api/v1/interviews": (("interviews.manage",), False),
+    "POST /api/v1/interviews/bulk": (("interviews.manage",), False),
+    "GET /api/v1/interviews/{interview_id}": (("interviews.view",), False),
+    "POST /api/v1/interviews/{interview_id}/invitation": (("interviews.manage",), False),
+    "POST /api/v1/interviews/{interview_id}/reschedule": (("interviews.manage",), False),
+    "POST /api/v1/interviews/{interview_id}/cancel": (("interviews.manage",), False),
+    "PUT /api/v1/interviews/{interview_id}/reviewers": (("interviews.manage",), False),
+    "GET /api/v1/interviews/{interview_id}/transcript": (("interviews.view",), False),
+    "GET /api/v1/interviews/{interview_id}/accommodations": (("interviews.view",), False),
+    "POST /api/v1/interviews/{interview_id}/accommodations/{accommodation_id}/decision": (
+        ("interviews.manage",),
+        False,
+    ),
+    "GET /api/v1/organization/interview-briefing": (
+        ("interviews.templates.view", "admin.organization.manage"),
+        False,
+    ),
+    "PUT /api/v1/organization/interview-briefing": (("admin.organization.manage",), False),
+    "GET /api/v1/dashboard": (("dashboard.view",), False),
+    "GET /api/v1/organization/candidate-access": (("admin.organization.manage",), False),
+    "PUT /api/v1/organization/candidate-access": (("admin.organization.manage",), False),
+    "GET /api/v1/platform/desktop-releases": (("platform.desktop_releases.manage",), False),
+    "POST /api/v1/platform/desktop-releases": (("platform.desktop_releases.manage",), True),
+    "PATCH /api/v1/platform/desktop-releases/{release_id}": (
+        ("platform.desktop_releases.manage",),
+        True,
+    ),
+    "PUT /api/v1/platform/desktop-channels/{channel}": (
+        ("platform.desktop_releases.manage",),
+        True,
+    ),
 }
 
 

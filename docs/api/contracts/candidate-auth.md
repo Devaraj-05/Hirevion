@@ -24,7 +24,7 @@ The server checks §28's six items in this order. A failure answers with the cod
 | 2 | Candidate account exists, is active, and the password matches | `401 invalid-credentials` (also for unknown emails); `423 account-locked` with `Retry-After` |
 | 3 | At least one assigned interview that is invited, in progress or interrupted | `403 no-interview` |
 | 4 | That interview's job is open (not closed or archived) | `403 job-closed` |
-| 5 | Its status allows starting or resuming | `403 interview-not-available` with `status` |
+| 5 | Its status allows starting or resuming | `403 interview-not-available` with `interview_status` |
 | 6 | It hasn't expired (window end > now) | `403 interview-expired` with `expired_at` |
 
 Checks 3 to 6 consider every assigned interview: the login succeeds if any one interview passes all of them. The answer lists only the interviews that pass.
@@ -109,8 +109,9 @@ Checks 3 to 6 consider every assigned interview: the login succeeds if any one i
 - **Errors:**
   - `409 interview-not-open` with `starts_at` (the window hasn't started);
   - `410 interview-expired`;
-  - `403 interview-not-available`.
-- **The token's claims:** `sub` (the candidate account), `org`, `interview_id`, `scope: "interview"` and `cnf.jkt`. Its `exp` is the earliest of the window end, now + 4 hours, and the refresh family's end.
+  - `403 interview-not-available` with `interview_status`;
+  - `404 interview-not-found` (not this candidate's).
+- **The token's claims:** `sub` (the candidate account), `org`, `interview_id`, `scope: "interview"` and `cnf.jkt`. Its `exp` is the earliest of the window end plus the interview's duration (so an interview started late in its window can finish), now + 4 hours, and the refresh family's end.
 
 ## Desktop releases
 
@@ -142,3 +143,9 @@ Checks 3 to 6 consider every assigned interview: the login succeeds if any one i
 ## Changes
 
 - 2026-10-09: drafted by lane B.
+- 2026-10-09: reviewed by lane A; no field changes. Clarified: a missing or malformed `DPoP` proof is `401 dpop-invalid`, like a replayed one; the server doesn't ask for nonces yet (`use-dpop-nonce` is reserved). Access tokens carry `iss`, `aud` (`hirevion-desktop`), `sub`, `org`, `scope`, `cnf.jkt`, `iat`, `exp` and `jti`; the desktop never needs to read them.
+- 2026-10-09: lane A, while building it (SP-07c):
+  - `interview-not-available` carries `interview_status`, not `status`: RFC 9457 already uses `status` for the HTTP status.
+  - A missing, expired or revoked token (signed out, or its family revoked for reuse) is `401 token-invalid`, with `WWW-Authenticate: DPoP error="invalid_token"`; the desktop refreshes once, then signs in again.
+  - The session token lasts until the window's end plus the interview's duration (not just the window's end), so an interview started late in its window can finish; `404 interview-not-found` for an interview that isn't the candidate's.
+  - `refresh` reads the app version from the `User-Agent` (README "App identity") for its `426`.

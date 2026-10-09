@@ -11,7 +11,16 @@ from pydantic import BaseModel
 from hirevion_api.jobs.schemas import DocumentStatus
 
 Stage = Literal[
-    "uploaded", "parsed", "screened", "ranked", "review", "shortlisted", "rejected", "on_hold"
+    "uploaded",
+    "parsed",
+    "screened",
+    "ranked",
+    "review",
+    "shortlisted",
+    "rejected",
+    "on_hold",
+    "interview",
+    "interviewed",
 ]
 
 

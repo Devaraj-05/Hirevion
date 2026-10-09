@@ -22,6 +22,7 @@ import { useStepUp } from "@/admin/step-up";
 import { FlagBadges } from "@/candidates/flags";
 import { Pager } from "@/data/pager";
 import { useCursorPage } from "@/data/use-cursor-page";
+import { AssignDialog } from "@/interviews/assign-dialog";
 import {
   type Action,
   actOnApplications,
@@ -63,11 +64,16 @@ export function RankingPanel({
   jobId,
   jobReference,
   canManage,
+  canCreateInterviews = false,
+  interviewTemplateId = null,
   pollMs = POLL_MS,
 }: {
   jobId: string;
   jobReference: string;
   canManage: boolean;
+  /** `interviews.manage`: offers "Create interview" for the selected candidates (SP-07a). */
+  canCreateInterviews?: boolean;
+  interviewTemplateId?: string | null;
   pollMs?: number;
 }) {
   const t = useTranslations("screening");
@@ -79,6 +85,7 @@ export function RankingPanel({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState<RankedApplication | null>(null);
   const [asking, setAsking] = useState<{ action: Action; ids: string[] } | null>(null);
+  const [assigning, setAssigning] = useState<string[] | null>(null);
 
   const summary = useQuery({
     queryKey: keys.summary(jobId),
@@ -203,6 +210,11 @@ export function RankingPanel({
               {t(`actions.${action}`)}
             </Button>
           ))}
+          {canCreateInterviews ? (
+            <Button size="sm" variant="secondary" onClick={() => setAssigning([...selected])}>
+              {t("ranking.createInterview")}
+            </Button>
+          ) : null}
         </section>
       ) : null}
 
@@ -303,6 +315,19 @@ export function RankingPanel({
           canManage={canManage}
           onAction={(action) => run(action, [open.application_id])}
           onClose={() => setOpen(null)}
+        />
+      ) : null}
+      {assigning ? (
+        <AssignDialog
+          applicationIds={assigning}
+          names={Object.fromEntries(rows.map((row) => [row.application_id, row.candidate.name]))}
+          defaultTemplateId={interviewTemplateId}
+          onCancel={() => setAssigning(null)}
+          onDone={() => {
+            setAssigning(null);
+            setSelected(new Set());
+            void queryClient.invalidateQueries({ queryKey: keys.results(jobId) });
+          }}
         />
       ) : null}
       {asking ? (

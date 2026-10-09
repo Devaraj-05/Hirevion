@@ -1,0 +1,2 @@
+{% if account_action == "set_password" %}First, set the password you'll sign in with: {{ account_link }}
+The link works once and expires in {{ link_hours }} hours.{% else %}Sign in with the password you already set. Forgotten it? Reset it here: {{ account_link }}{% endif %}

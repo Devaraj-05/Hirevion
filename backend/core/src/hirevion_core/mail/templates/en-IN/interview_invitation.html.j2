@@ -1,0 +1,8 @@
+{% extends "_layout.html.j2" %}
+{% block body %}
+<p>Hello {{ name }},</p>
+<p>{{ organization }} invites you to an AI interview for the {{ job }} role.</p>
+{% include "en-IN/_interview_account.html.j2" %}
+{% include "en-IN/_interview_details.html.j2" %}
+<p>Good luck!</p>
+{% endblock %}

@@ -29,3 +29,5 @@ class Organization(IdMixin, TimestampMixin, Base):
     country: Mapped[str] = mapped_column(Text, server_default="IN")
     timezone: Mapped[str] = mapped_column(Text, server_default="Asia/Kolkata")
     default_locale: Mapped[str] = mapped_column(Text, server_default="en-IN")
+    # Where candidates write for help: invitations and the portal show it (PRD §25, §83).
+    support_email: Mapped[str | None] = mapped_column(CITEXT)

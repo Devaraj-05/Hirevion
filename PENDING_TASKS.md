@@ -36,7 +36,28 @@
 | Part | State |
 |---|---|
 | SP-00 to SP-06 (foundations, backend core, identity, web shell, jobs and resumes, screening, interview configuration) | Merged to `main` (PRs #1–#4 merged 2026-10-09) |
-| Everything in section 7 | Not started |
+| A0, C0, D0 contract reviews; A1 SP-07a; A2 SP-07c; C1–C3 SP-09 | Built on the cloud branch `claude/busy-mccarthy-t8re1u` (2026-10-09) |
+| D1 H0 catch-up | Partly done on the cloud branch: policy drafts, threat models SP-01 to SP-06 and the traceability check. CI gates, the dashboard KPIs and the SP-04a to SP-06 review remain (see D1 below) |
+| The rest of section 7 | Not started |
+
+**Cloud-lane progress (lanes A, C and D, 2026-10-09):** 8 of the 23 cloud items are done (A0, A1, A2, C0, C1, C2, C3 and D0), and D1 is half done. Still to do, in order: finish D1, then D2, C4, C5, D3, A3, A5, A4, C6, C7, D4, D5, D6, A6 and D7. Lane B (the Windows desktop) is not started.
+
+What the cloud branch adds:
+- **A1 SP-07a:** interviews, invitations, the lifecycle state machine and the scheduler; webhook topics.
+- **A2 SP-07c:** desktop candidate auth (§28's six checks, a one-time code, a DPoP device key, refresh and logout), the interview list, the release check and the update manifest.
+- **C1 to C3 SP-09 (ADR-0030):**
+  - migration `0015`; the deterministic engine in `hirevion_core.engine` (state, orchestrator, guardrails, answer analysis, follow-ups, timing);
+  - the session service and the conductor (turn lock, optimistic `state_seq`, checkpoints, resume and abandon);
+  - LiveKit media with a fake backend; signed LiveKit webhooks; the realtime stream and the live websocket;
+  - transcripts (VTT and JSON) written on completion;
+  - the agent rewrite (a single-agent lock with takeover within 10 s);
+  - the `tools/interview-simulator` personas and `hv interview-sim`;
+  - the web pages; the interview-session contract.
+  - Checks: 1266 pytest and 223 web tests passing; Playwright `interview-session.spec.ts` passing.
+- **D1 so far:**
+  - `docs/policies/` (privacy, recording, proctoring, data retention, deletion and support; drafts for legal review);
+  - SP-01 to SP-06 sections in `docs/security/threat-model.md`;
+  - `hv trace --check` (`tools/devcli/src/hirevion_devcli/trace.py`, with its tests), run in CI.
 
 ## 3. The team: four lanes running at once
 
@@ -167,8 +188,8 @@ Dates are targets in IST. A box is ticked in the PR that merges the part.
 
 ### Lane A — candidate access and reporting (cloud session 1)
 
-- [ ] **A0 (Oct 10, first hour):** review `docs/api/contracts/candidate-auth.md` and record any changes the way the contracts README says.
-- [ ] **A1 SP-07a Interviews and invitations (Oct 10).**
+- [x] **A0 (Oct 10, first hour):** review `docs/api/contracts/candidate-auth.md` and record any changes the way the contracts README says.
+- [x] **A1 SP-07a Interviews and invitations (Oct 10).**
   - **Interviews:**
     - the state machine (scheduled, invited, in progress, interrupted, completed, evaluating, evaluated, expired, cancelled, abandoned), with an event history;
     - single and bulk assignment producing §24's nine fields and a policy snapshot (pinning the template version);
@@ -191,7 +212,7 @@ Dates are targets in IST. A box is ticked in the PR that merges the part.
     - the invitation reaches Mailpit with all eight contents;
     - editing the template afterwards leaves the interview on its pinned version;
     - bulk assignment reports what it skipped.
-- [ ] **A2 SP-07c Desktop candidate auth and releases (Oct 10–11).**
+- [x] **A2 SP-07c Desktop candidate auth and releases (Oct 10–11).**
   - **Login:** checks §28's six items.
   - **Device binding:**
     - an email one-time code on a new device (an organisation setting);
@@ -321,13 +342,13 @@ Dates are targets in IST. A box is ticked in the PR that merges the part.
 
 ### Lane C — interview AI and realtime (cloud session 2)
 
-- [ ] **C0 (Oct 10, first hour):** review `docs/api/contracts/interview-session.md` and `proctoring.md`; record any changes the way the contracts README says.
-- [ ] **C1 SP-09a (Oct 10):**
+- [x] **C0 (Oct 10, first hour):** review `docs/api/contracts/interview-session.md` and `proctoring.md`; record any changes the way the contracts README says.
+- [x] **C1 SP-09a (Oct 10):** done (ADR-0030; built with C2 and C3).
   - rooms, least-privilege tokens and explicit agent dispatch;
   - the voice pipeline (Deepgram STT and TTS plugins, mock in CI);
   - §35's ten states;
   - `tools/interview-simulator` with its personas.
-- [ ] **C2 SP-09b (Oct 11):**
+- [x] **C2 SP-09b (Oct 11):** done (ADR-0030).
   - §34's nine orchestrator components and twelve state fields;
   - per-question time limits and follow-up rules;
   - coverage and provenance;
@@ -335,7 +356,7 @@ Dates are targets in IST. A box is ticked in the PR that merges the part.
   - final questions from the FAQ;
   - text-answer mode;
   - guardrails.
-- [ ] **C3 SP-09c (Oct 11–12):**
+- [x] **C3 SP-09c (Oct 11–12):** done (ADR-0030). Every persona finishes in CI; a replacement agent takes over within 10 s (`test_bridge.py`); required skills are covered. The voice path's p95 is measured on the Windows machine with `hv-voice-bench`.
   - transcript segments and artifacts (JSON, VTT, TXT);
   - §91's events over `realtime`;
   - per-turn checkpoints, the resume policy and crash recovery.
@@ -387,19 +408,19 @@ Dates are targets in IST. A box is ticked in the PR that merges the part.
 
 ### Lane D — quality, media services, identity and governance (cloud session 3)
 
-- [ ] **D0 (Oct 10, first hour):** review `docs/api/contracts/recordings.md` and `third-eye.md`; record any changes the way the contracts README says.
-- [ ] **D1 Catch-up H0 (Oct 10). Things the plan promised and SP-04a to SP-06 skipped.**
-  - **Policy drafts:** `docs/policies/` with privacy, recording, proctoring, data retention, the deletion process and the support contact. **Do this first: A3 needs them.**
-  - **CI gates:**
+- [x] **D0 (Oct 10, first hour):** review `docs/api/contracts/recordings.md` and `third-eye.md`; record any changes the way the contracts README says.
+- [ ] **D1 Catch-up H0 (Oct 10). Things the plan promised and SP-04a to SP-06 skipped.** Partly done: the policies, the traceability check and the threat models are done; the CI gates, the code review and the dashboard remain. Plan: `docs/superpowers/plans/2026-10-09-h0-catch-up.md`.
+  - [x] **Policy drafts:** `docs/policies/` with privacy, recording, proctoring, data retention, the deletion process and the support contact. **Do this first: A3 needs them.**
+  - [ ] **CI gates:**
     - coverage: `pytest-cov` failing below 85% on `hirevion_core` domain modules, plus Vitest coverage;
     - Semgrep and Bandit;
     - osv-scanner over all the lockfiles;
     - `pip-licenses` and `license-checker`;
     - Trivy and a Syft SBOM for the API image.
-  - **Traceability:** a CI check that every Appendix A row names a sub-project and points at existing code and tests.
-  - **Threat models:** `docs/security/threat-model.md`, covering SP-01 to SP-06.
-  - **Code review:** `/code-review` over the SP-04a to SP-06 code, with the findings fixed.
-  - **Dashboard:** KPIs from real data for jobs and candidates.
+  - [x] **Traceability:** `hv trace --check`, run in CI: a check that every Appendix A row names a sub-project and points at existing code and tests.
+  - [x] **Threat models:** `docs/security/threat-model.md`, covering SP-01 to SP-06.
+  - [ ] **Code review:** `/code-review` over the SP-04a to SP-06 code, with the findings fixed.
+  - [ ] **Dashboard:** KPIs from real data (PRD §10) for jobs and candidates.
 - [ ] **D2 SP-12 Server side (Oct 11).**
   - **Deliverables:**
     - segment upload URLs (write-only, per blob, 15 minutes);
@@ -538,11 +559,11 @@ pnpm --filter @hirevion/ai-interviewer-desktop tauri dev       # the candidate a
 
 ## 10. Deferrals recorded in code, so nothing is lost
 
-- **A1 (SP-07a):**
-  - the "Create interview" action;
-  - the candidates' Interview and Completed tabs;
-  - interviews pinning a template version and its questions.
-- **C2 (SP-09b):** live use of question time limits and follow-up rules (SP-06 stores them).
+- **A1 (SP-07a):** done (ADR-0020): the "Create interview" action, the candidates' Interview and Completed tabs, and interviews pinning a template version, its questions and its policy.
+- **C2 (SP-09b):** done (ADR-0030): question time limits and follow-up rules are used live.
+- **C6 (SP-16):** the coding question's runs, tests and grading (SP-09 asks it with the code workspace).
+- **D3 (SP-13):** pairing check at `start` (until then a required third eye needs the waiver).
+- **C5 (SP-14):** `Conductor.note_proctor_event` fills §34's proctor summary and the CRITICAL-event reminder; `/ws/proctoring` and `/ws/recruiter`.
 - **C5 (SP-14) and D5 (SP-22):** proctoring presets become editable policies.
 - **A5 (SP-17):** moving cards on the pipeline board; the remaining Candidate 360 tabs.
 - **A4 (SP-18):** the notification centre's content; the scheduler.

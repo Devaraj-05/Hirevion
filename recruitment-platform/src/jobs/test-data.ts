@@ -29,6 +29,8 @@ export function job(overrides: Partial<Job> = {}): Job {
     recruiter_name: "Asha Rao",
     hiring_manager_id: null,
     hiring_manager_name: null,
+    interview_template_id: null,
+    interview_template_name: null,
     skills: [],
     jd_document_id: null,
     latest_document: null,

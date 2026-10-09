@@ -5,8 +5,11 @@ import { getTranslations } from "next-intl/server";
 import { AdminDevNotice } from "@/admin/dev-notice";
 import { InterviewDefaultsCard } from "@/interviews/defaults-card";
 import type { PageBodyProps } from "@/page/bodies";
+import { ReleasesPanel } from "@/platform/desktop-releases/releases-panel";
 import { OrganizationsPanel } from "@/platform/organizations/organizations-panel";
 import { ScreeningDefaults } from "@/screening/settings-form";
+import { CandidateAccessCard } from "./organization/candidate-access-card";
+import { InterviewBriefingCard } from "./organization/interview-briefing-card";
 import { OrganizationForm } from "./organization/organization-form";
 import { RolesPanel } from "./roles/roles-panel";
 import { DepartmentsPanel } from "./structure/departments-panel";
@@ -45,6 +48,8 @@ export async function OrganizationBody({ session }: PageBodyProps) {
   return (
     <div className="grid gap-6">
       <OrganizationForm />
+      <CandidateAccessCard />
+      <InterviewBriefingCard />
       <ScreeningDefaults />
       <InterviewDefaultsCard />
     </div>
@@ -61,4 +66,8 @@ export async function TeamsBody({ session }: PageBodyProps) {
 
 export async function PlatformOrganizationsBody({ session }: PageBodyProps) {
   return session.source === "dev" ? <AdminDevNotice /> : <OrganizationsPanel />;
+}
+
+export async function DesktopReleasesBody({ session }: PageBodyProps) {
+  return session.source === "dev" ? <AdminDevNotice /> : <ReleasesPanel />;
 }

@@ -286,6 +286,147 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/candidate-auth/interviews/{interview_id}/session-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Interview Session Token
+         * @description A token for one interview: what the interview, proctoring, recording and third-eye routes
+         *     take.
+         */
+        post: operations["interview_session_token"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/candidate-auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Candidate Login
+         * @description Signs in with PRD §28's six checks; a new device may first need an emailed code.
+         */
+        post: operations["candidate_login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/candidate-auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Candidate Logout
+         * @description Signs this device out: its refresh family is revoked.
+         */
+        post: operations["candidate_logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/candidate-auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Candidate Profile
+         * @description The candidate, their organisation and the interviews they can take now.
+         */
+        get: operations["candidate_profile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/candidate-auth/otp/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resend Candidate Code
+         * @description Emails a new code, at most once a minute.
+         */
+        post: operations["resend_candidate_code"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/candidate-auth/otp/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify Candidate Code
+         * @description Confirms a new device with the emailed code, and signs in.
+         */
+        post: operations["verify_candidate_code"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/candidate-auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refresh Candidate Token
+         * @description A new access token and the next refresh token; the one sent is spent.
+         */
+        post: operations["refresh_candidate_token"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/candidates": {
         parameters: {
             query?: never;
@@ -366,6 +507,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dashboard
+         * @description The figures within the reader's scope that have data so far.
+         */
+        get: operations["get_dashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/departments": {
         parameters: {
             query?: never;
@@ -405,6 +566,47 @@ export interface paths {
          * @description Renames, describes, archives (`archived: true`) or restores a department.
          */
         patch: operations["update_department"];
+        trace?: never;
+    };
+    "/api/v1/desktop/releases/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Check Desktop Release
+         * @description Whether this app version may run, and the newest one this device may have.
+         */
+        get: operations["check_desktop_release"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/desktop/update-manifest/{target}/{arch}/{current_version}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Desktop Update Manifest
+         * @description The Tauri v2 updater's manifest: the newest release for this device, never older than
+         *     the running version; 204 when none applies.
+         */
+        get: operations["desktop_update_manifest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/documents/{document_id}/download": {
@@ -653,6 +855,378 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/interviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Interviews
+         * @description Interviews the reader reaches; upcoming ones soonest first, the others latest first.
+         */
+        get: operations["list_interviews"];
+        put?: never;
+        /**
+         * Create Interview
+         * @description Assigns one candidate an interview (PRD §24) and, unless asked not to, invites them.
+         */
+        post: operations["create_interview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Interviews
+         * @description Assigns up to 200 candidates the same interview at once; those that can't have one are
+         *     listed with the reason.
+         */
+        post: operations["create_interviews"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Interview
+         * @description The interview with its pinned policy, reviewers, history and the invitations sent.
+         */
+        get: operations["get_interview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/accommodations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Accommodations
+         * @description The candidate's accommodation requests and their decisions.
+         */
+        get: operations["list_accommodations"];
+        put?: never;
+        /**
+         * Request Accommodation
+         * @description Asks for accommodations; a recruiter decides in the web app.
+         */
+        post: operations["request_accommodation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/accommodations/{accommodation_id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decide Accommodation
+         * @description Approves some or all of what was asked for, or none (declined), before the interview.
+         */
+        post: operations["decide_accommodation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Answer Question
+         * @description A typed answer to the open question (PRD §90's text-answer mode). In text mode the state
+         *     holds the next question; in voice mode the agent speaks it.
+         */
+        post: operations["answer_question"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/briefing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Interview Briefing
+         * @description §30's instructions and the itemised consent notice, before the system check.
+         */
+        get: operations["interview_briefing"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Interview
+         * @description Cancels an interview that hasn't started; an invited candidate is told why.
+         */
+        post: operations["cancel_interview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete Interview
+         * @description Ends the interview; the desktop then drains its upload queue before closing.
+         */
+        post: operations["complete_interview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/consents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Consents
+         * @description The candidate's answer to each purpose of the current notice (§30, §83).
+         */
+        post: operations["record_consents"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/invitation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Invitation
+         * @description Sends a scheduled interview's invitation, or an invited one's again (with a fresh link).
+         */
+        post: operations["send_invitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/reschedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reschedule Interview
+         * @description Gives an interview that hasn't started a new window, and tells the candidate.
+         */
+        post: operations["reschedule_interview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/reviewers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Interview Reviewers
+         * @description Replaces who reviews the interview.
+         */
+        put: operations["set_interview_reviewers"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Interview Session State
+         * @description The interview's state, for recovery after the app restarts.
+         */
+        get: operations["interview_session_state"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Interview
+         * @description Starts the interview, or resumes it after a disconnect under its resume policy; returns
+         *     the LiveKit room and a participant token that can do nothing else.
+         */
+        post: operations["start_interview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/system-checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record System Check
+         * @description The desktop's system check (§29); it passes when every mandatory check passed.
+         */
+        post: operations["record_system_check"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/transcript": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Interview Transcript
+         * @description Both sides of the interview, every question with its source and answers, the skills'
+         *     coverage, and short-lived links to the JSON, VTT and TXT artifacts once they're written.
+         */
+        get: operations["interview_transcript"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/workspace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save Workspace
+         * @description A snapshot of the code or whiteboard for a question.
+         */
+        post: operations["save_workspace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs": {
         parameters: {
             query?: never;
@@ -683,7 +1257,8 @@ export interface paths {
         };
         /**
          * Job Choices
-         * @description The departments, teams and people a job can be assigned to.
+         * @description The departments, teams and people a job can be assigned to, and the active interview
+         *     templates it can default to.
          */
         get: operations["job_choices"];
         put?: never;
@@ -969,6 +1544,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/livekit/webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Livekit Webhook
+         * @description Room events from LiveKit, signed with the server's API secret.
+         */
+        post: operations["livekit_webhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organization": {
         parameters: {
             query?: never;
@@ -988,9 +1583,51 @@ export interface paths {
         head?: never;
         /**
          * Update Organization
-         * @description Changes the fields sent; `website: null` clears the website.
+         * @description Changes the fields sent; `website: null` or `support_email: null` clears it.
          */
         patch: operations["update_organization"];
+        trace?: never;
+    };
+    "/api/v1/organization/candidate-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Candidate Access
+         * @description How candidates sign in to the desktop app: whether a new device needs an emailed code.
+         */
+        get: operations["get_candidate_access"];
+        /** Update Candidate Access */
+        put: operations["update_candidate_access"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organization/interview-briefing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Interview Briefing
+         * @description What candidates are told before an interview, and the FAQ the AI answers from.
+         */
+        get: operations["get_interview_briefing"];
+        /** Update Interview Briefing */
+        put: operations["update_interview_briefing"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/permissions": {
@@ -1011,6 +1648,70 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/desktop-channels/{channel}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update Desktop Channel
+         * @description Sets the oldest version a channel still lets sign in, and where to download the app.
+         */
+        put: operations["update_desktop_channel"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/desktop-releases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Desktop Releases
+         * @description The channels with their minimum versions, and every release, newest first.
+         */
+        get: operations["list_desktop_releases"];
+        put?: never;
+        /**
+         * Create Desktop Release
+         * @description Registers a build as a draft; publish it to offer it.
+         */
+        post: operations["create_desktop_release"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/desktop-releases/{release_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Desktop Release
+         * @description Publishes or withdraws a release, or changes its rollout or notes.
+         */
+        patch: operations["update_desktop_release"];
         trace?: never;
     };
     "/api/v1/platform/organizations": {
@@ -1560,6 +2261,73 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AccommodationBody */
+        AccommodationBody: {
+            /** Kinds */
+            kinds: string[];
+            /** Note */
+            note?: string | null;
+        };
+        /** AccommodationCreated */
+        AccommodationCreated: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "requested" | "approved" | "declined";
+        };
+        /** AccommodationDecision */
+        AccommodationDecision: {
+            /**
+             * Approved
+             * @description The kinds to approve; none declines the request.
+             */
+            approved: string[];
+            /** Note */
+            note?: string | null;
+        };
+        /** AccommodationResponse */
+        AccommodationResponse: {
+            /** Approved Kinds */
+            approved_kinds: string[];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Decided At */
+            decided_at: string | null;
+            /** Decided By */
+            decided_by: string | null;
+            /** Decision Note */
+            decision_note: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kinds */
+            kinds: string[];
+            /** Note */
+            note: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "requested" | "approved" | "declined";
+        };
+        /** AccommodationsSummary */
+        AccommodationsSummary: {
+            /** Approved */
+            approved: string[];
+            /** Requested */
+            requested: string[];
+        };
         /** ActionRequest */
         ActionRequest: {
             /**
@@ -1582,6 +2350,57 @@ export interface components {
             /** Applications */
             applications: components["schemas"]["ApplicationState"][];
         };
+        /** AnswerBody */
+        AnswerBody: {
+            /**
+             * Question Id
+             * Format: uuid
+             */
+            question_id: string;
+            /** Text */
+            text: string;
+        };
+        /** AnswerResponse */
+        AnswerResponse: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Flags */
+            flags: string[];
+            /** Late */
+            late: boolean;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "voice" | "text";
+            /** Text */
+            text: string;
+        };
+        /** AppBody */
+        AppBody: {
+            /**
+             * Arch
+             * @default x64
+             * @enum {string}
+             */
+            arch: "x64" | "arm64";
+            /**
+             * Channel
+             * @default stable
+             * @enum {string}
+             */
+            channel: "stable" | "beta";
+            /**
+             * Os
+             * @default
+             */
+            os: string;
+            /** Version */
+            version: string;
+        };
         /** ApplicationResponse */
         ApplicationResponse: {
             candidate: components["schemas"]["CandidateSummary"];
@@ -1601,7 +2420,7 @@ export interface components {
              * Stage
              * @enum {string}
              */
-            stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold";
+            stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold" | "interview" | "interviewed";
         };
         /** ApplicationScreening */
         ApplicationScreening: {
@@ -1625,7 +2444,7 @@ export interface components {
              * Stage
              * @enum {string}
              */
-            stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold";
+            stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold" | "interview" | "interviewed";
         };
         /** ApplicationState */
         ApplicationState: {
@@ -1644,7 +2463,21 @@ export interface components {
              * Stage
              * @enum {string}
              */
-            stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold";
+            stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold" | "interview" | "interviewed";
+        };
+        /** ArtifactLink */
+        ArtifactLink: {
+            /** Bytes */
+            bytes: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "json" | "vtt" | "txt";
+            /** Sha256 */
+            sha256: string;
+            /** Url */
+            url: string;
         };
         /** Body_submit_job_description */
         Body_submit_job_description: {
@@ -1666,6 +2499,88 @@ export interface components {
              * @description A PDF, DOCX, TXT, JPG, PNG or TIFF resume, or a ZIP.
              */
             file: string;
+        };
+        /** BriefingResponse */
+        BriefingResponse: {
+            accommodations: components["schemas"]["AccommodationsSummary"];
+            /**
+             * Answer Mode
+             * @enum {string}
+             */
+            answer_mode: "voice" | "text";
+            /** Duration Minutes */
+            duration_minutes: number;
+            /** Instructions */
+            instructions: string[];
+            /** Mandatory Checks */
+            mandatory_checks: string[];
+            notice: components["schemas"]["Notice"];
+            /** Support Email */
+            support_email?: string | null;
+            /**
+             * Third Eye
+             * @enum {string}
+             */
+            third_eye: "off" | "optional" | "required";
+        };
+        /** BulkInterviewCreate */
+        BulkInterviewCreate: {
+            /** Application Ids */
+            application_ids: string[];
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Invite
+             * @description Send the invitation now (otherwise it's scheduled).
+             * @default true
+             */
+            invite: boolean;
+            /** Reviewer Ids */
+            reviewer_ids?: string[];
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+            /**
+             * Template Id
+             * @description None: each job's own interview template (PRD §11).
+             */
+            template_id?: string | null;
+            /**
+             * Template Version
+             * @description None: the template's current version.
+             */
+            template_version?: number | null;
+            /**
+             * Timezone
+             * @description For the invitation's times; the organisation's default.
+             */
+            timezone?: string | null;
+        };
+        /** BulkInterviewResult */
+        BulkInterviewResult: {
+            /** Created */
+            created: components["schemas"]["InterviewSummary"][];
+            /** Skipped */
+            skipped: components["schemas"]["SkippedApplication"][];
+        };
+        /** CancelBody */
+        CancelBody: {
+            /** Reason */
+            reason: string;
+        };
+        /** CandidateAccessSettings */
+        CandidateAccessSettings: {
+            /**
+             * New Device Otp
+             * @description Email candidates a one-time code when they sign in on a new device.
+             * @default true
+             */
+            new_device_otp: boolean;
         };
         /** CandidateApplication */
         CandidateApplication: {
@@ -1692,7 +2607,21 @@ export interface components {
              * Stage
              * @enum {string}
              */
-            stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold";
+            stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold" | "interview" | "interviewed";
+        };
+        /** CandidateBody */
+        CandidateBody: {
+            /** Email */
+            email: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Locale */
+            locale: string;
+            /** Name */
+            name: string;
         };
         /** CandidateBrief */
         CandidateBrief: {
@@ -1739,6 +2668,45 @@ export interface components {
              * @enum {string}
              */
             status: "uploaded" | "scanning" | "extracting" | "parsing" | "parsed" | "quarantined" | "failed";
+        };
+        /** CandidateInterview */
+        CandidateInterview: {
+            /** Coding */
+            coding: boolean;
+            /** Duration Minutes */
+            duration_minutes: number;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Job Title */
+            job_title: string;
+            /**
+             * Proctoring Level
+             * @enum {string}
+             */
+            proctoring_level: "off" | "basic" | "standard" | "strict";
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "invited" | "in_progress" | "interrupted";
+            /**
+             * Third Eye
+             * @enum {string}
+             */
+            third_eye: "off" | "optional" | "required";
         };
         /** CandidateRef */
         CandidateRef: {
@@ -1835,6 +2803,44 @@ export interface components {
              */
             updated_at: string;
         };
+        /** ChannelResponse */
+        ChannelResponse: {
+            /**
+             * Channel
+             * @enum {string}
+             */
+            channel: "stable" | "beta";
+            /** Download Url */
+            download_url: string;
+            /** Minimum Version */
+            minimum_version: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** ChannelUpdate */
+        ChannelUpdate: {
+            /** Download Url */
+            download_url?: string | null;
+            /** Minimum Version */
+            minimum_version?: string | null;
+        };
+        /** CheckItem */
+        CheckItem: {
+            /** Check */
+            check: string;
+            /** Detail */
+            detail?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pass" | "warn" | "fail" | "skipped";
+            /** Value */
+            value?: string | null;
+        };
         /** Choice */
         Choice: {
             /**
@@ -1853,6 +2859,73 @@ export interface components {
             starter_code?: {
                 [key: string]: string;
             };
+        };
+        /** CompleteBody */
+        CompleteBody: {
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "finished" | "candidate_ended";
+        };
+        /** CompleteResponse */
+        CompleteResponse: {
+            /** Status */
+            status: string;
+        };
+        /** ConsentBody */
+        ConsentBody: {
+            /** Items */
+            items: components["schemas"]["ConsentItem"][];
+            /** Notice Version */
+            notice_version: string;
+        };
+        /** ConsentItem */
+        ConsentItem: {
+            /** Accepted */
+            accepted: boolean;
+            /** Purpose */
+            purpose: string;
+        };
+        /** ConsentResponse */
+        ConsentResponse: {
+            /** Complete */
+            complete: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Missing */
+            missing: string[];
+        };
+        /** CoverageItem */
+        CoverageItem: {
+            /** Answered */
+            answered: number;
+            /** Asked */
+            asked: number;
+            /** Covered */
+            covered: boolean;
+            /** Planned */
+            planned: number;
+            /** Required */
+            required: boolean;
+            /** Skill */
+            skill: string;
+        };
+        /**
+         * DashboardSummary
+         * @description PRD §10's figures that have data so far; the rest are absent (the page shows "no data
+         *     yet").
+         */
+        DashboardSummary: {
+            /** Completed Interviews */
+            completed_interviews: number;
+            /** Interviews Scheduled */
+            interviews_scheduled: number;
+            /** Live Interviews */
+            live_interviews: number;
         };
         /** DecisionRequest */
         DecisionRequest: {
@@ -1899,6 +2972,14 @@ export interface components {
             /** Name */
             name?: string | null;
         };
+        /** DeviceBody */
+        DeviceBody: {
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+        };
         /** DocumentResponse */
         DocumentResponse: {
             /** Attempts */
@@ -1943,6 +3024,13 @@ export interface components {
         EmailVerifyRequest: {
             /** Token */
             token: string;
+        };
+        /** FaqItem */
+        FaqItem: {
+            /** Answer */
+            answer: string;
+            /** Question */
+            question: string;
         };
         /** FollowUpRule */
         FollowUpRule: {
@@ -2015,6 +3103,60 @@ export interface components {
             score: number | null;
             /** To Stage */
             to_stage: string | null;
+        };
+        /** InterviewBriefingSettings */
+        InterviewBriefingSettings: {
+            /**
+             * Faq
+             * @description The only source the AI answers candidates' final questions from.
+             */
+            faq?: components["schemas"]["FaqItem"][];
+            /**
+             * Instructions
+             * @description What candidates are told before the interview; empty uses the defaults.
+             */
+            instructions?: string[];
+        };
+        /** InterviewCreate */
+        InterviewCreate: {
+            /**
+             * Application Id
+             * Format: uuid
+             */
+            application_id: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Invite
+             * @description Send the invitation now (otherwise it's scheduled).
+             * @default true
+             */
+            invite: boolean;
+            /** Reviewer Ids */
+            reviewer_ids?: string[];
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+            /**
+             * Template Id
+             * @description None: each job's own interview template (PRD §11).
+             */
+            template_id?: string | null;
+            /**
+             * Template Version
+             * @description None: the template's current version.
+             */
+            template_version?: number | null;
+            /**
+             * Timezone
+             * @description For the invitation's times; the organisation's default.
+             */
+            timezone?: string | null;
         };
         /**
          * InterviewDefaults
@@ -2091,6 +3233,223 @@ export interface components {
             /** Use Resume */
             use_resume?: boolean | null;
         };
+        /** InterviewEventResponse */
+        InterviewEventResponse: {
+            /** Action */
+            action: string;
+            /** Actor Id */
+            actor_id: string | null;
+            /**
+             * Actor Type
+             * @enum {string}
+             */
+            actor_type: "user" | "candidate" | "system" | "agent";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Details */
+            details: {
+                [key: string]: unknown;
+            };
+            /** From Status */
+            from_status: ("scheduled" | "invited" | "in_progress" | "interrupted" | "completed" | "evaluating" | "evaluated" | "expired" | "cancelled" | "abandoned") | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Reason */
+            reason: string | null;
+            /**
+             * To Status
+             * @enum {string}
+             */
+            to_status: "scheduled" | "invited" | "in_progress" | "interrupted" | "completed" | "evaluating" | "evaluated" | "expired" | "cancelled" | "abandoned";
+        };
+        /** InterviewResponse */
+        InterviewResponse: {
+            /**
+             * Application Id
+             * Format: uuid
+             */
+            application_id: string;
+            /** Cancel Reason */
+            cancel_reason: string | null;
+            candidate: components["schemas"]["PersonRef"];
+            /** Candidate Email */
+            candidate_email: string | null;
+            /** Completed At */
+            completed_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Duration Minutes */
+            duration_minutes: number;
+            /** Ended At */
+            ended_at: string | null;
+            /** Events */
+            events: components["schemas"]["InterviewEventResponse"][];
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Invitations */
+            invitations: components["schemas"]["InvitationResponse"][];
+            /** Invited At */
+            invited_at: string | null;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Job Title */
+            job_title: string;
+            /** Policy */
+            policy: {
+                [key: string]: unknown;
+            };
+            /** Proctoring Level */
+            proctoring_level: string;
+            /** Questions */
+            questions: {
+                [key: string]: unknown;
+            }[];
+            /** Reference */
+            reference: string;
+            /** Reschedule Count */
+            reschedule_count: number;
+            /** Reviewers */
+            reviewers: components["schemas"]["PersonRef"][];
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "scheduled" | "invited" | "in_progress" | "interrupted" | "completed" | "evaluating" | "evaluated" | "expired" | "cancelled" | "abandoned";
+            /**
+             * Template Id
+             * Format: uuid
+             */
+            template_id: string;
+            /** Template Name */
+            template_name: string;
+            /** Template Version */
+            template_version: number;
+            /** Third Eye */
+            third_eye: string;
+            /** Timezone */
+            timezone: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** InterviewSummary */
+        InterviewSummary: {
+            /**
+             * Application Id
+             * Format: uuid
+             */
+            application_id: string;
+            candidate: components["schemas"]["PersonRef"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Duration Minutes */
+            duration_minutes: number;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Job Title */
+            job_title: string;
+            /** Proctoring Level */
+            proctoring_level: string;
+            /** Reference */
+            reference: string;
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "scheduled" | "invited" | "in_progress" | "interrupted" | "completed" | "evaluating" | "evaluated" | "expired" | "cancelled" | "abandoned";
+            /**
+             * Template Id
+             * Format: uuid
+             */
+            template_id: string;
+            /** Template Version */
+            template_version: number;
+            /** Third Eye */
+            third_eye: string;
+            /** Timezone */
+            timezone: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** InvitationResponse */
+        InvitationResponse: {
+            /** Contents */
+            contents: {
+                [key: string]: unknown;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "invitation" | "reminder" | "reschedule" | "cancellation";
+            /** Locale */
+            locale: string;
+            /** Sent To */
+            sent_to: string;
+        };
         /**
          * JdApply
          * @description The recruiter's reviewed fields from a parsed description.
@@ -2115,6 +3474,8 @@ export interface components {
             experience_min?: number | null;
             /** Hiring Manager Id */
             hiring_manager_id?: string | null;
+            /** Interview Template Id */
+            interview_template_id?: string | null;
             /** Location */
             location?: string | null;
             /** Qualifications */
@@ -2191,6 +3552,8 @@ export interface components {
         JobChoices: {
             /** Departments */
             departments: components["schemas"]["Choice"][];
+            /** Interview Templates */
+            interview_templates: components["schemas"]["Choice"][];
             /** People */
             people: components["schemas"]["Choice"][];
             /** Teams */
@@ -2212,6 +3575,8 @@ export interface components {
             experience_min?: number | null;
             /** Hiring Manager Id */
             hiring_manager_id?: string | null;
+            /** Interview Template Id */
+            interview_template_id?: string | null;
             /** Location */
             location?: string | null;
             /** Qualifications */
@@ -2254,6 +3619,8 @@ export interface components {
             experience_min?: number | null;
             /** Hiring Manager Id */
             hiring_manager_id?: string | null;
+            /** Interview Template Id */
+            interview_template_id?: string | null;
             /** Location */
             location?: string | null;
             /** Qualifications */
@@ -2310,6 +3677,10 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Interview Template Id */
+            interview_template_id: string | null;
+            /** Interview Template Name */
+            interview_template_name: string | null;
             /** Jd Document Id */
             jd_document_id: string | null;
             latest_document: components["schemas"]["DocumentResponse"] | null;
@@ -2437,6 +3808,15 @@ export interface components {
              */
             status: "ok";
         };
+        /** LoginBody */
+        LoginBody: {
+            app: components["schemas"]["AppBody"];
+            device?: components["schemas"]["DeviceBody"];
+            /** Email */
+            email: string;
+            /** Password */
+            password: string;
+        };
         /** LoginRequest */
         LoginRequest: {
             /** Email */
@@ -2496,12 +3876,40 @@ export interface components {
              */
             status: "invited" | "active" | "disabled";
         };
+        /** Notice */
+        Notice: {
+            /** Items */
+            items: components["schemas"]["NoticeItem"][];
+            /** Version */
+            version: string;
+        };
+        /** NoticeItem */
+        NoticeItem: {
+            /** Purpose */
+            purpose: string;
+            /** Required */
+            required: boolean;
+            /** Text */
+            text: string;
+        };
         /** OrganizationAdminInvite */
         OrganizationAdminInvite: {
             /** Email */
             email: string;
             /** Name */
             name: string;
+        };
+        /** OrganizationBody */
+        OrganizationBody: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Support Email */
+            support_email: string;
         };
         /** OrganizationCreate */
         OrganizationCreate: {
@@ -2565,6 +3973,11 @@ export interface components {
              */
             status: "active" | "suspended";
             /**
+             * Support Email
+             * @description Where candidates write for help (invitations, the portal).
+             */
+            support_email?: string | null;
+            /**
              * Timezone
              * @description IANA time zone, e.g. Asia/Kolkata.
              */
@@ -2580,6 +3993,8 @@ export interface components {
             default_locale?: ("en-IN" | "en-US") | null;
             /** Name */
             name?: string | null;
+            /** Support Email */
+            support_email?: string | null;
             /** Timezone */
             timezone?: string | null;
             /** Website */
@@ -2589,6 +4004,42 @@ export interface components {
         OrganizationSuspend: {
             /** Reason */
             reason?: string | null;
+        };
+        /** OtpRequiredResponse */
+        OtpRequiredResponse: {
+            /**
+             * Challenge Id
+             * Format: uuid
+             */
+            challenge_id: string;
+            /** Expires In */
+            expires_in: number;
+            /** Sent To */
+            sent_to: string;
+            /**
+             * Status
+             * @default otp_required
+             * @constant
+             */
+            status: "otp_required";
+        };
+        /** OtpResendBody */
+        OtpResendBody: {
+            /**
+             * Challenge Id
+             * Format: uuid
+             */
+            challenge_id: string;
+        };
+        /** OtpVerifyBody */
+        OtpVerifyBody: {
+            /**
+             * Challenge Id
+             * Format: uuid
+             */
+            challenge_id: string;
+            /** Code */
+            code: string;
         };
         /** Page[ApplicationResponse] */
         Page_ApplicationResponse_: {
@@ -2604,6 +4055,16 @@ export interface components {
         Page_CandidateSummary_: {
             /** Items */
             items: components["schemas"]["CandidateSummary"][];
+            /**
+             * Next Cursor
+             * @description Pass as `cursor` to get the next page; null on the last page.
+             */
+            next_cursor: string | null;
+        };
+        /** Page[InterviewSummary] */
+        Page_InterviewSummary_: {
+            /** Items */
+            items: components["schemas"]["InterviewSummary"][];
             /**
              * Next Cursor
              * @description Pass as `cursor` to get the next page; null on the last page.
@@ -2698,7 +4159,17 @@ export interface components {
              * Name
              * @enum {string}
              */
-            name: "dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view";
+            name: "dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view";
+        };
+        /** PersonRef */
+        PersonRef: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
         };
         /** PinnedQuestion */
         PinnedQuestion: {
@@ -2740,6 +4211,13 @@ export interface components {
             type: string;
         } & {
             [key: string]: unknown;
+        };
+        /** ProfileResponse */
+        ProfileResponse: {
+            candidate: components["schemas"]["CandidateBody"];
+            /** Interviews */
+            interviews: components["schemas"]["CandidateInterview"][];
+            organization: components["schemas"]["OrganizationBody"];
         };
         /**
          * QuestionBody
@@ -2885,6 +4363,29 @@ export interface components {
             /** Version */
             version: number;
         };
+        /** QuestionState */
+        QuestionState: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Index */
+            index: number;
+            /** Languages */
+            languages: string[];
+            /** Text */
+            text: string;
+            /** Time Limit Seconds */
+            time_limit_seconds: number | null;
+            /** Type */
+            type: string;
+            /**
+             * Workspace
+             * @enum {string}
+             */
+            workspace: "none" | "code" | "whiteboard";
+        };
         /** QuestionVersionResponse */
         QuestionVersionResponse: {
             /** Coding */
@@ -2963,7 +4464,7 @@ export interface components {
              * Stage
              * @enum {string}
              */
-            stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold";
+            stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold" | "interview" | "interviewed";
         };
         /** Readiness */
         Readiness: {
@@ -2994,6 +4495,157 @@ export interface components {
              * @default true
              */
             screen: boolean;
+        };
+        /** RefreshBody */
+        RefreshBody: {
+            /** Refresh Token */
+            refresh_token: string;
+        };
+        /** RefreshedResponse */
+        RefreshedResponse: {
+            /** Access Token */
+            access_token: string;
+            /** Expires In */
+            expires_in: number;
+            /** Refresh Expires In */
+            refresh_expires_in: number;
+            /** Refresh Token */
+            refresh_token: string;
+            /**
+             * Token Type
+             * @default DPoP
+             * @constant
+             */
+            token_type: "DPoP";
+        };
+        /** ReleaseCheckResponse */
+        ReleaseCheckResponse: {
+            /** Download Url */
+            download_url: string;
+            latest: components["schemas"]["ReleaseLatest"] | null;
+            /** Minimum Version */
+            minimum_version: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "update-available" | "update-required";
+        };
+        /** ReleaseCreate */
+        ReleaseCreate: {
+            /**
+             * Arch
+             * @default x64
+             * @enum {string}
+             */
+            arch: "x64" | "arm64";
+            /**
+             * Channel
+             * @default stable
+             * @enum {string}
+             */
+            channel: "stable" | "beta";
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /**
+             * Rollout Percent
+             * @default 100
+             */
+            rollout_percent: number;
+            /** Signature */
+            signature: string;
+            /** Url */
+            url: string;
+            /** Version */
+            version: string;
+        };
+        /** ReleaseLatest */
+        ReleaseLatest: {
+            /** Notes */
+            notes: string;
+            /** Published At */
+            published_at: string | null;
+            /** Version */
+            version: string;
+        };
+        /** ReleaseRegistry */
+        ReleaseRegistry: {
+            /** Channels */
+            channels: components["schemas"]["ChannelResponse"][];
+            /** Releases */
+            releases: components["schemas"]["ReleaseResponse"][];
+        };
+        /** ReleaseResponse */
+        ReleaseResponse: {
+            /**
+             * Arch
+             * @enum {string}
+             */
+            arch: "x64" | "arm64";
+            /**
+             * Channel
+             * @enum {string}
+             */
+            channel: "stable" | "beta";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Notes */
+            notes: string;
+            /** Published At */
+            published_at: string | null;
+            /** Rollout Percent */
+            rollout_percent: number;
+            /** Signature */
+            signature: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "published" | "withdrawn";
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Url */
+            url: string;
+            /** Version */
+            version: string;
+        };
+        /** ReleaseUpdate */
+        ReleaseUpdate: {
+            /** Notes */
+            notes?: string | null;
+            /** Rollout Percent */
+            rollout_percent?: number | null;
+            /** Status */
+            status?: ("draft" | "published" | "withdrawn") | null;
+        };
+        /** RescheduleBody */
+        RescheduleBody: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Reason */
+            reason?: string | null;
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
         };
         /**
          * ResumeDocumentResponse
@@ -3043,6 +4695,11 @@ export interface components {
              */
             updated_at: string;
         };
+        /** ReviewersBody */
+        ReviewersBody: {
+            /** Reviewer Ids */
+            reviewer_ids: string[];
+        };
         /** RoleCreate */
         RoleCreate: {
             /** Description */
@@ -3050,7 +4707,7 @@ export interface components {
             /** Name */
             name: string;
             /** Permissions */
-            permissions: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[];
+            permissions: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[];
         };
         /** RoleRef */
         RoleRef: {
@@ -3089,7 +4746,7 @@ export interface components {
              * Permissions
              * @description What it grants, in catalogue order.
              */
-            permissions: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[];
+            permissions: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[];
             /**
              * System
              * @description Built in: can't be changed or deleted.
@@ -3103,7 +4760,7 @@ export interface components {
             /** Name */
             name?: string | null;
             /** Permissions */
-            permissions?: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[] | null;
+            permissions?: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[] | null;
         };
         /** RubricCriterion */
         RubricCriterion: {
@@ -3246,6 +4903,31 @@ export interface components {
              */
             sent_at_ms: number;
         };
+        /** SessionInterview */
+        SessionInterview: {
+            /** Duration Minutes */
+            duration_minutes: number;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "invited" | "in_progress" | "interrupted";
+        };
         /** SessionItem */
         SessionItem: {
             /**
@@ -3295,13 +4977,77 @@ export interface components {
             custom_roles?: string[];
             organization: components["schemas"]["SessionOrganization"] | null;
             /** Permissions */
-            permissions: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[];
+            permissions: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[];
             /**
              * Roles
              * @description The user's system roles, by key.
              */
             roles: string[];
             user: components["schemas"]["SessionUser"];
+        };
+        /** SessionState */
+        SessionState: {
+            /**
+             * Answer Mode
+             * @enum {string}
+             */
+            answer_mode: "voice" | "text";
+            /** Deadline At */
+            deadline_at: string | null;
+            /**
+             * Message
+             * @description What the AI said last (its acknowledgement and the question).
+             */
+            message?: string | null;
+            /** Notice */
+            notice?: {
+                [key: string]: unknown;
+            } | null;
+            /** @description The open question; in text mode always the next one to answer. */
+            question?: components["schemas"]["QuestionState"] | null;
+            /** Remaining Seconds */
+            remaining_seconds: number;
+            /**
+             * Stage
+             * @description PRD §35's stage.
+             */
+            stage: string;
+            /** Started At */
+            started_at: string | null;
+            /** Status */
+            status: string;
+            /**
+             * Third Eye
+             * @enum {string}
+             */
+            third_eye: "off" | "optional" | "required";
+            /**
+             * Voice
+             * @enum {string}
+             */
+            voice: "listening" | "thinking" | "speaking" | "waiting" | "paused" | "ended" | "error";
+            /**
+             * Workspace
+             * @enum {string}
+             */
+            workspace: "none" | "code" | "whiteboard";
+        };
+        /** SessionTokenResponse */
+        SessionTokenResponse: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            interview: components["schemas"]["SessionInterview"];
+            /** Session Token */
+            session_token: string;
+            /**
+             * Token Type
+             * @default DPoP
+             * @constant
+             */
+            token_type: "DPoP";
         };
         /** SessionUser */
         SessionUser: {
@@ -3314,6 +5060,33 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+        };
+        /** SignedInResponse */
+        SignedInResponse: {
+            /** Access Token */
+            access_token: string;
+            candidate: components["schemas"]["CandidateBody"];
+            /** Expires In */
+            expires_in: number;
+            /** Interviews */
+            interviews: components["schemas"]["CandidateInterview"][];
+            organization: components["schemas"]["OrganizationBody"];
+            /** Refresh Expires In */
+            refresh_expires_in: number;
+            /** Refresh Token */
+            refresh_token: string;
+            /**
+             * Status
+             * @default ok
+             * @constant
+             */
+            status: "ok";
+            /**
+             * Token Type
+             * @default DPoP
+             * @constant
+             */
+            token_type: "DPoP";
         };
         /** SkillBody */
         SkillBody: {
@@ -3361,10 +5134,77 @@ export interface components {
             /** Weight */
             weight: number;
         };
+        /** SkippedApplication */
+        SkippedApplication: {
+            /**
+             * Application Id
+             * Format: uuid
+             */
+            application_id: string;
+            /** Code */
+            code: string;
+            /** Reason */
+            reason: string;
+        };
+        /** StartBody */
+        StartBody: {
+            /**
+             * Consent Id
+             * Format: uuid
+             */
+            consent_id: string;
+            /**
+             * System Check Id
+             * Format: uuid
+             */
+            system_check_id: string;
+        };
+        /** StartResponse */
+        StartResponse: {
+            /** Livekit Url */
+            livekit_url: string;
+            /** Participant Identity */
+            participant_identity: string;
+            /** Participant Token */
+            participant_token: string;
+            /** Room */
+            room: string;
+            state: components["schemas"]["SessionState"];
+            /**
+             * Token Expires At
+             * Format: date-time
+             */
+            token_expires_at: string;
+        };
+        /** StateResponse */
+        StateResponse: {
+            state: components["schemas"]["SessionState"];
+        };
         /** StepUpRequest */
         StepUpRequest: {
             /** Password */
             password: string;
+        };
+        /** SystemCheckBody */
+        SystemCheckBody: {
+            /** App Version */
+            app_version: string;
+            /** Os */
+            os: string;
+            /** Results */
+            results: components["schemas"]["CheckItem"][];
+        };
+        /** SystemCheckResponse */
+        SystemCheckResponse: {
+            /** Failed Mandatory */
+            failed_mandatory: string[];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Passed */
+            passed: boolean;
         };
         /** TeamCreate */
         TeamCreate: {
@@ -3658,6 +5498,93 @@ export interface components {
             /** Token */
             token: string;
         };
+        /** TranscriptQuestion */
+        TranscriptQuestion: {
+            /** Answers */
+            answers: components["schemas"]["AnswerResponse"][];
+            /**
+             * Asked At
+             * Format: date-time
+             */
+            asked_at: string;
+            /** Difficulty */
+            difficulty: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Parent Id */
+            parent_id: string | null;
+            /** Position */
+            position: number;
+            /** Skill */
+            skill: string | null;
+            /** Source */
+            source: string;
+            /**
+             * Source Ref
+             * @description Where it came from (PRD §36).
+             */
+            source_ref: {
+                [key: string]: unknown;
+            };
+            /** Stage */
+            stage: string;
+            /** Status */
+            status: string;
+            /** Text */
+            text: string;
+            /** Type */
+            type: string | null;
+        };
+        /** TranscriptResponse */
+        TranscriptResponse: {
+            /** Artifacts */
+            artifacts: components["schemas"]["ArtifactLink"][];
+            /** Coverage */
+            coverage: components["schemas"]["CoverageItem"][];
+            /**
+             * Interview Id
+             * Format: uuid
+             */
+            interview_id: string;
+            /** Questions */
+            questions: components["schemas"]["TranscriptQuestion"][];
+            /** Segments */
+            segments: components["schemas"]["TranscriptSegmentResponse"][];
+            /** Stage */
+            stage: string | null;
+            /** Status */
+            status: string;
+            /**
+             * Transcript Status
+             * @enum {string}
+             */
+            transcript_status: "none" | "pending" | "ready" | "failed";
+        };
+        /** TranscriptSegmentResponse */
+        TranscriptSegmentResponse: {
+            /** Confidence */
+            confidence: number | null;
+            /** End Ms */
+            end_ms: number;
+            /** Question Id */
+            question_id: string | null;
+            /** Seq */
+            seq: number;
+            /**
+             * Speaker
+             * @enum {string}
+             */
+            speaker: "ai" | "candidate";
+            /** Start Ms */
+            start_ms: number;
+            /** Text */
+            text: string;
+        };
         /** UserInvite */
         UserInvite: {
             /**
@@ -3740,6 +5667,23 @@ export interface components {
              * @description Replaces their teams.
              */
             team_ids?: string[] | null;
+        };
+        /** WorkspaceBody */
+        WorkspaceBody: {
+            /** Content */
+            content: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "code" | "whiteboard";
+            /** Language */
+            language?: string | null;
+            /**
+             * Question Id
+             * Format: uuid
+             */
+            question_id: string;
         };
     };
     responses: never;
@@ -4296,6 +6240,288 @@ export interface operations {
             };
         };
     };
+    interview_session_token: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionTokenResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    candidate_login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignedInResponse"] | components["schemas"]["OtpRequiredResponse"] | components["schemas"]["SignedInResponse"] | components["schemas"]["OtpRequiredResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    candidate_logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    candidate_profile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    resend_candidate_code: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OtpResendBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    verify_candidate_code: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OtpVerifyBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignedInResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    refresh_candidate_token: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefreshBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefreshedResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_candidates: {
         parameters: {
             query?: {
@@ -4472,6 +6698,52 @@ export interface operations {
             };
         };
     };
+    get_dashboard: {
+        parameters: {
+            query?: {
+                from?: string | null;
+                to?: string | null;
+                recruiter?: string | null;
+                team?: string | null;
+                job?: string | null;
+                department?: string | null;
+                interviewStatus?: ("scheduled" | "invited" | "in_progress" | "interrupted" | "completed" | "evaluating" | "evaluated" | "expired" | "cancelled" | "abandoned") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardSummary"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_departments: {
         parameters: {
             query?: {
@@ -4580,6 +6852,99 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DepartmentResponse"];
                 };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    check_desktop_release: {
+        parameters: {
+            query: {
+                version: string;
+                channel?: string;
+                arch?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseCheckResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    desktop_update_manifest: {
+        parameters: {
+            query?: {
+                channel?: string;
+            };
+            header?: never;
+            path: {
+                target: string;
+                arch: string;
+                current_version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description No update applies */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Client error, as an RFC 9457 problem */
             "4XX": {
@@ -5192,6 +7557,868 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TemplateVersionResponse"][];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_interviews: {
+        parameters: {
+            query?: {
+                /** @description The /interviews tab: upcoming, live or completed. */
+                status_group?: ("upcoming" | "live" | "completed") | null;
+                status?: ("scheduled" | "invited" | "in_progress" | "interrupted" | "completed" | "evaluating" | "evaluated" | "expired" | "cancelled" | "abandoned") | null;
+                job_id?: string | null;
+                candidate_id?: string | null;
+                /** @description Part of the candidate's name or the job, or IV-42. */
+                q?: string | null;
+                /** @description How many items to return. */
+                limit?: number;
+                /** @description `next_cursor` from the previous page. */
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_InterviewSummary_"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_interview: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required. A unique value (a UUID is ideal) per logical create; send the same value when retrying it. */
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InterviewCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterviewResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_interviews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkInterviewCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkInterviewResult"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_interview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterviewResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_accommodations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccommodationResponse"][];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    request_accommodation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccommodationBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccommodationCreated"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    decide_accommodation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+                accommodation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccommodationDecision"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccommodationResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    answer_question: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnswerBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StateResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    interview_briefing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BriefingResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    cancel_interview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterviewResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    complete_interview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompleteBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompleteResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    record_consents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsentBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsentResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    send_invitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterviewResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    reschedule_interview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RescheduleBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterviewResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    set_interview_reviewers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewersBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterviewResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    interview_session_state: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StateResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    start_interview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StartResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    record_system_check: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SystemCheckBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SystemCheckResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    interview_transcript: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TranscriptResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    save_workspace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkspaceBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Client error, as an RFC 9457 problem */
@@ -6124,6 +9351,42 @@ export interface operations {
             };
         };
     };
+    livekit_webhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     get_organization: {
         parameters: {
             query?: never;
@@ -6204,6 +9467,166 @@ export interface operations {
             };
         };
     };
+    get_candidate_access: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateAccessSettings"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_candidate_access: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CandidateAccessSettings"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateAccessSettings"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_interview_briefing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterviewBriefingSettings"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_interview_briefing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InterviewBriefingSettings"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterviewBriefingSettings"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_permissions: {
         parameters: {
             query?: never;
@@ -6220,6 +9643,174 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PermissionResponse"][];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_desktop_channel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel: "stable" | "beta";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChannelUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_desktop_releases: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseRegistry"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_desktop_release: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_desktop_release: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                release_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseResponse"];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */
