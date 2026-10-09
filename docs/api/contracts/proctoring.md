@@ -92,3 +92,4 @@ Body:
 ## Changes
 
 - 2026-10-09: drafted by lane B.
+- 2026-10-09: reviewed by lane C; no field changes. Clarified: events and heartbeats after the interview completes answer `409 proctor-session-closed`; an unknown `event` or `source` is `422 unknown-event` (the whole batch is refused, so nothing is half-stored); a batch holds at most `batch_max_events`.

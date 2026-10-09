@@ -167,7 +167,7 @@ Dates are targets in IST. A box is ticked in the PR that merges the part.
 
 ### Lane A — candidate access and reporting (cloud session 1)
 
-- [ ] **A0 (Oct 10, first hour):** review `docs/api/contracts/candidate-auth.md` and record any changes the way the contracts README says.
+- [x] **A0 (Oct 10, first hour):** review `docs/api/contracts/candidate-auth.md` and record any changes the way the contracts README says.
 - [ ] **A1 SP-07a Interviews and invitations (Oct 10).**
   - **Interviews:**
     - the state machine (scheduled, invited, in progress, interrupted, completed, evaluating, evaluated, expired, cancelled, abandoned), with an event history;
@@ -321,7 +321,7 @@ Dates are targets in IST. A box is ticked in the PR that merges the part.
 
 ### Lane C — interview AI and realtime (cloud session 2)
 
-- [ ] **C0 (Oct 10, first hour):** review `docs/api/contracts/interview-session.md` and `proctoring.md`; record any changes the way the contracts README says.
+- [x] **C0 (Oct 10, first hour):** review `docs/api/contracts/interview-session.md` and `proctoring.md`; record any changes the way the contracts README says.
 - [ ] **C1 SP-09a (Oct 10):**
   - rooms, least-privilege tokens and explicit agent dispatch;
   - the voice pipeline (Deepgram STT and TTS plugins, mock in CI);
@@ -387,7 +387,7 @@ Dates are targets in IST. A box is ticked in the PR that merges the part.
 
 ### Lane D — quality, media services, identity and governance (cloud session 3)
 
-- [ ] **D0 (Oct 10, first hour):** review `docs/api/contracts/recordings.md` and `third-eye.md`; record any changes the way the contracts README says.
+- [x] **D0 (Oct 10, first hour):** review `docs/api/contracts/recordings.md` and `third-eye.md`; record any changes the way the contracts README says.
 - [ ] **D1 Catch-up H0 (Oct 10). Things the plan promised and SP-04a to SP-06 skipped.**
   - **Policy drafts:** `docs/policies/` with privacy, recording, proctoring, data retention, the deletion process and the support contact. **Do this first: A3 needs them.**
   - **CI gates:**

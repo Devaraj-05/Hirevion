@@ -13,7 +13,7 @@
 ```json
 {
   "pairing_id": "uuid",
-  "qr_url": "https://eye.hirevion.localhost/p/<token>",
+  "qr_url": "https://eye.hirevion.localhost/#t=<token>",
   "expires_at": "2026-10-12T05:00:00Z",
   "status": "issued"
 }
@@ -25,6 +25,7 @@
   - bound to the interview;
   - bound to the candidate;
   - revocable.
+- **The token is in the URL fragment** (`#t=`), which a browser never sends, so it stays out of server and proxy logs; the phone page reads it and spends it with `POST /third-eye/redeem`.
 - **Pairing again** revokes the previous pairing and disconnects its phone.
 
 ## Desktop: watch the pairing
@@ -34,6 +35,7 @@
 ```json
 {
   "status": "issued | redeemed | connected | disconnected | revoked | expired",
+  "expires_at": "…",
   "device": { "platform": "iOS 18 Safari" },
   "connected_at": "…",
   "last_seen_at": "…",
@@ -70,3 +72,4 @@
 ## Changes
 
 - 2026-10-09: drafted by lane B.
+- 2026-10-09: reviewed by lane D. `qr_url` carries the token in the fragment (`/#t=<token>`) instead of the path, as the SP-00 spike's phone page already reads it, so it never reaches a server log. `GET /third-eye/pairings/{pairing_id}` also answers `expires_at`.

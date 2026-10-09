@@ -142,3 +142,4 @@ Checks 3 to 6 consider every assigned interview: the login succeeds if any one i
 ## Changes
 
 - 2026-10-09: drafted by lane B.
+- 2026-10-09: reviewed by lane A; no field changes. Clarified: a missing or malformed `DPoP` proof is `401 dpop-invalid`, like a replayed one; the server doesn't ask for nonces yet (`use-dpop-nonce` is reserved). Access tokens carry `iss`, `aud` (`hirevion-desktop`), `sub`, `org`, `scope`, `cnf.jkt`, `iat`, `exp` and `jti`; the desktop never needs to read them.

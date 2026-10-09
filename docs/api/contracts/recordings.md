@@ -36,7 +36,8 @@ Body:
 - **Containers and codecs:**
   - screen tracks: `mp4` with `h264`;
   - camera and microphone: `webm` with `vp8` or `opus`, or `mp4` with `h264` or `aac`.
-- **`200`:** `{ "segment_id": "uuid", "upload_url": "<write-only SAS for one blob, 15 minutes>", "headers": { "x-ms-blob-type": "BlockBlob", "Content-Type": "video/mp4" } }`.
+- **`200`:** `{ "segment_id": "uuid", "upload_url": "<write-only SAS for one blob, 15 minutes>", "expires_at": "…", "headers": { "x-ms-blob-type": "BlockBlob", "Content-Type": "video/mp4" } }`.
+- **Limits:** a segment is at most 50 MB (`413 segment-too-large`) and at most 60 s long; `seq` starts at 0 per track.
 - **Retries:** asking again for the same `(interview_id, track, seq)` returns the same `segment_id` with a fresh URL, so retries are safe.
 - **`409 segment-acknowledged`:** the segment is already done, so the desktop deletes its local copy.
 - **The blob's path** follows §85: `/{org}/interviews/{id}/{screen|camera|audio}/…`.
@@ -63,3 +64,4 @@ Body:
 ## Changes
 
 - 2026-10-09: drafted by lane B.
+- 2026-10-09: reviewed by lane D. Added `expires_at` to the upload-URL answer, and the limits: 50 MB and 60 s per segment, `seq` from 0 per track. A track name the interview doesn't record (for example `camera` when the template records no camera) is `422 track-not-recorded`.

@@ -4,6 +4,24 @@
 
 ## Before the interview
 
+### Briefing — `GET /interviews/{id}/briefing`
+
+What the desktop shows before the system check: §30's instructions and the itemised consent notice.
+
+```json
+{
+  "instructions": ["Find a quiet, well-lit room.", "…"],
+  "mandatory_checks": ["camera", "microphone", "speaker", "screen_capture", "network"],
+  "notice": {
+    "version": "2026-10-09",
+    "items": [ { "purpose": "camera", "text": "…", "required": true }, … ]
+  },
+  "accommodations": { "requested": [], "approved": [] },
+  "answer_mode": "voice",
+  "third_eye": "optional"
+}
+```
+
 ### System checks — `POST /interviews/{id}/system-checks`
 
 Body:
@@ -66,7 +84,8 @@ Body:
     "deadline_at": "…",
     "remaining_seconds": 2700,
     "third_eye": "optional",
-    "workspace": "none"
+    "workspace": "none",
+    "answer_mode": "voice"
   }
 }
 ```
@@ -105,7 +124,7 @@ Body:
 | Call | Body | Answer |
 |---|---|---|
 | `GET /interviews/{id}/session` | — | `{ "state": {…, as in start} }` (for recovery after a restart; the clock offset comes from `GET /time`) |
-| `POST /interviews/{id}/answer` (text-answer mode, PRD §90) | `{ "question_id": "uuid", "text": "…" }` | `202` |
+| `POST /interviews/{id}/answer` (text-answer mode, PRD §90) | `{ "question_id": "uuid", "text": "…" }` | `202 { "state": {…} }`: in text mode the state already holds the next question; in voice mode it may not yet |
 | `POST /interviews/{id}/workspace` (code or whiteboard snapshot) | `{ "question_id", "kind": "code" \| "whiteboard", "language": "python", "content": "…" }` | `202` |
 | `POST /interviews/{id}/complete` | `{ "reason": "finished" \| "candidate_ended" }` | `200 { "status": "completed" }` |
 
@@ -115,3 +134,8 @@ Body:
 ## Changes
 
 - 2026-10-09: drafted by lane B.
+- 2026-10-09: reviewed by lane C.
+  - Added `GET /interviews/{id}/briefing`: the instructions, mandatory checks and consent notice the desktop shows before the system check (§30), so their text comes from the server.
+  - The session state gains `answer_mode` (`voice`, or `text` when the text-answer accommodation applies).
+  - `POST /interviews/{id}/answer` answers `202` with the latest `state`.
+  - A consent whose `notice_version` isn't the current one is `409 notice-outdated` (fetch the briefing again); an unknown check name is `422 unknown-check`.
