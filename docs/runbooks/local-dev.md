@@ -379,7 +379,8 @@ How it works is in [ADR-0018](../architecture/adr/0018-desktop-device-keys-and-t
 - **Before the candidate sign-in API exists (SP-07c),** `HV_DESKTOP_STUB=1` makes a debug build answer from canned data:
   - any email works with the password `stub`;
   - an email starting `new` asks for the code `123456`.
-- **The device key** lives in the TPM when there's one (`Hirevion Device Key v1`). The refresh token is in `%LOCALAPPDATA%\Hirevion\vault`. Signing out deletes it.
+- **The device key** lives in the TPM when there's one (`Hirevion Device Key v1`). `cargo test -p hv-security -- --ignored` checks it on real hardware.
+- **The refresh token** is DPAPI-encrypted in `%LOCALAPPDATA%\com.hirevion.interview\vault`. Signing out deletes it.
 - **Integrity in release builds:** the app removes the `WEBVIEW2_*` variables that change the browser before it starts, and reports them.
 - **Integrity in debug builds:** the app keeps them, so the fake-device spike runs below still work, and only reports them.
 

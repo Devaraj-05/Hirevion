@@ -264,7 +264,7 @@ Dates are targets in IST. A box is ticked in the PR that merges the part.
 
 ### Lane B — desktop and native (the local Windows PC)
 
-- [ ] **B1 SP-08a Desktop foundation, part 1 (Oct 10).**
+- [x] **B1 SP-08a Desktop foundation, part 1 (Oct 10).** Done 2026-10-09 (ADR-0018; plan `2026-10-09-sp-08a-desktop-foundation.md`).
   - **The Tauri app.**
   - **The `security` crate:**
     - a CNG/TPM device key;
