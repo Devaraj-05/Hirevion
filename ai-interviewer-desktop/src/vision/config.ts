@@ -38,6 +38,11 @@ export interface VisionConfig {
   obstruction: ObstructionRules;
   /** A condition must be gone this long to end an episode, so a missed frame doesn't. */
   clearAfterMs: number;
+  /**
+   * A condition holds when it held in most of the last this many frames (a majority filter),
+   * so sparse detector mistakes neither start nor sustain an episode.
+   */
+  smoothingFrames: number;
   /** With no frame for this long, open episodes end at the last frame. */
   maxGapMs: number;
 }
@@ -70,6 +75,7 @@ export const DEFAULT_VISION_CONFIG: VisionConfig = {
     hysteresis: 1.25,
   },
   clearAfterMs: 1_000,
+  smoothingFrames: 5,
   maxGapMs: 2_000,
 };
 

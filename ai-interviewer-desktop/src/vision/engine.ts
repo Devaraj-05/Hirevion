@@ -14,11 +14,12 @@ import {
  * The temporal rule engine: a pure reducer from frames to §56's episodes. Each signal is an
  * episode tracker, idle → pending → active → idle:
  *
- * - the first frame where the condition holds starts a pending episode;
- * - holding past the first threshold (strictly) makes it active and raises `started`;
- *   holding past critical raises `escalated`;
+ * - a majority filter over the last `smoothingFrames` frames decides whether the condition
+ *   holds, so a sparse detector mistake neither starts nor sustains an episode;
+ * - an episode starts at its first frame with the condition, and holding past the first
+ *   threshold (strictly) makes it active and raises `started`; past critical, `escalated`;
  * - the condition gone for `clearAfterMs` ends it, raising `ended` with the duration up to the
- *   first frame without it, so a missed frame or two never splits an episode;
+ *   first frame without it, so a short gap never splits an episode;
  * - no frame for `maxGapMs` ends open episodes at their last frame.
  */
 
@@ -34,16 +35,29 @@ export interface SignalEvent {
   details: EpisodeDetails;
 }
 
+/** One frame's reading for one signal, kept for the majority filter. */
+interface Sample {
+  t: number;
+  on: boolean;
+  confidence: number;
+  faces: number;
+  faceHeight: number | null;
+  meanLuma: number | null;
+}
+
 interface Tracker {
   status: "idle" | "pending" | "active";
+  /** The latest frames, oldest first. */
+  window: readonly Sample[];
   start: number;
+  /** The episode's latest frame with the condition. */
   lastOn: number;
-  /** The first frame of the current run without the condition. */
+  /** While the filtered condition is off: the first frame without it after `lastOn`. */
   offSince: number | null;
   level: Level | null;
-  /** Frames since the episode started, and how many of the latest ones lacked the condition. */
+  /** Frames since the episode started, and that count at its latest frame with the condition. */
   frames: number;
-  offRun: number;
+  framesAtLastOn: number;
   onFrames: number;
   confidenceSum: number;
   maxFaces: number;
@@ -64,14 +78,14 @@ export interface EngineStep {
   events: SignalEvent[];
 }
 
-const IDLE: Tracker = {
+const EMPTY_EPISODE = {
   status: "idle",
   start: 0,
   lastOn: 0,
   offSince: null,
   level: null,
   frames: 0,
-  offRun: 0,
+  framesAtLastOn: 0,
   onFrames: 0,
   confidenceSum: 0,
   maxFaces: 0,
@@ -79,15 +93,16 @@ const IDLE: Tracker = {
   heightFrames: 0,
   lumaSum: 0,
   lumaFrames: 0,
-};
+} as const satisfies Omit<Tracker, "window">;
 
 function allIdle(): Record<CameraSignal, Tracker> {
+  const idle: Tracker = { ...EMPTY_EPISODE, window: [] };
   return {
-    FACE_ABSENT: IDLE,
-    MULTIPLE_FACES: IDLE,
-    FACE_TOO_FAR: IDLE,
-    FACE_TOO_CLOSE: IDLE,
-    CAMERA_OBSTRUCTED: IDLE,
+    FACE_ABSENT: idle,
+    MULTIPLE_FACES: idle,
+    FACE_TOO_FAR: idle,
+    FACE_TOO_CLOSE: idle,
+    CAMERA_OBSTRUCTED: idle,
   };
 }
 
@@ -113,12 +128,12 @@ export function stepEngine(
   }
   const wasOn = {} as Record<CameraSignal, boolean>;
   for (const signal of CAMERA_SIGNALS) {
-    const tracker = trackers[signal];
-    wasOn[signal] = tracker.status !== "idle" && tracker.offSince === null;
+    wasOn[signal] = trackers[signal].window.at(-1)?.on ?? false;
   }
   const reading = classifyFrame(observation, config, wasOn);
   for (const signal of CAMERA_SIGNALS) {
-    const next = stepTracker(trackers[signal], signal, reading, observation.t, config);
+    const sample = sampleOf(reading, signal, observation.t);
+    const next = stepTracker(trackers[signal], signal, sample, config);
     trackers[signal] = next.tracker;
     events.push(...next.events);
   }
@@ -126,8 +141,9 @@ export function stepEngine(
 }
 
 /**
- * Ends every open episode at its last frame (or the start of the run without its condition),
- * as when the module stops or frames stop arriving. Pending episodes end silently.
+ * Ends every open episode at its last frame with the condition (or the first frame without it),
+ * as when the module stops or frames stop arriving. Pending episodes end silently, and the
+ * majority filter starts afresh.
  */
 export function flushEngine(state: EngineState): EngineStep {
   const events: SignalEvent[] = [];
@@ -146,79 +162,94 @@ export function activeSignals(state: EngineState): CameraSignal[] {
   return CAMERA_SIGNALS.filter((signal) => state.trackers[signal].status === "active");
 }
 
+function sampleOf(reading: FrameReading, signal: CameraSignal, t: number): Sample {
+  const { on, confidence } = reading.signals[signal];
+  return {
+    t,
+    on,
+    confidence,
+    faces: reading.faces,
+    faceHeight: reading.faceHeight,
+    meanLuma: reading.meanLuma,
+  };
+}
+
 function stepTracker(
   tracker: Tracker,
   signal: CameraSignal,
-  reading: FrameReading,
-  t: number,
+  sample: Sample,
   config: VisionConfig,
 ): { tracker: Tracker; events: SignalEvent[] } {
-  const { on, confidence } = reading.signals[signal];
-  if (tracker.status === "idle") {
-    if (!on) return { tracker, events: [] };
-    return {
-      tracker: accumulate(
-        { ...IDLE, status: "pending", start: t, frames: 1 },
-        reading,
-        confidence,
-        t,
-      ),
-      events: [],
-    };
-  }
+  const window = [...tracker.window, sample].slice(-Math.max(1, config.smoothingFrames));
+  const held = 2 * window.filter((entry) => entry.on).length > window.length;
   const events: SignalEvent[] = [];
-  let next: Tracker = { ...tracker, frames: tracker.frames + 1 };
-  if (on) {
-    next = accumulate({ ...next, offSince: null, offRun: 0 }, reading, confidence, t);
-    const elapsed = t - next.start;
-    const rule = config.signals[signal];
-    const first = firstThreshold(rule);
-    if (next.status === "pending" && first && elapsed > first.ms) {
-      next = { ...next, status: "active", level: first.level };
-      events.push(episodeEvent(next, signal, "started", elapsed));
-    }
-    const critical = rule.critical_after_ms;
-    if (
-      next.status === "active" &&
-      next.level === "warning" &&
-      critical !== undefined &&
-      elapsed > critical
-    ) {
-      next = { ...next, level: "critical" };
-      events.push(episodeEvent(next, signal, "escalated", elapsed));
+  let next: Tracker;
+  if (tracker.status === "idle") {
+    if (!held) return { tracker: { ...tracker, window }, events };
+    // The filter turns on only on a frame with the condition; the episode began at the
+    // window's first such frame.
+    const firstOn = window.findIndex((entry) => entry.on);
+    next = { ...EMPTY_EPISODE, window, status: "pending", start: window[firstOn]?.t ?? sample.t };
+    for (const entry of window.slice(firstOn)) next = count(next, entry);
+  } else {
+    next = count({ ...tracker, window }, sample);
+  }
+
+  if (held) {
+    next = { ...next, offSince: null };
+    if (sample.on) {
+      const elapsed = sample.t - next.start;
+      const rule = config.signals[signal];
+      const first = firstThreshold(rule);
+      if (next.status === "pending" && first && elapsed > first.ms) {
+        next = { ...next, status: "active", level: first.level };
+        events.push(episodeEvent(next, signal, "started", elapsed));
+      }
+      const critical = rule.critical_after_ms;
+      if (
+        next.status === "active" &&
+        next.level === "warning" &&
+        critical !== undefined &&
+        elapsed > critical
+      ) {
+        next = { ...next, level: "critical" };
+        events.push(episodeEvent(next, signal, "escalated", elapsed));
+      }
     }
     return { tracker: next, events };
   }
-  const offSince = next.offSince ?? t;
-  next = { ...next, offSince, offRun: next.offRun + 1 };
-  if (t - offSince >= config.clearAfterMs) {
+
+  const lastOn = next.lastOn;
+  const offSince = next.offSince ?? window.find((entry) => entry.t > lastOn)?.t ?? sample.t;
+  next = { ...next, offSince };
+  if (sample.t - offSince >= config.clearAfterMs) {
     if (next.status === "active") {
       events.push(episodeEvent(next, signal, "ended", offSince - next.start));
     }
-    next = IDLE;
+    next = { ...EMPTY_EPISODE, window };
   }
   return { tracker: next, events };
 }
 
-function accumulate(
-  tracker: Tracker,
-  reading: FrameReading,
-  confidence: number,
-  t: number,
-): Tracker {
+/** Adds one frame to an episode's counts. */
+function count(tracker: Tracker, sample: Sample): Tracker {
+  const frames = tracker.frames + 1;
+  if (!sample.on) return { ...tracker, frames };
   const next = {
     ...tracker,
-    lastOn: t,
+    frames,
+    framesAtLastOn: frames,
+    lastOn: sample.t,
     onFrames: tracker.onFrames + 1,
-    confidenceSum: tracker.confidenceSum + confidence,
-    maxFaces: Math.max(tracker.maxFaces, reading.faces),
+    confidenceSum: tracker.confidenceSum + sample.confidence,
+    maxFaces: Math.max(tracker.maxFaces, sample.faces),
   };
-  if (reading.faceHeight !== null) {
-    next.heightSum += reading.faceHeight;
+  if (sample.faceHeight !== null) {
+    next.heightSum += sample.faceHeight;
     next.heightFrames += 1;
   }
-  if (reading.meanLuma !== null) {
-    next.lumaSum += reading.meanLuma;
+  if (sample.meanLuma !== null) {
+    next.lumaSum += sample.meanLuma;
     next.lumaFrames += 1;
   }
   return next;
@@ -230,7 +261,7 @@ function episodeEvent(
   phase: Phase,
   durationMs: number,
 ): SignalEvent {
-  const frames = tracker.frames - tracker.offRun;
+  const frames = tracker.framesAtLastOn;
   const onRatio = frames === 0 ? 0 : tracker.onFrames / frames;
   const meanConfidence = tracker.onFrames === 0 ? 0 : tracker.confidenceSum / tracker.onFrames;
   const details: EpisodeDetails = { frames };

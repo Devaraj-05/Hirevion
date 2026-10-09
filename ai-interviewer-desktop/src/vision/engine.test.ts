@@ -213,6 +213,15 @@ describe("flapping and gaps", () => {
     expect(events[2]?.confidence).toBeCloseTo(0.5, 1);
   });
 
+  it("isn't started or sustained by sparse detector misses", () => {
+    // The detector misses the face in every fourth frame for a minute.
+    const misses = Array.from({ length: 150 }, () => [
+      [300, present] as [number, Frame],
+      [100, absent] as [number, Frame],
+    ]).flat();
+    expect(run(timeline(misses)).events).toEqual([]);
+  });
+
   it("raises nothing when every absence is shorter than the threshold", () => {
     const flapping = Array.from({ length: 15 }, () => [
       [2_000, absent] as [number, Frame],
