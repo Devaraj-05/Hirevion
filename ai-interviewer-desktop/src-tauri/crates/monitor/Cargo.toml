@@ -1,0 +1,32 @@
+[package]
+name = "hv-monitor"
+description = "Native Windows monitoring for the Hirevion desktop app: processes, focus, displays, devices and the environment (PRD §60–63)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+hv-security = { path = "../security" }
+serde = { version = "1.0.228", features = ["derive"] }
+sha2 = "0.10.9"
+
+[target.'cfg(windows)'.dependencies]
+windows = { workspace = true, features = [
+  "Win32_Graphics_Dwm",
+  "Win32_Security_Cryptography_Catalog",
+  "Win32_Security_Cryptography_Sip",
+  "Win32_Security_WinTrust",
+  "Win32_UI_Accessibility",
+] }
+windows-core = { workspace = true }
+
+[dev-dependencies]
+serde_json = "1.0.145"
+
+[target.'cfg(windows)'.dev-dependencies]
+# The live tests create a helper window.
+windows = { workspace = true, features = ["Win32_System_LibraryLoader"] }
