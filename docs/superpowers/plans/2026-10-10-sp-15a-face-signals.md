@@ -27,6 +27,7 @@ SP-08b wires the module into the interview screen and forwards events to the nat
   - "Face present" is the normal state and raises nothing.
 - **Temporal rule engine (pure reducer plus a thin wrapper):**
   - Each signal is an episode tracker: idle → pending → active → idle.
+  - **Majority filter:** a condition holds when it held in at least 3 of the last 5 frames. Without it, a detector that misses one frame in twelve kept a `FACE_ABSENT` episode alive across a whole stretch of "too far" (found by the synthetic set). The episode still starts at its first frame with the condition, and thresholds are judged at frames with it, so the filter adds no delay to durations.
   - **Gaps:** a gap shorter than `clear_after_ms` (1 s) doesn't end an episode, so a detector that misses one or two frames doesn't restart the clock and flapping input yields one episode, not many.
   - **Stale input:** when no frame arrives for `max_gap_ms` (2 s), open episodes end at the last frame, so a stalled worker never stretches an episode.
   - **Thresholds** are strict (`> 5 s`) and come from a config object:
@@ -59,13 +60,19 @@ SP-08b wires the module into the interview screen and forwards events to the nat
 
 ## Tasks
 
-1. This plan.
-2. Pure maths, tests first: frame statistics and obstruction; per-frame classification; the config, policy overrides and accommodations.
-3. The temporal engine, tests first: 4 s absent → nothing; 6 s → warning with its duration; 31 s → critical; two faces for 2 s → nothing; 3.5 s → `MULTIPLE_FACES`; flapping doesn't spam; stale input; contract shape.
-4. The frame-rate controller and the evaluation harness with the synthetic set, tests first.
-5. The worker and the main-thread module (tested with a fake worker and fake timers; no real webcam).
-6. `checks/face.ts` and the `vision` strings, tests first.
-7. Typecheck, tests and Biome.
+- [x] This plan.
+- [x] Pure maths, tests first: frame statistics and obstruction; per-frame classification; the config, policy overrides and accommodations.
+- [x] The temporal engine, tests first: 4 s absent → nothing; 6 s → warning with its duration; 31 s → critical; two faces for 2 s → nothing; 3.5 s → `MULTIPLE_FACES`; flapping doesn't spam; sparse misses; stale input; contract shape.
+- [x] The frame-rate controller and the evaluation harness with the synthetic set, tests first.
+- [x] The worker and the main-thread module (tested with a fake worker and fake timers; no real webcam).
+- [x] `checks/face.ts` and the `vision` strings, tests first.
+- [x] Typecheck, tests and Biome.
+- [ ] SP-08b: start the module on the interview screen, add the native command that queues events, show the guidance under the system check's camera preview, and run the worker once against WebView2's fake camera.
+
+## Contract notes
+
+- Only the contract's camera names are emitted (`FACE_ABSENT`, `MULTIPLE_FACES`, `FACE_TOO_FAR`, `FACE_TOO_CLOSE`, `CAMERA_OBSTRUCTED`): an unknown name makes the server refuse the whole batch.
+- **Proposed for `proctoring.md`** (lane C to confirm): one episode yields up to three events sharing `event` and `started_at` — `details.phase` `started` / `escalated` / `ended` and `details.level` — so the server can raise an alert while the episode is still going and still get its final duration.
 
 ## For SP-08b
 
