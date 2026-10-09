@@ -12,6 +12,67 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Which parts of the repo a push touched, so each job runs only when its area changed. On main
+  # and on manual runs every job runs. Feature branches compare against main, so a later push
+  # never skips a job the branch as a whole needs.
+  changes:
+    runs-on: ubuntu-24.04
+    outputs:
+      python: ${{ steps.filter.outputs.python }}
+      contract: ${{ steps.filter.outputs.contract }}
+      web: ${{ steps.filter.outputs.web }}
+      e2e: ${{ steps.filter.outputs.e2e }}
+      compose: ${{ steps.filter.outputs.compose }}
+      desktop: ${{ steps.filter.outputs.desktop }}
+      rust: ${{ steps.filter.outputs.rust }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            ci: &ci
+              - ".github/workflows/**"
+            python:
+              - *ci
+              - "backend/**"
+              - "tools/**"
+              - "pyproject.toml"
+              - "uv.lock"
+            contract:
+              - *ci
+              - "backend/**"
+              - "packages/api-client/**"
+              - "tools/api-codegen/**"
+              - "uv.lock"
+            web:
+              - *ci
+              - "recruitment-platform/**"
+              - "packages/**"
+              - "package.json"
+              - "pnpm-lock.yaml"
+            e2e:
+              - *ci
+              - "backend/**"
+              - "recruitment-platform/**"
+              - "packages/**"
+              - "tools/devcli/**"
+              - "uv.lock"
+              - "pnpm-lock.yaml"
+            compose:
+              - *ci
+              - "infrastructure/**"
+              - "backend/**"
+              - "uv.lock"
+            desktop:
+              - *ci
+              - "ai-interviewer-desktop/**"
+              - "packages/**"
+              - "pnpm-lock.yaml"
+            rust:
+              - *ci
+              - "ai-interviewer-desktop/src-tauri/**"
+
   hooks:
     runs-on: ubuntu-24.04
     steps:
@@ -20,6 +81,8 @@ jobs:
         run: sh tools/hooks/test-hooks.sh
 
   python:
+    needs: changes
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.python == 'true'
     runs-on: ubuntu-24.04
     # The `db` tests run against real PostgreSQL and Valkey (the same images as the local stack).
     services:
@@ -87,6 +150,8 @@ jobs:
 
   # The committed OpenAPI document and the TypeScript types generated from it match the API.
   api-contract:
+    needs: changes
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.contract == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -109,6 +174,8 @@ jobs:
           git diff --exit-code packages/api-client/src/schema.d.ts
 
   web:
+    needs: changes
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.web == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -119,10 +186,6 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Design system and web app checks
-        run: |
-          pnpm --filter @hirevion/ui --filter @hirevion/recruitment-platform typecheck
-          pnpm --filter @hirevion/ui --filter @hirevion/recruitment-platform test
       - name: Install Chromium for Playwright
         run: pnpm --filter @hirevion/recruitment-platform exec playwright install --with-deps chromium
       - name: End to end (every route and role, axe in both themes, keyboard, CSP, hosts)
@@ -137,6 +200,8 @@ jobs:
   # Sign-in end to end: the web app (behind a gateway like Caddy) against the real API,
   # PostgreSQL, Valkey and Mailpit (SP-02a).
   e2e-auth:
+    needs: changes
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     services:
@@ -252,6 +317,8 @@ jobs:
           retention-days: 7
 
   compose:
+    needs: changes
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.compose == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -290,7 +357,24 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # Biome, type checks and unit tests across every TypeScript package. Cheap, so it always runs.
+  js:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+
   desktop:
+    needs: changes
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.desktop == 'true'
     runs-on: windows-2025
     defaults:
       run:
@@ -303,9 +387,6 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test
       - name: Build the desktop webview (Tauri embeds dist/ at compile time)
         run: pnpm --filter @hirevion/ai-interviewer-desktop build
       - name: Install the pinned Rust toolchain
@@ -325,6 +406,8 @@ jobs:
         run: cargo test --workspace --locked
 
   rust-licenses:
+    needs: changes
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7

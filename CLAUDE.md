@@ -6,6 +6,7 @@ Hirevion is an enterprise AI recruitment and interview platform with two separat
 - Architecture, sub-projects, schedule and PRD traceability: `MASTER_IMPLEMENTATION_PLAN.md`. It is the source of truth for sequencing, and its §13 "Global constraints" apply to every change.
 - Detailed per-sub-project plans live in `docs/superpowers/plans/`.
 - What's left, in order, with each part's definition of done and lane: `PENDING_TASKS.md`. Read it before starting new work, and update it when a part lands.
+- A fresh Linux clone (for example a Claude Code cloud session) runs `bash scripts/session-setup.sh` once, before anything else. It sets the git identity and hooks below, the toolchains, a `.env` on the mock AI, and the test services.
 
 ## Git identity & attribution (MANDATORY)
 

@@ -1476,7 +1476,7 @@ What actually happened:
 - **Desktop not started.** The desktop lane — the riskiest remaining work — hasn't begun.
 - **Nothing merged since SP-02b.** PRs #1–#4 are stacked and waiting.
 
-The current dates:
+The estimates before the product owner's decision below (superseded: the target is now 2026-10-15 with four lanes):
 
 | CP | Original (expected) | Re-plan, three lanes | Re-plan, one lane |
 |---|---|---|---|
@@ -1492,21 +1492,39 @@ The current dates:
   - the Gemini key fixed before SP-09.
 - **One-lane basis:** about 0.75 active days per backend/web part and about 1.5 per desktop or native part, over the roughly 27 parts left.
 
-How the work runs from now (details in [PENDING_TASKS.md](PENDING_TASKS.md)):
+**Decision, 2026-10-09 (product owner):**
+- Every lane runs at once.
+- Development must be finished by **2026-10-15**, with access 24 hours a day.
+- Credits are used carefully.
+
+[PENDING_TASKS.md](PENDING_TASKS.md) holds the operating plan: lanes, day targets, contracts, prompts, merge protocol.
 
 | Lane | Order | Where it runs |
 |---|---|---|
-| **A** backend and web | SP-07a, SP-07b, SP-07c, SP-18, SP-19, then SP-17, SP-20, SP-21, SP-22 | Local, or a cloud session with Postgres and Valkey |
-| **B** desktop and native | SP-08a, SP-08b, SP-11, SP-12, SP-15a, SP-13, SP-15b | Local on the Windows PC only (Tauri, Rust, webcams, Media Foundation) |
-| **C** AI and realtime | SP-09a–c, SP-10, SP-14, SP-16 | Local or cloud with the `mock` profile; live tuning needs the AI keys |
+| **A** candidate access and reporting | SP-07a, SP-07c, SP-07b, SP-18, SP-17, SP-21 | Cloud session 1 |
+| **B** desktop and native | SP-08a; then SP-11, SP-12 (client) and SP-15a in parallel; SP-08b; then the SP-16, SP-13 and SP-15b desktop parts | The local Windows PC only (Tauri, Rust, webcams, Media Foundation); also the integrator |
+| **C** interview AI and realtime | SP-09a–c, SP-10, SP-14, SP-16 (server), the vision agent | Cloud session 2 |
+| **D** quality, media services, identity and governance | The H0 catch-up, SP-12 (server), SP-13, SP-19, SP-22, SP-20, SP-23 (automated parts) | Cloud session 3 |
 
-**Starting early.** SP-08a and SP-09a don't wait for SP-07c:
-- SP-08a uses a stub sign-in;
-- SP-09a uses the interview simulator as its client.
+**Priority if time runs short:**
+- P0: CP2 and CP3 (the §104 MVP).
+- P1: CP4.
+- P2: CP5.
+- P3: SP-23's automated hardening.
+
+Nothing is dropped; lower priorities finish after Oct 15.
+
+**Starting early.**
+- **Contracts first.** The desktop calls APIs other lanes build, so each owning lane publishes `docs/api/contracts/*.md` first.
+- **Neither lane waits for SP-07c.** SP-08a starts against a stub sign-in, and SP-09a uses the interview simulator as its client.
 
 **Merging:**
-- Each part opens its PR against `main`, and stacking is at most one deep.
-- The user merges green PRs daily; a lane doesn't start its next part on a stack more than one deep.
+- Each part opens its PR against `main`.
+- A lane merges its own green PR by fast-forward, as Devaraj-05.
+- Lane B merges any PR a cloud session can't.
+- Never use GitHub's merge button, which makes GitHub the committer.
+
+**CI cost:** jobs are path-filtered on branches, so a push runs only the jobs its changes touch; `main` runs everything.
 
 **Shared files across lanes:**
 - **Migrations:** one linear Alembic chain, so renumber yours when rebasing onto `main`.
