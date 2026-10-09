@@ -1515,7 +1515,7 @@ The estimates before the product owner's decision below (superseded: the target 
 Nothing is dropped; lower priorities finish after Oct 15.
 
 **Starting early.**
-- **Contracts first.** The desktop calls APIs other lanes build, so each owning lane publishes `docs/api/contracts/*.md` first.
+- **Contracts first.** Lane B drafted the desktop's API contracts in `docs/api/contracts/` on 2026-10-09; the owning lanes review and implement them.
 - **Neither lane waits for SP-07c.** SP-08a starts against a stub sign-in, and SP-09a uses the interview simulator as its client.
 
 **Merging:**

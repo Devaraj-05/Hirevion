@@ -70,7 +70,7 @@ You are Lane <A|C|D> of the Hirevion build: <lane name from PENDING_TASKS.md sec
    the PRD for the cited § numbers instead of reading it whole.
 2. Run `bash scripts/session-setup.sh` once (git identity, hooks, toolchains, services).
 3. Build your lane's parts in order without stopping to ask: decide with sensible defaults and
-   record each decision in the part's plan or ADR. Publish your contracts (section 5) first.
+   record each decision in the part's plan or ADR. Review your contracts (section 5) first.
 4. Every part meets the definition of done and the merge protocol (section 6). Tick your own
    boxes in section 7 in the same PR.
 5. Never wait idle: while CI runs, plan the next part; if a part waits on another lane, build
@@ -80,9 +80,13 @@ You are Lane <A|C|D> of the Hirevion build: <lane name from PENDING_TASKS.md sec
 
 ## 5. Contracts first
 
-The desktop (lane B) calls APIs that other lanes build. Each owning lane publishes its contract within its first hour, as `docs/api/contracts/<name>.md`. A contract gives each endpoint, its request and response bodies, its error codes, and its auth (bearer access token with a DPoP proof). Lane B codes against the contracts until the real endpoints merge.
+The desktop (lane B) calls APIs that other lanes build. **Lane B drafted all five contracts on 2026-10-09** in `docs/api/contracts/`. The README there holds the shared rules: DPoP-bound tokens, RFC 9457 error codes, server time and idempotent retries.
 
-| Contract file | Owner | Needed by lane B | Covers |
+- **Review.** Each owning lane reviews its contract in its first hour, then implements it exactly.
+- **Changes.** A change goes in a small PR that edits the contract and adds a dated line under its "Changes".
+- **Lane B** codes against the contracts until the real endpoints merge.
+
+| Contract file | Provider | Needed by lane B | Covers |
 |---|---|---|---|
 | `candidate-auth.md` | A (SP-07c) | Oct 11 | Login with §28's six checks, one-time code verify, device-key registration, refresh, logout, interview list; release check and update manifest |
 | `interview-session.md` | C (SP-09a) | Oct 12 | Start (LiveKit URL and join token), text answer, complete, session state, clock sync, system-check results |
@@ -159,7 +163,7 @@ Dates are targets in IST. A box is ticked in the PR that merges the part.
 
 ### Lane A — candidate access and reporting (cloud session 1)
 
-- [ ] **A0 (Oct 10, first hour):** publish `docs/api/contracts/candidate-auth.md`.
+- [ ] **A0 (Oct 10, first hour):** review `docs/api/contracts/candidate-auth.md` and record any changes the way the contracts README says.
 - [ ] **A1 SP-07a Interviews and invitations (Oct 10).**
   - **Interviews:**
     - the state machine (scheduled, invited, in progress, interrupted, completed, evaluating, evaluated, expired, cancelled, abandoned), with an event history;
@@ -313,7 +317,7 @@ Dates are targets in IST. A box is ticked in the PR that merges the part.
 
 ### Lane C — interview AI and realtime (cloud session 2)
 
-- [ ] **C0 (Oct 10, first hour):** publish `interview-session.md` and `proctoring.md`.
+- [ ] **C0 (Oct 10, first hour):** review `docs/api/contracts/interview-session.md` and `proctoring.md`; record any changes the way the contracts README says.
 - [ ] **C1 SP-09a (Oct 10):**
   - rooms, least-privilege tokens and explicit agent dispatch;
   - the voice pipeline (Deepgram STT and TTS plugins, mock in CI);
@@ -379,7 +383,7 @@ Dates are targets in IST. A box is ticked in the PR that merges the part.
 
 ### Lane D — quality, media services, identity and governance (cloud session 3)
 
-- [ ] **D0 (Oct 10, first hour):** publish `recordings.md` and `third-eye.md`.
+- [ ] **D0 (Oct 10, first hour):** review `docs/api/contracts/recordings.md` and `third-eye.md`; record any changes the way the contracts README says.
 - [ ] **D1 Catch-up H0 (Oct 10). Things the plan promised and SP-04a to SP-06 skipped.**
   - **Policy drafts:** `docs/policies/` with privacy, recording, proctoring, data retention, the deletion process and the support contact. **Do this first: A3 needs them.**
   - **CI gates:**
