@@ -19,5 +19,6 @@
 | [0015](0015-jobs-and-documents.md) | Jobs and documents: one documents table, stream workers, verified extraction | Accepted |
 | [0016](0016-screening-and-ranking.md) | Screening and ranking: weighted factors, verified evidence, blind by default | Accepted |
 | [0017](0017-interview-configuration.md) | Interview configuration: versioned questions and templates, AI drafts for review | Accepted |
+| [0018](0018-desktop-device-keys-and-tokens.md) | Desktop sign-in: device-bound keys, DPoP, and tokens kept out of the webview | Accepted |
 
 New decisions copy [0000-template.md](0000-template.md) and take the next number.

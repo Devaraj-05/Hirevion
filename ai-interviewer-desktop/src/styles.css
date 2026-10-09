@@ -1,13 +1,14 @@
+@import "tailwindcss";
+@import "@hirevion/ui/styles.css";
+
+/* The design system's components live outside this app; let Tailwind see their classes. */
+@source "../../packages/ui/src";
+
 :root {
-  color-scheme: light dark;
   font-family: "Segoe UI", system-ui, sans-serif;
-  line-height: 1.5;
 }
 
-body {
-  margin: 0;
-}
-
+/* The spike pages (debug builds only) keep their simple layout. */
 .shell {
   max-width: 72rem;
   margin: 0 auto;

@@ -370,6 +370,19 @@ holds the native crates in `src-tauri/crates/`.
 `rust-toolchain.toml` pins the Rust version; rustup installs it automatically on first use.
 `cargo deny check` (with `cargo-deny` installed) checks licences and advisories the way CI does.
 
+### Sign-in and the system check (SP-08a)
+
+How it works is in [ADR-0018](../architecture/adr/0018-desktop-device-keys-and-tokens.md).
+
+- **The flow:** launch → version check → sign-in → (emailed code on a new device) → your interviews → system check → ready.
+- **Where calls go:** the app calls the API from Rust, never from the webview, at `HV_API_URL` (default `https://api.hirevion.localhost/api/v1`, through Caddy). Debug builds read `HV_API_URL` at run time, so `HV_API_URL=http://127.0.0.1:8000/api/v1 pnpm tauri dev` talks to `uv run hv api` directly.
+- **Before the candidate sign-in API exists (SP-07c),** `HV_DESKTOP_STUB=1` makes a debug build answer from canned data:
+  - any email works with the password `stub`;
+  - an email starting `new` asks for the code `123456`.
+- **The device key** lives in the TPM when there's one (`Hirevion Device Key v1`). The refresh token is in `%LOCALAPPDATA%\Hirevion\vault`. Signing out deletes it.
+- **Integrity in release builds:** the app removes the `WEBVIEW2_*` variables that change the browser before it starts, and reports them.
+- **Integrity in debug builds:** the app keeps them, so the fake-device spike runs below still work, and only reports them.
+
 ### Unattended spike runs
 
 Debug builds can run a spike page by themselves and write a JSON report (including the CPU

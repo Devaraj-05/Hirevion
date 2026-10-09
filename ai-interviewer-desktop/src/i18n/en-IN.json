@@ -1,0 +1,111 @@
+{
+  "app": {
+    "name": "Hirevion AI Interview",
+    "signOut": "Sign out",
+    "loading": "Loading…",
+    "version": "Version {version}"
+  },
+  "launch": {
+    "checking": "Checking for the latest version…",
+    "offline": "Can't reach the interview service. Check your internet connection.",
+    "retry": "Try again"
+  },
+  "update": {
+    "title": "Update required",
+    "body": "This version of the app can no longer be used. Install version {version} or later to take your interview.",
+    "bodyNoVersion": "This version of the app can no longer be used. Install the latest version to take your interview.",
+    "download": "Download the latest version"
+  },
+  "signIn": {
+    "title": "Sign in to your interview",
+    "intro": "Use the email address and password from your interview invitation.",
+    "email": "Email address",
+    "password": "Password",
+    "submit": "Sign in",
+    "working": "Signing in…",
+    "updateAvailable": "A newer version of the app is available. You can update after your interview.",
+    "sessionExpired": "You were signed out. Sign in again to continue."
+  },
+  "code": {
+    "title": "Check your email",
+    "intro": "This is a new device, so we sent a 6-digit code to {sentTo}.",
+    "label": "Code",
+    "submit": "Verify",
+    "resend": "Send a new code",
+    "resent": "A new code is on its way.",
+    "back": "Use a different account"
+  },
+  "interviews": {
+    "title": "Your interviews",
+    "hello": "Hello, {name}",
+    "empty": "You have no interviews to take right now.",
+    "job": "{job} at {company}",
+    "duration": "{minutes} minutes",
+    "opens": "Opens {date}",
+    "closes": "Open until {date}",
+    "startsIn": "Starts in {time}",
+    "start": "Start the system check",
+    "notYet": "Not open yet",
+    "coding": "Includes a coding exercise",
+    "thirdEyeRequired": "Needs your phone as a second camera",
+    "thirdEyeOptional": "You may use your phone as a second camera"
+  },
+  "checks": {
+    "title": "System check",
+    "intro": "We check that your computer is ready. This takes about a minute.",
+    "run": "Run the check",
+    "running": "Checking…",
+    "again": "Check again",
+    "continue": "Continue",
+    "back": "Back to your interviews",
+    "allPassed": "Your computer is ready.",
+    "mustFix": "Fix the items marked as failed, then check again.",
+    "speakerQuestion": "Did you hear a tone?",
+    "speakerYes": "Yes, I heard it",
+    "speakerNo": "No",
+    "playTone": "Play a test tone",
+    "statuses": {
+      "pass": "Passed",
+      "warn": "Warning",
+      "fail": "Failed",
+      "skipped": "Skipped"
+    },
+    "names": {
+      "camera": "Camera",
+      "microphone": "Microphone",
+      "speaker": "Speaker",
+      "screen_capture": "Screen recording",
+      "network": "Network",
+      "cpu": "Processor",
+      "memory": "Memory",
+      "disk": "Disk space",
+      "displays": "Displays",
+      "privacy": "Windows privacy settings",
+      "third_eye": "Phone camera",
+      "media_foundation": "Video encoder",
+      "webview2": "WebView2",
+      "os": "Windows version"
+    }
+  },
+  "ready": {
+    "title": "You're ready",
+    "body": "Your computer passed the check. The interview screen arrives in the next release of this app.",
+    "back": "Back to your interviews"
+  },
+  "errors": {
+    "invalid-credentials": "That email address and password don't match.",
+    "account-locked": "Too many attempts. Wait a few minutes, then try again.",
+    "account-disabled": "This account can't sign in. Contact the company that invited you.",
+    "app-update-required": "Update the app to continue.",
+    "no-interview": "You have no interview assigned right now.",
+    "job-closed": "The job for this interview is no longer open.",
+    "interview-not-available": "This interview can't be taken right now.",
+    "interview-expired": "The window for this interview has closed.",
+    "interview-not-open": "This interview hasn't opened yet.",
+    "otp-invalid": "That code isn't right.",
+    "otp-expired": "That code has expired. Send a new one.",
+    "otp-attempts-exceeded": "Too many wrong codes. Sign in again.",
+    "network": "Can't reach the interview service. Check your internet connection.",
+    "unknown": "Something went wrong. Try again."
+  }
+}

@@ -145,6 +145,7 @@ The desktop (lane B) calls APIs that other lanes build. **Lane B drafted all fiv
 - **Router registrations** in `backend/api/src/hirevion_api/app.py`, and the route manifest: append; keep both.
 - **Generated files:** never hand-merge them; regenerate after the rebase.
 - **This file:** tick only your own lane's boxes.
+- **ADR numbers:** each lane uses its own block, so numbers never collide: lane A 0020–0029, lane B 0018–0019 then 0050–0059, lane C 0030–0039, lane D 0040–0049. Add your row to `docs/architecture/adr/README.md` in number order; on a conflict, keep both.
 
 **Saving credits:**
 
