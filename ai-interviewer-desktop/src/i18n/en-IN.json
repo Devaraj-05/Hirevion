@@ -107,5 +107,31 @@
     "otp-attempts-exceeded": "Too many wrong codes. Sign in again.",
     "network": "Can't reach the interview service. Check your internet connection.",
     "unknown": "Something went wrong. Try again."
+  },
+  "vision": {
+    "guidance": {
+      "title": "Your camera view",
+      "checking": "Looking for your face…",
+      "ok": "We can see your face clearly.",
+      "unavailable": "Face guidance isn't available right now. You can still continue.",
+      "obstructed": "Your camera looks covered or blocked. Uncover the lens.",
+      "no_face": "We can't see your face. Sit in front of the camera and face it.",
+      "multiple_faces": "We can see more than one person. Make sure you're alone in the camera view.",
+      "too_dark": "Your face is hard to see. Add light in front of you, not behind you.",
+      "too_far": "You're far from the camera. Move a little closer.",
+      "too_close": "You're very close to the camera. Move back a little.",
+      "off_centre": "Move so your face is in the middle of the picture."
+    },
+    "nudges": {
+      "FACE_ABSENT": "We can't see your face. Please stay in front of the camera.",
+      "MULTIPLE_FACES": "We can see more than one person. Please make sure you're alone.",
+      "FACE_TOO_FAR": "Please move a little closer to the camera.",
+      "FACE_TOO_CLOSE": "Please move back from the camera a little.",
+      "CAMERA_OBSTRUCTED": "Your camera looks blocked. Please uncover it."
+    },
+    "status": {
+      "fps": "Face detection: {fps} frames per second",
+      "stopped": "Face detection is off."
+    }
   }
 }

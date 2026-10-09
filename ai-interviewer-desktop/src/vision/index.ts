@@ -33,7 +33,9 @@ export {
   CAMERA_SIGNALS,
   type CameraEvent,
   type CameraSignal,
+  type FaceBox,
   type FaceObservation,
+  type FrameStats,
   type ProctoringEvent,
   type ProctoringEventDraft,
 } from "./types";
