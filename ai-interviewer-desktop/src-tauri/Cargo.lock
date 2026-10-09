@@ -1266,6 +1266,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6dbf3de79e51f3d586ab4cb9d5c3e2c14aa28ed23d180cf89b4df0454a69cc87"
 
 [[package]]
+name = "hv-api-client"
+version = "0.1.0"
+
+[[package]]
 name = "hv-recorder"
 version = "0.1.0"
 dependencies = [
@@ -1280,6 +1284,20 @@ version = "0.1.0"
 dependencies = [
  "windows",
  "windows-core",
+]
+
+[[package]]
+name = "hv-security"
+version = "0.1.0"
+
+[[package]]
+name = "hv-system-check"
+version = "0.1.0"
+dependencies = [
+ "hv-screen-capture",
+ "serde",
+ "serde_json",
+ "windows",
 ]
 
 [[package]]
