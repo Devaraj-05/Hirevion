@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import type { SystemCheckPayload } from "../checks/payload";
 import type { CheckResult } from "../checks/types";
 
 /**
@@ -71,7 +72,9 @@ export interface ChecksSubmitted {
 }
 
 export function isCommandError(value: unknown): value is CommandError {
-  return typeof value === "object" && value !== null && typeof (value as CommandError).code === "string";
+  return (
+    typeof value === "object" && value !== null && typeof (value as CommandError).code === "string"
+  );
 }
 
 export const commands = {
@@ -86,6 +89,6 @@ export const commands = {
   nativeChecks: () => invoke<CheckResult[]>("native_checks"),
   screenCaptureProbe: () => invoke<CheckResult>("screen_capture_probe"),
   apiRoundTrip: () => invoke<{ rtt_ms: number }>("api_round_trip"),
-  submitChecks: (interviewId: string, results: CheckResult[]) =>
-    invoke<ChecksSubmitted>("submit_checks", { interviewId, results }),
+  submitChecks: (interviewId: string, payload: SystemCheckPayload) =>
+    invoke<ChecksSubmitted>("submit_checks", { interviewId, payload }),
 };

@@ -49,7 +49,9 @@ export function InterviewsScreen({
         <h1 id="interviews-title" className="font-semibold text-2xl">
           {t("title")}
         </h1>
-        <p className="text-muted-foreground text-sm">{t("hello", { name: profile.candidate.name })}</p>
+        <p className="text-muted-foreground text-sm">
+          {t("hello", { name: profile.candidate.name })}
+        </p>
       </div>
       {open.length === 0 ? <p className="text-muted-foreground">{t("empty")}</p> : null}
       {open.map((interview) => {

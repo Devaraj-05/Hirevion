@@ -76,10 +76,17 @@ function CandidateApp() {
       <Shell profile={profile} onSignOut={profile ? () => void signOut() : undefined}>
         {state.screen === "launch" ? <LaunchScreen onChecked={onRelease} /> : null}
         {state.screen === "update-required" ? (
-          <UpdateRequiredScreen minimumVersion={state.minimumVersion} downloadUrl={state.downloadUrl} />
+          <UpdateRequiredScreen
+            minimumVersion={state.minimumVersion}
+            downloadUrl={state.downloadUrl}
+          />
         ) : null}
         {state.screen === "sign-in" ? (
-          <SignInScreen updateAvailable={state.updateAvailable} notice={state.notice} onResult={onSignIn} />
+          <SignInScreen
+            updateAvailable={state.updateAvailable}
+            notice={state.notice}
+            onResult={onSignIn}
+          />
         ) : null}
         {state.screen === "code" ? (
           <CodeScreen
@@ -105,7 +112,7 @@ function CandidateApp() {
         ) : null}
         {state.screen === "ready" ? <ReadyScreen onBack={() => send({ type: "back" })} /> : null}
       </Shell>
-      <Toaster />
+      <Toaster theme="system" />
     </I18nProvider>
   );
 }

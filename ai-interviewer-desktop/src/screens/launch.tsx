@@ -53,7 +53,12 @@ export function UpdateRequiredScreen({
       </h1>
       <p>{minimumVersion ? t("body", { version: minimumVersion }) : t("bodyNoVersion")}</p>
       {downloadUrl ? (
-        <a className="w-fit font-medium underline" href={downloadUrl} target="_blank" rel="noreferrer">
+        <a
+          className="w-fit font-medium underline"
+          href={downloadUrl}
+          target="_blank"
+          rel="noreferrer"
+        >
           {t("download")}
         </a>
       ) : null}

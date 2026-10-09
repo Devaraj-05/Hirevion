@@ -44,8 +44,12 @@ export function SignInScreen({
         <h1 className="font-semibold text-2xl">{t("title")}</h1>
         <p className="text-muted-foreground text-sm">{t("intro")}</p>
       </div>
-      {notice === "session-expired" ? <p className="text-sm text-warning">{t("sessionExpired")}</p> : null}
-      {updateAvailable ? <p className="text-muted-foreground text-sm">{t("updateAvailable")}</p> : null}
+      {notice === "session-expired" ? (
+        <p className="text-sm text-warning">{t("sessionExpired")}</p>
+      ) : null}
+      {updateAvailable ? (
+        <p className="text-muted-foreground text-sm">{t("updateAvailable")}</p>
+      ) : null}
       <div className="grid gap-1.5">
         <Label htmlFor={`${id}-email`}>{t("email")}</Label>
         <Input
