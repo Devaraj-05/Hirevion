@@ -144,6 +144,8 @@ jobs:
           echo "AZURE_STORAGE_KEY=$key" >> "$GITHUB_ENV"
       - run: uv run ruff check .
       - run: uv run ruff format --check .
+      - name: PRD traceability (master plan Appendix A points at code that exists)
+        run: uv run hv trace --check
       - run: >-
           uv run mypy tools/devcli/src backend/core/src backend/api/src
           backend/interview_agent/src tools/voice_bench/src tools/interview-simulator/src

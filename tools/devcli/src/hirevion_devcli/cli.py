@@ -344,6 +344,25 @@ def synth_resumes_command(
     console.print(f"Wrote {len(truths)} resumes and bundle.zip to {target}.")
 
 
+@app.command("trace")
+def trace_command(
+    check_only: Annotated[
+        bool, typer.Option("--check", help="Exit 1 when the checklist has problems.")
+    ] = False,
+) -> None:
+    """Check the PRD traceability checklist (master plan Appendix A) against the code."""
+    from .trace import appendix_rows, check
+
+    root = repo_root()
+    problems = check(root)
+    rows = appendix_rows((root / "MASTER_IMPLEMENTATION_PLAN.md").read_text(encoding="utf-8"))
+    for problem in problems:
+        console.print(f"[red]✗[/red] {problem}")
+    console.print(f"{len(rows)} rows, {len(problems)} problem(s).")
+    if problems and check_only:
+        raise typer.Exit(code=1)
+
+
 @app.command("interview-sim")
 def interview_sim_command(
     persona_name: Annotated[

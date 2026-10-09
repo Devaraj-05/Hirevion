@@ -1701,7 +1701,7 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 20 | 13 Candidate 360 tabs | SP-17 |
 | 21 | 13 template fields; example weights and difficulty distribution | SP-06 (ADR-0017; skill-matrix preview; built-in defaults 20/50/30) |
 | 22 | 10 question fields; 8 question types | SP-06 (versioned library, §7 categories, approval; time limits and follow-up rules honoured in SP-09) |
-| 23 | AI question generation from 6 inputs; review before reuse | SP-06 (`questions.generate` drafts, approved by a recruiter; candidate work history only, never contact details) |
+| 23 | AI question generation from 6 inputs; review before reuse | SP-06 (`interviews.generation`: drafts approved by a recruiter; candidate work history only, never contact details) |
 | 24 | Assignment: 3 inputs → 9 system fields | SP-07a (ADR-0020: `hirevion_core.interviews.assignment`, the policy snapshot, `test_interview_assignment.py`) |
 | 25 | 8 invitation contents | SP-07a (`interviews.invitations`, en-IN/en-US templates, the Mailpit test and `e2e/auth/interviews.spec.ts`), SP-07b (portal pages it links to) |
 | 26 | 9 startup steps (`AI-Interview.exe`) | SP-08 (the version check's server side, the release registry and update manifest: SP-07c) |
