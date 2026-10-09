@@ -111,7 +111,9 @@
               "review",
               "shortlisted",
               "rejected",
-              "on_hold"
+              "on_hold",
+              "interview",
+              "interviewed"
             ],
             "title": "Stage",
             "type": "string"
@@ -179,7 +181,9 @@
               "review",
               "shortlisted",
               "rejected",
-              "on_hold"
+              "on_hold",
+              "interview",
+              "interviewed"
             ],
             "title": "Stage",
             "type": "string"
@@ -248,7 +252,9 @@
               "review",
               "shortlisted",
               "rejected",
-              "on_hold"
+              "on_hold",
+              "interview",
+              "interviewed"
             ],
             "title": "Stage",
             "type": "string"
@@ -310,6 +316,132 @@
         "title": "Body_upload_resume",
         "type": "object"
       },
+      "BulkInterviewCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "application_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Application Ids",
+            "type": "array"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "invite": {
+            "default": true,
+            "description": "Send the invitation now (otherwise it's scheduled).",
+            "title": "Invite",
+            "type": "boolean"
+          },
+          "reviewer_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Reviewer Ids",
+            "type": "array"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "template_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "None: each job's own interview template (PRD §11).",
+            "title": "Template Id"
+          },
+          "template_version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "None: the template's current version.",
+            "title": "Template Version"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For the invitation's times; the organisation's default.",
+            "title": "Timezone"
+          }
+        },
+        "required": [
+          "starts_at",
+          "expires_at",
+          "application_ids"
+        ],
+        "title": "BulkInterviewCreate",
+        "type": "object"
+      },
+      "BulkInterviewResult": {
+        "properties": {
+          "created": {
+            "items": {
+              "$ref": "#/components/schemas/InterviewSummary"
+            },
+            "title": "Created",
+            "type": "array"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedApplication"
+            },
+            "title": "Skipped",
+            "type": "array"
+          }
+        },
+        "required": [
+          "created",
+          "skipped"
+        ],
+        "title": "BulkInterviewResult",
+        "type": "object"
+      },
+      "CancelBody": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "CancelBody",
+        "type": "object"
+      },
       "CandidateApplication": {
         "properties": {
           "created_at": {
@@ -344,7 +476,9 @@
               "review",
               "shortlisted",
               "rejected",
-              "on_hold"
+              "on_hold",
+              "interview",
+              "interviewed"
             ],
             "title": "Stage",
             "type": "string"
@@ -784,6 +918,30 @@
           }
         },
         "title": "CodingSettings",
+        "type": "object"
+      },
+      "DashboardSummary": {
+        "description": "PRD §10's figures that have data so far; the rest are absent (the page shows \"no data\nyet\").",
+        "properties": {
+          "completed_interviews": {
+            "title": "Completed Interviews",
+            "type": "integer"
+          },
+          "interviews_scheduled": {
+            "title": "Interviews Scheduled",
+            "type": "integer"
+          },
+          "live_interviews": {
+            "title": "Live Interviews",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "interviews_scheduled",
+          "live_interviews",
+          "completed_interviews"
+        ],
+        "title": "DashboardSummary",
         "type": "object"
       },
       "DecisionRequest": {
@@ -1312,6 +1470,87 @@
         "title": "HistoryEntry",
         "type": "object"
       },
+      "InterviewCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "application_id": {
+            "format": "uuid",
+            "title": "Application Id",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "invite": {
+            "default": true,
+            "description": "Send the invitation now (otherwise it's scheduled).",
+            "title": "Invite",
+            "type": "boolean"
+          },
+          "reviewer_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Reviewer Ids",
+            "type": "array"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "template_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "None: each job's own interview template (PRD §11).",
+            "title": "Template Id"
+          },
+          "template_version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "None: the template's current version.",
+            "title": "Template Version"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For the invitation's times; the organisation's default.",
+            "title": "Timezone"
+          }
+        },
+        "required": [
+          "starts_at",
+          "expires_at",
+          "application_id"
+        ],
+        "title": "InterviewCreate",
+        "type": "object"
+      },
       "InterviewDefaults": {
         "description": "The organisation's defaults for new templates, and what each proctoring level means.",
         "properties": {
@@ -1595,6 +1834,509 @@
         "title": "InterviewDefaultsUpdate",
         "type": "object"
       },
+      "InterviewEventResponse": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "actor_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          },
+          "actor_type": {
+            "enum": [
+              "user",
+              "candidate",
+              "system",
+              "agent"
+            ],
+            "title": "Actor Type",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "title": "Details",
+            "type": "object"
+          },
+          "from_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "scheduled",
+                  "invited",
+                  "in_progress",
+                  "interrupted",
+                  "completed",
+                  "evaluating",
+                  "evaluated",
+                  "expired",
+                  "cancelled",
+                  "abandoned"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Status"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "to_status": {
+            "enum": [
+              "scheduled",
+              "invited",
+              "in_progress",
+              "interrupted",
+              "completed",
+              "evaluating",
+              "evaluated",
+              "expired",
+              "cancelled",
+              "abandoned"
+            ],
+            "title": "To Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "action",
+          "from_status",
+          "to_status",
+          "reason",
+          "actor_type",
+          "actor_id",
+          "details",
+          "created_at"
+        ],
+        "title": "InterviewEventResponse",
+        "type": "object"
+      },
+      "InterviewResponse": {
+        "properties": {
+          "application_id": {
+            "format": "uuid",
+            "title": "Application Id",
+            "type": "string"
+          },
+          "cancel_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancel Reason"
+          },
+          "candidate": {
+            "$ref": "#/components/schemas/PersonRef"
+          },
+          "candidate_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidate Email"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "duration_minutes": {
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/InterviewEventResponse"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "invitations": {
+            "items": {
+              "$ref": "#/components/schemas/InvitationResponse"
+            },
+            "title": "Invitations",
+            "type": "array"
+          },
+          "invited_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invited At"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "job_title": {
+            "title": "Job Title",
+            "type": "string"
+          },
+          "policy": {
+            "additionalProperties": true,
+            "title": "Policy",
+            "type": "object"
+          },
+          "proctoring_level": {
+            "title": "Proctoring Level",
+            "type": "string"
+          },
+          "questions": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "reschedule_count": {
+            "title": "Reschedule Count",
+            "type": "integer"
+          },
+          "reviewers": {
+            "items": {
+              "$ref": "#/components/schemas/PersonRef"
+            },
+            "title": "Reviewers",
+            "type": "array"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "scheduled",
+              "invited",
+              "in_progress",
+              "interrupted",
+              "completed",
+              "evaluating",
+              "evaluated",
+              "expired",
+              "cancelled",
+              "abandoned"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "template_id": {
+            "format": "uuid",
+            "title": "Template Id",
+            "type": "string"
+          },
+          "template_name": {
+            "title": "Template Name",
+            "type": "string"
+          },
+          "template_version": {
+            "title": "Template Version",
+            "type": "integer"
+          },
+          "third_eye": {
+            "title": "Third Eye",
+            "type": "string"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "status",
+          "candidate",
+          "job_id",
+          "job_title",
+          "application_id",
+          "template_id",
+          "template_version",
+          "starts_at",
+          "expires_at",
+          "timezone",
+          "duration_minutes",
+          "proctoring_level",
+          "third_eye",
+          "created_at",
+          "updated_at",
+          "candidate_email",
+          "template_name",
+          "policy",
+          "questions",
+          "reviewers",
+          "events",
+          "invitations",
+          "invited_at",
+          "started_at",
+          "completed_at",
+          "ended_at",
+          "cancel_reason",
+          "reschedule_count"
+        ],
+        "title": "InterviewResponse",
+        "type": "object"
+      },
+      "InterviewSummary": {
+        "properties": {
+          "application_id": {
+            "format": "uuid",
+            "title": "Application Id",
+            "type": "string"
+          },
+          "candidate": {
+            "$ref": "#/components/schemas/PersonRef"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "duration_minutes": {
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "job_title": {
+            "title": "Job Title",
+            "type": "string"
+          },
+          "proctoring_level": {
+            "title": "Proctoring Level",
+            "type": "string"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "scheduled",
+              "invited",
+              "in_progress",
+              "interrupted",
+              "completed",
+              "evaluating",
+              "evaluated",
+              "expired",
+              "cancelled",
+              "abandoned"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "template_id": {
+            "format": "uuid",
+            "title": "Template Id",
+            "type": "string"
+          },
+          "template_version": {
+            "title": "Template Version",
+            "type": "integer"
+          },
+          "third_eye": {
+            "title": "Third Eye",
+            "type": "string"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "status",
+          "candidate",
+          "job_id",
+          "job_title",
+          "application_id",
+          "template_id",
+          "template_version",
+          "starts_at",
+          "expires_at",
+          "timezone",
+          "duration_minutes",
+          "proctoring_level",
+          "third_eye",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "InterviewSummary",
+        "type": "object"
+      },
+      "InvitationResponse": {
+        "properties": {
+          "contents": {
+            "additionalProperties": true,
+            "title": "Contents",
+            "type": "object"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "invitation",
+              "reminder",
+              "reschedule",
+              "cancellation"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "locale": {
+            "title": "Locale",
+            "type": "string"
+          },
+          "sent_to": {
+            "title": "Sent To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "sent_to",
+          "locale",
+          "contents",
+          "created_at"
+        ],
+        "title": "InvitationResponse",
+        "type": "object"
+      },
       "JdApply": {
         "additionalProperties": false,
         "description": "The recruiter's reviewed fields from a parsed description.",
@@ -1698,6 +2440,18 @@
               }
             ],
             "title": "Hiring Manager Id"
+          },
+          "interview_template_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interview Template Id"
           },
           "location": {
             "anyOf": [
@@ -1980,6 +2734,13 @@
             "title": "Departments",
             "type": "array"
           },
+          "interview_templates": {
+            "items": {
+              "$ref": "#/components/schemas/Choice"
+            },
+            "title": "Interview Templates",
+            "type": "array"
+          },
           "people": {
             "items": {
               "$ref": "#/components/schemas/Choice"
@@ -1998,7 +2759,8 @@
         "required": [
           "departments",
           "teams",
-          "people"
+          "people",
+          "interview_templates"
         ],
         "title": "JobChoices",
         "type": "object"
@@ -2100,6 +2862,18 @@
               }
             ],
             "title": "Hiring Manager Id"
+          },
+          "interview_template_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interview Template Id"
           },
           "location": {
             "anyOf": [
@@ -2345,6 +3119,18 @@
               }
             ],
             "title": "Hiring Manager Id"
+          },
+          "interview_template_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interview Template Id"
           },
           "location": {
             "anyOf": [
@@ -2598,6 +3384,29 @@
             "title": "Id",
             "type": "string"
           },
+          "interview_template_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interview Template Id"
+          },
+          "interview_template_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interview Template Name"
+          },
           "jd_document_id": {
             "anyOf": [
               {
@@ -2809,6 +3618,8 @@
           "salary_currency",
           "hiring_manager_id",
           "hiring_manager_name",
+          "interview_template_id",
+          "interview_template_name",
           "skills",
           "jd_document_id",
           "latest_document"
@@ -3323,6 +4134,18 @@
             "title": "Status",
             "type": "string"
           },
+          "support_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where candidates write for help (invitations, the portal).",
+            "title": "Support Email"
+          },
           "timezone": {
             "description": "IANA time zone, e.g. Asia/Kolkata.",
             "title": "Timezone",
@@ -3395,6 +4218,18 @@
               }
             ],
             "title": "Name"
+          },
+          "support_email": {
+            "anyOf": [
+              {
+                "maxLength": 254,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Support Email"
           },
           "timezone": {
             "anyOf": [
@@ -3499,6 +4334,35 @@
           "next_cursor"
         ],
         "title": "Page[CandidateSummary]",
+        "type": "object"
+      },
+      "Page_InterviewSummary_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/InterviewSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` to get the next page; null on the last page.",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "Page[InterviewSummary]",
         "type": "object"
       },
       "Page_JobSummary_": {
@@ -3741,6 +4605,7 @@
               "candidates.view",
               "candidates.manage",
               "interviews.view",
+              "interviews.manage",
               "interviews.templates.view",
               "interviews.templates.manage",
               "questions.view",
@@ -3786,6 +4651,25 @@
           "area"
         ],
         "title": "PermissionResponse",
+        "type": "object"
+      },
+      "PersonRef": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "PersonRef",
         "type": "object"
       },
       "PinnedQuestion": {
@@ -4564,7 +5448,9 @@
               "review",
               "shortlisted",
               "rejected",
-              "on_hold"
+              "on_hold",
+              "interview",
+              "interviewed"
             ],
             "title": "Stage",
             "type": "string"
@@ -4628,6 +5514,39 @@
           }
         },
         "title": "Recording",
+        "type": "object"
+      },
+      "RescheduleBody": {
+        "additionalProperties": false,
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "starts_at",
+          "expires_at"
+        ],
+        "title": "RescheduleBody",
         "type": "object"
       },
       "ResumeDocumentResponse": {
@@ -4756,6 +5675,25 @@
         "title": "ResumeDocumentResponse",
         "type": "object"
       },
+      "ReviewersBody": {
+        "additionalProperties": false,
+        "properties": {
+          "reviewer_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Reviewer Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "reviewer_ids"
+        ],
+        "title": "ReviewersBody",
+        "type": "object"
+      },
       "RoleCreate": {
         "additionalProperties": false,
         "properties": {
@@ -4786,6 +5724,7 @@
                 "candidates.view",
                 "candidates.manage",
                 "interviews.view",
+                "interviews.manage",
                 "interviews.templates.view",
                 "interviews.templates.manage",
                 "questions.view",
@@ -4915,6 +5854,7 @@
                 "candidates.view",
                 "candidates.manage",
                 "interviews.view",
+                "interviews.manage",
                 "interviews.templates.view",
                 "interviews.templates.manage",
                 "questions.view",
@@ -5013,6 +5953,7 @@
                     "candidates.view",
                     "candidates.manage",
                     "interviews.view",
+                    "interviews.manage",
                     "interviews.templates.view",
                     "interviews.templates.manage",
                     "questions.view",
@@ -5506,6 +6447,7 @@
                 "candidates.view",
                 "candidates.manage",
                 "interviews.view",
+                "interviews.manage",
                 "interviews.templates.view",
                 "interviews.templates.manage",
                 "questions.view",
@@ -5723,6 +6665,30 @@
           "weight"
         ],
         "title": "SkillWeight",
+        "type": "object"
+      },
+      "SkippedApplication": {
+        "properties": {
+          "application_id": {
+            "format": "uuid",
+            "title": "Application Id",
+            "type": "string"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "application_id",
+          "code",
+          "reason"
+        ],
+        "title": "SkippedApplication",
         "type": "object"
       },
       "StepUpRequest": {
@@ -7899,6 +8865,180 @@
         ]
       }
     },
+    "/api/v1/dashboard": {
+      "get": {
+        "description": "The figures within the reader's scope that have data so far.",
+        "operationId": "get_dashboard",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "recruiter",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Recruiter"
+            }
+          },
+          {
+            "in": "query",
+            "name": "team",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Team"
+            }
+          },
+          {
+            "in": "query",
+            "name": "job",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Job"
+            }
+          },
+          {
+            "in": "query",
+            "name": "department",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Department"
+            }
+          },
+          {
+            "in": "query",
+            "name": "interviewStatus",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "scheduled",
+                    "invited",
+                    "in_progress",
+                    "interrupted",
+                    "completed",
+                    "evaluating",
+                    "evaluated",
+                    "expired",
+                    "cancelled",
+                    "abandoned"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Interviewstatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Get Dashboard",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
     "/api/v1/departments": {
       "get": {
         "description": "The organisation's departments by name; archived ones only when asked for.",
@@ -8942,6 +10082,609 @@
         ]
       }
     },
+    "/api/v1/interviews": {
+      "get": {
+        "description": "Interviews the reader reaches; upcoming ones soonest first, the others latest first.",
+        "operationId": "list_interviews",
+        "parameters": [
+          {
+            "description": "The /interviews tab: upcoming, live or completed.",
+            "in": "query",
+            "name": "status_group",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "upcoming",
+                    "live",
+                    "completed"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The /interviews tab: upcoming, live or completed.",
+              "title": "Status Group"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "scheduled",
+                    "invited",
+                    "in_progress",
+                    "interrupted",
+                    "completed",
+                    "evaluating",
+                    "evaluated",
+                    "expired",
+                    "cancelled",
+                    "abandoned"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "job_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Job Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "candidate_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Candidate Id"
+            }
+          },
+          {
+            "description": "Part of the candidate's name or the job, or IV-42.",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Part of the candidate's name or the job, or IV-42.",
+              "title": "Q"
+            }
+          },
+          {
+            "description": "How many items to return.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "description": "How many items to return.",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "`next_cursor` from the previous page.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`next_cursor` from the previous page.",
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_InterviewSummary_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "List Interviews",
+        "tags": [
+          "interviews"
+        ]
+      },
+      "post": {
+        "description": "Assigns one candidate an interview (PRD §24) and, unless asked not to, invites them.",
+        "operationId": "create_interview",
+        "parameters": [
+          {
+            "description": "Required. A unique value (a UUID is ideal) per logical create; send the same value when retrying it.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Required. A unique value (a UUID is ideal) per logical create; send the same value when retrying it.",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InterviewCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Create Interview",
+        "tags": [
+          "interviews"
+        ]
+      }
+    },
+    "/api/v1/interviews/bulk": {
+      "post": {
+        "description": "Assigns up to 200 candidates the same interview at once; those that can't have one are\nlisted with the reason.",
+        "operationId": "create_interviews",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkInterviewCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkInterviewResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Create Interviews",
+        "tags": [
+          "interviews"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}": {
+      "get": {
+        "description": "The interview with its pinned policy, reviewers, history and the invitations sent.",
+        "operationId": "get_interview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Get Interview",
+        "tags": [
+          "interviews"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/cancel": {
+      "post": {
+        "description": "Cancels an interview that hasn't started; an invited candidate is told why.",
+        "operationId": "cancel_interview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Cancel Interview",
+        "tags": [
+          "interviews"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/invitation": {
+      "post": {
+        "description": "Sends a scheduled interview's invitation, or an invited one's again (with a fresh link).",
+        "operationId": "send_invitation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Send Invitation",
+        "tags": [
+          "interviews"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/reschedule": {
+      "post": {
+        "description": "Gives an interview that hasn't started a new window, and tells the candidate.",
+        "operationId": "reschedule_interview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RescheduleBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Reschedule Interview",
+        "tags": [
+          "interviews"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/reviewers": {
+      "put": {
+        "description": "Replaces who reviews the interview.",
+        "operationId": "set_interview_reviewers",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewersBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Set Interview Reviewers",
+        "tags": [
+          "interviews"
+        ]
+      }
+    },
     "/api/v1/jobs": {
       "get": {
         "description": "The jobs the reader reaches, most recently changed first.",
@@ -9166,7 +10909,7 @@
     },
     "/api/v1/jobs/choices": {
       "get": {
-        "description": "The departments, teams and people a job can be assigned to.",
+        "description": "The departments, teams and people a job can be assigned to, and the active interview\ntemplates it can default to.",
         "operationId": "job_choices",
         "responses": {
           "200": {
@@ -10499,7 +12242,7 @@
         ]
       },
       "patch": {
-        "description": "Changes the fields sent; `website: null` clears the website.",
+        "description": "Changes the fields sent; `website: null` or `support_email: null` clears it.",
         "operationId": "update_organization",
         "requestBody": {
           "content": {

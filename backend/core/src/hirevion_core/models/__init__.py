@@ -4,10 +4,17 @@ from hirevion_core.models.ai_invocation import AiInvocation
 from hirevion_core.models.audit_log import AuditLog
 from hirevion_core.models.auth_token import AuthToken
 from hirevion_core.models.candidate import Application, Candidate, CandidateSkill
+from hirevion_core.models.candidate_account import CandidateAccount, CandidateToken
 from hirevion_core.models.department import Department
 from hirevion_core.models.document import Document
 from hirevion_core.models.feature_flag import FeatureFlag
 from hirevion_core.models.idempotency_key import IdempotencyKey
+from hirevion_core.models.interview import (
+    Interview,
+    InterviewEvent,
+    InterviewReviewer,
+    Invitation,
+)
 from hirevion_core.models.interview_config import (
     InterviewTemplate,
     InterviewTemplateVersion,
@@ -34,13 +41,19 @@ __all__ = [
     "AuditLog",
     "AuthToken",
     "Candidate",
+    "CandidateAccount",
     "CandidateSkill",
+    "CandidateToken",
     "Department",
     "Document",
     "FeatureFlag",
     "IdempotencyKey",
+    "Interview",
+    "InterviewEvent",
+    "InterviewReviewer",
     "InterviewTemplate",
     "InterviewTemplateVersion",
+    "Invitation",
     "Job",
     "JobSkill",
     "JobVersion",

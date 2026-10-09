@@ -16,6 +16,8 @@ APP_ROLE = "hirevion_app"
 RELAY_ROLE = "hirevion_relay"
 # Owns the sign-in lookup functions (no login, no row-level security bypass; ADR-0013).
 AUTH_ROLE = "hirevion_auth"
+# Owns the scheduler's cross-organisation listing functions (no login, no bypass; SP-07a).
+SCHEDULER_ROLE = "hirevion_scheduler"
 
 Role = Literal["admin", "app", "relay"]
 

@@ -8,8 +8,10 @@ The schema is rebuilt from the migrations once per test session.
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
+from dataclasses import dataclass
 from io import BytesIO
 from typing import Protocol
 from uuid import UUID
@@ -24,6 +26,7 @@ from hirevion_core.db.migrate import migrate
 from hirevion_core.db.session import Database, create_database
 from hirevion_core.identity.roles import ensure_system_roles
 from hirevion_core.ids import uuid7
+from hirevion_core.interviews.templates import BUILT_IN_DEFAULTS
 from hirevion_core.settings import CoreSettings, load_core_settings
 
 TEST_DATABASE = os.environ.get("HV_TEST_DATABASE", "hirevion_test")
@@ -151,6 +154,134 @@ def make_user(admin_engine: AsyncEngine) -> MakeUser:
                     {"org": organization_id, "user": user_id, "key": key},
                 )
         return user_id
+
+    return make
+
+
+@dataclass(frozen=True)
+class Hiring:
+    """An open job with one shortlisted candidate and an active template (version 1): what an
+    interview is assigned from."""
+
+    organization_id: UUID
+    recruiter_id: UUID
+    job_id: UUID
+    candidate_id: UUID
+    application_id: UUID
+    template_id: UUID
+
+
+class MakeHiring(Protocol):
+    async def __call__(
+        self,
+        organization_id: UUID,
+        *,
+        recruiter_id: UUID | None = None,
+        candidate_email: str | None = "auto",
+        candidate_name: str = "Asha Rao",
+        stage: str = "shortlisted",
+        job_status: str = "open",
+        template_id: UUID | None = None,
+    ) -> Hiring: ...
+
+
+@pytest.fixture
+def make_hiring(admin_engine: AsyncEngine, make_user: MakeUser) -> MakeHiring:
+    """Builds a `Hiring` in an organisation, as the admin role; each call adds a new candidate
+    (and, unless `template_id` is given, a new job and template)."""
+
+    async def make(
+        organization_id: UUID,
+        *,
+        recruiter_id: UUID | None = None,
+        candidate_email: str | None = "auto",
+        candidate_name: str = "Asha Rao",
+        stage: str = "shortlisted",
+        job_status: str = "open",
+        template_id: UUID | None = None,
+    ) -> Hiring:
+        recruiter = recruiter_id or await make_user(organization_id, roles=["recruiter"])
+        job_id, candidate_id, application_id = uuid7(), uuid7(), uuid7()
+        new_template = template_id is None
+        template = template_id or uuid7()
+        async with admin_engine.begin() as conn:
+            number = await conn.scalar(
+                text("SELECT coalesce(max(number), 0) + 1 FROM jobs WHERE organization_id = :o"),
+                {"o": organization_id},
+            )
+            await conn.execute(
+                text(
+                    "INSERT INTO jobs (id, organization_id, number, title, status, recruiter_id) "
+                    "VALUES (:id, :org, :number, 'Backend Engineer', :status, :recruiter)"
+                ),
+                {
+                    "id": job_id,
+                    "org": organization_id,
+                    "number": number,
+                    "status": job_status,
+                    "recruiter": recruiter,
+                },
+            )
+            await conn.execute(
+                text(
+                    "INSERT INTO candidates (id, organization_id, name, email) "
+                    "VALUES (:id, :org, :name, :email)"
+                ),
+                {
+                    "id": candidate_id,
+                    "org": organization_id,
+                    "name": candidate_name,
+                    # "auto": an address of its own, so one organisation can hold many.
+                    "email": f"asha-{candidate_id.hex[-10:]}@example.test"
+                    if candidate_email == "auto"
+                    else candidate_email,
+                },
+            )
+            await conn.execute(
+                text(
+                    "INSERT INTO applications (id, organization_id, candidate_id, job_id, stage) "
+                    "VALUES (:id, :org, :candidate, :job, :stage)"
+                ),
+                {
+                    "id": application_id,
+                    "org": organization_id,
+                    "candidate": candidate_id,
+                    "job": job_id,
+                    "stage": stage,
+                },
+            )
+            if new_template:
+                await conn.execute(
+                    text(
+                        "INSERT INTO interview_templates (id, organization_id, name) "
+                        "VALUES (:id, :org, :name)"
+                    ),
+                    {
+                        "id": template,
+                        "org": organization_id,
+                        "name": f"Backend {template.hex[-8:]}",
+                    },
+                )
+                await conn.execute(
+                    text(
+                        "INSERT INTO interview_template_versions (organization_id, template_id, "
+                        "version, name, duration_minutes, question_count, skills, difficulty, "
+                        "question_types, coding, recording, rubric) VALUES (:org, :id, 1, 'T', "
+                        "45, 6, :skills, :difficulty, ARRAY['technical','conceptual'], :coding, "
+                        ":recording, :rubric)"
+                    ),
+                    {
+                        "id": template,
+                        "org": organization_id,
+                        "skills": '[{"name": "Python", "skill_id": null, "weight": 60}, '
+                        '{"name": "PostgreSQL", "skill_id": null, "weight": 40}]',
+                        "difficulty": '{"easy": 20, "medium": 50, "hard": 30}',
+                        "coding": '{"enabled": false, "languages": ["python"], "minutes": 20}',
+                        "recording": '{"screen": true, "camera": true, "audio": true}',
+                        "rubric": json.dumps(BUILT_IN_DEFAULTS["rubric"]),
+                    },
+                )
+        return Hiring(organization_id, recruiter, job_id, candidate_id, application_id, template)
 
     return make
 

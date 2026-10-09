@@ -20,6 +20,7 @@ from hirevion_core.models.organization import ORGANIZATION_LOCALES
 NAME_MAX = 200
 WEBSITE_MAX = 300
 _COUNTRY = re.compile(r"[A-Z]{2}")
+_EMAIL = re.compile(r"[^@\s]{1,64}@[^@\s]+\.[^@\s]+")
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,6 +32,7 @@ class ProfileChanges:
     country: str | Unset = UNSET
     timezone: str | Unset = UNSET
     default_locale: str | Unset = UNSET
+    support_email: str | Unset | None = UNSET
 
 
 def _refuse_platform(actor: Actor) -> None:
@@ -75,6 +77,13 @@ def _checked(changes: ProfileChanges) -> dict[str, str | None]:
         if changes.timezone not in zoneinfo.available_timezones():
             raise Invalid("invalid-timezone", "Unknown time zone", field="timezone")
         values["timezone"] = changes.timezone
+    if not isinstance(changes.support_email, Unset):
+        email = (changes.support_email or "").strip() or None
+        if email is not None and not _EMAIL.fullmatch(email):
+            raise Invalid(
+                "invalid-email", "Use an email address like help@example.com", field="support_email"
+            )
+        values["support_email"] = email
     if not isinstance(changes.default_locale, Unset):
         if changes.default_locale not in ORGANIZATION_LOCALES:
             raise Invalid("invalid-locale", "Unsupported language", field="default_locale")

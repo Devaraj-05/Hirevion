@@ -21,7 +21,12 @@ vi.mock("./api", async (importOriginal) => ({
 
 beforeEach(() => {
   resetNavigation("/jobs/j-1");
-  vi.mocked(api.getJobChoices).mockResolvedValue({ departments: [], teams: [], people: [] });
+  vi.mocked(api.getJobChoices).mockResolvedValue({
+    departments: [],
+    teams: [],
+    people: [],
+    interview_templates: [],
+  });
   vi.mocked(api.getDescription).mockResolvedValue(null);
   vi.mocked(api.listJobVersions).mockResolvedValue([
     {

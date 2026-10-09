@@ -35,7 +35,7 @@ async def get_organization(
 async def update_organization(
     body: OrganizationProfileUpdate, request: Request, principal: ManagesOrganization
 ) -> OrganizationProfileResponse:
-    """Changes the fields sent; `website: null` clears the website."""
+    """Changes the fields sent; `website: null` or `support_email: null` clears it."""
     async with own_tenant(request, principal) as session:
         organization = await update_profile(
             session, principal.actor(request), ProfileChanges(**patched(body))

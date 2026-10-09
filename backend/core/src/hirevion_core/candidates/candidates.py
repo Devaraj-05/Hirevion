@@ -24,12 +24,12 @@ class CandidateFilters:
     """One of `STAGE_GROUPS`: candidates with an application in one of its stages."""
 
 
-# The /candidates tabs (PRD §7). Interviews (SP-07) and decisions (SP-17) fill the later ones.
+# The /candidates tabs (PRD §7). Decisions beyond rejection arrive with SP-17.
 STAGE_GROUPS: dict[str, tuple[str, ...]] = {
     "screening": ("uploaded", "parsed", "screened", "ranked", "review", "on_hold"),
     "shortlisted": ("shortlisted",),
-    "interview": (),
-    "completed": (),
+    "interview": ("interview",),
+    "completed": ("interviewed",),
     "decision": ("rejected",),
 }
 

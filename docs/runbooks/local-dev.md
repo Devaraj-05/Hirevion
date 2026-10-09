@@ -354,6 +354,17 @@ How it works is in [ADR-0017](../architecture/adr/0017-interview-configuration.m
   - `interviews.templates.view` and `interviews.templates.manage` for templates;
   - `admin.organization.manage` to change the defaults.
 
+### Interviews and invitations
+
+How it works is in [ADR-0020](../architecture/adr/0020-interviews-and-invitations.md).
+
+- **Creating interviews:** on a job's Ranking tab (the job must be open), select candidates, then "Create interview". Choose a template (or the job's own, set on the job's Details tab), the window, and whether to invite now. Candidates who can't have one (no email, already invited, rejected) are listed with the reason; the rest are created.
+- **The invitation** goes through the outbox and the mail consumer to Mailpit (http://127.0.0.1:8025). It holds PRD §25's eight contents and, for a new candidate, a set-password link to the candidate portal (`HV_CANDIDATE_ORIGIN`, valid `HV_CANDIDATE_LINK_HOURS`). Set the organisation's support email under Administration → Organisation.
+- **`/interviews`:** Upcoming (scheduled and invited), Live (in progress and interrupted) and Completed (everything that's over). An interview's page shows the pinned template version and policy, the window, the reviewers, the history and every email sent, and lets `interviews.manage` holders send or resend the invitation, reschedule, cancel (with a reason the candidate sees) and change reviewers.
+- **Reminders and expiry:** the scheduler in `hv api` (or `hv worker`) runs every minute. To try it, move a window with SQL (`UPDATE interviews SET expires_at = now() - interval '1 minute' WHERE ...`) and watch the interview become Expired within a minute.
+- **The dashboard** counts scheduled, live and completed interviews under its filters.
+- **Permissions:** `interviews.view` reads (interviewers see only interviews they review); `interviews.manage` changes.
+
 ## Desktop app (`ai-interviewer-desktop`)
 
 The candidate app is Tauri 2: a React webview (`src/`) plus Rust (`src-tauri/`), which also

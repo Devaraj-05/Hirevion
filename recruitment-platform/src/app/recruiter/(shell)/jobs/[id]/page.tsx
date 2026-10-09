@@ -29,6 +29,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
       canEdit={can(session, "jobs.create")}
       canViewCandidates={can(session, "candidates.view")}
       canManageCandidates={can(session, "candidates.manage")}
+      canManageInterviews={can(session, "interviews.manage")}
     />
   );
 }

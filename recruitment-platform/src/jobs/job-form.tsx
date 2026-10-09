@@ -36,6 +36,7 @@ const FIELDS = {
   salary_currency: "salary_currency",
   recruiter_id: "recruiter_id",
   hiring_manager_id: "hiring_manager_id",
+  interview_template_id: "interview_template_id",
 } as const;
 
 const lines = (text: string) =>
@@ -62,6 +63,7 @@ function defaults(job: Job | undefined) {
     salary_currency: job?.salary_currency ?? "",
     recruiter_id: job?.recruiter_id ?? NONE,
     hiring_manager_id: job?.hiring_manager_id ?? NONE,
+    interview_template_id: job?.interview_template_id ?? NONE,
     description: job?.description ?? "",
     responsibilities: (job?.responsibilities ?? []).join("\n"),
     qualifications: (job?.qualifications ?? []).join("\n"),
@@ -115,6 +117,7 @@ export function JobForm({ job, readOnly = false }: { job?: Job; readOnly?: boole
           .refine((value) => /^([A-Za-z]{3})?$/.test(value.trim()), t("currencyFormat")),
         recruiter_id: z.string(),
         hiring_manager_id: z.string(),
+        interview_template_id: z.string(),
         description: z.string(),
         responsibilities: z.string(),
         qualifications: z.string(),
@@ -154,6 +157,7 @@ export function JobForm({ job, readOnly = false }: { job?: Job; readOnly?: boole
       salary_currency: values.salary_currency.trim().toUpperCase() || null,
       recruiter_id: values.recruiter_id || null,
       hiring_manager_id: values.hiring_manager_id || null,
+      interview_template_id: values.interview_template_id || null,
       description: values.description,
       responsibilities: lines(values.responsibilities),
       qualifications: lines(values.qualifications),
@@ -183,7 +187,13 @@ export function JobForm({ job, readOnly = false }: { job?: Job; readOnly?: boole
     ...(rows ?? []).map((row) => ({ value: row.id, label: row.name })),
   ];
   const select = (
-    name: "department_id" | "team_id" | "recruiter_id" | "hiring_manager_id" | "work_model",
+    name:
+      | "department_id"
+      | "team_id"
+      | "recruiter_id"
+      | "hiring_manager_id"
+      | "interview_template_id"
+      | "work_model",
     label: string,
     choices: { value: string; label: string }[],
   ) => (
@@ -273,6 +283,11 @@ export function JobForm({ job, readOnly = false }: { job?: Job; readOnly?: boole
           {select("team_id", t("team"), options(choices.data?.teams))}
           {select("recruiter_id", t("recruiter"), options(choices.data?.people))}
           {select("hiring_manager_id", t("hiringManager"), options(choices.data?.people))}
+          {select(
+            "interview_template_id",
+            t("interviewTemplate"),
+            options(choices.data?.interview_templates),
+          )}
         </div>
       </Section>
       <Section title={t("requirements")}>

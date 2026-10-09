@@ -1,0 +1,2 @@
+{% if account_action == "set_password" %}<p><a href="{{ account_link }}" style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:6px">Set your password</a></p>
+<p style="font-size:13px;color:#475569">Or paste this link into your browser: {{ account_link }}. It works once and expires in {{ link_hours }} hours.</p>{% else %}<p>Sign in with the password you already set. <a href="{{ account_link }}">Forgotten it? Reset it here.</a></p>{% endif %}

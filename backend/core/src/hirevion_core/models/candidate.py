@@ -22,7 +22,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 from hirevion_core.db.base import Base, IdMixin, TenantMixin, TimestampMixin
 from hirevion_core.models.job import EMBEDDING_DIMENSIONS
 
-# PRD §18's screening stages; SP-04b sets `parsed`, SP-05 the rest.
+# PRD §18's screening stages; SP-04b sets `parsed`, SP-05 the rest. SP-07a adds `interview`
+# (invited, in progress) and `interviewed` (the interview is complete).
 APPLICATION_STAGES = (
     "uploaded",
     "parsed",
@@ -32,6 +33,8 @@ APPLICATION_STAGES = (
     "shortlisted",
     "rejected",
     "on_hold",
+    "interview",
+    "interviewed",
 )
 APPLICATION_SOURCES = ("upload",)
 

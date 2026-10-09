@@ -1,0 +1,19 @@
+<table role="presentation" style="border-collapse:collapse;margin:16px 0">
+  <tr><td style="padding:2px 12px 2px 0;color:#475569">Company</td><td style="padding:2px 0">{{ organization }}</td></tr>
+  <tr><td style="padding:2px 12px 2px 0;color:#475569">Role</td><td style="padding:2px 0">{{ job }}</td></tr>
+  <tr><td style="padding:2px 12px 2px 0;color:#475569">Duration</td><td style="padding:2px 0">{{ duration }} minutes</td></tr>
+  <tr><td style="padding:2px 12px 2px 0;color:#475569">Window</td><td style="padding:2px 0">{{ window }}</td></tr>
+</table>
+<p>Complete the interview at any time within this window.</p>
+<h2 style="font-size:16px;margin:20px 0 8px">How to take the interview</h2>
+<ol>
+  <li><a href="{{ download_link }}">Download the Hirevion AI Interview app for Windows</a>.</li>
+  <li>Install it. It installs for you alone, so you don't need administrator rights.</li>
+  <li>Open it and sign in with this email address ({{ email }}).</li>
+</ol>
+<h2 style="font-size:16px;margin:20px 0 8px">System requirements</h2>
+<ul>{% for line in requirements.split("\n") %}<li>{{ line }}</li>{% endfor %}</ul>
+<h2 style="font-size:16px;margin:20px 0 8px">Privacy and recording</h2>
+<p>This interview records {{ recorded }}. An AI interviewer asks the questions, and a person at {{ organization }} reviews the results: the AI never makes the hiring decision. <a href="{{ notices_link }}">Read how your data is used, kept and deleted</a> before you start.</p>
+<h2 style="font-size:16px;margin:20px 0 8px">Support</h2>
+<p>Write to <a href="mailto:{{ support_email }}">{{ support_email }}</a>, or <a href="{{ requests_link }}">ask to reschedule or for an accommodation</a>.</p>

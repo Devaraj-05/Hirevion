@@ -38,6 +38,7 @@ beforeEach(() => {
   resetNavigation("/jobs");
   vi.mocked(api.getJobChoices).mockResolvedValue({
     departments: [{ id: "d-eng", name: "Engineering" }],
+    interview_templates: [],
     teams: [],
     people: [],
   });

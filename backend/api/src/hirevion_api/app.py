@@ -15,7 +15,7 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from redis.asyncio import Redis
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
-from hirevion_api import clock, health
+from hirevion_api import clock, dashboard, health
 from hirevion_api.access.errors import install_access_handlers
 from hirevion_api.access.organization import router as organization_router
 from hirevion_api.access.platform import router as platform_router
@@ -26,6 +26,7 @@ from hirevion_api.auth.csrf import CsrfMiddleware
 from hirevion_api.auth.router import router as auth_router
 from hirevion_api.candidates.routes import router as candidates_router
 from hirevion_api.idempotency import install_idempotency_handler
+from hirevion_api.interviews.assigned import router as assigned_interviews_router
 from hirevion_api.interviews.routes import router as interviews_router
 from hirevion_api.jobs.routes import router as jobs_router
 from hirevion_api.middleware import (
@@ -157,6 +158,8 @@ def create_app(
     app.include_router(candidates_router)
     app.include_router(screening_router)
     app.include_router(interviews_router)
+    app.include_router(assigned_interviews_router)
+    app.include_router(dashboard.router)
     if telemetry is not None and telemetry.enabled:
         FastAPIInstrumentor.instrument_app(
             app,

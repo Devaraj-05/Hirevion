@@ -1,0 +1,8 @@
+{% extends "_layout.html.j2" %}
+{% block body %}
+<p>Hello {{ name }},</p>
+<p>{{ organization }} moved your interview for the {{ job }} role to a new window: <strong>{{ window }}</strong>.</p>
+{% if reason %}<p>They said: {{ reason }}</p>{% endif %}
+{% include "en-IN/_interview_account.html.j2" %}
+{% include "en-IN/_interview_details.html.j2" %}
+{% endblock %}

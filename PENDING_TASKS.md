@@ -36,7 +36,8 @@
 | Part | State |
 |---|---|
 | SP-00 to SP-06 (foundations, backend core, identity, web shell, jobs and resumes, screening, interview configuration) | Merged to `main` (PRs #1–#4 merged 2026-10-09) |
-| Everything in section 7 | Not started |
+| A0, C0, D0 contract reviews; A1 SP-07a | Built on the cloud branch (2026-10-09) |
+| The rest of section 7 | Not started |
 
 ## 3. The team: four lanes running at once
 
@@ -168,7 +169,7 @@ Dates are targets in IST. A box is ticked in the PR that merges the part.
 ### Lane A — candidate access and reporting (cloud session 1)
 
 - [x] **A0 (Oct 10, first hour):** review `docs/api/contracts/candidate-auth.md` and record any changes the way the contracts README says.
-- [ ] **A1 SP-07a Interviews and invitations (Oct 10).**
+- [x] **A1 SP-07a Interviews and invitations (Oct 10).**
   - **Interviews:**
     - the state machine (scheduled, invited, in progress, interrupted, completed, evaluating, evaluated, expired, cancelled, abandoned), with an event history;
     - single and bulk assignment producing §24's nine fields and a policy snapshot (pinning the template version);
@@ -538,10 +539,7 @@ pnpm --filter @hirevion/ai-interviewer-desktop tauri dev       # the candidate a
 
 ## 10. Deferrals recorded in code, so nothing is lost
 
-- **A1 (SP-07a):**
-  - the "Create interview" action;
-  - the candidates' Interview and Completed tabs;
-  - interviews pinning a template version and its questions.
+- **A1 (SP-07a):** done (ADR-0020): the "Create interview" action, the candidates' Interview and Completed tabs, and interviews pinning a template version, its questions and its policy.
 - **C2 (SP-09b):** live use of question time limits and follow-up rules (SP-06 stores them).
 - **C5 (SP-14) and D5 (SP-22):** proctoring presets become editable policies.
 - **A5 (SP-17):** moving cards on the pipeline board; the remaining Candidate 360 tabs.

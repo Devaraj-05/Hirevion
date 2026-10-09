@@ -71,6 +71,7 @@ function ProfileForm({ profile }: { profile: OrganizationProfile }) {
       z.object({
         name: z.string().trim().min(1, t("nameRequired")),
         website: z.string().trim(),
+        support_email: z.string().trim(),
         country: z.string(),
         timezone: z.string(),
         default_locale: z.enum(LOCALES),
@@ -83,6 +84,7 @@ function ProfileForm({ profile }: { profile: OrganizationProfile }) {
     defaultValues: {
       name: profile.name,
       website: profile.website ?? "",
+      support_email: profile.support_email ?? "",
       country: profile.country,
       timezone: profile.timezone,
       default_locale: profile.default_locale,
@@ -95,6 +97,9 @@ function ProfileForm({ profile }: { profile: OrganizationProfile }) {
     const changes: OrganizationProfileUpdate = {};
     if (values.name !== baseline.name) changes.name = values.name;
     if (values.website !== baseline.website) changes.website = values.website || null;
+    if (values.support_email !== baseline.support_email) {
+      changes.support_email = values.support_email || null;
+    }
     if (values.country !== baseline.country) changes.country = values.country;
     if (values.timezone !== baseline.timezone) changes.timezone = values.timezone;
     if (values.default_locale !== baseline.default_locale) {
@@ -106,6 +111,7 @@ function ProfileForm({ profile }: { profile: OrganizationProfile }) {
       form.reset({
         name: saved.name,
         website: saved.website ?? "",
+        support_email: saved.support_email ?? "",
         country: saved.country,
         timezone: saved.timezone,
         default_locale: saved.default_locale,
@@ -115,6 +121,7 @@ function ProfileForm({ profile }: { profile: OrganizationProfile }) {
       const placed = problems.onForm(form, error, {
         name: "name",
         website: "website",
+        support_email: "support_email",
         country: "country",
         timezone: "timezone",
         default_locale: "default_locale",
@@ -152,6 +159,13 @@ function ProfileForm({ profile }: { profile: OrganizationProfile }) {
             label={t("website")}
             description={t("websiteHint")}
             render={(field) => <Input type="url" autoComplete="url" {...field} />}
+          />
+          <FormField
+            control={form.control}
+            name="support_email"
+            label={t("supportEmail")}
+            description={t("supportEmailHint")}
+            render={(field) => <Input type="email" autoComplete="email" {...field} />}
           />
           <FormField
             control={form.control}

@@ -52,6 +52,10 @@ class Job(IdMixin, TenantMixin, TimestampMixin, Base):
         ForeignKeyConstraint(
             ["organization_id", "hiring_manager_id"], ["users.organization_id", "users.id"]
         ),
+        ForeignKeyConstraint(
+            ["organization_id", "interview_template_id"],
+            ["interview_templates.organization_id", "interview_templates.id"],
+        ),
         CheckConstraint(_in("status", JOB_STATUSES), name="status"),
         CheckConstraint(
             f"work_model IS NULL OR {_in('work_model', WORK_MODELS)}", name="work_model"
@@ -93,6 +97,8 @@ class Job(IdMixin, TenantMixin, TimestampMixin, Base):
     version: Mapped[int] = mapped_column(Integer, server_default=text("1"))
     embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIMENSIONS))
     jd_document_id: Mapped[UUID | None]
+    # PRD §11's "Interview Template": what new interviews for this job use by default (SP-07a).
+    interview_template_id: Mapped[UUID | None]
     created_by: Mapped[UUID | None]
 
 

@@ -366,6 +366,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dashboard
+         * @description The figures within the reader's scope that have data so far.
+         */
+        get: operations["get_dashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/departments": {
         parameters: {
             query?: never;
@@ -653,6 +673,151 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/interviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Interviews
+         * @description Interviews the reader reaches; upcoming ones soonest first, the others latest first.
+         */
+        get: operations["list_interviews"];
+        put?: never;
+        /**
+         * Create Interview
+         * @description Assigns one candidate an interview (PRD §24) and, unless asked not to, invites them.
+         */
+        post: operations["create_interview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Interviews
+         * @description Assigns up to 200 candidates the same interview at once; those that can't have one are
+         *     listed with the reason.
+         */
+        post: operations["create_interviews"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Interview
+         * @description The interview with its pinned policy, reviewers, history and the invitations sent.
+         */
+        get: operations["get_interview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Interview
+         * @description Cancels an interview that hasn't started; an invited candidate is told why.
+         */
+        post: operations["cancel_interview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/invitation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Invitation
+         * @description Sends a scheduled interview's invitation, or an invited one's again (with a fresh link).
+         */
+        post: operations["send_invitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/reschedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reschedule Interview
+         * @description Gives an interview that hasn't started a new window, and tells the candidate.
+         */
+        post: operations["reschedule_interview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/reviewers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Interview Reviewers
+         * @description Replaces who reviews the interview.
+         */
+        put: operations["set_interview_reviewers"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs": {
         parameters: {
             query?: never;
@@ -683,7 +848,8 @@ export interface paths {
         };
         /**
          * Job Choices
-         * @description The departments, teams and people a job can be assigned to.
+         * @description The departments, teams and people a job can be assigned to, and the active interview
+         *     templates it can default to.
          */
         get: operations["job_choices"];
         put?: never;
@@ -988,7 +1154,7 @@ export interface paths {
         head?: never;
         /**
          * Update Organization
-         * @description Changes the fields sent; `website: null` clears the website.
+         * @description Changes the fields sent; `website: null` or `support_email: null` clears it.
          */
         patch: operations["update_organization"];
         trace?: never;
@@ -1601,7 +1767,7 @@ export interface components {
              * Stage
              * @enum {string}
              */
-            stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold";
+            stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold" | "interview" | "interviewed";
         };
         /** ApplicationScreening */
         ApplicationScreening: {
@@ -1625,7 +1791,7 @@ export interface components {
              * Stage
              * @enum {string}
              */
-            stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold";
+            stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold" | "interview" | "interviewed";
         };
         /** ApplicationState */
         ApplicationState: {
@@ -1644,7 +1810,7 @@ export interface components {
              * Stage
              * @enum {string}
              */
-            stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold";
+            stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold" | "interview" | "interviewed";
         };
         /** Body_submit_job_description */
         Body_submit_job_description: {
@@ -1666,6 +1832,56 @@ export interface components {
              * @description A PDF, DOCX, TXT, JPG, PNG or TIFF resume, or a ZIP.
              */
             file: string;
+        };
+        /** BulkInterviewCreate */
+        BulkInterviewCreate: {
+            /** Application Ids */
+            application_ids: string[];
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Invite
+             * @description Send the invitation now (otherwise it's scheduled).
+             * @default true
+             */
+            invite: boolean;
+            /** Reviewer Ids */
+            reviewer_ids?: string[];
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+            /**
+             * Template Id
+             * @description None: each job's own interview template (PRD §11).
+             */
+            template_id?: string | null;
+            /**
+             * Template Version
+             * @description None: the template's current version.
+             */
+            template_version?: number | null;
+            /**
+             * Timezone
+             * @description For the invitation's times; the organisation's default.
+             */
+            timezone?: string | null;
+        };
+        /** BulkInterviewResult */
+        BulkInterviewResult: {
+            /** Created */
+            created: components["schemas"]["InterviewSummary"][];
+            /** Skipped */
+            skipped: components["schemas"]["SkippedApplication"][];
+        };
+        /** CancelBody */
+        CancelBody: {
+            /** Reason */
+            reason: string;
         };
         /** CandidateApplication */
         CandidateApplication: {
@@ -1692,7 +1908,7 @@ export interface components {
              * Stage
              * @enum {string}
              */
-            stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold";
+            stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold" | "interview" | "interviewed";
         };
         /** CandidateBrief */
         CandidateBrief: {
@@ -1853,6 +2069,19 @@ export interface components {
             starter_code?: {
                 [key: string]: string;
             };
+        };
+        /**
+         * DashboardSummary
+         * @description PRD §10's figures that have data so far; the rest are absent (the page shows "no data
+         *     yet").
+         */
+        DashboardSummary: {
+            /** Completed Interviews */
+            completed_interviews: number;
+            /** Interviews Scheduled */
+            interviews_scheduled: number;
+            /** Live Interviews */
+            live_interviews: number;
         };
         /** DecisionRequest */
         DecisionRequest: {
@@ -2016,6 +2245,47 @@ export interface components {
             /** To Stage */
             to_stage: string | null;
         };
+        /** InterviewCreate */
+        InterviewCreate: {
+            /**
+             * Application Id
+             * Format: uuid
+             */
+            application_id: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Invite
+             * @description Send the invitation now (otherwise it's scheduled).
+             * @default true
+             */
+            invite: boolean;
+            /** Reviewer Ids */
+            reviewer_ids?: string[];
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+            /**
+             * Template Id
+             * @description None: each job's own interview template (PRD §11).
+             */
+            template_id?: string | null;
+            /**
+             * Template Version
+             * @description None: the template's current version.
+             */
+            template_version?: number | null;
+            /**
+             * Timezone
+             * @description For the invitation's times; the organisation's default.
+             */
+            timezone?: string | null;
+        };
         /**
          * InterviewDefaults
          * @description The organisation's defaults for new templates, and what each proctoring level means.
@@ -2091,6 +2361,223 @@ export interface components {
             /** Use Resume */
             use_resume?: boolean | null;
         };
+        /** InterviewEventResponse */
+        InterviewEventResponse: {
+            /** Action */
+            action: string;
+            /** Actor Id */
+            actor_id: string | null;
+            /**
+             * Actor Type
+             * @enum {string}
+             */
+            actor_type: "user" | "candidate" | "system" | "agent";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Details */
+            details: {
+                [key: string]: unknown;
+            };
+            /** From Status */
+            from_status: ("scheduled" | "invited" | "in_progress" | "interrupted" | "completed" | "evaluating" | "evaluated" | "expired" | "cancelled" | "abandoned") | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Reason */
+            reason: string | null;
+            /**
+             * To Status
+             * @enum {string}
+             */
+            to_status: "scheduled" | "invited" | "in_progress" | "interrupted" | "completed" | "evaluating" | "evaluated" | "expired" | "cancelled" | "abandoned";
+        };
+        /** InterviewResponse */
+        InterviewResponse: {
+            /**
+             * Application Id
+             * Format: uuid
+             */
+            application_id: string;
+            /** Cancel Reason */
+            cancel_reason: string | null;
+            candidate: components["schemas"]["PersonRef"];
+            /** Candidate Email */
+            candidate_email: string | null;
+            /** Completed At */
+            completed_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Duration Minutes */
+            duration_minutes: number;
+            /** Ended At */
+            ended_at: string | null;
+            /** Events */
+            events: components["schemas"]["InterviewEventResponse"][];
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Invitations */
+            invitations: components["schemas"]["InvitationResponse"][];
+            /** Invited At */
+            invited_at: string | null;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Job Title */
+            job_title: string;
+            /** Policy */
+            policy: {
+                [key: string]: unknown;
+            };
+            /** Proctoring Level */
+            proctoring_level: string;
+            /** Questions */
+            questions: {
+                [key: string]: unknown;
+            }[];
+            /** Reference */
+            reference: string;
+            /** Reschedule Count */
+            reschedule_count: number;
+            /** Reviewers */
+            reviewers: components["schemas"]["PersonRef"][];
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "scheduled" | "invited" | "in_progress" | "interrupted" | "completed" | "evaluating" | "evaluated" | "expired" | "cancelled" | "abandoned";
+            /**
+             * Template Id
+             * Format: uuid
+             */
+            template_id: string;
+            /** Template Name */
+            template_name: string;
+            /** Template Version */
+            template_version: number;
+            /** Third Eye */
+            third_eye: string;
+            /** Timezone */
+            timezone: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** InterviewSummary */
+        InterviewSummary: {
+            /**
+             * Application Id
+             * Format: uuid
+             */
+            application_id: string;
+            candidate: components["schemas"]["PersonRef"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Duration Minutes */
+            duration_minutes: number;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Job Title */
+            job_title: string;
+            /** Proctoring Level */
+            proctoring_level: string;
+            /** Reference */
+            reference: string;
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "scheduled" | "invited" | "in_progress" | "interrupted" | "completed" | "evaluating" | "evaluated" | "expired" | "cancelled" | "abandoned";
+            /**
+             * Template Id
+             * Format: uuid
+             */
+            template_id: string;
+            /** Template Version */
+            template_version: number;
+            /** Third Eye */
+            third_eye: string;
+            /** Timezone */
+            timezone: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** InvitationResponse */
+        InvitationResponse: {
+            /** Contents */
+            contents: {
+                [key: string]: unknown;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "invitation" | "reminder" | "reschedule" | "cancellation";
+            /** Locale */
+            locale: string;
+            /** Sent To */
+            sent_to: string;
+        };
         /**
          * JdApply
          * @description The recruiter's reviewed fields from a parsed description.
@@ -2115,6 +2602,8 @@ export interface components {
             experience_min?: number | null;
             /** Hiring Manager Id */
             hiring_manager_id?: string | null;
+            /** Interview Template Id */
+            interview_template_id?: string | null;
             /** Location */
             location?: string | null;
             /** Qualifications */
@@ -2191,6 +2680,8 @@ export interface components {
         JobChoices: {
             /** Departments */
             departments: components["schemas"]["Choice"][];
+            /** Interview Templates */
+            interview_templates: components["schemas"]["Choice"][];
             /** People */
             people: components["schemas"]["Choice"][];
             /** Teams */
@@ -2212,6 +2703,8 @@ export interface components {
             experience_min?: number | null;
             /** Hiring Manager Id */
             hiring_manager_id?: string | null;
+            /** Interview Template Id */
+            interview_template_id?: string | null;
             /** Location */
             location?: string | null;
             /** Qualifications */
@@ -2254,6 +2747,8 @@ export interface components {
             experience_min?: number | null;
             /** Hiring Manager Id */
             hiring_manager_id?: string | null;
+            /** Interview Template Id */
+            interview_template_id?: string | null;
             /** Location */
             location?: string | null;
             /** Qualifications */
@@ -2310,6 +2805,10 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Interview Template Id */
+            interview_template_id: string | null;
+            /** Interview Template Name */
+            interview_template_name: string | null;
             /** Jd Document Id */
             jd_document_id: string | null;
             latest_document: components["schemas"]["DocumentResponse"] | null;
@@ -2565,6 +3064,11 @@ export interface components {
              */
             status: "active" | "suspended";
             /**
+             * Support Email
+             * @description Where candidates write for help (invitations, the portal).
+             */
+            support_email?: string | null;
+            /**
              * Timezone
              * @description IANA time zone, e.g. Asia/Kolkata.
              */
@@ -2580,6 +3084,8 @@ export interface components {
             default_locale?: ("en-IN" | "en-US") | null;
             /** Name */
             name?: string | null;
+            /** Support Email */
+            support_email?: string | null;
             /** Timezone */
             timezone?: string | null;
             /** Website */
@@ -2604,6 +3110,16 @@ export interface components {
         Page_CandidateSummary_: {
             /** Items */
             items: components["schemas"]["CandidateSummary"][];
+            /**
+             * Next Cursor
+             * @description Pass as `cursor` to get the next page; null on the last page.
+             */
+            next_cursor: string | null;
+        };
+        /** Page[InterviewSummary] */
+        Page_InterviewSummary_: {
+            /** Items */
+            items: components["schemas"]["InterviewSummary"][];
             /**
              * Next Cursor
              * @description Pass as `cursor` to get the next page; null on the last page.
@@ -2698,7 +3214,17 @@ export interface components {
              * Name
              * @enum {string}
              */
-            name: "dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view";
+            name: "dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view";
+        };
+        /** PersonRef */
+        PersonRef: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
         };
         /** PinnedQuestion */
         PinnedQuestion: {
@@ -2963,7 +3489,7 @@ export interface components {
              * Stage
              * @enum {string}
              */
-            stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold";
+            stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold" | "interview" | "interviewed";
         };
         /** Readiness */
         Readiness: {
@@ -2994,6 +3520,21 @@ export interface components {
              * @default true
              */
             screen: boolean;
+        };
+        /** RescheduleBody */
+        RescheduleBody: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Reason */
+            reason?: string | null;
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
         };
         /**
          * ResumeDocumentResponse
@@ -3043,6 +3584,11 @@ export interface components {
              */
             updated_at: string;
         };
+        /** ReviewersBody */
+        ReviewersBody: {
+            /** Reviewer Ids */
+            reviewer_ids: string[];
+        };
         /** RoleCreate */
         RoleCreate: {
             /** Description */
@@ -3050,7 +3596,7 @@ export interface components {
             /** Name */
             name: string;
             /** Permissions */
-            permissions: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[];
+            permissions: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[];
         };
         /** RoleRef */
         RoleRef: {
@@ -3089,7 +3635,7 @@ export interface components {
              * Permissions
              * @description What it grants, in catalogue order.
              */
-            permissions: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[];
+            permissions: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[];
             /**
              * System
              * @description Built in: can't be changed or deleted.
@@ -3103,7 +3649,7 @@ export interface components {
             /** Name */
             name?: string | null;
             /** Permissions */
-            permissions?: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[] | null;
+            permissions?: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[] | null;
         };
         /** RubricCriterion */
         RubricCriterion: {
@@ -3295,7 +3841,7 @@ export interface components {
             custom_roles?: string[];
             organization: components["schemas"]["SessionOrganization"] | null;
             /** Permissions */
-            permissions: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[];
+            permissions: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[];
             /**
              * Roles
              * @description The user's system roles, by key.
@@ -3360,6 +3906,18 @@ export interface components {
             name: string;
             /** Weight */
             weight: number;
+        };
+        /** SkippedApplication */
+        SkippedApplication: {
+            /**
+             * Application Id
+             * Format: uuid
+             */
+            application_id: string;
+            /** Code */
+            code: string;
+            /** Reason */
+            reason: string;
         };
         /** StepUpRequest */
         StepUpRequest: {
@@ -4472,6 +5030,52 @@ export interface operations {
             };
         };
     };
+    get_dashboard: {
+        parameters: {
+            query?: {
+                from?: string | null;
+                to?: string | null;
+                recruiter?: string | null;
+                team?: string | null;
+                job?: string | null;
+                department?: string | null;
+                interviewStatus?: ("scheduled" | "invited" | "in_progress" | "interrupted" | "completed" | "evaluating" | "evaluated" | "expired" | "cancelled" | "abandoned") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardSummary"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_departments: {
         parameters: {
             query?: {
@@ -5192,6 +5796,355 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TemplateVersionResponse"][];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_interviews: {
+        parameters: {
+            query?: {
+                /** @description The /interviews tab: upcoming, live or completed. */
+                status_group?: ("upcoming" | "live" | "completed") | null;
+                status?: ("scheduled" | "invited" | "in_progress" | "interrupted" | "completed" | "evaluating" | "evaluated" | "expired" | "cancelled" | "abandoned") | null;
+                job_id?: string | null;
+                candidate_id?: string | null;
+                /** @description Part of the candidate's name or the job, or IV-42. */
+                q?: string | null;
+                /** @description How many items to return. */
+                limit?: number;
+                /** @description `next_cursor` from the previous page. */
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_InterviewSummary_"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_interview: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required. A unique value (a UUID is ideal) per logical create; send the same value when retrying it. */
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InterviewCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterviewResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_interviews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkInterviewCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkInterviewResult"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_interview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterviewResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    cancel_interview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterviewResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    send_invitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterviewResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    reschedule_interview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RescheduleBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterviewResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    set_interview_reviewers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewersBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterviewResponse"];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */

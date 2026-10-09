@@ -1181,6 +1181,7 @@ Each SP gets its own detailed TDD plan before work starts. "CP" is the checkpoin
   - Generated questions reach the library only after approval.
 - **Status, 2026-10-09:** built (PR #4, ADR-0017). It missed the job's "Interview Template" field (PRD §11), which moves to SP-07a.
 
+
 **SP-07 Assignment, invitations & candidate access** (CP2; depends on SP-06 and SP-02). Built in three parts:
 - SP-07a: interviews, assignment, invitations, reminders and rescheduling, plus the job's interview template field.
 - SP-07b: the candidate portal and candidate requests.
@@ -1195,6 +1196,7 @@ Each SP gets its own detailed TDD plan before work starts. "CP" is the checkpoin
   - The candidate portal (§6.3).
   - The candidate-auth API: OTP, device registration, DPoP, access/refresh/interview-session tokens, session expiry.
   - The desktop release registry and update manifest.
+- **Status, 2026-10-09:** SP-07a built (ADR-0020): interviews, assignment, invitations, reminders and the job's template field.
 - **Exit criteria:**
   - An invitation reaches Mailpit and the candidate can set a password.
   - Replay and stolen-token tests fail as they should.
@@ -1687,21 +1689,21 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 9 | Organisation profile, departments, teams, users, roles, permissions | SP-02 |
 | 9 | Branding, default screening/interview config, proctoring policies, AI config, retention, integrations | SP-05 (screening defaults), SP-06 (interview defaults and proctoring presets), SP-22, SP-20 |
 | 10 | 10 dashboard KPIs and 7 filters | SP-03, SP-21 (KPIs wired from real data as modules land: catch-up H0.2) |
-| 11 | 17 job fields; 5 statuses | SP-04 (Screening Configuration field → SP-05; Interview Template field → SP-07a, missed in SP-06) |
+| 11 | 17 job fields; 5 statuses | SP-04 (Screening Configuration field → SP-05; Interview Template field → SP-07a: `jobs.interview_template_id`, the job form's choice) |
 | 12 | JD formats (PDF, DOCX, TXT, text); 10-step pipeline; 8 extracted items; recruiter review/edit | SP-04 (§6.6) |
 | 13 | Single, bulk, PDF, DOCX, TXT, image/OCR; 10-step pipeline including malware scan | SP-04b (§6.6; ZIP bulk upload, per-entry scanning, ADR-0015) |
 | 14 | 16 parsed fields; evidence references | SP-04b (page, section and verified quote per item; F1 in `docs/evals/`) |
 | 15 | 4 inputs; 9 evaluation factors; 6 combination methods | SP-05 (§6.7, ADR-0016) |
 | 16 | 9 ranking output fields; explainable, with evidence per factor | SP-05 (evidence drawer; NDCG in `docs/evals/`) |
 | 17 | Configurable weights; Required/Preferred/Optional skills | SP-05, SP-22 (organisation defaults) |
-| 18 | 6 workflow stages; 8 actions; override audit | SP-05 (7 actions; "Create interview" → SP-07) |
+| 18 | 6 workflow stages; 8 actions; override audit | SP-05 (7 actions), SP-07a ("Create interview" on the ranking, single and bulk) |
 | 19 | 13 candidate-profile sections | SP-04b (profile, resume, parsed profile, applications, jobs), SP-05, SP-17 |
 | 20 | 13 Candidate 360 tabs | SP-17 |
 | 21 | 13 template fields; example weights and difficulty distribution | SP-06 (ADR-0017; skill-matrix preview; built-in defaults 20/50/30) |
 | 22 | 10 question fields; 8 question types | SP-06 (versioned library, §7 categories, approval; time limits and follow-up rules honoured in SP-09) |
 | 23 | AI question generation from 6 inputs; review before reuse | SP-06 (`questions.generate` drafts, approved by a recruiter; candidate work history only, never contact details) |
-| 24 | Assignment: 3 inputs → 9 system fields | SP-07a |
-| 25 | 8 invitation contents | SP-07a (email), SP-07b (portal pages it links to) |
+| 24 | Assignment: 3 inputs → 9 system fields | SP-07a (ADR-0020: `hirevion_core.interviews.assignment`, the policy snapshot, `test_interview_assignment.py`) |
+| 25 | 8 invitation contents | SP-07a (`interviews.invitations`, en-IN/en-US templates, the Mailpit test and `e2e/auth/interviews.spec.ts`), SP-07b (portal pages it links to) |
 | 26 | 9 startup steps (`AI-Interview.exe`) | SP-08 |
 | 27 | Tauri, React, TypeScript, Rust, Monaco | SP-08, SP-16 |
 | 28 | 6 login verifications; short-lived credentials | SP-07c, SP-08 |
@@ -1756,7 +1758,7 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 77 | 9 webhook events; 5 security measures | SP-18 |
 | 78 | AIProvider (5) and 5 services | SP-01 |
 | 79 | 8 governance fields | SP-10 |
-| 80 | Immutable template versions; interviews pin a version | SP-06 (insert-only version tables for templates and questions); pinning by interviews in SP-07 |
+| 80 | Immutable template versions; interviews pin a version | SP-06 (insert-only version tables for templates and questions), SP-07a (interviews pin `(template_id, template_version)` and a policy snapshot) |
 | 81 | Tenant scoping; server-side authorisation | SP-01, SP-02 |
 | 82 | 15 security requirements; SOC 2 / ISO 27001 target | §9, SP-01/02/07/08/12/16/23 (certifications need the cloud and an audit period) |
 | 83 | 10 disclosures; 6 policies | SP-07b (portal notices), SP-08, SP-22, `docs/policies/` (drafts: H0.7) |

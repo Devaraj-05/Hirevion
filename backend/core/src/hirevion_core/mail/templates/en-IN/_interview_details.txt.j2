@@ -1,0 +1,19 @@
+Company: {{ organization }}
+Role: {{ job }}
+Duration: {{ duration }} minutes
+Window: {{ window }}
+Complete the interview at any time within this window.
+
+How to take the interview
+1. Download the Hirevion AI Interview app for Windows: {{ download_link }}
+2. Install it. It installs for you alone, so you don't need administrator rights.
+3. Open it and sign in with this email address ({{ email }}).
+
+System requirements
+{% for line in requirements.split("\n") %}- {{ line }}
+{% endfor %}
+Privacy and recording
+This interview records {{ recorded }}. An AI interviewer asks the questions, and a person at {{ organization }} reviews the results: the AI never makes the hiring decision. Read how your data is used, kept and deleted before you start: {{ notices_link }}
+
+Support
+Write to {{ support_email }}, or ask to reschedule or for an accommodation here: {{ requests_link }}
