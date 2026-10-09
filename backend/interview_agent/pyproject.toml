@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "LiveKit Agents worker that runs Hirevion's AI interviewer."
 requires-python = ">=3.12,<3.13"
 dependencies = [
+  "hirevion-core",
   "livekit-agents[deepgram,openai,silero,turn-detector]>=1.2",
   "pydantic-settings>=2.4",
 ]
@@ -14,3 +15,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/hirevion_interview_agent"]
+
+[tool.uv.sources]
+hirevion-core = { workspace = true }

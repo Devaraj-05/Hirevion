@@ -85,14 +85,24 @@ Body:
     "remaining_seconds": 2700,
     "third_eye": "optional",
     "workspace": "none",
-    "answer_mode": "voice"
+    "answer_mode": "voice",
+    "question": null,
+    "voice": "waiting",
+    "stage": "start",
+    "message": null,
+    "notice": null
   }
 }
 ```
 
+- **`question`:** the open question, in `hv.state`'s shape. In text mode it's the one to answer; in voice mode it's `null` until the agent begins.
+- **`stage`:** PRD §35's stage.
+- **`message`:** what the AI said last: its acknowledgement and the question, or an FAQ answer. Text mode shows it.
+
 - **What the participant token allows:** publishing the microphone, the camera and a screen-preview track, and sending and receiving data on the topics below. It allows nothing else.
 - **Resuming:** calling start again after a disconnect resumes the same interview, by the resume policy, and returns `"status": "in_progress"`.
 - **Errors:**
+  - `503 media-unavailable` (no media server; retry);
   - `409 checks-incomplete`;
   - `409 consents-missing`;
   - `409 third-eye-required` (the policy needs a paired phone);
@@ -106,7 +116,7 @@ Body:
 
 ```json
 {
-  "voice": "listening | thinking | speaking | waiting | paused | ended",
+  "voice": "listening | thinking | speaking | waiting | paused | ended | error",
   "question": { "id": "uuid", "index": 3, "text": "…", "type": "coding", "time_limit_seconds": 600,
                 "workspace": "none | code | whiteboard", "languages": ["python"] },
   "remaining_seconds": 1830,
@@ -139,3 +149,13 @@ Body:
   - The session state gains `answer_mode` (`voice`, or `text` when the text-answer accommodation applies).
   - `POST /interviews/{id}/answer` answers `202` with the latest `state`.
   - A consent whose `notice_version` isn't the current one is `409 notice-outdated` (fetch the briefing again); an unknown check name is `422 unknown-check`.
+- 2026-10-09: implemented by lane C (SP-09; ADR-0030).
+  - The state also carries `question`, `voice`, `stage`, `message` and `notice`, so text mode and recovery after a restart need no data channel.
+  - `voice` gains `error` (§33's Error: speech recognition or synthesis failed and the agent is falling back).
+  - New refusals:
+    - `POST /answer` for a question that isn't open is `409 question-not-current`;
+    - a consent purpose outside §83's ten is `422 unknown-purpose`;
+    - a workspace over 256 KB is `413 workspace-too-large`;
+    - `start` without a media server is `503 media-unavailable`.
+  - `POST /answer` accepts typed answers in voice mode too; the agent then speaks the next question.
+  - Rate limits: 30 answers or workspace snapshots a minute per interview.

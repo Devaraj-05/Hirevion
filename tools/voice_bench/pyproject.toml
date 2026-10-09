@@ -5,6 +5,7 @@ description = "Synthetic-candidate benchmark for Hirevion's voice-interview late
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "hirevion-interview-agent",
+  "hirevion-interview-simulator",
   "httpx>=0.27",
   "livekit>=1.0",
   "livekit-api>=1.0",
@@ -23,3 +24,4 @@ packages = ["src/hirevion_voice_bench"]
 
 [tool.uv.sources]
 hirevion-interview-agent = { workspace = true }
+hirevion-interview-simulator = { workspace = true }

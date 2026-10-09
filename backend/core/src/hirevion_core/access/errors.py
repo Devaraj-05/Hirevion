@@ -39,3 +39,15 @@ class Invalid(AccessError):
     """A value the rules don't accept (an unknown time zone, team or permission, ...)."""
 
     status = 422
+
+
+class Gone(AccessError):
+    """No longer available (an interview whose window has closed, ...)."""
+
+    status = 410
+
+
+class TooLarge(AccessError):
+    """More than the operation accepts (a workspace snapshot over its limit, ...)."""
+
+    status = 413

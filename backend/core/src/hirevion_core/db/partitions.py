@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from hirevion_core.db.rls import identifier
 
 # Tables partitioned BY RANGE (occurred_at), and how many months migrate() creates ahead.
-PARTITIONED_TABLES = ("audit_logs", "usage_events", "ai_invocations")
+PARTITIONED_TABLES = ("audit_logs", "usage_events", "ai_invocations", "transcript_segments")
 MONTHS_AHEAD = 3
 
 

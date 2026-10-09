@@ -35,6 +35,7 @@ from hirevion_core.identity.settings import IdentitySettings
 # on the signed-in user's own account. The desktop app's routes take no recruiter session at all:
 # "device" ones need a DPoP proof of the device key (ADR-0021), "candidate" ones a candidate's
 # DPoP-bound access token, "interview" ones an interview-session token for the path's interview.
+# "webhook" ones are called by another service and verify its signature over the body.
 # Everything else must use `requires(...)`.
 UNGUARDED: dict[str, str] = {
     "GET /api/v1/health/live": "public",
@@ -60,6 +61,16 @@ UNGUARDED: dict[str, str] = {
     "POST /api/v1/candidate-auth/logout": "candidate",
     "GET /api/v1/candidate-auth/me": "candidate",
     "POST /api/v1/candidate-auth/interviews/{interview_id}/session-token": "candidate",
+    "GET /api/v1/interviews/{interview_id}/briefing": "interview",
+    "POST /api/v1/interviews/{interview_id}/system-checks": "interview",
+    "POST /api/v1/interviews/{interview_id}/consents": "interview",
+    "POST /api/v1/interviews/{interview_id}/accommodations": "interview",
+    "POST /api/v1/interviews/{interview_id}/start": "interview",
+    "GET /api/v1/interviews/{interview_id}/session": "interview",
+    "POST /api/v1/interviews/{interview_id}/answer": "interview",
+    "POST /api/v1/interviews/{interview_id}/workspace": "interview",
+    "POST /api/v1/interviews/{interview_id}/complete": "interview",
+    "POST /api/v1/livekit/webhook": "webhook",
     "GET /api/v1/desktop/releases/check": "public",
     "GET /api/v1/desktop/update-manifest/{target}/{arch}/{current_version}": "public",
 }

@@ -1,6 +1,203 @@
 {
   "components": {
     "schemas": {
+      "AccommodationBody": {
+        "properties": {
+          "kinds": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 6,
+            "minItems": 1,
+            "title": "Kinds",
+            "type": "array"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "required": [
+          "kinds"
+        ],
+        "title": "AccommodationBody",
+        "type": "object"
+      },
+      "AccommodationCreated": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "requested",
+              "approved",
+              "declined"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ],
+        "title": "AccommodationCreated",
+        "type": "object"
+      },
+      "AccommodationDecision": {
+        "properties": {
+          "approved": {
+            "description": "The kinds to approve; none declines the request.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 6,
+            "title": "Approved",
+            "type": "array"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "required": [
+          "approved"
+        ],
+        "title": "AccommodationDecision",
+        "type": "object"
+      },
+      "AccommodationResponse": {
+        "properties": {
+          "approved_kinds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Approved Kinds",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "decided_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided By"
+          },
+          "decision_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Note"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kinds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Kinds",
+            "type": "array"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "requested",
+              "approved",
+              "declined"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kinds",
+          "note",
+          "status",
+          "approved_kinds",
+          "decision_note",
+          "decided_by",
+          "decided_at",
+          "created_at"
+        ],
+        "title": "AccommodationResponse",
+        "type": "object"
+      },
+      "AccommodationsSummary": {
+        "properties": {
+          "approved": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Approved",
+            "type": "array"
+          },
+          "requested": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Requested",
+            "type": "array"
+          }
+        },
+        "required": [
+          "requested",
+          "approved"
+        ],
+        "title": "AccommodationsSummary",
+        "type": "object"
+      },
       "ActionRequest": {
         "additionalProperties": false,
         "properties": {
@@ -73,6 +270,67 @@
           "applications"
         ],
         "title": "ActionResult",
+        "type": "object"
+      },
+      "AnswerBody": {
+        "properties": {
+          "question_id": {
+            "format": "uuid",
+            "title": "Question Id",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 20000,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "text"
+        ],
+        "title": "AnswerBody",
+        "type": "object"
+      },
+      "AnswerResponse": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "flags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "late": {
+            "title": "Late",
+            "type": "boolean"
+          },
+          "mode": {
+            "enum": [
+              "voice",
+              "text"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode",
+          "text",
+          "late",
+          "flags",
+          "created_at"
+        ],
+        "title": "AnswerResponse",
         "type": "object"
       },
       "AppBody": {
@@ -308,6 +566,39 @@
         "title": "ApplicationState",
         "type": "object"
       },
+      "ArtifactLink": {
+        "properties": {
+          "bytes": {
+            "title": "Bytes",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "json",
+              "vtt",
+              "txt"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "url",
+          "bytes",
+          "sha256"
+        ],
+        "title": "ArtifactLink",
+        "type": "object"
+      },
       "Body_submit_job_description": {
         "properties": {
           "file": {
@@ -352,6 +643,73 @@
           "file"
         ],
         "title": "Body_upload_resume",
+        "type": "object"
+      },
+      "BriefingResponse": {
+        "properties": {
+          "accommodations": {
+            "$ref": "#/components/schemas/AccommodationsSummary"
+          },
+          "answer_mode": {
+            "enum": [
+              "voice",
+              "text"
+            ],
+            "title": "Answer Mode",
+            "type": "string"
+          },
+          "duration_minutes": {
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "instructions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Instructions",
+            "type": "array"
+          },
+          "mandatory_checks": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Mandatory Checks",
+            "type": "array"
+          },
+          "notice": {
+            "$ref": "#/components/schemas/Notice"
+          },
+          "support_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Support Email"
+          },
+          "third_eye": {
+            "enum": [
+              "off",
+              "optional",
+              "required"
+            ],
+            "title": "Third Eye",
+            "type": "string"
+          }
+        },
+        "required": [
+          "instructions",
+          "mandatory_checks",
+          "notice",
+          "accommodations",
+          "answer_mode",
+          "third_eye",
+          "duration_minutes"
+        ],
+        "title": "BriefingResponse",
         "type": "object"
       },
       "BulkInterviewCreate": {
@@ -1090,6 +1448,55 @@
         "title": "ChannelUpdate",
         "type": "object"
       },
+      "CheckItem": {
+        "properties": {
+          "check": {
+            "maxLength": 40,
+            "title": "Check",
+            "type": "string"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "status": {
+            "enum": [
+              "pass",
+              "warn",
+              "fail",
+              "skipped"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "check",
+          "status"
+        ],
+        "title": "CheckItem",
+        "type": "object"
+      },
       "Choice": {
         "properties": {
           "id": {
@@ -1134,6 +1541,143 @@
           }
         },
         "title": "CodingSettings",
+        "type": "object"
+      },
+      "CompleteBody": {
+        "properties": {
+          "reason": {
+            "enum": [
+              "finished",
+              "candidate_ended"
+            ],
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "CompleteBody",
+        "type": "object"
+      },
+      "CompleteResponse": {
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "CompleteResponse",
+        "type": "object"
+      },
+      "ConsentBody": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ConsentItem"
+            },
+            "maxItems": 20,
+            "title": "Items",
+            "type": "array"
+          },
+          "notice_version": {
+            "maxLength": 20,
+            "title": "Notice Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "notice_version",
+          "items"
+        ],
+        "title": "ConsentBody",
+        "type": "object"
+      },
+      "ConsentItem": {
+        "properties": {
+          "accepted": {
+            "title": "Accepted",
+            "type": "boolean"
+          },
+          "purpose": {
+            "maxLength": 40,
+            "title": "Purpose",
+            "type": "string"
+          }
+        },
+        "required": [
+          "purpose",
+          "accepted"
+        ],
+        "title": "ConsentItem",
+        "type": "object"
+      },
+      "ConsentResponse": {
+        "properties": {
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "missing": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "complete",
+          "missing"
+        ],
+        "title": "ConsentResponse",
+        "type": "object"
+      },
+      "CoverageItem": {
+        "properties": {
+          "answered": {
+            "title": "Answered",
+            "type": "integer"
+          },
+          "asked": {
+            "title": "Asked",
+            "type": "integer"
+          },
+          "covered": {
+            "title": "Covered",
+            "type": "boolean"
+          },
+          "planned": {
+            "title": "Planned",
+            "type": "integer"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          },
+          "skill": {
+            "title": "Skill",
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill",
+          "required",
+          "covered",
+          "asked",
+          "answered",
+          "planned"
+        ],
+        "title": "CoverageItem",
         "type": "object"
       },
       "DashboardSummary": {
@@ -1444,6 +1988,28 @@
         "title": "EmailVerifyRequest",
         "type": "object"
       },
+      "FaqItem": {
+        "properties": {
+          "answer": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Answer",
+            "type": "string"
+          },
+          "question": {
+            "maxLength": 300,
+            "minLength": 3,
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question",
+          "answer"
+        ],
+        "title": "FaqItem",
+        "type": "object"
+      },
       "FollowUpRule": {
         "properties": {
           "prompt": {
@@ -1696,6 +2262,30 @@
           "created_at"
         ],
         "title": "HistoryEntry",
+        "type": "object"
+      },
+      "InterviewBriefingSettings": {
+        "properties": {
+          "faq": {
+            "description": "The only source the AI answers candidates' final questions from.",
+            "items": {
+              "$ref": "#/components/schemas/FaqItem"
+            },
+            "maxItems": 50,
+            "title": "Faq",
+            "type": "array"
+          },
+          "instructions": {
+            "description": "What candidates are told before the interview; empty uses the defaults.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Instructions",
+            "type": "array"
+          }
+        },
+        "title": "InterviewBriefingSettings",
         "type": "object"
       },
       "InterviewCreate": {
@@ -4248,6 +4838,50 @@
         "title": "MemberResponse",
         "type": "object"
       },
+      "Notice": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NoticeItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "items"
+        ],
+        "title": "Notice",
+        "type": "object"
+      },
+      "NoticeItem": {
+        "properties": {
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "purpose",
+          "text",
+          "required"
+        ],
+        "title": "NoticeItem",
+        "type": "object"
+      },
       "OrganizationAdminInvite": {
         "additionalProperties": false,
         "properties": {
@@ -5582,6 +6216,65 @@
           "updated_at"
         ],
         "title": "QuestionResponse",
+        "type": "object"
+      },
+      "QuestionState": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "languages": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Languages",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "time_limit_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time Limit Seconds"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          },
+          "workspace": {
+            "enum": [
+              "none",
+              "code",
+              "whiteboard"
+            ],
+            "title": "Workspace",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "index",
+          "text",
+          "type",
+          "time_limit_seconds",
+          "workspace",
+          "languages"
+        ],
+        "title": "QuestionState",
         "type": "object"
       },
       "QuestionVersionResponse": {
@@ -7263,6 +7956,134 @@
         "title": "SessionResponse",
         "type": "object"
       },
+      "SessionState": {
+        "properties": {
+          "answer_mode": {
+            "enum": [
+              "voice",
+              "text"
+            ],
+            "title": "Answer Mode",
+            "type": "string"
+          },
+          "deadline_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadline At"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the AI said last (its acknowledgement and the question).",
+            "title": "Message"
+          },
+          "notice": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notice"
+          },
+          "question": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuestionState"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The open question; in text mode always the next one to answer."
+          },
+          "remaining_seconds": {
+            "title": "Remaining Seconds",
+            "type": "integer"
+          },
+          "stage": {
+            "description": "PRD §35's stage.",
+            "title": "Stage",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "third_eye": {
+            "enum": [
+              "off",
+              "optional",
+              "required"
+            ],
+            "title": "Third Eye",
+            "type": "string"
+          },
+          "voice": {
+            "enum": [
+              "listening",
+              "thinking",
+              "speaking",
+              "waiting",
+              "paused",
+              "ended",
+              "error"
+            ],
+            "title": "Voice",
+            "type": "string"
+          },
+          "workspace": {
+            "enum": [
+              "none",
+              "code",
+              "whiteboard"
+            ],
+            "title": "Workspace",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "started_at",
+          "deadline_at",
+          "remaining_seconds",
+          "third_eye",
+          "workspace",
+          "answer_mode",
+          "voice",
+          "stage"
+        ],
+        "title": "SessionState",
+        "type": "object"
+      },
       "SessionTokenResponse": {
         "properties": {
           "expires_at": {
@@ -7529,6 +8350,76 @@
         "title": "SkippedApplication",
         "type": "object"
       },
+      "StartBody": {
+        "properties": {
+          "consent_id": {
+            "format": "uuid",
+            "title": "Consent Id",
+            "type": "string"
+          },
+          "system_check_id": {
+            "format": "uuid",
+            "title": "System Check Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "system_check_id",
+          "consent_id"
+        ],
+        "title": "StartBody",
+        "type": "object"
+      },
+      "StartResponse": {
+        "properties": {
+          "livekit_url": {
+            "title": "Livekit Url",
+            "type": "string"
+          },
+          "participant_identity": {
+            "title": "Participant Identity",
+            "type": "string"
+          },
+          "participant_token": {
+            "title": "Participant Token",
+            "type": "string"
+          },
+          "room": {
+            "title": "Room",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/SessionState"
+          },
+          "token_expires_at": {
+            "format": "date-time",
+            "title": "Token Expires At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "livekit_url",
+          "room",
+          "participant_identity",
+          "participant_token",
+          "token_expires_at",
+          "state"
+        ],
+        "title": "StartResponse",
+        "type": "object"
+      },
+      "StateResponse": {
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/SessionState"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "title": "StateResponse",
+        "type": "object"
+      },
       "StepUpRequest": {
         "properties": {
           "password": {
@@ -7542,6 +8433,62 @@
           "password"
         ],
         "title": "StepUpRequest",
+        "type": "object"
+      },
+      "SystemCheckBody": {
+        "properties": {
+          "app_version": {
+            "maxLength": 40,
+            "title": "App Version",
+            "type": "string"
+          },
+          "os": {
+            "maxLength": 200,
+            "title": "Os",
+            "type": "string"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/CheckItem"
+            },
+            "maxItems": 30,
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "app_version",
+          "os",
+          "results"
+        ],
+        "title": "SystemCheckBody",
+        "type": "object"
+      },
+      "SystemCheckResponse": {
+        "properties": {
+          "failed_mandatory": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Failed Mandatory",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "passed",
+          "failed_mandatory"
+        ],
+        "title": "SystemCheckResponse",
         "type": "object"
       },
       "TeamCreate": {
@@ -8551,6 +9498,256 @@
         "title": "TokenPasswordRequest",
         "type": "object"
       },
+      "TranscriptQuestion": {
+        "properties": {
+          "answers": {
+            "items": {
+              "$ref": "#/components/schemas/AnswerResponse"
+            },
+            "title": "Answers",
+            "type": "array"
+          },
+          "asked_at": {
+            "format": "date-time",
+            "title": "Asked At",
+            "type": "string"
+          },
+          "difficulty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Difficulty"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "skill": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skill"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "source_ref": {
+            "additionalProperties": true,
+            "description": "Where it came from (PRD §36).",
+            "title": "Source Ref",
+            "type": "object"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "kind",
+          "stage",
+          "skill",
+          "difficulty",
+          "type",
+          "text",
+          "source",
+          "source_ref",
+          "parent_id",
+          "status",
+          "asked_at",
+          "answers"
+        ],
+        "title": "TranscriptQuestion",
+        "type": "object"
+      },
+      "TranscriptResponse": {
+        "properties": {
+          "artifacts": {
+            "items": {
+              "$ref": "#/components/schemas/ArtifactLink"
+            },
+            "title": "Artifacts",
+            "type": "array"
+          },
+          "coverage": {
+            "items": {
+              "$ref": "#/components/schemas/CoverageItem"
+            },
+            "title": "Coverage",
+            "type": "array"
+          },
+          "interview_id": {
+            "format": "uuid",
+            "title": "Interview Id",
+            "type": "string"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/TranscriptQuestion"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "segments": {
+            "items": {
+              "$ref": "#/components/schemas/TranscriptSegmentResponse"
+            },
+            "title": "Segments",
+            "type": "array"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "transcript_status": {
+            "enum": [
+              "none",
+              "pending",
+              "ready",
+              "failed"
+            ],
+            "title": "Transcript Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "interview_id",
+          "status",
+          "stage",
+          "transcript_status",
+          "coverage",
+          "questions",
+          "segments",
+          "artifacts"
+        ],
+        "title": "TranscriptResponse",
+        "type": "object"
+      },
+      "TranscriptSegmentResponse": {
+        "properties": {
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "end_ms": {
+            "title": "End Ms",
+            "type": "integer"
+          },
+          "question_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question Id"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "speaker": {
+            "enum": [
+              "ai",
+              "candidate"
+            ],
+            "title": "Speaker",
+            "type": "string"
+          },
+          "start_ms": {
+            "title": "Start Ms",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "seq",
+          "speaker",
+          "text",
+          "start_ms",
+          "end_ms",
+          "question_id",
+          "confidence"
+        ],
+        "title": "TranscriptSegmentResponse",
+        "type": "object"
+      },
       "UserInvite": {
         "additionalProperties": false,
         "properties": {
@@ -8754,6 +9951,47 @@
           }
         },
         "title": "UserUpdate",
+        "type": "object"
+      },
+      "WorkspaceBody": {
+        "properties": {
+          "content": {
+            "maxLength": 300000,
+            "title": "Content",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "code",
+              "whiteboard"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "question_id": {
+            "format": "uuid",
+            "title": "Question Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "kind",
+          "content"
+        ],
+        "title": "WorkspaceBody",
         "type": "object"
       }
     }
@@ -11787,6 +13025,318 @@
         ]
       }
     },
+    "/api/v1/interviews/{interview_id}/accommodations": {
+      "get": {
+        "description": "The candidate's accommodation requests and their decisions.",
+        "operationId": "list_accommodations",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AccommodationResponse"
+                  },
+                  "title": "Response List Accommodations",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "List Accommodations",
+        "tags": [
+          "interviews"
+        ]
+      },
+      "post": {
+        "description": "Asks for accommodations; a recruiter decides in the web app.",
+        "operationId": "request_accommodation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccommodationBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccommodationCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Request Accommodation",
+        "tags": [
+          "interview-session"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/accommodations/{accommodation_id}/decision": {
+      "post": {
+        "description": "Approves some or all of what was asked for, or none (declined), before the interview.",
+        "operationId": "decide_accommodation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "accommodation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Accommodation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccommodationDecision"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccommodationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Decide Accommodation",
+        "tags": [
+          "interviews"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/answer": {
+      "post": {
+        "description": "A typed answer to the open question (PRD §90's text-answer mode). In text mode the state\nholds the next question; in voice mode the agent speaks it.",
+        "operationId": "answer_question",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswerBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Answer Question",
+        "tags": [
+          "interview-session"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/briefing": {
+      "get": {
+        "description": "§30's instructions and the itemised consent notice, before the system check.",
+        "operationId": "interview_briefing",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BriefingResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Interview Briefing",
+        "tags": [
+          "interview-session"
+        ]
+      }
+    },
     "/api/v1/interviews/{interview_id}/cancel": {
       "post": {
         "description": "Cancels an interview that hasn't started; an invited candidate is told why.",
@@ -11848,6 +13398,134 @@
         "summary": "Cancel Interview",
         "tags": [
           "interviews"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/complete": {
+      "post": {
+        "description": "Ends the interview; the desktop then drains its upload queue before closing.",
+        "operationId": "complete_interview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompleteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Complete Interview",
+        "tags": [
+          "interview-session"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/consents": {
+      "post": {
+        "description": "The candidate's answer to each purpose of the current notice (§30, §83).",
+        "operationId": "record_consents",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsentBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Record Consents",
+        "tags": [
+          "interview-session"
         ]
       }
     },
@@ -12030,6 +13708,304 @@
         "summary": "Set Interview Reviewers",
         "tags": [
           "interviews"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/session": {
+      "get": {
+        "description": "The interview's state, for recovery after the app restarts.",
+        "operationId": "interview_session_state",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Interview Session State",
+        "tags": [
+          "interview-session"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/start": {
+      "post": {
+        "description": "Starts the interview, or resumes it after a disconnect under its resume policy; returns\nthe LiveKit room and a participant token that can do nothing else.",
+        "operationId": "start_interview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Start Interview",
+        "tags": [
+          "interview-session"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/system-checks": {
+      "post": {
+        "description": "The desktop's system check (§29); it passes when every mandatory check passed.",
+        "operationId": "record_system_check",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SystemCheckBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemCheckResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Record System Check",
+        "tags": [
+          "interview-session"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/transcript": {
+      "get": {
+        "description": "Both sides of the interview, every question with its source and answers, the skills'\ncoverage, and short-lived links to the JSON, VTT and TXT artifacts once they're written.",
+        "operationId": "interview_transcript",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Interview Transcript",
+        "tags": [
+          "interviews"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/workspace": {
+      "post": {
+        "description": "A snapshot of the code or whiteboard for a question.",
+        "operationId": "save_workspace",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Save Workspace",
+        "tags": [
+          "interview-session"
         ]
       }
     },
@@ -13548,6 +15524,41 @@
         ]
       }
     },
+    "/api/v1/livekit/webhook": {
+      "post": {
+        "description": "Room events from LiveKit, signed with the server's API secret.",
+        "operationId": "livekit_webhook",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Livekit Webhook",
+        "tags": [
+          "interview-session"
+        ]
+      }
+    },
     "/api/v1/organization": {
       "get": {
         "description": "The organisation's profile. The Platform organisation has none (403).",
@@ -13728,6 +15739,97 @@
         "summary": "Update Candidate Access",
         "tags": [
           "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/interview-briefing": {
+      "get": {
+        "description": "What candidates are told before an interview, and the FAQ the AI answers from.",
+        "operationId": "get_interview_briefing",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewBriefingSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Get Interview Briefing",
+        "tags": [
+          "interviews"
+        ]
+      },
+      "put": {
+        "operationId": "update_interview_briefing",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InterviewBriefingSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewBriefingSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Update Interview Briefing",
+        "tags": [
+          "interviews"
         ]
       }
     },

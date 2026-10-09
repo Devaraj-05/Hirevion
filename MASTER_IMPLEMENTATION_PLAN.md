@@ -1707,21 +1707,21 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 26 | 9 startup steps (`AI-Interview.exe`) | SP-08 (the version check's server side, the release registry and update manifest: SP-07c) |
 | 27 | Tauri, React, TypeScript, Rust, Monaco | SP-08, SP-16 |
 | 28 | 6 login verifications; short-lived credentials | SP-07c (`candidate_access.service`, the six checks in order with their codes), SP-08 |
-| 29 | 11 system checks; policy-driven mandatory checks | SP-08 |
-| 30 | 6 instructions (configurable); 10 consent items | SP-08, SP-22 |
+| 29 | 11 system checks; policy-driven mandatory checks | SP-08 (the checks on the device), SP-09 (`interview_session.preparation.record_system_check`, mandatory checks from the policy and accommodations: `test_conductor.py`) |
+| 30 | 6 instructions (configurable); 10 consent items | SP-08, SP-09 (the briefing: `interview_session.briefing`, the organisation's instructions in Administration → Organisation, itemised consents against `NOTICE_VERSION`), SP-22 |
 | 31 | Fullscreen; 5 monitored states | SP-08, SP-11 |
-| 32 | UI layout, timer, orb, transcript, editor (language, Run, Submit), status bar, non-coding workspace | SP-08, SP-09, SP-16 |
-| 33 | 6 voice states; streaming STT/TTS | SP-09 |
-| 34 | No single giant prompt; 12 state fields; 9 components | SP-09 (CodingController in SP-16) |
-| 35 | 10 state-machine states | SP-09 (§6.8) |
-| 36 | Resume-based questions with internal source reference | SP-09 |
-| 37 | JD skill coverage tracked | SP-09 |
-| 38 | 5 answer analyses; 4 adaptive behaviours | SP-09, SP-10 |
-| 39 | Easy/Medium/Hard adaptive, keeping coverage | SP-09 |
-| 40 | 5 time signals; plan shrinks while keeping important skills | SP-09 |
-| 41 | 6 transcript-segment fields | SP-09 |
-| 42 | TTS: low latency, streaming, interruption, state tracking, failure handling | SP-09 |
-| 43 | Complete two-sided transcript | SP-09 |
+| 32 | UI layout, timer, orb, transcript, editor (language, Run, Submit), status bar, non-coding workspace | SP-08, SP-09 (`hv.state`: voice, question, time left, workspace; `POST /workspace`), SP-16 |
+| 33 | 6 voice states; streaming STT/TTS | SP-09 (ADR-0030: the agent's `hv.state` voice states incl. `error`; Deepgram streaming STT/TTS through LiveKit, `hirevion_interview_agent.agent`) |
+| 34 | No single giant prompt; 12 state fields; 9 components | SP-09 (`hirevion_core.engine`: `state.InterviewState`, the nine components, `orchestrator.py`; `tests/engine/`), SP-16 (CodingController's runs and grading) |
+| 35 | 10 state-machine states | SP-09 (§6.8; `engine.state.STAGES` recorded with times; `test_orchestrator.py`) |
+| 36 | Resume-based questions with internal source reference | SP-09 (`engine.skills.resume_hooks`, `interview_questions.source`/`source_ref`, the transcript page's source lines) |
+| 37 | JD skill coverage tracked | SP-09 (`engine.completion.CompletionEvaluator`, required JD skills added by `SkillMatrixBuilder`; coverage in `GET /interviews/{id}/transcript`; every persona covers them in `test_interview_session_api.py`) |
+| 38 | 5 answer analyses; 4 adaptive behaviours | SP-09 (`engine.analysis.AnswerAnalyzer`, `engine.followups.FollowUpGenerator`), SP-10 (the async evaluator) |
+| 39 | Easy/Medium/Hard adaptive, keeping coverage | SP-09 (`engine.difficulty.DifficultyController`, the per-skill ladder) |
+| 40 | 5 time signals; plan shrinks while keeping important skills | SP-09 (`engine.timing.TimeController`: deadline, remaining, question limits, coding time; `shrink` keeps uncovered required skills) |
+| 41 | 6 transcript-segment fields | SP-09 (`transcript_segments`, partitioned; `interview_session.transcripts.segment`) |
+| 42 | TTS: low latency, streaming, interruption, state tracking, failure handling | SP-09 (the agent's acknowledgement while analysing, interruptible speech, the pronunciation lexicon in `tts_node`, the `error` state; `hv-voice-bench` measures p95) |
+| 43 | Complete two-sided transcript | SP-09 (both speakers per turn; JSON/VTT/TXT artifacts by the `interview.completed` consumer; the interview page's transcript) |
 | 44 | 8 evaluation dimensions, with evidence | SP-10 |
 | 45 | Coding flow; Python, JavaScript, TypeScript, SQL | SP-16 |
 | 46 | Never on API servers; queue; 6 limits; destroyed after each run | SP-16 |
@@ -1761,15 +1761,15 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 80 | Immutable template versions; interviews pin a version | SP-06 (insert-only version tables for templates and questions), SP-07a (interviews pin `(template_id, template_version)` and a policy snapshot) |
 | 81 | Tenant scoping; server-side authorisation | SP-01, SP-02 |
 | 82 | 15 security requirements; SOC 2 / ISO 27001 target | §9, SP-01/02/07/08/12/16/23 (certifications need the cloud and an audit period) |
-| 83 | 10 disclosures; 6 policies | SP-07b (portal notices), SP-08, SP-22, `docs/policies/` (drafts: H0.7) |
+| 83 | 10 disclosures; 6 policies | SP-07b (portal notices), SP-08, SP-09 (the itemised notice per policy, consents stored per purpose), SP-22, `docs/policies/` (drafts: H0.7) |
 | 84 | Organisation-configurable retention (6 classes) | SP-22 |
 | 85 | Postgres (8), Redis (5), Blob (9); path layout; short-lived SAS | SP-01, SP-12 |
 | 86 | Gateway, Recruitment/Interview/Proctor APIs, orchestrator, workers | SP-01 (Caddy locally; route groups), SP-09 |
 | 87 | api/worker/realtime/coding services; 15 logical modules | SP-00, SP-01 (§6.1) |
 | 88 | Azure production architecture | Cloud plan |
 | 89 | Every core table | §7; each owning SP |
-| 90 | 20 API groups; the screening, interview and proctoring example endpoints | §8; owning SPs |
-| 91 | 3 WebSocket channels; 10 events | SP-09, SP-14 (§8) |
+| 90 | 20 API groups; the screening, interview and proctoring example endpoints | §8; owning SPs (SP-09: `/interviews/{id}/start`, `/answer`, `/complete`, `/transcript`) |
+| 91 | 3 WebSocket channels; 10 events | SP-09 (`/ws/interviews/{id}`; `AI_SPEAKING`, `CANDIDATE_SPEAKING`, `QUESTION_STARTED`, `ANSWER_RECEIVED`, `INTERVIEW_COMPLETED` on `hv:rt:interview:{id}`), SP-12, SP-13, SP-14 (§8; `/ws/proctoring`, `/ws/recruiter` and the other five events), SP-16 |
 | 92 | Third-eye realtime path | SP-13 |
 | 93 | Repository structure | SP-00 (§12) |
 | 94 | Technology stack (local parts) | §2; Azure part in the Cloud plan |

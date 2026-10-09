@@ -57,6 +57,7 @@ jobs:
               - "recruitment-platform/**"
               - "packages/**"
               - "tools/devcli/**"
+              - "tools/interview-simulator/**"
               - "uv.lock"
               - "pnpm-lock.yaml"
             compose:
@@ -145,7 +146,7 @@ jobs:
       - run: uv run ruff format --check .
       - run: >-
           uv run mypy tools/devcli/src backend/core/src backend/api/src
-          backend/interview_agent/src tools/voice_bench/src
+          backend/interview_agent/src tools/voice_bench/src tools/interview-simulator/src
       - run: uv run pytest
 
   # The committed OpenAPI document and the TypeScript types generated from it match the API.
@@ -246,6 +247,8 @@ jobs:
       HV_AI_PROFILE: mock
       HV_AI_MOCK_SCRIPTS: recruitment-platform/e2e/auth/ai-scripts.json
       HV_DOCUMENTS_SCAN: "false"
+      # No LiveKit here: the simulator answers in text mode, which needs no room or agent.
+      HV_MEDIA_BACKEND: fake
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v6

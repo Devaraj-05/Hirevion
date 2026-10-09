@@ -803,6 +803,21 @@
         "saved": "Candidate sign-in setting saved",
         "loadFailed": "The candidate sign-in setting didn't load.",
         "retry": "Try again"
+      },
+      "interviewBriefing": {
+        "title": "Interview briefing",
+        "instructions": "Instructions for candidates",
+        "instructionsHint": "One per line. Candidates read them before the system check; leave this empty to use Hirevion's standard instructions.",
+        "faq": "Questions the AI interviewer can answer",
+        "faqHint": "At the end of an interview candidates may ask questions. The AI answers only from this list, and passes anything else on to your team.",
+        "question": "Question {number}",
+        "answer": "Answer",
+        "remove": "Remove question {number}",
+        "add": "Add a question",
+        "save": "Save briefing",
+        "saved": "Interview briefing saved",
+        "loadFailed": "The interview briefing didn't load. Try again in a moment.",
+        "retry": "Try again"
       }
     },
     "departments": {
@@ -1506,6 +1521,75 @@
         "template-unavailable": "the template is archived",
         "application-not-found": "isn't a candidate you can reach",
         "other": "couldn't be given an interview"
+      }
+    },
+    "session": {
+      "coverage": "Skill coverage",
+      "notStarted": "The interview hasn't started yet.",
+      "required": "Required",
+      "covered": "Covered",
+      "notCovered": "Not covered",
+      "asked": "{asked} of {planned} questions asked",
+      "artifacts": "Transcript files",
+      "transcriptStatus": {
+        "none": "The files are written when the interview ends.",
+        "pending": "The files are being written.",
+        "ready": "The files are ready.",
+        "failed": "The files couldn't be written; the team has been alerted."
+      },
+      "artifactKinds": {
+        "json": "Download JSON",
+        "vtt": "Download captions (VTT)",
+        "txt": "Download text"
+      },
+      "transcript": "Transcript",
+      "live": "Live",
+      "connecting": "Connecting…",
+      "noSegments": "Nothing has been said yet.",
+      "speakers": {
+        "ai": "AI",
+        "candidate": "Candidate"
+      },
+      "sources": {
+        "pinned": "Pinned question",
+        "library": "From the question library",
+        "generated": "Generated for a gap in the library",
+        "resume": "From the resume",
+        "follow_up": "Follow-up",
+        "faq": "Final questions",
+        "system": "Interview script"
+      },
+      "sourceResume": "From the resume: “{quote}”",
+      "sourceResumePage": "From the resume, page {page}: “{quote}”",
+      "sourceSkill": " · {skill}",
+      "sourceDifficulty": " · {difficulty}",
+      "loadFailed": "The transcript didn't load. Try again in a moment.",
+      "retry": "Try again",
+      "accommodations": {
+        "title": "Accommodations",
+        "none": "The candidate hasn't asked for any.",
+        "loadFailed": "The requests didn't load. Try again in a moment.",
+        "statuses": {
+          "requested": "Waiting for a decision",
+          "approved": "Approved",
+          "declined": "Declined"
+        },
+        "kinds": {
+          "extended_time": "Extended time",
+          "text_answers": "Typed answers",
+          "breaks": "Breaks",
+          "assistive_technology": "Assistive technology",
+          "relaxed_gaze": "Relaxed gaze checks",
+          "third_eye_waiver": "No phone camera"
+        },
+        "candidateNote": "The candidate wrote: {note}",
+        "approvedKinds": "Approved: {kinds}",
+        "chooseApproved": "Approve",
+        "note": "Note (optional)",
+        "approve": "Approve selected",
+        "decline": "Decline",
+        "approved": "Accommodations approved",
+        "declined": "Request declined"
       }
     }
   }

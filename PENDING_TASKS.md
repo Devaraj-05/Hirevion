@@ -36,7 +36,7 @@
 | Part | State |
 |---|---|
 | SP-00 to SP-06 (foundations, backend core, identity, web shell, jobs and resumes, screening, interview configuration) | Merged to `main` (PRs #1–#4 merged 2026-10-09) |
-| A0, C0, D0 contract reviews; A1 SP-07a; A2 SP-07c | Built on the cloud branch (2026-10-09) |
+| A0, C0, D0 contract reviews; A1 SP-07a; A2 SP-07c; C1–C3 SP-09 | Built on the cloud branch (2026-10-09) |
 | The rest of section 7 | Not started |
 
 ## 3. The team: four lanes running at once
@@ -323,12 +323,12 @@ Dates are targets in IST. A box is ticked in the PR that merges the part.
 ### Lane C — interview AI and realtime (cloud session 2)
 
 - [x] **C0 (Oct 10, first hour):** review `docs/api/contracts/interview-session.md` and `proctoring.md`; record any changes the way the contracts README says.
-- [ ] **C1 SP-09a (Oct 10):**
+- [x] **C1 SP-09a (Oct 10):** done (ADR-0030; built with C2 and C3).
   - rooms, least-privilege tokens and explicit agent dispatch;
   - the voice pipeline (Deepgram STT and TTS plugins, mock in CI);
   - §35's ten states;
   - `tools/interview-simulator` with its personas.
-- [ ] **C2 SP-09b (Oct 11):**
+- [x] **C2 SP-09b (Oct 11):** done (ADR-0030).
   - §34's nine orchestrator components and twelve state fields;
   - per-question time limits and follow-up rules;
   - coverage and provenance;
@@ -336,7 +336,7 @@ Dates are targets in IST. A box is ticked in the PR that merges the part.
   - final questions from the FAQ;
   - text-answer mode;
   - guardrails.
-- [ ] **C3 SP-09c (Oct 11–12):**
+- [x] **C3 SP-09c (Oct 11–12):** done (ADR-0030). Every persona finishes in CI; a replacement agent takes over within 10 s (`test_bridge.py`); required skills are covered. The voice path's p95 is measured on the Windows machine with `hv-voice-bench`.
   - transcript segments and artifacts (JSON, VTT, TXT);
   - §91's events over `realtime`;
   - per-turn checkpoints, the resume policy and crash recovery.
@@ -540,7 +540,10 @@ pnpm --filter @hirevion/ai-interviewer-desktop tauri dev       # the candidate a
 ## 10. Deferrals recorded in code, so nothing is lost
 
 - **A1 (SP-07a):** done (ADR-0020): the "Create interview" action, the candidates' Interview and Completed tabs, and interviews pinning a template version, its questions and its policy.
-- **C2 (SP-09b):** live use of question time limits and follow-up rules (SP-06 stores them).
+- **C2 (SP-09b):** done (ADR-0030): question time limits and follow-up rules are used live.
+- **C6 (SP-16):** the coding question's runs, tests and grading (SP-09 asks it with the code workspace).
+- **D3 (SP-13):** pairing check at `start` (until then a required third eye needs the waiver).
+- **C5 (SP-14):** `Conductor.note_proctor_event` fills §34's proctor summary and the CRITICAL-event reminder; `/ws/proctoring` and `/ws/recruiter`.
 - **C5 (SP-14) and D5 (SP-22):** proctoring presets become editable policies.
 - **A5 (SP-17):** moving cards on the pipeline board; the remaining Candidate 360 tabs.
 - **A4 (SP-18):** the notification centre's content; the scheduler.

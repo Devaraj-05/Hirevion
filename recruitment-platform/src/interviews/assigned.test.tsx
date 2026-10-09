@@ -23,6 +23,11 @@ vi.mock("./assigned-api", async (importOriginal) => ({
   cancelInterview: vi.fn(),
   setInterviewReviewers: vi.fn(),
 }));
+vi.mock("./session-api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./session-api")>()),
+  listAccommodations: vi.fn().mockResolvedValue([]),
+  getTranscript: vi.fn(),
+}));
 vi.mock("./api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./api")>()),
   listTemplates: vi.fn(),

@@ -26,6 +26,7 @@ import { type FormEvent, useId, useState } from "react";
 import { useAdminProblem } from "@/admin/problems";
 import { getJobChoices } from "@/jobs/api";
 import { PageHeader } from "@/page/page-header";
+import { AccommodationsCard } from "./accommodations-card";
 import {
   cancelInterview,
   getInterview,
@@ -39,8 +40,19 @@ import {
   sendInvitation,
   setInterviewReviewers,
 } from "./assigned-api";
+import { TranscriptCard } from "./transcript-card";
 
 type Asking = "reschedule" | "cancel" | "reviewers" | null;
+
+// Interviews that have something to show of what happened in them.
+const HAPPENED = new Set([
+  "in_progress",
+  "interrupted",
+  "completed",
+  "evaluating",
+  "evaluated",
+  "abandoned",
+]);
 
 /** One interview (PRD §24): its pinned template and policy, its window and status, who reviews
  * it, its history and the emails sent; and, for `canManage`, sending, rescheduling, cancelling
@@ -252,6 +264,16 @@ export function InterviewPage({ id, canManage }: { id: string; canManage: boolea
             )}
           </CardContent>
         </Card>
+        <AccommodationsCard
+          id={id}
+          canDecide={canManage && (data.status === "scheduled" || data.status === "invited")}
+        />
+        {HAPPENED.has(data.status) ? (
+          <TranscriptCard
+            id={id}
+            live={data.status === "in_progress" || data.status === "interrupted"}
+          />
+        ) : null}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>{t("history")}</CardTitle>

@@ -8,6 +8,7 @@ dependencies = [
   "hirevion-core",
   "hirevion-devcli",
   "hirevion-interview-agent",
+  "hirevion-interview-simulator",
   "hirevion-voice-bench",
 ]
 
@@ -22,6 +23,7 @@ members = [
   "backend/core",
   "backend/api",
   "backend/interview_agent",
+  "tools/interview-simulator",
   "tools/voice_bench",
 ]
 
@@ -30,6 +32,7 @@ hirevion-api = { workspace = true }
 hirevion-core = { workspace = true }
 hirevion-devcli = { workspace = true }
 hirevion-interview-agent = { workspace = true }
+hirevion-interview-simulator = { workspace = true }
 hirevion-voice-bench = { workspace = true }
 
 [dependency-groups]
@@ -57,6 +60,7 @@ known-first-party = [
   "hirevion_core",
   "hirevion_devcli",
   "hirevion_interview_agent",
+  "hirevion_interview_simulator",
   "hirevion_voice_bench",
 ]
 
@@ -69,6 +73,7 @@ testpaths = [
   "backend/core/tests",
   "backend/api/tests",
   "backend/interview_agent/tests",
+  "tools/interview-simulator/tests",
   "tools/voice_bench/tests",
 ]
 # importlib: test modules in different packages may share a name (e.g. test_settings.py).

@@ -9,6 +9,7 @@ members = [
     "hirevion-core",
     "hirevion-devcli",
     "hirevion-interview-agent",
+    "hirevion-interview-simulator",
     "hirevion-voice-bench",
 ]
 
@@ -617,6 +618,7 @@ dependencies = [
     { name = "hirevion-core" },
     { name = "hirevion-devcli" },
     { name = "hirevion-interview-agent" },
+    { name = "hirevion-interview-simulator" },
     { name = "hirevion-voice-bench" },
 ]
 
@@ -637,6 +639,7 @@ requires-dist = [
     { name = "hirevion-core", editable = "backend/core" },
     { name = "hirevion-devcli", editable = "tools/devcli" },
     { name = "hirevion-interview-agent", editable = "backend/interview_agent" },
+    { name = "hirevion-interview-simulator", editable = "tools/interview-simulator" },
     { name = "hirevion-voice-bench", editable = "tools/voice_bench" },
 ]
 
@@ -689,6 +692,7 @@ dependencies = [
     { name = "azure-storage-blob" },
     { name = "charset-normalizer" },
     { name = "jinja2" },
+    { name = "livekit-api" },
     { name = "openai" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
     { name = "opentelemetry-instrumentation-redis" },
@@ -716,6 +720,7 @@ requires-dist = [
     { name = "azure-storage-blob", specifier = ">=12.30" },
     { name = "charset-normalizer", specifier = ">=3.4" },
     { name = "jinja2", specifier = ">=3.1" },
+    { name = "livekit-api", specifier = ">=1.0" },
     { name = "openai", specifier = ">=2.54" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = ">=1.44" },
     { name = "opentelemetry-instrumentation-redis", specifier = ">=0.65b0" },
@@ -741,6 +746,7 @@ dependencies = [
     { name = "azure-storage-blob" },
     { name = "faker" },
     { name = "hirevion-core" },
+    { name = "hirevion-interview-simulator" },
     { name = "httpx" },
     { name = "pyjwt" },
     { name = "rapidfuzz" },
@@ -756,6 +762,7 @@ requires-dist = [
     { name = "azure-storage-blob", specifier = ">=12.20" },
     { name = "faker", specifier = ">=30" },
     { name = "hirevion-core", editable = "backend/core" },
+    { name = "hirevion-interview-simulator", editable = "tools/interview-simulator" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "pyjwt", specifier = ">=2.8" },
     { name = "rapidfuzz", specifier = ">=3.9" },
@@ -771,14 +778,35 @@ name = "hirevion-interview-agent"
 version = "0.1.0"
 source = { editable = "backend/interview_agent" }
 dependencies = [
+    { name = "hirevion-core" },
     { name = "livekit-agents", extra = ["deepgram", "openai", "silero", "turn-detector"] },
     { name = "pydantic-settings" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "hirevion-core", editable = "backend/core" },
     { name = "livekit-agents", extras = ["deepgram", "openai", "silero", "turn-detector"], specifier = ">=1.2" },
     { name = "pydantic-settings", specifier = ">=2.4" },
+]
+
+[[package]]
+name = "hirevion-interview-simulator"
+version = "0.1.0"
+source = { editable = "tools/interview-simulator" }
+dependencies = [
+    { name = "cryptography" },
+    { name = "hirevion-core" },
+    { name = "httpx" },
+    { name = "pyjwt", extra = ["crypto"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "cryptography", specifier = ">=43" },
+    { name = "hirevion-core", editable = "backend/core" },
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "pyjwt", extras = ["crypto"], specifier = ">=2.8" },
 ]
 
 [[package]]
@@ -787,6 +815,7 @@ version = "0.1.0"
 source = { editable = "tools/voice_bench" }
 dependencies = [
     { name = "hirevion-interview-agent" },
+    { name = "hirevion-interview-simulator" },
     { name = "httpx" },
     { name = "livekit" },
     { name = "livekit-api" },
@@ -796,6 +825,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "hirevion-interview-agent", editable = "backend/interview_agent" },
+    { name = "hirevion-interview-simulator", editable = "tools/interview-simulator" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "livekit", specifier = ">=1.0" },
     { name = "livekit-api", specifier = ">=1.0" },

@@ -1,8 +1,9 @@
 """The interview scheduler (SP-07a): reminders and expiry, run by the worker every minute.
 
 It reminds a candidate 24 hours before their window opens (when the invitation went out before
-that) and 24 hours before an unstarted window closes, once each, and expires scheduled or
-invited interviews whose window has closed. `scheduler_due_interviews` lists what's due in every
+that) and 24 hours before an unstarted window closes, once each, expires scheduled or invited
+interviews whose window has closed, and abandons interviews left interrupted for longer than
+their resume policy's grace (SP-09). `scheduler_due_interviews` lists what's due in every
 organisation (a SECURITY DEFINER function owned by `hirevion_scheduler`); each interview is then
 handled in its own tenant's transaction under `FOR UPDATE SKIP LOCKED`, and checked again there,
 so two workers never send the same reminder twice. SP-18's scheduler takes this loop over.
@@ -24,6 +25,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from hirevion_core.access.errors import Invalid
 from hirevion_core.db.session import Database
 from hirevion_core.identity.settings import IdentitySettings
+from hirevion_core.interview_session.briefing import resume_policy
+from hirevion_core.interview_session.conductor import abandon
 from hirevion_core.interviews import invitations
 from hirevion_core.interviews.assignment import back_to_shortlist
 from hirevion_core.interviews.lifecycle import By, record_event, transition
@@ -40,10 +43,11 @@ class SchedulerReport:
     expired: int = 0
     start_reminders: int = 0
     expiry_reminders: int = 0
+    abandoned: int = 0
 
     @property
     def total(self) -> int:
-        return self.expired + self.start_reminders + self.expiry_reminders
+        return self.expired + self.start_reminders + self.expiry_reminders + self.abandoned
 
 
 async def due_interviews(
@@ -94,6 +98,13 @@ async def _handle(
     lead: timedelta,
     report: SchedulerReport,
 ) -> None:
+    if interview.status == "interrupted":
+        grace = timedelta(seconds=resume_policy(interview.policy).grace_seconds)
+        if interview.interrupted_at is not None and interview.interrupted_at + grace <= now:
+            await abandon(session, interview, now)
+            await back_to_shortlist(session, interview, "interview_abandoned", actor_id=None)
+            report.abandoned += 1
+        return
     if interview.status in ("scheduled", "invited") and interview.expires_at <= now:
         await transition(session, interview, "expired", "expired", By.system(), now=now)
         await back_to_shortlist(session, interview, "interview_expired", actor_id=None)
@@ -157,8 +168,9 @@ class InterviewScheduler:
                 report = await run_due(self._db, self._settings)
                 if report.total:
                     log.info(
-                        "Scheduler: %d expired, %d opening and %d closing reminders",
+                        "Scheduler: %d expired, %d abandoned, %d opening and %d closing reminders",
                         report.expired,
+                        report.abandoned,
                         report.start_reminders,
                         report.expiry_reminders,
                     )

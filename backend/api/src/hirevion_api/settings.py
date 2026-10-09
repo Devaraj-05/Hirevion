@@ -11,7 +11,10 @@ class ApiSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="HV_API_", extra="ignore")
 
     # Host names the API answers to (without port); anything else gets 400 host-not-allowed.
-    allowed_hosts: str = "api.hirevion.localhost,app.hirevion.localhost,localhost,127.0.0.1"
+    # `host.docker.internal` is how LiveKit's container delivers its webhooks locally.
+    allowed_hosts: str = (
+        "api.hirevion.localhost,app.hirevion.localhost,localhost,127.0.0.1,host.docker.internal"
+    )
     # Proxies whose X-Forwarded-For is believed (Caddy reaches `hv api` from loopback).
     trusted_proxies: str = "127.0.0.1"
     max_body_bytes: int = 1_048_576

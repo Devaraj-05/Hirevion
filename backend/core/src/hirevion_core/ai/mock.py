@@ -3,7 +3,9 @@
 Each mock goes through `Recorder` like a real backend, so recording, metering and budgets are
 tested exactly as they run in production. `failures` makes the next calls fail; `scripted`
 returns a fixed value per purpose (for schemas the generic faker can't satisfy), or for the LLM
-a function of the messages.
+a function of the messages. A module whose purpose needs a realistic answer in every mock run (the
+interview engine's analysis, SP-09) registers a deterministic responder with `respond_with`;
+`scripted` still wins over it.
 """
 
 from __future__ import annotations
@@ -13,7 +15,7 @@ import io
 import math
 import types
 import wave
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from enum import Enum
@@ -51,8 +53,15 @@ MOCK_PRICES = PriceBook(
         "mock-vision": {"input_per_million_tokens": "1", "output_per_million_tokens": "2"},
     }
 )
+# Deterministic LLM answers by purpose, from the messages (see `respond_with`).
+RESPONDERS: dict[str, Callable[[Sequence[ChatMessage]], Any]] = {}
 _PCM_BYTES_PER_SECOND = 32_000  # 16 kHz, 16-bit mono
 _SPEECH_CHARS_PER_SECOND = 15
+
+
+def respond_with(purpose: str, responder: Callable[[Sequence[ChatMessage]], Any]) -> None:
+    """Makes the mock LLM answer `purpose` with `responder(messages)` instead of a generic fake."""
+    RESPONDERS[purpose] = responder
 
 
 def fake_vector(text: str, dimensions: int) -> list[float]:
@@ -143,7 +152,7 @@ class MockLLM(_Mock):
 
         async def run() -> LlmResult[T]:
             self._begin()
-            scripted = self.scripted.get(ctx.purpose)
+            scripted = self.scripted.get(ctx.purpose, RESPONDERS.get(ctx.purpose))
             if callable(scripted):  # an answer that depends on what was asked
                 scripted = scripted(messages)
             value = (

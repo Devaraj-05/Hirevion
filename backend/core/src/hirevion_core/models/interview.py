@@ -121,6 +121,8 @@ class Interview(IdMixin, TenantMixin, TimestampMixin, Base):
     started_at: Mapped[datetime | None]
     completed_at: Mapped[datetime | None]
     ended_at: Mapped[datetime | None]
+    # When the candidate last dropped out (SP-09): the resume policy's grace runs from here.
+    interrupted_at: Mapped[datetime | None]
     cancel_reason: Mapped[str | None] = mapped_column(Text)
     start_reminder_sent_at: Mapped[datetime | None]
     expiry_reminder_sent_at: Mapped[datetime | None]

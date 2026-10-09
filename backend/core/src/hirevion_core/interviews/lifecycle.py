@@ -4,8 +4,8 @@ Completed → Evaluating → Evaluated, or Expired, Cancelled, Abandoned.
 Every change goes through `transition()`: it checks the move against `TRANSITIONS`, sets the
 status and its timestamp, writes an `interview_events` row and an audit entry, and queues the
 domain events SP-18's webhooks send (`interview.created`, `interview.started`,
-`interview.completed`). Rescheduling an invited interview is the move `invited → invited`;
-re-running an evaluation moves `evaluated → evaluating`.
+`interview.completed`, `interview.abandoned`). Rescheduling an invited interview is the move
+`invited → invited`; re-running an evaluation moves `evaluated → evaluating`.
 """
 
 from __future__ import annotations
@@ -49,7 +49,12 @@ STATUS_GROUPS: dict[str, tuple[str, ...]] = {
     ),
 }
 # Domain events for SP-18's webhooks (PRD §77), queued when an interview reaches a status.
-WEBHOOK_TOPICS = {"in_progress": "interview.started", "completed": "interview.completed"}
+WEBHOOK_TOPICS = {
+    "in_progress": "interview.started",
+    "completed": "interview.completed",
+    # SP-09: an interview left interrupted past its grace still gets its transcript written.
+    "abandoned": "interview.abandoned",
+}
 
 ActorType = Literal["user", "candidate", "system", "agent"]
 _audit = AuditService()
@@ -165,8 +170,14 @@ async def transition(
         session, interview, action, by, from_status=source, reason=reason, details=details
     )
     topic = WEBHOOK_TOPICS.get(target)
-    # A resumed interview (interrupted → in progress) didn't start again.
-    if topic is not None and source not in (target, "interrupted", "evaluating"):
+    # A resumed interview (interrupted → in progress) didn't start again, and a re-evaluated one
+    # (evaluating → completed) didn't complete again; one completed while interrupted did.
+    repeat = (
+        source == target
+        or source == "evaluating"
+        or (target == "in_progress" and source == "interrupted")
+    )
+    if topic is not None and not repeat:
         await publish_event(
             session,
             interview.organization_id,

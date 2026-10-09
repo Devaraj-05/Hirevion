@@ -125,17 +125,20 @@ The design is in [ADR-0011](../architecture/adr/0011-storage-ai-metering.md).
 
 ## Voice agent and latency benchmark
 
-The spike agent (`backend/interview_agent`) is a LiveKit Agents worker: Deepgram speech-to-text
-and text-to-speech, Gemini through its OpenAI-compatible API, and LiveKit's local turn detector.
-Settings come from `HV_*` in `.env` and are read at the start of each session.
+The interviewer (`backend/interview_agent`) is a LiveKit Agents worker: Deepgram speech-to-text
+and text-to-speech and LiveKit's local turn detector, with the interview engine deciding every
+turn (see "The interview" below). Settings come from `HV_*` in `.env` and are read at the start
+of each session.
 
 1. `uv run python -m hirevion_interview_agent.agent download-files` once. It fetches the voice
    detector and, with `HV_TURN_DETECTION=multilingual`, the turn-detector model (about 70 MB).
-2. `uv run python -m hirevion_interview_agent.agent dev` with `uv run hv up` already running.
-   Restart it after changing agent code or `HV_TURN_DETECTION`.
-3. `uv run hv-voice-bench --turns 20` plays a synthetic candidate and prints the time from the
-   end of each answer to the agent's first audio (p50/p95), with the agent's own stage
-   breakdown.
+2. `uv run python -m hirevion_interview_agent.agent dev` with `uv run hv up --media` already
+   running. Restart it after changing agent code or `HV_TURN_DETECTION`.
+3. `uv run hv-voice-bench --turns 20`, with `uv run hv api` running and `hv seed-identity` done,
+   seeds a voice interview, starts it like the desktop app (so the API dispatches the
+   interviewer) and plays a synthetic candidate. It prints the time from the end of each answer
+   to the agent's first audio (p50/p95; SP-09's target is p95 ≤ 2.5 s), with the agent's own
+   stage breakdown.
 
 `hv env-sync` only adds missing settings; it never changes values you already have. When an
 ADR changes a default, update the `HV_*` line in `.env` yourself. For example, ADR-0005 replaced
@@ -375,6 +378,28 @@ How it works is in [ADR-0021](../architecture/adr/0021-candidate-desktop-auth.md
 - **Releases (`/platform/desktop-releases`, super admins):** set each channel's oldest allowed version (older apps get `426` at sign-in) and its download address; add builds as drafts with their update bundle's URL and minisign signature, then publish them. A rollout below 100% reaches that share of devices, the same ones each time.
 - **Trying the API by hand:** every request needs a DPoP proof signed by a P-256 key (see `backend/api/tests/test_candidate_auth_api.py`'s `Desktop` class for a complete client).
 - **Stuck candidate:** `uv run hv reset-limits` clears lockouts; a reused refresh token revokes the device's sign-in (they sign in again).
+
+### The interview (engine, agent and simulator)
+
+How it works is in [ADR-0030](../architecture/adr/0030-interview-engine.md); the desktop's wire format is `docs/api/contracts/interview-session.md`.
+
+- **A whole interview without the desktop:** `uv run hv seed-identity` once, `uv run hv api` running, then `uv run hv interview-sim --persona strong`.
+  - The personas are `strong`, `partial`, `weak`, `silent`, `adversarial` and `cheating`.
+  - It seeds a synthetic job, candidate and question library in the development organisation, approves typed answers, signs in like the desktop app (DPoP) and answers every question.
+  - The last line is the interview's page, with the transcript, each question's source and the skills' coverage.
+- **Without LiveKit running,** start the API with `HV_MEDIA_BACKEND=fake` (never in production): rooms and tokens are faked, and text-mode interviews run fully. Voice interviews need `uv run hv up --media` and the agent.
+- **The AI interviewer (voice):**
+  1. `uv run python -m hirevion_interview_agent.agent download-files` once.
+  2. `uv run python -m hirevion_interview_agent.agent dev` with `hv up --media`.
+
+  The API dispatches it to an interview's room on `start` (`HV_AGENT_NAME`, default `hirevion-interviewer`); it never joins rooms on its own. LiveKit's webhooks reach the API at `http://host.docker.internal:8000/api/v1/livekit/webhook` (set in `compose.yaml`).
+- **What candidates are told:** Administration → Organisation → Interview briefing holds the instructions (empty uses the standard ones) and the FAQ. The AI answers candidates' final questions only from that FAQ, and passes anything else on.
+- **Accommodations:** a candidate's requests show on the interview's page. Approving "Typed answers" switches the interview to text mode before it starts; decisions can't change once it has started.
+- **Interruptions:** when the candidate leaves the room the interview is Interrupted and its clock stops. Coming back within the grace (300 s; doubled with "Breaks") resumes it with a recap, up to three times; after the grace the scheduler marks it Abandoned and the candidate goes back to the shortlist.
+- **A crashed agent:** kill the agent process mid-interview. LiveKit's webhook makes the API dispatch another, which waits for the old one's lock (under 10 s), apologises and asks the open question again.
+- **Watching live:** an interview's page follows `/api/v1/ws/interviews/{id}` while it runs. To see the raw events, run `XRANGE hv:rt:interview:<id> - +` in `valkey-cli`.
+- **Transcript files** (JSON, VTT, TXT) are written to blob storage when the interview ends, by the worker in `hv api` (or `hv worker`), and linked from the interview's page.
+- **Tuning prompts:** `backend/core/src/hirevion_core/engine/prompts/` holds the analysis and follow-up prompts; a change gets a new version name (SP-10's eval harness gates it).
 
 ## Desktop app (`ai-interviewer-desktop`)
 

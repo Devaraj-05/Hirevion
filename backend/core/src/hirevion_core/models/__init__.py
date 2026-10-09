@@ -28,6 +28,17 @@ from hirevion_core.models.interview_config import (
     Question,
     QuestionVersion,
 )
+from hirevion_core.models.interview_session import (
+    Accommodation,
+    Consent,
+    InterviewAnswer,
+    InterviewQuestion,
+    InterviewSession,
+    SystemCheckResult,
+    Transcript,
+    TranscriptSegment,
+    WorkspaceSnapshot,
+)
 from hirevion_core.models.job import Job, JobSkill, JobVersion
 from hirevion_core.models.organization import Organization
 from hirevion_core.models.outbox_event import OutboxEvent
@@ -41,6 +52,7 @@ from hirevion_core.models.user import User
 from hirevion_core.models.web_session import WebSession
 
 __all__ = [
+    "Accommodation",
     "AiInvocation",
     "Application",
     "ApplicationHistory",
@@ -53,6 +65,7 @@ __all__ = [
     "CandidateRefreshToken",
     "CandidateSkill",
     "CandidateToken",
+    "Consent",
     "Department",
     "DesktopChannel",
     "DesktopRelease",
@@ -60,8 +73,11 @@ __all__ = [
     "FeatureFlag",
     "IdempotencyKey",
     "Interview",
+    "InterviewAnswer",
     "InterviewEvent",
+    "InterviewQuestion",
     "InterviewReviewer",
+    "InterviewSession",
     "InterviewTemplate",
     "InterviewTemplateVersion",
     "Invitation",
@@ -80,10 +96,14 @@ __all__ = [
     "ScreeningResult",
     "Skill",
     "SkillAlias",
+    "SystemCheckResult",
     "Team",
     "TeamMember",
+    "Transcript",
+    "TranscriptSegment",
     "UsageEvent",
     "User",
     "UserRole",
     "WebSession",
+    "WorkspaceSnapshot",
 ]

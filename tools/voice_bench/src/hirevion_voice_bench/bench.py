@@ -1,14 +1,18 @@
-"""Synthetic candidate that measures voice-interview latency (SP-00c).
+"""Synthetic candidate that measures voice-interview latency (SP-00c; SP-09's exit criterion).
 
-Start the local stack and the spike agent first:
-    uv run hv up
+Start the local stack, the API and the interviewer first:
+    uv run hv up --media
+    uv run hv seed-identity          # once
+    uv run hv api
     uv run python -m hirevion_interview_agent.agent dev
 Then:
     uv run hv-voice-bench --turns 20
 
-Each turn: wait until the agent is quiet, speak a pre-rendered answer (Deepgram TTS),
-and measure the time from the answer's last audio frame to the agent's first voiced
-frame. Answers are cached under tools/voice_bench/.cache/ (gitignored).
+It seeds a voice interview in the development organisation, signs in and starts it like the
+desktop app (so the API dispatches the interviewer), then each turn: waits until the agent is
+quiet, speaks a pre-rendered answer (Deepgram TTS), and measures the time from the answer's last
+audio frame to the agent's first voiced frame. Answers are cached under tools/voice_bench/.cache/
+(gitignored).
 """
 
 from __future__ import annotations
@@ -17,17 +21,19 @@ import argparse
 import asyncio
 import hashlib
 import json
+import secrets
 import time
-import uuid
 from collections import deque
 from pathlib import Path
 
 import httpx
 import numpy as np
-from livekit import api, rtc
+from livekit import rtc
 
 from hirevion_interview_agent.agent import load_settings
 from hirevion_interview_agent.latency import percentile
+from hirevion_interview_simulator.client import DesktopClient
+from hirevion_interview_simulator.seed import seed_development_interview
 
 from .audio import Samples, frame_rms, read_wav, split_frames
 
@@ -139,7 +145,21 @@ class AgentEar:
         return self.first_voiced
 
 
-async def run(turns: int, candidate_voice: str | None, timeout: float) -> list[float]:
+async def start_interview(api_url: str) -> tuple[str, str]:
+    """A new voice interview, started like the desktop does: the room's URL and the token."""
+    seed = await seed_development_interview(text_answers=False, password=secrets.token_urlsafe(18))
+    interview = str(seed.interview_id)
+    async with httpx.AsyncClient(timeout=30) as http:
+        desktop = DesktopClient(http, base_url=api_url, device_name="VOICE-BENCH")
+        await desktop.login(seed.email, seed.password)
+        briefing = await desktop.briefing(interview)
+        check = await desktop.system_check(interview, briefing["mandatory_checks"])
+        consent = await desktop.consent(interview, briefing["notice"])
+        started = await desktop.start(interview, check["id"], consent["id"])
+    return str(started["livekit_url"]), str(started["participant_token"])
+
+
+async def run(turns: int, candidate_voice: str | None, timeout: float, api_url: str) -> list[float]:
     settings = load_settings()
     deepgram_key = settings.deepgram_api_key.get_secret_value()
     voice = candidate_voice or settings.hv_tts_voice
@@ -148,15 +168,7 @@ async def run(turns: int, candidate_voice: str | None, timeout: float) -> list[f
             read_wav(render_answer(text, voice, deepgram_key, client))[0] for text in ANSWERS
         ]
 
-    room_name = f"bench-{uuid.uuid4().hex[:8]}"
-    grants = api.VideoGrants(room_join=True, room=room_name, can_publish=True, can_subscribe=True)
-    token = (
-        api.AccessToken(settings.livekit_api_key, settings.livekit_api_secret.get_secret_value())
-        .with_identity("bench-candidate")
-        .with_name("Benchmark candidate")
-        .with_grants(grants)
-        .to_jwt()
-    )
+    livekit_url, token = await start_interview(api_url)
     ear = AgentEar()
     listeners: set[asyncio.Task[None]] = set()
     room = rtc.Room()
@@ -168,7 +180,7 @@ async def run(turns: int, candidate_voice: str | None, timeout: float) -> list[f
             listeners.add(task)
             task.add_done_callback(listeners.discard)
 
-    await room.connect(settings.livekit_url, token)
+    await room.connect(livekit_url, token)
     source = rtc.AudioSource(RATE, 1, queue_size_ms=20)
     options = rtc.TrackPublishOptions(source=rtc.TrackSource.SOURCE_MICROPHONE)
     track = rtc.LocalAudioTrack.create_audio_track("microphone", source)
@@ -221,8 +233,9 @@ def main() -> None:
     parser.add_argument("--turns", type=int, default=20)
     parser.add_argument("--candidate-voice", default=None)
     parser.add_argument("--timeout", type=float, default=15.0)
+    parser.add_argument("--api", default="http://127.0.0.1:8000", help="The running API.")
     args = parser.parse_args()
-    latencies = asyncio.run(run(args.turns, args.candidate_voice, args.timeout))
+    latencies = asyncio.run(run(args.turns, args.candidate_voice, args.timeout, args.api))
     metrics = load_settings().hv_metrics_file
     report(latencies, Path(metrics) if metrics else None)
 

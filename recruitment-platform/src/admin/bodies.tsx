@@ -9,6 +9,7 @@ import { ReleasesPanel } from "@/platform/desktop-releases/releases-panel";
 import { OrganizationsPanel } from "@/platform/organizations/organizations-panel";
 import { ScreeningDefaults } from "@/screening/settings-form";
 import { CandidateAccessCard } from "./organization/candidate-access-card";
+import { InterviewBriefingCard } from "./organization/interview-briefing-card";
 import { OrganizationForm } from "./organization/organization-form";
 import { RolesPanel } from "./roles/roles-panel";
 import { DepartmentsPanel } from "./structure/departments-panel";
@@ -48,6 +49,7 @@ export async function OrganizationBody({ session }: PageBodyProps) {
     <div className="grid gap-6">
       <OrganizationForm />
       <CandidateAccessCard />
+      <InterviewBriefingCard />
       <ScreeningDefaults />
       <InterviewDefaultsCard />
     </div>

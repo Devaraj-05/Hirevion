@@ -56,3 +56,45 @@
 **Residual risks:**
 - A device without a TPM keeps its key in the software store; malware with the user's privileges can use it while it runs. SP-11's integrity checks and SP-14's server-side signals are the backstop.
 - Rotating the signing key signs everyone out; the cloud plan adds overlapping keys.
+
+## SP-09 The interview engine
+
+**Assets:**
+- the interview's questions and their expected concepts (the answer key);
+- the candidate's answers, voice and transcript;
+- the live analysis;
+- the engine's checkpoint;
+- consent and system-check records;
+- the LiveKit API secret and participant tokens;
+- the organisation's FAQ.
+
+**Trust boundaries:**
+- the desktop app on the candidate's machine (untrusted) → API and LiveKit;
+- the candidate's words → the analysis model (prompt injection);
+- LiveKit → the API's webhook;
+- the interview agent (a trusted backend worker) → the database and Valkey;
+- the recruiter's browser → the live events websocket.
+
+| Threat (STRIDE) | Example | Control |
+|---|---|---|
+| Spoofing | Someone joins the interview's room as the candidate, or as the agent | Room tokens are minted only by the API, after the session token and its DPoP proof; the candidate's token names one room and one identity; agents join only by explicit dispatch carrying the interview in metadata the API wrote |
+| Spoofing | A forged webhook interrupts or ends someone's interview | Deliveries must carry LiveKit's JWT over the body's SHA-256, signed with the API secret; the room's metadata must name the same interview as its name; handlers are idempotent |
+| Spoofing | A cross-site page opens the live events socket with the recruiter's cookie | The handshake must come from an allowed Origin, with a live session that has `interviews.view` and reaches the interview; it's checked again every minute |
+| Tampering | The candidate's answer tells the model to mark it excellent or to reveal the answer key | Deterministic manipulation intents are caught before any model sees the text, answered neutrally, flagged and never counted as an answer; the answer goes to the model as JSON data under a prompt that says so; the model's own manipulation flag is a second opinion |
+| Tampering | A model is induced to speak the expected concepts or a score | Model-written text passes an output guard (a short question, no markdown, no score, rating or "correct answer") or a template is spoken; expected concepts are never sent to the desktop |
+| Tampering | Two processes take turns at once and corrupt the interview | A Valkey turn lock per interview, an optimistic `state_seq` on every save (checked against the seq read before the model calls), and one agent per interview (an expiring agent lock) |
+| Tampering | The participant token publishes something other than its camera, microphone and screen preview, or changes its own metadata | Grants limited to those three sources and data; no room create, admin, record or metadata changes |
+| Tampering | An accommodation is granted mid-interview to stretch the time or switch to typed answers | Decisions need `interviews.manage`, are audited, and are refused once the interview has started |
+| Repudiation | "I never agreed to be recorded" | Consents are insert-only rows of each purpose against the notice's version, with IP and user agent; a notice whose wording changed has a new version and old consents are refused |
+| Repudiation | "The AI asked me something it shouldn't have" | Every question is stored with its source and reference (library version, resume quote and page, rule or template), and both sides of the conversation are kept in the transcript and its artifacts with SHA-256 |
+| Information disclosure | Live events or the transcript reach someone outside the interview's team | The transcript route uses the resource scope (reviewers only theirs); events carry text and timing but no scores; transcript files are reached only by short-lived download URLs |
+| Information disclosure | The candidate's name or contact details reach a model | The analysis and follow-up calls carry the question, the skill, the concepts and the answer only; greetings use the first name locally |
+| Information disclosure | The AI makes up company facts in final questions | Final questions are answered only from the organisation's FAQ by deterministic matching; anything else is passed on |
+| Denial of service | A script floods answers to burn model calls | 30 answers a minute per interview (after the token is checked) and a per-IP ceiling; analysis has a 4 s budget and falls back to the heuristic |
+| Denial of service | The candidate never comes back, holding an agent and a room | The resume grace and interruption limit; the scheduler abandons the interview after the grace; the room empties after 10 minutes |
+| Elevation of privilege | A text answer or chat message drives the agent | The agent takes no chat input (`text_input` off); typed answers go only through the API with the session token |
+
+**Residual risks:**
+- The deterministic manipulation patterns are English and phrase-based; a paraphrased injection can still reach the analysis model, which only steers the next question. SP-10's evaluator must treat answers as untrusted in the same way.
+- Integrity flags (AI-sounding text, repeated answers) are signals for a reviewer, never proof; a candidate can paraphrase.
+- LiveKit can't restrict which data topics a participant sends on; the agent ignores everything but `hv.control`'s three actions.

@@ -920,6 +920,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/interviews/{interview_id}/accommodations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Accommodations
+         * @description The candidate's accommodation requests and their decisions.
+         */
+        get: operations["list_accommodations"];
+        put?: never;
+        /**
+         * Request Accommodation
+         * @description Asks for accommodations; a recruiter decides in the web app.
+         */
+        post: operations["request_accommodation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/accommodations/{accommodation_id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decide Accommodation
+         * @description Approves some or all of what was asked for, or none (declined), before the interview.
+         */
+        post: operations["decide_accommodation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Answer Question
+         * @description A typed answer to the open question (PRD §90's text-answer mode). In text mode the state
+         *     holds the next question; in voice mode the agent speaks it.
+         */
+        post: operations["answer_question"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/briefing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Interview Briefing
+         * @description §30's instructions and the itemised consent notice, before the system check.
+         */
+        get: operations["interview_briefing"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/interviews/{interview_id}/cancel": {
         parameters: {
             query?: never;
@@ -934,6 +1019,46 @@ export interface paths {
          * @description Cancels an interview that hasn't started; an invited candidate is told why.
          */
         post: operations["cancel_interview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete Interview
+         * @description Ends the interview; the desktop then drains its upload queue before closing.
+         */
+        post: operations["complete_interview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/consents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Consents
+         * @description The candidate's answer to each purpose of the current notice (§30, §83).
+         */
+        post: operations["record_consents"];
         delete?: never;
         options?: never;
         head?: never;
@@ -994,6 +1119,108 @@ export interface paths {
          */
         put: operations["set_interview_reviewers"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Interview Session State
+         * @description The interview's state, for recovery after the app restarts.
+         */
+        get: operations["interview_session_state"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Interview
+         * @description Starts the interview, or resumes it after a disconnect under its resume policy; returns
+         *     the LiveKit room and a participant token that can do nothing else.
+         */
+        post: operations["start_interview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/system-checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record System Check
+         * @description The desktop's system check (§29); it passes when every mandatory check passed.
+         */
+        post: operations["record_system_check"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/transcript": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Interview Transcript
+         * @description Both sides of the interview, every question with its source and answers, the skills'
+         *     coverage, and short-lived links to the JSON, VTT and TXT artifacts once they're written.
+         */
+        get: operations["interview_transcript"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/workspace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save Workspace
+         * @description A snapshot of the code or whiteboard for a question.
+         */
+        post: operations["save_workspace"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1317,6 +1544,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/livekit/webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Livekit Webhook
+         * @description Room events from LiveKit, signed with the server's API secret.
+         */
+        post: operations["livekit_webhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organization": {
         parameters: {
             query?: never;
@@ -1355,6 +1602,27 @@ export interface paths {
         get: operations["get_candidate_access"];
         /** Update Candidate Access */
         put: operations["update_candidate_access"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organization/interview-briefing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Interview Briefing
+         * @description What candidates are told before an interview, and the FAQ the AI answers from.
+         */
+        get: operations["get_interview_briefing"];
+        /** Update Interview Briefing */
+        put: operations["update_interview_briefing"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1993,6 +2261,73 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AccommodationBody */
+        AccommodationBody: {
+            /** Kinds */
+            kinds: string[];
+            /** Note */
+            note?: string | null;
+        };
+        /** AccommodationCreated */
+        AccommodationCreated: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "requested" | "approved" | "declined";
+        };
+        /** AccommodationDecision */
+        AccommodationDecision: {
+            /**
+             * Approved
+             * @description The kinds to approve; none declines the request.
+             */
+            approved: string[];
+            /** Note */
+            note?: string | null;
+        };
+        /** AccommodationResponse */
+        AccommodationResponse: {
+            /** Approved Kinds */
+            approved_kinds: string[];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Decided At */
+            decided_at: string | null;
+            /** Decided By */
+            decided_by: string | null;
+            /** Decision Note */
+            decision_note: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kinds */
+            kinds: string[];
+            /** Note */
+            note: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "requested" | "approved" | "declined";
+        };
+        /** AccommodationsSummary */
+        AccommodationsSummary: {
+            /** Approved */
+            approved: string[];
+            /** Requested */
+            requested: string[];
+        };
         /** ActionRequest */
         ActionRequest: {
             /**
@@ -2014,6 +2349,35 @@ export interface components {
         ActionResult: {
             /** Applications */
             applications: components["schemas"]["ApplicationState"][];
+        };
+        /** AnswerBody */
+        AnswerBody: {
+            /**
+             * Question Id
+             * Format: uuid
+             */
+            question_id: string;
+            /** Text */
+            text: string;
+        };
+        /** AnswerResponse */
+        AnswerResponse: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Flags */
+            flags: string[];
+            /** Late */
+            late: boolean;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "voice" | "text";
+            /** Text */
+            text: string;
         };
         /** AppBody */
         AppBody: {
@@ -2101,6 +2465,20 @@ export interface components {
              */
             stage: "uploaded" | "parsed" | "screened" | "ranked" | "review" | "shortlisted" | "rejected" | "on_hold" | "interview" | "interviewed";
         };
+        /** ArtifactLink */
+        ArtifactLink: {
+            /** Bytes */
+            bytes: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "json" | "vtt" | "txt";
+            /** Sha256 */
+            sha256: string;
+            /** Url */
+            url: string;
+        };
         /** Body_submit_job_description */
         Body_submit_job_description: {
             /**
@@ -2121,6 +2499,29 @@ export interface components {
              * @description A PDF, DOCX, TXT, JPG, PNG or TIFF resume, or a ZIP.
              */
             file: string;
+        };
+        /** BriefingResponse */
+        BriefingResponse: {
+            accommodations: components["schemas"]["AccommodationsSummary"];
+            /**
+             * Answer Mode
+             * @enum {string}
+             */
+            answer_mode: "voice" | "text";
+            /** Duration Minutes */
+            duration_minutes: number;
+            /** Instructions */
+            instructions: string[];
+            /** Mandatory Checks */
+            mandatory_checks: string[];
+            notice: components["schemas"]["Notice"];
+            /** Support Email */
+            support_email?: string | null;
+            /**
+             * Third Eye
+             * @enum {string}
+             */
+            third_eye: "off" | "optional" | "required";
         };
         /** BulkInterviewCreate */
         BulkInterviewCreate: {
@@ -2426,6 +2827,20 @@ export interface components {
             /** Minimum Version */
             minimum_version?: string | null;
         };
+        /** CheckItem */
+        CheckItem: {
+            /** Check */
+            check: string;
+            /** Detail */
+            detail?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pass" | "warn" | "fail" | "skipped";
+            /** Value */
+            value?: string | null;
+        };
         /** Choice */
         Choice: {
             /**
@@ -2444,6 +2859,60 @@ export interface components {
             starter_code?: {
                 [key: string]: string;
             };
+        };
+        /** CompleteBody */
+        CompleteBody: {
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "finished" | "candidate_ended";
+        };
+        /** CompleteResponse */
+        CompleteResponse: {
+            /** Status */
+            status: string;
+        };
+        /** ConsentBody */
+        ConsentBody: {
+            /** Items */
+            items: components["schemas"]["ConsentItem"][];
+            /** Notice Version */
+            notice_version: string;
+        };
+        /** ConsentItem */
+        ConsentItem: {
+            /** Accepted */
+            accepted: boolean;
+            /** Purpose */
+            purpose: string;
+        };
+        /** ConsentResponse */
+        ConsentResponse: {
+            /** Complete */
+            complete: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Missing */
+            missing: string[];
+        };
+        /** CoverageItem */
+        CoverageItem: {
+            /** Answered */
+            answered: number;
+            /** Asked */
+            asked: number;
+            /** Covered */
+            covered: boolean;
+            /** Planned */
+            planned: number;
+            /** Required */
+            required: boolean;
+            /** Skill */
+            skill: string;
         };
         /**
          * DashboardSummary
@@ -2556,6 +3025,13 @@ export interface components {
             /** Token */
             token: string;
         };
+        /** FaqItem */
+        FaqItem: {
+            /** Answer */
+            answer: string;
+            /** Question */
+            question: string;
+        };
         /** FollowUpRule */
         FollowUpRule: {
             /** Prompt */
@@ -2627,6 +3103,19 @@ export interface components {
             score: number | null;
             /** To Stage */
             to_stage: string | null;
+        };
+        /** InterviewBriefingSettings */
+        InterviewBriefingSettings: {
+            /**
+             * Faq
+             * @description The only source the AI answers candidates' final questions from.
+             */
+            faq?: components["schemas"]["FaqItem"][];
+            /**
+             * Instructions
+             * @description What candidates are told before the interview; empty uses the defaults.
+             */
+            instructions?: string[];
         };
         /** InterviewCreate */
         InterviewCreate: {
@@ -3387,6 +3876,22 @@ export interface components {
              */
             status: "invited" | "active" | "disabled";
         };
+        /** Notice */
+        Notice: {
+            /** Items */
+            items: components["schemas"]["NoticeItem"][];
+            /** Version */
+            version: string;
+        };
+        /** NoticeItem */
+        NoticeItem: {
+            /** Purpose */
+            purpose: string;
+            /** Required */
+            required: boolean;
+            /** Text */
+            text: string;
+        };
         /** OrganizationAdminInvite */
         OrganizationAdminInvite: {
             /** Email */
@@ -3857,6 +4362,29 @@ export interface components {
             updated_at: string;
             /** Version */
             version: number;
+        };
+        /** QuestionState */
+        QuestionState: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Index */
+            index: number;
+            /** Languages */
+            languages: string[];
+            /** Text */
+            text: string;
+            /** Time Limit Seconds */
+            time_limit_seconds: number | null;
+            /** Type */
+            type: string;
+            /**
+             * Workspace
+             * @enum {string}
+             */
+            workspace: "none" | "code" | "whiteboard";
         };
         /** QuestionVersionResponse */
         QuestionVersionResponse: {
@@ -4457,6 +4985,53 @@ export interface components {
             roles: string[];
             user: components["schemas"]["SessionUser"];
         };
+        /** SessionState */
+        SessionState: {
+            /**
+             * Answer Mode
+             * @enum {string}
+             */
+            answer_mode: "voice" | "text";
+            /** Deadline At */
+            deadline_at: string | null;
+            /**
+             * Message
+             * @description What the AI said last (its acknowledgement and the question).
+             */
+            message?: string | null;
+            /** Notice */
+            notice?: {
+                [key: string]: unknown;
+            } | null;
+            /** @description The open question; in text mode always the next one to answer. */
+            question?: components["schemas"]["QuestionState"] | null;
+            /** Remaining Seconds */
+            remaining_seconds: number;
+            /**
+             * Stage
+             * @description PRD §35's stage.
+             */
+            stage: string;
+            /** Started At */
+            started_at: string | null;
+            /** Status */
+            status: string;
+            /**
+             * Third Eye
+             * @enum {string}
+             */
+            third_eye: "off" | "optional" | "required";
+            /**
+             * Voice
+             * @enum {string}
+             */
+            voice: "listening" | "thinking" | "speaking" | "waiting" | "paused" | "ended" | "error";
+            /**
+             * Workspace
+             * @enum {string}
+             */
+            workspace: "none" | "code" | "whiteboard";
+        };
         /** SessionTokenResponse */
         SessionTokenResponse: {
             /**
@@ -4571,10 +5146,65 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** StartBody */
+        StartBody: {
+            /**
+             * Consent Id
+             * Format: uuid
+             */
+            consent_id: string;
+            /**
+             * System Check Id
+             * Format: uuid
+             */
+            system_check_id: string;
+        };
+        /** StartResponse */
+        StartResponse: {
+            /** Livekit Url */
+            livekit_url: string;
+            /** Participant Identity */
+            participant_identity: string;
+            /** Participant Token */
+            participant_token: string;
+            /** Room */
+            room: string;
+            state: components["schemas"]["SessionState"];
+            /**
+             * Token Expires At
+             * Format: date-time
+             */
+            token_expires_at: string;
+        };
+        /** StateResponse */
+        StateResponse: {
+            state: components["schemas"]["SessionState"];
+        };
         /** StepUpRequest */
         StepUpRequest: {
             /** Password */
             password: string;
+        };
+        /** SystemCheckBody */
+        SystemCheckBody: {
+            /** App Version */
+            app_version: string;
+            /** Os */
+            os: string;
+            /** Results */
+            results: components["schemas"]["CheckItem"][];
+        };
+        /** SystemCheckResponse */
+        SystemCheckResponse: {
+            /** Failed Mandatory */
+            failed_mandatory: string[];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Passed */
+            passed: boolean;
         };
         /** TeamCreate */
         TeamCreate: {
@@ -4868,6 +5498,93 @@ export interface components {
             /** Token */
             token: string;
         };
+        /** TranscriptQuestion */
+        TranscriptQuestion: {
+            /** Answers */
+            answers: components["schemas"]["AnswerResponse"][];
+            /**
+             * Asked At
+             * Format: date-time
+             */
+            asked_at: string;
+            /** Difficulty */
+            difficulty: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Parent Id */
+            parent_id: string | null;
+            /** Position */
+            position: number;
+            /** Skill */
+            skill: string | null;
+            /** Source */
+            source: string;
+            /**
+             * Source Ref
+             * @description Where it came from (PRD §36).
+             */
+            source_ref: {
+                [key: string]: unknown;
+            };
+            /** Stage */
+            stage: string;
+            /** Status */
+            status: string;
+            /** Text */
+            text: string;
+            /** Type */
+            type: string | null;
+        };
+        /** TranscriptResponse */
+        TranscriptResponse: {
+            /** Artifacts */
+            artifacts: components["schemas"]["ArtifactLink"][];
+            /** Coverage */
+            coverage: components["schemas"]["CoverageItem"][];
+            /**
+             * Interview Id
+             * Format: uuid
+             */
+            interview_id: string;
+            /** Questions */
+            questions: components["schemas"]["TranscriptQuestion"][];
+            /** Segments */
+            segments: components["schemas"]["TranscriptSegmentResponse"][];
+            /** Stage */
+            stage: string | null;
+            /** Status */
+            status: string;
+            /**
+             * Transcript Status
+             * @enum {string}
+             */
+            transcript_status: "none" | "pending" | "ready" | "failed";
+        };
+        /** TranscriptSegmentResponse */
+        TranscriptSegmentResponse: {
+            /** Confidence */
+            confidence: number | null;
+            /** End Ms */
+            end_ms: number;
+            /** Question Id */
+            question_id: string | null;
+            /** Seq */
+            seq: number;
+            /**
+             * Speaker
+             * @enum {string}
+             */
+            speaker: "ai" | "candidate";
+            /** Start Ms */
+            start_ms: number;
+            /** Text */
+            text: string;
+        };
         /** UserInvite */
         UserInvite: {
             /**
@@ -4950,6 +5667,23 @@ export interface components {
              * @description Replaces their teams.
              */
             team_ids?: string[] | null;
+        };
+        /** WorkspaceBody */
+        WorkspaceBody: {
+            /** Content */
+            content: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "code" | "whiteboard";
+            /** Language */
+            language?: string | null;
+            /**
+             * Question Id
+             * Format: uuid
+             */
+            question_id: string;
         };
     };
     responses: never;
@@ -7022,6 +7756,219 @@ export interface operations {
             };
         };
     };
+    list_accommodations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccommodationResponse"][];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    request_accommodation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccommodationBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccommodationCreated"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    decide_accommodation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+                accommodation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccommodationDecision"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccommodationResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    answer_question: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnswerBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StateResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    interview_briefing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BriefingResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     cancel_interview: {
         parameters: {
             query?: never;
@@ -7044,6 +7991,94 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InterviewResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    complete_interview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompleteBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompleteResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    record_consents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsentBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsentResponse"];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */
@@ -7172,6 +8207,218 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InterviewResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    interview_session_state: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StateResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    start_interview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StartResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    record_system_check: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SystemCheckBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SystemCheckResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    interview_transcript: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TranscriptResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    save_workspace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkspaceBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Client error, as an RFC 9457 problem */
@@ -8104,6 +9351,42 @@ export interface operations {
             };
         };
     };
+    livekit_webhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     get_organization: {
         parameters: {
             query?: never;
@@ -8242,6 +9525,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CandidateAccessSettings"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_interview_briefing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterviewBriefingSettings"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_interview_briefing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InterviewBriefingSettings"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterviewBriefingSettings"];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */
