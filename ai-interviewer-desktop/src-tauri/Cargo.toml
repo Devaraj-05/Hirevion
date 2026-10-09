@@ -35,6 +35,15 @@ windows = { version = "0.62.2", features = [
   "Win32_System_WinRT_Direct3D11",
   "Win32_System_WinRT_Graphics_Capture",
   "Win32_UI_HiDpi",
+  # SP-08a: device keys and the DPAPI vault, debugger checks, privacy settings, disk space.
+  "Win32_Security",
+  "Win32_Storage_FileSystem",
+  "Win32_System_Diagnostics_Debug",
+  "Win32_System_Memory",
+  "Win32_System_Registry",
+  # SP-11 (native monitoring) is prepared here so lanes don't race on this list.
+  "Win32_System_RemoteDesktop",
+  "Win32_UI_WindowsAndMessaging",
 ] }
 
 [workspace.lints.rust]

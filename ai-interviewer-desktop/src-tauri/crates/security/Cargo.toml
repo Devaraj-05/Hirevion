@@ -1,0 +1,12 @@
+[package]
+name = "hv-security"
+description = "Device keys (TPM or software), DPoP proofs, the DPAPI vault and integrity checks for the Hirevion desktop app."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
