@@ -397,6 +397,25 @@ impl SegmentStore {
         })
     }
 
+    /// A failed attempt that keeps the segment where it is (a pending segment only): counts
+    /// the attempt and remembers `error`. Used when only the acknowledgement must be retried.
+    pub fn record_failure(&self, id: i64, error: &str) -> Result<Segment, StoreError> {
+        let row = self.get(id)?.ok_or(StoreError::NotFound(id))?;
+        if !row.state.is_pending() {
+            return Err(StoreError::InvalidTransition {
+                id,
+                from: row.state,
+                to: row.state,
+            });
+        }
+        let error = error.to_owned();
+        self.update(id, row.state, move |_| Update {
+            failed: Some(error),
+            same_state_ok: true,
+            ..Update::default()
+        })
+    }
+
     /// The server acknowledged the segment (or already had it).
     pub fn acknowledge(&self, id: i64) -> Result<Segment, StoreError> {
         self.transition(id, SegmentState::Acknowledged)

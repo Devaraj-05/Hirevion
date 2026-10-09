@@ -1841,6 +1841,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "hv-uploader"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "futures-util",
+ "hv-api-client",
+ "hv-security",
+ "hv-segment-store",
+ "rand_core",
+ "reqwest",
+ "rustls",
+ "rustls-platform-verifier",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "url",
+ "uuid",
+ "wiremock",
+]
+
+[[package]]
 name = "hyper"
 version = "1.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

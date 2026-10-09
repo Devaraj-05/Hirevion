@@ -283,6 +283,31 @@ fn a_failed_attempt_goes_back_to_the_queue_and_is_counted() {
 }
 
 #[test]
+fn a_failed_acknowledgement_keeps_the_upload() {
+    let dir = TempDir::new();
+    let (store, _) = open(dir.path());
+    let stored = store.put(screen(0), b"bytes").expect("put");
+    store.enqueue(stored.id).expect("queue");
+    store.start_upload(stored.id, "seg-1").expect("upload");
+    store
+        .transition(stored.id, SegmentState::Uploaded)
+        .expect("uploaded");
+
+    let failed = store.record_failure(stored.id, "network").expect("count");
+
+    assert_eq!(
+        failed.state,
+        SegmentState::Uploaded,
+        "only the ack is retried"
+    );
+    assert_eq!(failed.attempts, 1);
+    assert_eq!(failed.last_error.as_deref(), Some("network"));
+    assert_eq!(failed.segment_id.as_deref(), Some("seg-1"));
+    let purged = store.purge(stored.id);
+    assert!(matches!(purged, Err(StoreError::InvalidTransition { .. })));
+}
+
+#[test]
 fn a_refused_segment_stops_for_good() {
     let dir = TempDir::new();
     let (store, _) = open(dir.path());
