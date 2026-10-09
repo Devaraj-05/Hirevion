@@ -62,6 +62,7 @@
    - the Ubuntu package mirrors.
 3. **No secrets.** Sessions use the mock AI. Never paste API keys or passwords into a cloud session.
 4. Paste the prompt below, with your lane's letter and name filled in.
+5. Testing happens on the local PC, from `main` (section 9). Problems found there go to the lane's chat or to section 9's "Found in testing" list.
 
 ```text
 You are Lane <A|C|D> of the Hirevion build: <lane name from PENDING_TASKS.md section 3>.
@@ -75,7 +76,9 @@ You are Lane <A|C|D> of the Hirevion build: <lane name from PENDING_TASKS.md sec
    boxes in section 7 in the same PR.
 5. Never wait idle: while CI runs, plan the next part; if a part waits on another lane, build
    against its contract and carry on.
-6. Keep going until your lane is done. Report one short paragraph per merged part.
+6. Before starting each part, pull `main` and fix your lane's open items under "Found in testing"
+   (PENDING_TASKS.md section 9) first: the product owner tests on a local PC and reports there.
+7. Keep going until your lane is done. Report one short paragraph per merged part.
 ```
 
 ## 5. Contracts first
@@ -479,21 +482,48 @@ Dates are targets in IST. A box is ticked in the PR that merges the part.
 
 - **Morning report.** Lane B posts one each day: what merged, what's red, and which lane is at risk. A slipping lane drops to its next-lowest-priority part, never its P0 work.
 
-## 9. Your part
+## 9. Your part: development in the cloud, testing on this PC
 
-- **Now:** start the three cloud sessions (section 4).
-- **Keep this PC available for lane B:**
-  - leave it on and stop it from sleeping;
-  - keep Docker Desktop running;
-  - keep Claude Code running in the repo.
-- **Fix `GEMINI_API_KEY`** in the local `.env` (never in a cloud session). The live checks run on this PC once the build is done:
-  - `uv run hv eval-resumes`;
-  - `uv run hv eval-screening`;
-  - `uv run pytest --live backend/core/tests/live`;
-  - the interview latency benchmark.
-- **Each day, about 10 minutes:**
-  - skim section 7's boxes and the morning report;
-  - check that CI on `main` is green.
+**The split:**
+- **Cloud sessions develop** lanes A, C and D: backend, web, AI, realtime and administration. Each one merges its own green PRs to `main`.
+- **This PC develops lane B only** (the desktop). It needs Windows to build and run: the TPM, screen capture, Media Foundation, WebView2, webcams. GitHub's Windows CI can compile and unit-test it, but can't run it against real hardware.
+- **This PC is also where you test everything,** from `main`, at the checkpoints below. Local testing costs no cloud credits.
+
+**Setting up once:**
+1. Keep this PC on, stop it from sleeping, keep Docker Desktop running, and keep Claude Code open in the repo (lane B).
+2. Fix `GEMINI_API_KEY` in the local `.env`. Never put a key in a cloud session.
+
+**Each time you test** (in Git Bash, from `D:/Deva/Hirevion`):
+
+```bash
+git checkout main && git pull --ff-only     # or a lane's branch, to test a PR before it merges
+pnpm install && uv sync                     # after other lanes added dependencies
+uv run hv up                                # databases, storage, mail, LiveKit (Docker)
+uv run hv migrate && uv run hv seed-identity
+uv run hv api                               # the API on 127.0.0.1:8000 (keep it running)
+pnpm --filter @hirevion/recruitment-platform dev               # https://app.hirevion.localhost
+pnpm --filter @hirevion/ai-interviewer-desktop tauri dev       # the candidate app
+```
+
+- **The AI:** set `HV_AI_PROFILE=mock` in `.env` for predictable runs, or `dev` to use Gemini and Deepgram.
+- **Email:** invitations, codes and resets arrive in Mailpit at http://127.0.0.1:8025.
+- **Sign-in:** the seeded recruiter is `recruiter@acme.example.test`, and the password is `HV_SEED_PASSWORD` in `.env`.
+
+**What to test, and when** (each step builds on the one before):
+
+| Checkpoint | Try this here |
+|---|---|
+| CP2 (Oct 12) | Create a job, upload resumes and shortlist. Build a template and invite a candidate (A1). Set the candidate's password from the Mailpit email (A3). Sign in to the desktop app, run the system check with your webcam, and start an interview: talk to the AI voice, finish, and watch the upload drain. |
+| CP3 (Oct 13) | Pair your phone as the third eye (same Wi-Fi). Watch the interview live from the web app, with alerts as you look away or switch windows. Open the interview and proctoring reports and the review screen. |
+| CP4 (Oct 14) | A coding question (run and submit). Advanced proctoring (phone in view, a second person). Notification emails and webhook deliveries. |
+| CP5/6 (Oct 15) | SSO with the local Keycloak, administration pages, analytics, and the golden path from start to finish. |
+
+**Reporting a problem:**
+- **Fastest:** write it in the chat of the lane that owns the feature. Section 7 says which lane built what.
+- **Otherwise:** add it under "Found in testing" below, on `main`, as `- [ ] <lane letter>: <what you did>, <what happened>, <what you expected>`. Each lane checks this list before starting its next part and fixes its own items first.
+
+**Also:**
+- **Each day (about 10 minutes):** skim section 7's boxes and lane B's morning report, and check that CI on `main` is green.
 - **From Oct 16:** the hardware, phone, NVDA and live-vendor checks in section 1, plus the long-lead items:
   - the code-signing certificate;
   - a domain;
@@ -501,6 +531,10 @@ Dates are targets in IST. A box is ticked in the PR that merges the part.
   - the Deepgram DPA;
   - counsel review;
   - booking the pentest.
+
+### Found in testing
+
+- (none yet)
 
 ## 10. Deferrals recorded in code, so nothing is lost
 
