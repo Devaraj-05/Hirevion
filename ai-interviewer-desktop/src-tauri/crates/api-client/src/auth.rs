@@ -104,7 +104,9 @@ pub struct Candidate {
 pub struct Organization {
     pub id: String,
     pub name: String,
-    pub support_email: String,
+    /// Missing until the organisation sets one.
+    #[serde(default)]
+    pub support_email: Option<String>,
 }
 
 /// An interview the candidate may start or resume. Times are RFC 3339 strings.

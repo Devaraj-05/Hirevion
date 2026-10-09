@@ -78,8 +78,8 @@ async fn login_sends_the_contract_body_and_maps_ok() {
     assert_eq!(signed_in.candidate.name, "Asha Rao");
     assert_eq!(signed_in.candidate.locale, "en-IN");
     assert_eq!(
-        signed_in.organization.support_email,
-        "help@acme.example.test"
+        signed_in.organization.support_email.as_deref(),
+        Some("help@acme.example.test")
     );
     let interview = &signed_in.interviews[0];
     assert_eq!(interview.id, "i-1");

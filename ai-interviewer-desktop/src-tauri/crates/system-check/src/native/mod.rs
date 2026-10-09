@@ -10,6 +10,11 @@ mod system;
 use crate::classify::{MediaFoundationProbe, classify_media_foundation};
 use crate::result::CheckResult;
 
+/// The Windows version and build (the `os` check on its own).
+pub(crate) fn os() -> CheckResult {
+    system::os()
+}
+
 /// Every native check, in [`crate::NATIVE_CHECKS`] order. Media Foundation runs on its own
 /// COM thread while the CPU is sampled, so the whole set takes about half a second.
 pub(crate) fn checks() -> Vec<CheckResult> {

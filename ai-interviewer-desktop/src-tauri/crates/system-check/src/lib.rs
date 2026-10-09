@@ -50,3 +50,17 @@ pub fn screen_capture_probe() -> CheckResult {
         CheckResult::skipped(names::SCREEN_CAPTURE, NOT_WINDOWS)
     }
 }
+
+/// This Windows' version and build, e.g. "Windows 11 26200.9457": the `os` check's value,
+/// which the app also sends at sign-in (contract candidate-auth, `app.os`).
+#[must_use]
+pub fn os_description() -> String {
+    #[cfg(windows)]
+    {
+        native::os().value.unwrap_or_else(|| "Windows".to_owned())
+    }
+    #[cfg(not(windows))]
+    {
+        std::env::consts::OS.to_owned()
+    }
+}
