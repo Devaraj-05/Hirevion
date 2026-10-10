@@ -28,6 +28,8 @@ from hirevion_core.mail.consumer import MailConsumer
 from hirevion_core.mail.sender import SmtpSender
 from hirevion_core.mail.settings import MailSettings, load_mail_settings
 from hirevion_core.outbox import OutboxRelay
+from hirevion_core.recordings.settings import load_recording_settings
+from hirevion_core.recordings.worker import media_workers
 from hirevion_core.screening.runner import SCREENING_TOPIC, handle_screening_event
 from hirevion_core.settings import CoreSettings
 from hirevion_core.storage.paths import BlobPath
@@ -70,9 +72,13 @@ async def run_workers(
                     partial(handle_completed, app_db, storage),
                     topic=topic,
                     group="transcripts",
+                    # The media worker reads these streams too.
+                    delete_handled=False,
                 ).run_forever(stop)
                 for topic in (COMPLETED_TOPIC, ABANDONED_TOPIC)
             ),
+            # Recording continuity and assembly (SP-12).
+            *media_workers(app_db, redis, storage, load_recording_settings(), stop),
         ]
         try:
             documents = load_document_settings()

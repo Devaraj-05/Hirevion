@@ -195,12 +195,14 @@ async def test_the_worker_lists_recordings_due_for_assembly_across_organisations
     other = await insert_interview(admin_engine, await make_hiring(globex), status="completed")
     recording_ = await insert_interview(admin_engine, await make_hiring(acme), status="in_progress")
     backing_off = await insert_interview(admin_engine, await make_hiring(acme), status="completed")
+    over = await insert_interview(admin_engine, await make_hiring(acme), status="completed")
     async with app_db.tenant(acme) as session:
         session.add_all(
             [
                 recording(acme, waiting, status="assembly-pending"),
                 recording(acme, waiting, track="mic", status="assembly-pending"),
                 recording(acme, recording_),
+                recording(acme, over),  # still `recording`, but the interview is over
                 recording(
                     acme,
                     backing_off,
@@ -220,7 +222,8 @@ async def test_the_worker_lists_recordings_due_for_assembly_across_organisations
             for row in rows
             if row.organization_id in (acme, globex)
         }
-    assert due == {(acme, waiting), (globex, other)}  # once per interview, however many tracks
+    # Once per interview, however many tracks.
+    assert due == {(acme, waiting), (acme, over), (globex, other)}
 
 
 async def test_the_worker_lists_the_tracks_of_interviews_in_progress(

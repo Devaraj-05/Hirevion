@@ -142,6 +142,9 @@ jobs:
             azurite-blob --blobHost 0.0.0.0 --skipApiVersionCheck --loose --disableProductStyleUrl
           echo "AZURE_STORAGE_ACCOUNT=hirevion" >> "$GITHUB_ENV"
           echo "AZURE_STORAGE_KEY=$key" >> "$GITHUB_ENV"
+      # The media worker runs ffmpeg as a separate process; its integration test needs the binary.
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - name: PRD traceability (master plan Appendix A points at code that exists)

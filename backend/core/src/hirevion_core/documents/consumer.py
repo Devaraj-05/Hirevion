@@ -38,7 +38,11 @@ def _text(value: Any) -> str:
 
 
 class StreamConsumer:
-    """Consumes one outbox topic's stream (`documents`, `screening`, ...)."""
+    """Consumes one outbox topic's stream (`documents`, `screening`, ...).
+
+    A stream read by several consumer groups (`interview.completed` has the transcripts and the
+    media worker) must be consumed with `delete_handled=False`, so one group finishing a message
+    doesn't take it from the others; the relay's `maxlen` trims the stream instead."""
 
     def __init__(
         self,
@@ -51,12 +55,15 @@ class StreamConsumer:
         consumer: str | None = None,
         retry_idle_ms: int = 60_000,
         max_deliveries: int = 5,
+        delete_handled: bool = True,
     ) -> None:
         self._topic = topic
         self._stream = stream_name(topic)
         self._dead_letter = f"hv:dead:{topic}"
-        self._done_prefix = f"hv:{topic}:done:"
         group = group or topic
+        # Groups that share a topic each remember what they handled.
+        self._done_prefix = f"hv:{topic}:done:" if group == topic else f"hv:{topic}:{group}:done:"
+        self._delete_handled = delete_handled
         self._redis = redis
         self._handler = handler
         self._on_give_up = on_give_up
@@ -147,7 +154,9 @@ class StreamConsumer:
 
     async def _finish(self, message_id: str) -> None:
         await self._redis.xack(self._stream, self._group, message_id)
-        await self._redis.xdel(self._stream, message_id)
+        # Deleting is for streams with a single group: another group may not have read it yet.
+        if self._delete_handled:
+            await self._redis.xdel(self._stream, message_id)
 
 
 # The documents consumer is the first user of the class, and keeps its name.
