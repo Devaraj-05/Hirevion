@@ -152,6 +152,8 @@ jobs:
       - run: >-
           uv run mypy tools/devcli/src backend/core/src backend/api/src
           backend/interview_agent/src tools/voice_bench/src tools/interview-simulator/src
+      - name: Interview evaluation gate (a regressed prompt or rubric fails here; mock profile)
+        run: uv run hv eval-interviews
       - run: uv run pytest
 
   # The committed OpenAPI document and the TypeScript types generated from it match the API.

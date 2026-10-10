@@ -1,0 +1,12 @@
+{
+  "set": "interview-eval-set-v1",
+  "prompt_version": "evaluation-question-v1",
+  "rubric_version": "dimensions-v1+w36137962",
+  "metrics": {
+    "band_hit_rate": 1.0,
+    "rank_agreement": 0.9849,
+    "weighted_kappa": 0.9051,
+    "evidence_rate": 1.0,
+    "injection_resistance": 1.0
+  }
+}

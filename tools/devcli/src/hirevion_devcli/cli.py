@@ -461,6 +461,137 @@ def eval_screening_command(
         raise typer.Exit(code=1)
 
 
+INTERVIEW_REPORT = Path("docs/evals/2026-10-interviews.md")
+
+
+@app.command("eval-interviews")
+def eval_interviews_command(
+    live: Annotated[
+        bool, typer.Option("--live", help="Use the configured AI vendor, not the mock.")
+    ] = False,
+    prompt_version: Annotated[
+        str | None, typer.Option(help="Try this prompt version (a file in evaluation/prompts).")
+    ] = None,
+    prompt_file: Annotated[
+        Path | None, typer.Option(help="Try the prompt in this file (its name is its version).")
+    ] = None,
+    rubric_version: Annotated[str | None, typer.Option(help="Try this rubric version.")] = None,
+    no_baseline: Annotated[
+        bool, typer.Option("--no-baseline", help="Check the thresholds only.")
+    ] = False,
+    update_baseline: Annotated[
+        bool, typer.Option("--update-baseline", help="Record the metrics of a passing run.")
+    ] = False,
+    report: Annotated[Path | None, typer.Option(help="Write the results as Markdown.")] = None,
+) -> None:
+    """Run the interview evaluator over the labelled set and apply the gate. Fails (exit 1)
+    when a prompt or rubric change regresses; the mock profile needs no keys."""
+    from hirevion_core.evaluation.harness import report_markdown
+
+    from .interview_eval import NotUsable, run_gate
+    from .interview_eval import update_baseline as write_baseline
+
+    try:
+        outcome = asyncio.run(
+            run_gate(
+                live=live,
+                prompt_version=prompt_version,
+                prompt_file=prompt_file,
+                rubric_version=rubric_version,
+                use_baseline=not no_baseline,
+            )
+        )
+    except NotUsable as error:
+        console.print(str(error))
+        raise typer.Exit(code=1) from None
+    table = Table("Check", "Result", "Value", "Threshold or baseline")
+    for check in outcome.result.checks:
+        table.add_row(
+            check["name"],
+            "[green]pass[/green]" if check["ok"] else "[red]FAIL[/red]",
+            str(check.get("value", "")),
+            str(check.get("threshold", check.get("baseline", ""))),
+        )
+    console.print(table)
+    for failure in outcome.result.failures:
+        console.print(f"[red]x[/red] {failure}")
+    if report is not None:
+        target = report if report.is_absolute() else Path.cwd() / report
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(
+            report_markdown(outcome.run, outcome.result, outcome.profile),
+            encoding="utf-8",
+            newline="\n",
+        )
+        console.print(f"Report: {target}")
+    verdict = "passed" if outcome.result.passed else "BLOCKED"
+    console.print(
+        f"Gate {verdict}: prompt {outcome.run.prompt_version}, "
+        f"rubric {outcome.run.rubric_version}, AI profile {outcome.profile}."
+    )
+    if not outcome.result.passed:
+        raise typer.Exit(code=1)
+    if update_baseline:
+        console.print(f"Baseline written: {write_baseline(outcome.run)}")
+
+
+@app.command("eval-rerun")
+def eval_rerun_command(
+    interview_id: Annotated[str, typer.Argument(help="The interview's id.")],
+    dimension: Annotated[float, typer.Option(min=0, help="Allowed move per dimension.")] = 1.0,
+    overall: Annotated[
+        float, typer.Option(min=0, help="Allowed move per question and overall.")
+    ] = 0.5,
+) -> None:
+    """Repeat an interview's evaluation with the prompt, rubric and skill weights it recorded,
+    and report the difference. Exits 1 when it is outside the tolerance."""
+    from uuid import UUID
+
+    from hirevion_core.access.errors import AccessError
+    from hirevion_core.evaluation.compare import Tolerance
+
+    from .interview_eval import NotUsable, rerun
+
+    _require_env(repo_root())
+    try:
+        target = UUID(interview_id)
+    except ValueError:
+        console.print("Give the interview's id (a UUID).")
+        raise typer.Exit(code=1) from None
+    try:
+        evaluation = asyncio.run(rerun(target, Tolerance(dimension, overall)))
+    except (NotUsable, AccessError) as error:
+        console.print(getattr(error, "title", str(error)))
+        raise typer.Exit(code=1) from None
+    diff = evaluation.diff or {}
+    table = Table("Question", "Original", "Re-run", "Moved", "Largest dimension move")
+    for item in diff.get("questions", []):
+        table.add_row(
+            item["question_id"][:8],
+            f"{item['base']:.2f}",
+            f"{item['rerun']:.2f}",
+            f"{item['diff']:.2f}",
+            f"{item['max_dimension_diff']:.2f}",
+        )
+    console.print(table)
+    final = diff.get("overall", {})
+    console.print(
+        f"Overall {final.get('base')} -> {final.get('rerun')}. Prompt {evaluation.prompt_version}, "
+        f"rubric {evaluation.rubric_version}, model {diff.get('models', {}).get('rerun')}."
+    )
+    if diff.get("inputs_changed"):
+        console.print(f"The transcript changed for: {', '.join(diff['inputs_changed'])}")
+    if diff.get("model_changed"):
+        console.print("The model differs from the one the evaluation used.")
+    within = bool(diff.get("within_tolerance"))
+    console.print(
+        f"Within tolerance ({dimension} per dimension, {overall} per question): "
+        f"{'yes' if within else 'NO'}."
+    )
+    if not within:
+        raise typer.Exit(code=1)
+
+
 @app.command()
 def worker() -> None:
     """Relay the outbox and send email until Ctrl+C (for an API with HV_API_RUN_WORKERS=false)."""
