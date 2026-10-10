@@ -198,6 +198,34 @@
         "title": "AccommodationsSummary",
         "type": "object"
       },
+      "AckBody": {
+        "properties": {
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sha256"
+        ],
+        "title": "AckBody",
+        "type": "object"
+      },
+      "AckResponse": {
+        "properties": {
+          "status": {
+            "const": "acknowledged",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "AckResponse",
+        "type": "object"
+      },
       "ActionRequest": {
         "additionalProperties": false,
         "properties": {
@@ -2049,6 +2077,59 @@
           "email"
         ],
         "title": "ForgotPasswordRequest",
+        "type": "object"
+      },
+      "GapItem": {
+        "properties": {
+          "from_seq": {
+            "title": "From Seq",
+            "type": "integer"
+          },
+          "from_time": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Time"
+          },
+          "reason": {
+            "enum": [
+              "missing",
+              "corrupt"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "to_seq": {
+            "title": "To Seq",
+            "type": "integer"
+          },
+          "to_time": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Time"
+          }
+        },
+        "required": [
+          "from_seq",
+          "to_seq",
+          "from_time",
+          "to_time",
+          "reason"
+        ],
+        "title": "GapItem",
         "type": "object"
       },
       "GenerateRequest": {
@@ -5673,6 +5754,193 @@
         "title": "PinnedQuestion",
         "type": "object"
       },
+      "PlaybackFile": {
+        "properties": {
+          "bytes": {
+            "title": "Bytes",
+            "type": "integer"
+          },
+          "container": {
+            "enum": [
+              "mp4",
+              "webm"
+            ],
+            "title": "Container",
+            "type": "string"
+          },
+          "duration_ms": {
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "container",
+          "bytes",
+          "sha256",
+          "duration_ms"
+        ],
+        "title": "PlaybackFile",
+        "type": "object"
+      },
+      "PlaybackResponse": {
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "interview_id": {
+            "format": "uuid",
+            "title": "Interview Id",
+            "type": "string"
+          },
+          "tracks": {
+            "items": {
+              "$ref": "#/components/schemas/PlaybackTrack"
+            },
+            "title": "Tracks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "interview_id",
+          "expires_at",
+          "tracks"
+        ],
+        "title": "PlaybackResponse",
+        "type": "object"
+      },
+      "PlaybackSegment": {
+        "properties": {
+          "duration_ms": {
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "seq",
+          "started_at",
+          "duration_ms",
+          "url"
+        ],
+        "title": "PlaybackSegment",
+        "type": "object"
+      },
+      "PlaybackTrack": {
+        "properties": {
+          "file": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlaybackFile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "first_seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Seq"
+          },
+          "gaps": {
+            "items": {
+              "$ref": "#/components/schemas/GapItem"
+            },
+            "title": "Gaps",
+            "type": "array"
+          },
+          "last_seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seq"
+          },
+          "segments": {
+            "items": {
+              "$ref": "#/components/schemas/PlaybackSegment"
+            },
+            "title": "Segments",
+            "type": "array"
+          },
+          "stalled": {
+            "title": "Stalled",
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "recording",
+              "assembly-pending",
+              "assembling",
+              "assembled",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "timeline_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeline Url"
+          },
+          "track": {
+            "title": "Track",
+            "type": "string"
+          }
+        },
+        "required": [
+          "track",
+          "status",
+          "stalled",
+          "first_seq",
+          "last_seq",
+          "gaps",
+          "file",
+          "timeline_url",
+          "segments"
+        ],
+        "title": "PlaybackTrack",
+        "type": "object"
+      },
       "Problem": {
         "additionalProperties": true,
         "description": "An RFC 9457 problem; codes may add extension members (e.g. `errors`, `checks`).",
@@ -6578,6 +6846,22 @@
           }
         },
         "title": "Recording",
+        "type": "object"
+      },
+      "RecoveryResponse": {
+        "properties": {
+          "tracks": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/TrackProgress"
+            },
+            "title": "Tracks",
+            "type": "object"
+          }
+        },
+        "required": [
+          "tracks"
+        ],
+        "title": "RecoveryResponse",
         "type": "object"
       },
       "RefreshBody": {
@@ -7725,6 +8009,77 @@
           "stages"
         ],
         "title": "ScreeningSummary",
+        "type": "object"
+      },
+      "SegmentBody": {
+        "properties": {
+          "bytes": {
+            "minimum": 1.0,
+            "title": "Bytes",
+            "type": "integer"
+          },
+          "codec": {
+            "enum": [
+              "h264",
+              "vp8",
+              "opus",
+              "aac"
+            ],
+            "title": "Codec",
+            "type": "string"
+          },
+          "container": {
+            "enum": [
+              "mp4",
+              "webm"
+            ],
+            "title": "Container",
+            "type": "string"
+          },
+          "duration_ms": {
+            "minimum": 1.0,
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "interview_id": {
+            "format": "uuid",
+            "title": "Interview Id",
+            "type": "string"
+          },
+          "seq": {
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Seq",
+            "type": "integer"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "track": {
+            "pattern": "^(screen-[1-8]|camera|mic)$",
+            "title": "Track",
+            "type": "string"
+          }
+        },
+        "required": [
+          "interview_id",
+          "track",
+          "seq",
+          "started_at",
+          "duration_ms",
+          "bytes",
+          "sha256",
+          "container",
+          "codec"
+        ],
+        "title": "SegmentBody",
         "type": "object"
       },
       "ServerTime": {
@@ -9498,6 +9853,34 @@
         "title": "TokenPasswordRequest",
         "type": "object"
       },
+      "TrackProgress": {
+        "properties": {
+          "acknowledged_through": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acknowledged Through"
+          },
+          "missing": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Missing",
+            "type": "array"
+          }
+        },
+        "required": [
+          "acknowledged_through",
+          "missing"
+        ],
+        "title": "TrackProgress",
+        "type": "object"
+      },
       "TranscriptQuestion": {
         "properties": {
           "answers": {
@@ -9746,6 +10129,39 @@
           "confidence"
         ],
         "title": "TranscriptSegmentResponse",
+        "type": "object"
+      },
+      "UploadResponse": {
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Headers",
+            "type": "object"
+          },
+          "segment_id": {
+            "format": "uuid",
+            "title": "Segment Id",
+            "type": "string"
+          },
+          "upload_url": {
+            "title": "Upload Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "segment_id",
+          "upload_url",
+          "expires_at",
+          "headers"
+        ],
+        "title": "UploadResponse",
         "type": "object"
       },
       "UserInvite": {
@@ -13583,6 +13999,60 @@
         ]
       }
     },
+    "/api/v1/interviews/{interview_id}/recordings": {
+      "get": {
+        "description": "Each track's assembled file and timeline map (read URLs valid for 5 minutes), or, until\nthe media worker has built it, each acknowledged segment.",
+        "operationId": "interview_recordings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaybackResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Interview Recordings",
+        "tags": [
+          "interviews"
+        ]
+      }
+    },
     "/api/v1/interviews/{interview_id}/reschedule": {
       "post": {
         "description": "Gives an interview that hasn't started a new window, and tells the candidate.",
@@ -17119,6 +17589,176 @@
         "summary": "Question Versions",
         "tags": [
           "interviews"
+        ]
+      }
+    },
+    "/api/v1/recordings/interviews/{interview_id}/segments": {
+      "get": {
+        "description": "What the server holds, per track, for the desktop's next launch after a crash.",
+        "operationId": "recovery_listing",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Recovery Listing",
+        "tags": [
+          "recordings"
+        ]
+      }
+    },
+    "/api/v1/recordings/segments": {
+      "post": {
+        "description": "A write-only URL for one segment's blob (15 minutes). Asking again for the same\n`(interview, track, seq)` returns the same `segment_id` with a fresh URL.",
+        "operationId": "request_segment_upload",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SegmentBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Request Segment Upload",
+        "tags": [
+          "recordings"
+        ]
+      }
+    },
+    "/api/v1/recordings/segments/{segment_id}/ack": {
+      "post": {
+        "description": "Reads the blob and checks its size and SHA-256 against the declaration. Only now may the\ndesktop delete its local copy.",
+        "operationId": "acknowledge_segment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "segment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Segment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AckBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AckResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Acknowledge Segment",
+        "tags": [
+          "recordings"
         ]
       }
     },

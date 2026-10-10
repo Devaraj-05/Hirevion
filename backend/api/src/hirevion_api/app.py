@@ -44,6 +44,7 @@ from hirevion_api.middleware import (
 from hirevion_api.problems import install_problem_handlers
 from hirevion_api.ratelimit import RateLimitMiddleware
 from hirevion_api.recordings.desktop import router as recordings_desktop_router
+from hirevion_api.recordings.recruiter import router as recordings_recruiter_router
 from hirevion_api.routing import API_PREFIX, build_openapi, operation_id
 from hirevion_api.screening.routes import router as screening_router
 from hirevion_api.settings import ApiSettings, load_api_settings
@@ -192,6 +193,7 @@ def create_app(
     app.include_router(livekit_webhook_router)
     app.include_router(interview_live_router)
     app.include_router(recordings_desktop_router)
+    app.include_router(recordings_recruiter_router)
     if telemetry is not None and telemetry.enabled:
         FastAPIInstrumentor.instrument_app(
             app,

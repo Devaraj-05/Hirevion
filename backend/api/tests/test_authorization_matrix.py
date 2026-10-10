@@ -160,6 +160,7 @@ EXPECTED: dict[str, tuple[tuple[str, ...], bool]] = {
     "PUT /api/v1/interviews/{interview_id}/reviewers": (("interviews.manage",), False),
     "GET /api/v1/interviews/{interview_id}/transcript": (("interviews.view",), False),
     "GET /api/v1/interviews/{interview_id}/accommodations": (("interviews.view",), False),
+    "GET /api/v1/interviews/{interview_id}/recordings": (("reports.interview.view",), False),
     "POST /api/v1/interviews/{interview_id}/accommodations/{accommodation_id}/decision": (
         ("interviews.manage",),
         False,
