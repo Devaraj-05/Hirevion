@@ -116,9 +116,7 @@ def check_declaration(interview: Interview, declared: SegmentDeclaration) -> Non
         raise Refused(422, "unsupported-format", "That container and codec aren't accepted here")
 
 
-async def _get_or_create_recording(
-    session: AsyncSession, interview: Interview, track: str
-) -> Recording:
+async def lock_recording(session: AsyncSession, interview: Interview, track: str) -> Recording:
     await session.execute(
         insert(Recording)
         .values(
@@ -179,7 +177,7 @@ async def request_upload(
     )
     # Everything for one track serialises on its recording row, so the continuity bookkeeping
     # below never races another segment of the same track.
-    recording = await _get_or_create_recording(session, interview, declared.track)
+    recording = await lock_recording(session, interview, declared.track)
     inserted = await session.scalar(
         insert(RecordingSegment)
         .values(
