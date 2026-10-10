@@ -56,6 +56,10 @@ WEBHOOK_TOPICS = {
     "abandoned": "interview.abandoned",
 }
 
+# SP-10: the internal stream its evaluator consumes. A completed interview queues an event here
+# (rather than sharing `interview.completed`'s stream, whose consumers delete what they finish).
+EVALUATION_TOPIC = "evaluation"
+
 ActorType = Literal["user", "candidate", "system", "agent"]
 _audit = AuditService()
 
@@ -185,6 +189,14 @@ async def transition(
             interview_payload(interview),
             key=str(interview.id),
         )
+    if target == "completed" and not repeat:
+        await publish_event(
+            session,
+            interview.organization_id,
+            EVALUATION_TOPIC,
+            {"action": "evaluate", "interview_id": str(interview.id)},
+            key=str(interview.id),
+        )
 
 
 def interview_payload(interview: Interview) -> dict[str, Any]:
@@ -204,6 +216,7 @@ def reference(number: int) -> str:
 
 
 __all__ = [
+    "EVALUATION_TOPIC",
     "STATUS_GROUPS",
     "TRANSITIONS",
     "By",

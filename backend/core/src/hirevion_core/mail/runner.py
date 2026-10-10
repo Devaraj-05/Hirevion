@@ -1,5 +1,6 @@
-"""The background workers: the outbox relay, the mail, documents, screening and transcript
-consumers, the interview scheduler, and the media worker (recording continuity and assembly).
+"""The background workers: the outbox relay, the mail, documents, screening, evaluation and
+transcript consumers, the interview scheduler, and the media worker (recording continuity and
+assembly).
 
 They run inside the API process (`HV_API_RUN_WORKERS`, on by default) or alone with
 `uv run hv worker`. SP-18's worker takes them over later.
@@ -20,6 +21,11 @@ from hirevion_core.documents.consumer import DocumentConsumer, StreamConsumer
 from hirevion_core.documents.pipeline import DocumentServices, give_up, handle_event
 from hirevion_core.documents.scan import ClamdScanner
 from hirevion_core.documents.settings import load_document_settings
+from hirevion_core.evaluation.runner import (
+    EVALUATION_TOPIC,
+    give_up_evaluation,
+    handle_evaluation_event,
+)
 from hirevion_core.identity.settings import load_identity_settings
 from hirevion_core.interview_session.transcripts import ABANDONED_TOPIC, handle_completed
 from hirevion_core.interview_session.transcripts import TOPIC as COMPLETED_TOPIC
@@ -103,6 +109,14 @@ async def run_workers(
                 topic=SCREENING_TOPIC,
             )
             workers.append(screening.run_forever(stop))
+            # Evaluations of completed interviews (SP-10).
+            evaluation = StreamConsumer(
+                redis,
+                partial(handle_evaluation_event, app_db, services.ai),
+                topic=EVALUATION_TOPIC,
+                on_give_up=partial(give_up_evaluation, app_db),
+            )
+            workers.append(evaluation.run_forever(stop))
         await asyncio.gather(*workers)
     finally:
         if storage is not None:

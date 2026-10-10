@@ -13,6 +13,7 @@ from hirevion_core.models.candidate_device import (
 from hirevion_core.models.department import Department
 from hirevion_core.models.desktop_release import DesktopChannel, DesktopRelease
 from hirevion_core.models.document import Document
+from hirevion_core.models.evaluation import Evaluation, HumanScore, QuestionEvaluation
 from hirevion_core.models.feature_flag import FeatureFlag
 from hirevion_core.models.idempotency_key import IdempotencyKey
 from hirevion_core.models.interview import (
@@ -71,7 +72,9 @@ __all__ = [
     "DesktopChannel",
     "DesktopRelease",
     "Document",
+    "Evaluation",
     "FeatureFlag",
+    "HumanScore",
     "IdempotencyKey",
     "Interview",
     "InterviewAnswer",
@@ -89,6 +92,7 @@ __all__ = [
     "OrganizationSettings",
     "OutboxEvent",
     "Question",
+    "QuestionEvaluation",
     "QuestionVersion",
     "Quota",
     "Recording",
