@@ -4,7 +4,9 @@ reconnecting dashboard misses nothing still on the stream.
 
 SP-09 publishes `AI_SPEAKING`, `CANDIDATE_SPEAKING`, `QUESTION_STARTED`, `ANSWER_RECEIVED` and
 `INTERVIEW_COMPLETED`; SP-12, SP-13, SP-14 and SP-16 add `RECORDING_STATUS`, `THIRD_EYE_STATUS`,
-`PROCTOR_EVENT`, `CODE_RUN` and `CODE_SUBMITTED` to the same stream. Events carry ids, timing and
+`PROCTOR_EVENT`, `CODE_RUN` and `CODE_SUBMITTED` to the same stream (SP-14 also sends
+`PROCTOR_STATUS`, the devices and connection health, and `PROCTOR_REVIEW`; the proctoring types go
+only to readers with `reports.proctoring.view`). Events carry ids, timing and
 what was said, never a score.
 """
 
@@ -24,6 +26,8 @@ EventType = Literal[
     "QUESTION_STARTED",
     "ANSWER_RECEIVED",
     "PROCTOR_EVENT",
+    "PROCTOR_STATUS",
+    "PROCTOR_REVIEW",
     "CODE_RUN",
     "CODE_SUBMITTED",
     "RECORDING_STATUS",
@@ -36,12 +40,16 @@ EVENT_TYPES: tuple[str, ...] = (
     "QUESTION_STARTED",
     "ANSWER_RECEIVED",
     "PROCTOR_EVENT",
+    "PROCTOR_STATUS",
+    "PROCTOR_REVIEW",
     "CODE_RUN",
     "CODE_SUBMITTED",
     "RECORDING_STATUS",
     "THIRD_EYE_STATUS",
     "INTERVIEW_COMPLETED",
 )
+# What only readers of the proctoring report may see.
+PROCTORING_TYPES = frozenset({"PROCTOR_EVENT", "PROCTOR_STATUS", "PROCTOR_REVIEW"})
 STREAM_MAX = 2000
 STREAM_TTL_SECONDS = 2 * 24 * 3600
 

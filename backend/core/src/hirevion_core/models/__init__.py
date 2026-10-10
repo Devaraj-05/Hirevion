@@ -43,6 +43,14 @@ from hirevion_core.models.interview_session import (
 from hirevion_core.models.job import Job, JobSkill, JobVersion
 from hirevion_core.models.organization import Organization
 from hirevion_core.models.outbox_event import OutboxEvent
+from hirevion_core.models.proctoring import (
+    AppCategory,
+    AppRule,
+    ProctorEvent,
+    ProctorEventReview,
+    ProctorEvidence,
+    ProctorSession,
+)
 from hirevion_core.models.quota import Quota
 from hirevion_core.models.recording import Recording, RecordingSegment
 from hirevion_core.models.role import Role, RolePermission, UserRole
@@ -56,6 +64,8 @@ from hirevion_core.models.web_session import WebSession
 __all__ = [
     "Accommodation",
     "AiInvocation",
+    "AppCategory",
+    "AppRule",
     "Application",
     "ApplicationHistory",
     "AuditLog",
@@ -91,6 +101,10 @@ __all__ = [
     "Organization",
     "OrganizationSettings",
     "OutboxEvent",
+    "ProctorEvent",
+    "ProctorEventReview",
+    "ProctorEvidence",
+    "ProctorSession",
     "Question",
     "QuestionEvaluation",
     "QuestionVersion",
