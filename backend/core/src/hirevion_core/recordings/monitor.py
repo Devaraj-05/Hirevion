@@ -71,6 +71,11 @@ class ContinuityMonitor:
                     {"now": moment, "limit": BATCH},
                 )
             ).all()
+        if len(rows) >= BATCH:
+            # The last interview may have been cut off mid-way, which would look like tracks
+            # that never started, so it waits (only with over a thousand interviews live at
+            # once; raise BATCH, or page the listing, before then).
+            rows = [r for r in rows if r.interview_id != rows[-1].interview_id]
         live: dict[UUID, _Live] = {}
         for row in rows:
             live.setdefault(row.interview_id, _Live(row)).add(row)

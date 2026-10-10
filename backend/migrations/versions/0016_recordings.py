@@ -34,9 +34,10 @@ CODECS = ("h264", "vp8", "opus", "aac")
 TRACK_PATTERN = "^(screen-[1-8]|camera|mic)$"
 
 # One row per interview that has tracks to assemble now, in active organisations: recordings
-# that are `assembly-pending` and not backing off, and recordings still `recording` whose
-# interview is over (the `interview.completed` event normally gets there first; this is the
-# safety net). The caller handles each in its tenant's transaction and re-checks it there.
+# that are `assembly-pending` and not backing off, recordings still `recording` whose interview
+# is over (the `interview.completed` event normally gets there first; this is the safety net),
+# and recordings left `assembling` by a worker that died. The caller handles each in its
+# tenant's transaction and re-checks it there.
 DUE_ASSEMBLY_SQL = """
 CREATE FUNCTION recording_due_assembly(p_now timestamptz, p_limit integer)
 RETURNS TABLE (organization_id uuid, interview_id uuid)
@@ -50,6 +51,7 @@ AS $$
            AND (r.next_attempt_at IS NULL OR r.next_attempt_at <= p_now))
        OR (r.status = 'recording'
            AND i.status IN ('completed', 'evaluating', 'evaluated', 'abandoned'))
+       OR (r.status = 'assembling' AND r.updated_at <= p_now - interval '30 minutes')
     GROUP BY r.organization_id, r.interview_id
     ORDER BY min(r.ready_at) NULLS FIRST
     LIMIT p_limit

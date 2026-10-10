@@ -10,7 +10,12 @@ import pytest
 
 from hirevion_core.ids import uuid7
 from hirevion_core.storage.paths import interview_blob, job_blob
-from hirevion_core.storage.service import StorageService, ensure_storage, load_storage_settings
+from hirevion_core.storage.service import (
+    BlobTooLarge,
+    StorageService,
+    ensure_storage,
+    load_storage_settings,
+)
 
 pytestmark = pytest.mark.db
 
@@ -119,3 +124,21 @@ async def test_files_stream_to_and_from_blobs(storage: StorageService, tmp_path:
     await storage.delete(path)
     with pytest.raises(FileNotFoundError):
         await storage.download_to(path, tmp_path / "missing.bin")
+
+
+async def test_a_blob_bigger_than_expected_is_not_read(
+    storage: StorageService, tmp_path: Path
+) -> None:
+    path = interview_blob(uuid7(), uuid7(), "screen", "screen-1-000002.mp4")
+    await storage.put(path, b"x" * 5000, "video/mp4")
+    assert await storage.digest(path, max_bytes=5000) == (
+        5000,
+        hashlib.sha256(b"x" * 5000).hexdigest(),
+    )
+    assert await storage.digest(path, max_bytes=4999) == (5000, "")  # size only, no hash
+    target = tmp_path / "big.bin"
+    with pytest.raises(BlobTooLarge):
+        await storage.download_to(path, target, max_bytes=4999)
+    assert not target.exists()
+    await storage.download_to(path, target, max_bytes=5000)
+    assert target.stat().st_size == 5000

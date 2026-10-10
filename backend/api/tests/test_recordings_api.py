@@ -5,8 +5,9 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -23,6 +24,8 @@ from hirevion_api.settings import ApiSettings
 from hirevion_core.db.session import Database
 from hirevion_core.identity.settings import IdentitySettings
 from hirevion_core.models import OutboxEvent, Recording, RecordingSegment
+from hirevion_core.recordings.assembly import Assembler
+from hirevion_core.recordings.settings import RecordingSettings
 from hirevion_core.storage.service import StorageService, ensure_storage, load_storage_settings
 from hirevion_interview_simulator.client import DesktopClient
 from hirevion_interview_simulator.seed import Seeded, seed_interview
@@ -71,9 +74,10 @@ def client(api: FastAPI, client_for: Callable[[FastAPI], AsyncClient]) -> AsyncC
 class Desktop:
     """A desktop with an interview-session token for an interview that has started."""
 
-    def __init__(self, desktop: DesktopClient, seed: Seeded) -> None:
+    def __init__(self, desktop: DesktopClient, seed: Seeded, recruiter: UUID) -> None:
         self.client = desktop
         self.seed = seed
+        self.recruiter = recruiter
         self.interview = str(seed.interview_id)
 
     def call(self, method: str, path: str, body: dict[str, Any] | None = None) -> Awaitable[Any]:
@@ -154,7 +158,7 @@ async def started_desktop(
                 ),
                 {"recording": json.dumps(policy_recording), "id": seed.interview_id},
             )
-    return Desktop(desktop, seed)
+    return Desktop(desktop, seed, recruiter)
 
 
 async def test_a_segment_goes_from_url_to_upload_to_acknowledgement(
@@ -368,6 +372,10 @@ async def test_a_corrupt_upload_is_refused_and_can_be_sent_again(
     # A same-sized blob with other bytes fails the hash, not just the size.
     await desktop.upload(grant, b"x" * len(DATA))
     assert (await desktop.ack(grant["segment_id"])).json()["code"] == "hash-mismatch"
+    # A URL can't cap the size it writes, so a blob far over the declared size is refused
+    # without being read.
+    await desktop.upload(grant, b"y" * (len(DATA) * 4))
+    assert (await desktop.ack(grant["segment_id"])).json()["code"] == "hash-mismatch"
 
     retry = (await desktop.ask(seq=0)).json()
     assert retry["segment_id"] == grant["segment_id"]
@@ -464,3 +472,60 @@ async def test_the_first_segment_may_start_above_zero(
         await desktop.call("GET", f"/recordings/interviews/{desktop.interview}/segments")
     ).json()["tracks"]
     assert tracks["screen-1"] == {"acknowledged_through": 3, "missing": [0, 1, 2]}
+
+
+class JoinFfmpeg:
+    """Joins files byte for byte, the way ffmpeg's `-c copy` joins whole segments."""
+
+    path = "join"
+
+    def available(self) -> bool:
+        return True
+
+    async def concat(
+        self, workdir: Path, names: Sequence[str], output: str, container: str
+    ) -> None:
+        (workdir / output).write_bytes(b"".join((workdir / n).read_bytes() for n in names))
+
+
+async def test_a_recording_goes_from_the_desktop_to_a_reviewer_s_playback(
+    client: AsyncClient,
+    app_db: Database,
+    admin_engine: AsyncEngine,
+    make_organization: MakeOrganization,
+    make_user: Any,
+    storage: StorageService,
+    signed_in: Any,
+) -> None:
+    """The part's main path: segments uploaded and acknowledged during the interview, the
+    interview completes, the media worker assembles the tracks, a reviewer plays them back."""
+    desktop = await started_desktop(client, admin_engine, app_db, make_organization, make_user)
+    org, interview = desktop.seed.organization_id, desktop.seed.interview_id
+    for seq in (0, 1, 3):  # segment 2 never reaches the server
+        await desktop.send(seq=seq)
+    await desktop.send(track="mic", container="webm", codec="opus", seq=0)
+
+    async with admin_engine.begin() as conn:
+        await conn.execute(
+            text("UPDATE interviews SET status = 'completed' WHERE id = :id"), {"id": interview}
+        )
+    worker = Assembler(app_db, storage, JoinFfmpeg(), RecordingSettings())
+    assert await worker.assemble_interview(org, interview) == 2
+
+    browser = await signed_in(org, desktop.recruiter)
+    body = (await browser.get(f"/api/v1/interviews/{interview}/recordings")).json()
+    screen, mic = body["tracks"][0], body["tracks"][1]
+    assert (screen["track"], screen["status"], mic["track"]) == ("screen-1", "assembled", "mic")
+    assert screen["file"]["duration_ms"] == 30_000 and screen["segments"] == []
+    assert [(g["from_seq"], g["to_seq"]) for g in screen["gaps"]] == [(2, 2)]
+    async with httpx.AsyncClient() as http:
+        assert (await http.get(screen["file"]["url"])).content == DATA * 3
+        timeline = (await http.get(screen["timeline_url"])).json()
+    assert [s["seq"] for s in timeline["segments"]] == [0, 1, 3]
+    assert [s["file_offset_ms"] for s in timeline["segments"]] == [0, 10_000, 20_000]
+
+    # The recovery listing still says what the desktop needs to know.
+    tracks = (
+        await desktop.call("GET", f"/recordings/interviews/{desktop.interview}/segments")
+    ).json()["tracks"]
+    assert tracks["screen-1"] == {"acknowledged_through": 3, "missing": [2]}

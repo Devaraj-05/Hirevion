@@ -38,6 +38,7 @@ from hirevion_core.recordings.segments import ENDED_STATUSES, acknowledged_throu
 from hirevion_core.recordings.settings import RecordingSettings
 from hirevion_core.recordings.timeline import SegmentInfo, build_timeline
 from hirevion_core.storage.paths import BlobPath, interview_blob
+from hirevion_core.storage.service import BlobTooLarge
 
 log = logging.getLogger(__name__)
 
@@ -45,11 +46,14 @@ BATCH = 50
 BACKOFF_SECONDS = 30
 MAX_BACKOFF_SECONDS = 600
 MISSING_FFMPEG_RETRY = timedelta(minutes=10)
+STALE_ASSEMBLY = timedelta(minutes=30)
 _CHUNK = 1024 * 1024
 
 
 class AssemblyStore(Protocol):
-    async def download_to(self, path: BlobPath, destination: Path) -> None: ...
+    async def download_to(
+        self, path: BlobPath, destination: Path, max_bytes: int | None = None
+    ) -> None: ...
     async def upload_file(self, path: BlobPath, source: Path, content_type: str) -> None: ...
     async def put(self, path: BlobPath, data: bytes, content_type: str) -> None: ...
 
@@ -63,6 +67,7 @@ class _Part:
     duration_ms: int
     container: str
     sha256: str
+    size: int
     path: BlobPath
 
 
@@ -170,9 +175,16 @@ class Assembler:
             if interview is None or interview.status not in ENDED_STATUSES:
                 return []
             for recording in await _recordings(
-                session, interview_id, ("recording", "assembly-pending"), skip_locked=True
+                session,
+                interview_id,
+                ("recording", "assembly-pending", "assembling"),
+                skip_locked=True,
             ):
                 if recording.next_attempt_at is not None and recording.next_attempt_at > now:
+                    continue
+                # A worker that died mid-assembly leaves `assembling` behind: take it over
+                # once it has been quiet for longer than ffmpeg is allowed to run.
+                if recording.status == "assembling" and recording.updated_at > now - STALE_ASSEMBLY:
                     continue
                 rows = (
                     await session.scalars(
@@ -190,7 +202,15 @@ class Assembler:
                     recording.note = "waiting-for-uploads"
                     continue
                 parts = [
-                    _Part(r.seq, r.started_at, r.duration_ms, r.container, r.sha256, blob_path(r))
+                    _Part(
+                        r.seq,
+                        r.started_at,
+                        r.duration_ms,
+                        r.container,
+                        r.sha256,
+                        r.bytes,
+                        blob_path(r),
+                    )
                     for r in rows
                     if r.state == "acknowledged"
                 ]
@@ -218,10 +238,15 @@ class Assembler:
             names: list[str] = []
             for index, part in enumerate(work.parts):
                 name = f"seg-{index:06d}.{container}"
-                await self.store.download_to(part.path, workdir / name)
-                # Re-check what was acknowledged: the upload URL could write the blob again.
-                if _sha256_file(workdir / name) != part.sha256:
-                    (workdir / name).unlink()
+                # Re-check what was acknowledged: the upload URL could write the blob again,
+                # with other bytes, or with far more of them.
+                try:
+                    await self.store.download_to(part.path, workdir / name, max_bytes=part.size)
+                    changed = _sha256_file(workdir / name) != part.sha256
+                except BlobTooLarge:
+                    changed = True
+                if changed:
+                    (workdir / name).unlink(missing_ok=True)
                     corrupt.add(part.seq)
                     continue
                 names.append(name)

@@ -53,7 +53,9 @@ class UploadSigner(Protocol):
 
 
 class BlobReader(Protocol):
-    async def digest(self, path: BlobPath) -> tuple[int, str] | None: ...
+    async def digest(
+        self, path: BlobPath, max_bytes: int | None = None
+    ) -> tuple[int, str] | None: ...
 
 
 class SegmentStore(UploadSigner, BlobReader, Protocol):
@@ -339,7 +341,7 @@ async def acknowledge(
         if segment.state == "acknowledged":
             return
         path, size = blob_path(segment), segment.bytes
-    found = await store.digest(path)
+    found = await store.digest(path, max_bytes=size)
     if found is None:
         raise Refused(404, "blob-missing", "The segment isn't in storage; upload it again")
     verified = found == (size, declared_sha256)

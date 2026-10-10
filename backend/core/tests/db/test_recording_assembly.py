@@ -15,7 +15,7 @@ from uuid import UUID
 
 import pytest
 from redis.asyncio import Redis
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from hirevion_core.db.session import Database
@@ -28,6 +28,7 @@ from hirevion_core.recordings.ffmpeg import FfmpegError
 from hirevion_core.recordings.settings import RecordingSettings
 from hirevion_core.recordings.worker import handle_interview_ended
 from hirevion_core.storage.paths import BlobPath
+from hirevion_core.storage.service import BlobTooLarge
 
 from .test_interviews_schema import insert_interview
 from .test_recordings_schema import recording, segment
@@ -44,13 +45,21 @@ class FakeStore:
         self.blobs: dict[str, bytes] = {}
         self.types: dict[str, str] = {}
 
-    async def digest(self, path: BlobPath) -> tuple[int, str] | None:
+    async def digest(self, path: BlobPath, max_bytes: int | None = None) -> tuple[int, str] | None:
         data = self.blobs.get(str(path))
-        return None if data is None else (len(data), hashlib.sha256(data).hexdigest())
+        if data is None:
+            return None
+        if max_bytes is not None and len(data) > max_bytes:
+            return len(data), ""
+        return len(data), hashlib.sha256(data).hexdigest()
 
-    async def download_to(self, path: BlobPath, destination: Path) -> None:
+    async def download_to(
+        self, path: BlobPath, destination: Path, max_bytes: int | None = None
+    ) -> None:
         if str(path) not in self.blobs:
             raise FileNotFoundError(str(path))
+        if max_bytes is not None and len(self.blobs[str(path)]) > max_bytes:
+            raise BlobTooLarge(str(path))
         destination.write_bytes(self.blobs[str(path)])
 
     async def upload_file(self, path: BlobPath, source: Path, content_type: str) -> None:
@@ -255,6 +264,54 @@ async def test_a_segment_that_changed_after_its_acknowledgement_is_left_out(
     assert row.status == "assembled"
     assert store.blobs[row.blob_path] == b"".join(payload("screen-1", n) for n in (0, 1, 3))
     assert [(g["from_seq"], g["to_seq"], g["reason"]) for g in row.gaps] == [(2, 2, "corrupt")]
+
+
+async def test_a_blob_overwritten_with_far_more_bytes_is_not_even_downloaded(
+    app_db: Database,
+    admin_engine: AsyncEngine,
+    make_organization: MakeOrganization,
+    make_hiring: Any,
+) -> None:
+    org = await make_organization("Acme")
+    interview = await completed_interview(admin_engine, org, make_hiring)
+    store = FakeStore()
+    await add_segments(app_db, store, org, interview, "screen-1", [0, 1, 2])
+    store.blobs[f"{org}/interviews/{interview}/screen/screen-1-000001.mp4"] = b"x" * 10_000_000
+    worker, ffmpeg = assembler(app_db, store)
+    await worker.assemble_interview(org, interview, NOW)
+    row = await load(app_db, org, interview, "screen-1")
+    assert [(g["from_seq"], g["reason"]) for g in row.gaps] == [(1, "corrupt")]
+    assert ffmpeg.calls[0][0] == ["seg-000000.mp4", "seg-000002.mp4"]  # 1 was left out
+
+
+async def test_a_worker_that_died_mid_assembly_is_taken_over_once_it_is_stale(
+    app_db: Database,
+    admin_engine: AsyncEngine,
+    make_organization: MakeOrganization,
+    make_hiring: Any,
+) -> None:
+    org = await make_organization("Acme")
+    stuck = await completed_interview(admin_engine, org, make_hiring)
+    busy = await completed_interview(admin_engine, org, make_hiring)
+    store = FakeStore()
+    for interview in (stuck, busy):
+        await add_segments(app_db, store, org, interview, "screen-1", [0, 1])
+    async with admin_engine.begin() as conn:
+        await conn.execute(
+            text(
+                "UPDATE recordings SET status = 'assembling', updated_at = :at "
+                "WHERE interview_id = :id"
+            ),
+            {"at": datetime.now(UTC) - timedelta(hours=1), "id": stuck},
+        )
+        await conn.execute(
+            text("UPDATE recordings SET status = 'assembling' WHERE interview_id = :id"),
+            {"id": busy},
+        )
+    worker, _ = assembler(app_db, store)
+    await worker.run_due(datetime.now(UTC))
+    assert (await load(app_db, org, stuck, "screen-1")).status == "assembled"
+    assert (await load(app_db, org, busy, "screen-1")).status == "assembling"  # someone has it
 
 
 async def test_nothing_is_built_while_the_interview_is_still_going(

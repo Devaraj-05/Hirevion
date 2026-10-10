@@ -38,6 +38,10 @@ _CORS_HEADERS = [
 ]
 
 
+class BlobTooLarge(ValueError):
+    """A blob is bigger than its caller allows, so it wasn't read."""
+
+
 class StorageSettings(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore", hide_input_in_errors=True)
 
@@ -131,13 +135,16 @@ class StorageService:
     async def exists(self, path: BlobPath) -> bool:
         return bool(await self._container.get_blob_client(str(path)).exists())
 
-    async def digest(self, path: BlobPath) -> tuple[int, str] | None:
+    async def digest(self, path: BlobPath, max_bytes: int | None = None) -> tuple[int, str] | None:
         """The size and SHA-256 (hex) of a blob, read in chunks so a large one never sits in
-        memory; None if there is no such blob."""
+        memory; None if there is no such blob. A blob larger than `max_bytes` isn't read: its
+        size comes back with an empty hash, which matches nothing."""
         try:
             download = await self._container.download_blob(str(path))
         except ResourceNotFoundError:
             return None
+        if max_bytes is not None and download.size > max_bytes:
+            return download.size, ""
         sha256 = hashlib.sha256()
         size = 0
         async for chunk in download.chunks():
@@ -145,12 +152,17 @@ class StorageService:
             size += len(chunk)
         return size, sha256.hexdigest()
 
-    async def download_to(self, path: BlobPath, destination: Path) -> None:
-        """Streams a blob into a local file; FileNotFoundError if there is no such blob."""
+    async def download_to(
+        self, path: BlobPath, destination: Path, max_bytes: int | None = None
+    ) -> None:
+        """Streams a blob into a local file; FileNotFoundError if there is no such blob, and
+        BlobTooLarge (before reading it) if it is larger than `max_bytes`."""
         try:
             download = await self._container.download_blob(str(path))
         except ResourceNotFoundError as error:
             raise FileNotFoundError(str(path)) from error
+        if max_bytes is not None and download.size > max_bytes:
+            raise BlobTooLarge(f"{path} is {download.size} bytes, more than {max_bytes}")
         with destination.open("wb") as handle:
             async for chunk in download.chunks():
                 await asyncio.to_thread(handle.write, chunk)
