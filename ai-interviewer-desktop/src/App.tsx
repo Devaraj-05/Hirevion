@@ -2,8 +2,16 @@ import { Toaster } from "@hirevion/ui";
 import { lazy, Suspense, useCallback, useEffect, useReducer, useState } from "react";
 import { type FlowEvent, initialState, transition } from "./flow/flow";
 import { I18nProvider, type Locale, pickLocale } from "./i18n/i18n";
-import { commands, type ReleaseState, type SignInResult } from "./native/commands";
+import {
+  type Briefing,
+  commands,
+  type ReleaseState,
+  type SignInResult,
+  type StartResult,
+} from "./native/commands";
+import { BriefingScreen, ConsentScreen } from "./screens/briefing";
 import { isSessionLost } from "./screens/errors";
+import { CompletedScreen, InterviewScreen } from "./screens/interview";
 import { InterviewsScreen } from "./screens/interviews";
 import { LaunchScreen, ReadyScreen, UpdateRequiredScreen } from "./screens/launch";
 import { Shell } from "./screens/shell";
@@ -40,7 +48,7 @@ export function App() {
   return <CandidateApp />;
 }
 
-/** PRD §26 up to "Ready": version check, sign-in, interviews, system check. */
+/** PRD §26: version check, sign-in, interviews, briefing, system check, consent, ready, interview. */
 function CandidateApp() {
   const [state, dispatch] = useReducer(transition, initialState);
   const [locale, setLocale] = useState<Locale>(() => pickLocale(navigator.languages));
@@ -69,6 +77,12 @@ function CandidateApp() {
   const lost = useCallback((error: unknown) => {
     if (isSessionLost(error)) dispatch({ type: "session-expired" });
   }, []);
+  // What one interview's steps hand to the next: the briefing, the check and consent ids,
+  // and the start answer (the LiveKit join for the interview screen).
+  const [briefing, setBriefing] = useState<Briefing | null>(null);
+  const [checkId, setCheckId] = useState("");
+  const [consentId, setConsentId] = useState("");
+  const [started, setStarted] = useState<StartResult | null>(null);
 
   const profile = "profile" in state ? state.profile : undefined;
   return (
@@ -99,18 +113,67 @@ function CandidateApp() {
         {state.screen === "interviews" ? (
           <InterviewsScreen
             profile={state.profile}
-            onStart={(interviewId) => send({ type: "check-started", interviewId })}
+            onStart={(interviewId) => send({ type: "interview-chosen", interviewId })}
+          />
+        ) : null}
+        {state.screen === "briefing" ? (
+          <BriefingScreen
+            interviewId={state.interviewId}
+            onRead={(read) => {
+              setBriefing(read);
+              send({ type: "briefing-read" });
+            }}
+            onBack={() => send({ type: "back" })}
+            onError={lost}
           />
         ) : null}
         {state.screen === "system-check" ? (
           <SystemCheckScreen
             interviewId={state.interviewId}
-            onPassed={() => send({ type: "check-passed" })}
+            onPassed={(id) => {
+              setCheckId(id);
+              send({ type: "check-passed" });
+            }}
             onBack={() => send({ type: "back" })}
             onError={lost}
           />
         ) : null}
-        {state.screen === "ready" ? <ReadyScreen onBack={() => send({ type: "back" })} /> : null}
+        {state.screen === "consent" && briefing ? (
+          <ConsentScreen
+            interviewId={state.interviewId}
+            briefing={briefing}
+            onConsented={(id) => {
+              setConsentId(id);
+              send({ type: "consented" });
+            }}
+            onBack={() => send({ type: "back" })}
+            onError={lost}
+          />
+        ) : null}
+        {state.screen === "ready" ? (
+          <ReadyScreen
+            interviewId={state.interviewId}
+            systemCheckId={checkId}
+            consentId={consentId}
+            onStarted={(start) => {
+              setStarted(start);
+              send({ type: "started" });
+            }}
+            onBack={() => send({ type: "back" })}
+            onError={lost}
+          />
+        ) : null}
+        {state.screen === "interview" && started ? (
+          <InterviewScreen
+            interviewId={state.interviewId}
+            start={started}
+            onCompleted={() => send({ type: "completed" })}
+            onError={lost}
+          />
+        ) : null}
+        {state.screen === "completed" ? (
+          <CompletedScreen onBack={() => send({ type: "back" })} />
+        ) : null}
       </Shell>
       <Toaster theme="system" />
     </I18nProvider>

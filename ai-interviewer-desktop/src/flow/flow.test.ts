@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type FlowState, initialState, transition } from "./flow";
+import { type FlowEvent, type FlowState, initialState, transition } from "./flow";
 
 const PROFILE = {
   candidate: { id: "c-1", name: "Asha Rao", email: "asha@example.test", locale: "en-IN" },
@@ -7,9 +7,14 @@ const PROFILE = {
   interviews: [],
 };
 
-function run(...events: Parameters<typeof transition>[1][]): FlowState {
+function run(...events: FlowEvent[]): FlowState {
   return events.reduce<FlowState>((state, event) => transition(state, event), initialState);
 }
+
+const SIGNED_IN: FlowEvent[] = [
+  { type: "release-checked", release: { status: "ok" } },
+  { type: "signed-in", profile: PROFILE },
+];
 
 describe("the launch flow (PRD §26)", () => {
   it("starts by checking the app version", () => {
@@ -47,35 +52,55 @@ describe("the launch flow (PRD §26)", () => {
     });
   });
 
-  it("runs the system check for the chosen interview and is ready when it passes", () => {
-    const signedIn = run(
-      { type: "release-checked", release: { status: "ok" } },
-      { type: "signed-in", profile: PROFILE },
+  it("walks briefing, system check, consent and ready, in that order, to the interview", () => {
+    const steps: [FlowEvent, FlowState["screen"]][] = [
+      [{ type: "interview-chosen", interviewId: "iv-1" }, "briefing"],
+      [{ type: "briefing-read" }, "system-check"],
+      [{ type: "check-passed" }, "consent"],
+      [{ type: "consented" }, "ready"],
+      [{ type: "started" }, "interview"],
+      [{ type: "completed" }, "completed"],
+    ];
+    let state = run(...SIGNED_IN);
+    for (const [event, screen] of steps) {
+      state = transition(state, event);
+      expect(state.screen).toBe(screen);
+      expect(state).toMatchObject({ profile: PROFILE, interviewId: "iv-1" });
+    }
+  });
+
+  it("goes back to the interviews from any step before the interview starts", () => {
+    const consent = run(
+      ...SIGNED_IN,
+      { type: "interview-chosen", interviewId: "iv-1" },
+      { type: "briefing-read" },
+      { type: "check-passed" },
     );
-    const checking = transition(signedIn, { type: "check-started", interviewId: "iv-1" });
-    expect(checking).toEqual({ screen: "system-check", profile: PROFILE, interviewId: "iv-1" });
-    expect(transition(checking, { type: "check-passed" })).toEqual({
-      screen: "ready",
-      profile: PROFILE,
-      interviewId: "iv-1",
-    });
-    expect(transition(checking, { type: "back" })).toEqual({
+    expect(transition(consent, { type: "back" })).toEqual({
       screen: "interviews",
       profile: PROFILE,
     });
   });
 
-  it("returns to sign-in from anywhere after signing out or losing the session", () => {
-    const ready = run(
-      { type: "release-checked", release: { status: "ok" } },
-      { type: "signed-in", profile: PROFILE },
-      { type: "check-started", interviewId: "iv-1" },
+  it("doesn't leave a running interview by going back", () => {
+    const interview = run(
+      ...SIGNED_IN,
+      { type: "interview-chosen", interviewId: "iv-1" },
+      { type: "briefing-read" },
+      { type: "check-passed" },
+      { type: "consented" },
+      { type: "started" },
     );
-    expect(transition(ready, { type: "signed-out" })).toEqual({
+    expect(transition(interview, { type: "back" })).toBe(interview);
+  });
+
+  it("returns to sign-in from anywhere after signing out or losing the session", () => {
+    const checking = run(...SIGNED_IN, { type: "interview-chosen", interviewId: "iv-1" });
+    expect(transition(checking, { type: "signed-out" })).toEqual({
       screen: "sign-in",
       updateAvailable: false,
     });
-    expect(transition(ready, { type: "session-expired" })).toEqual({
+    expect(transition(checking, { type: "session-expired" })).toEqual({
       screen: "sign-in",
       updateAvailable: false,
       notice: "session-expired",

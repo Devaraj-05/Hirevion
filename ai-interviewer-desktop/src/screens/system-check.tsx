@@ -48,7 +48,7 @@ export function SystemCheckScreen({
   onError,
 }: {
   interviewId: string;
-  onPassed: () => void;
+  onPassed: (systemCheckId: string) => void;
   onBack: () => void;
   onError: (error: unknown) => void;
 }) {
@@ -87,7 +87,7 @@ export function SystemCheckScreen({
       const submitted = await commands.submitChecks(interviewId, payload);
       setFailed(submitted.failed_mandatory);
       setPhase("done");
-      if (submitted.passed) onPassed();
+      if (submitted.passed) onPassed(submitted.id);
     } catch (failure) {
       onError(failure);
       setFailed(missingMandatory(payload.results));

@@ -90,5 +90,131 @@ export const commands = {
   screenCaptureProbe: () => invoke<CheckResult>("screen_capture_probe"),
   apiRoundTrip: () => invoke<{ rtt_ms: number }>("api_round_trip"),
   submitChecks: (interviewId: string, payload: SystemCheckPayload) =>
-    invoke<ChecksSubmitted>("submit_checks", { interviewId, payload }),
+    interviewRequest<ChecksSubmitted>(interviewId, "system_checks", payload),
+  briefing: (interviewId: string) => interviewRequest<Briefing>(interviewId, "briefing"),
+  consents: (interviewId: string, body: ConsentBody) =>
+    interviewRequest<ConsentResult>(interviewId, "consents", body),
+  requestAccommodations: (interviewId: string, kinds: AccommodationKind[], note: string) =>
+    interviewRequest<{ id: string; status: string }>(interviewId, "accommodations", {
+      kinds,
+      note,
+    }),
+  start: (interviewId: string, systemCheckId: string, consentId: string) =>
+    interviewRequest<StartResult>(interviewId, "start", {
+      system_check_id: systemCheckId,
+      consent_id: consentId,
+    }),
+  session: (interviewId: string) =>
+    interviewRequest<{ state: InterviewState }>(interviewId, "session"),
+  answer: (interviewId: string, questionId: string, text: string) =>
+    interviewRequest<{ state: InterviewState }>(interviewId, "answer", {
+      question_id: questionId,
+      text,
+    }),
+  complete: (interviewId: string, reason: "finished" | "candidate_ended") =>
+    interviewRequest<{ status: string }>(interviewId, "complete", { reason }),
 };
+
+/** The interview calls (contract interview-session), made by Rust with the session token. */
+export type InterviewAction =
+  | "briefing"
+  | "system_checks"
+  | "consents"
+  | "accommodations"
+  | "start"
+  | "session"
+  | "answer"
+  | "workspace"
+  | "complete";
+
+function interviewRequest<T>(interviewId: string, action: InterviewAction, body?: unknown) {
+  return invoke<T>("interview_request", { interviewId, action, body: body ?? null });
+}
+
+export const CONSENT_PURPOSES = [
+  "camera",
+  "microphone",
+  "screen",
+  "audio",
+  "video",
+  "third_eye",
+  "transcript",
+  "coding_activity",
+  "system_telemetry",
+  "proctoring_events",
+] as const;
+export type ConsentPurpose = (typeof CONSENT_PURPOSES)[number];
+
+export const ACCOMMODATION_KINDS = [
+  "extended_time",
+  "text_answers",
+  "breaks",
+  "assistive_technology",
+  "relaxed_gaze",
+  "third_eye_waiver",
+] as const;
+export type AccommodationKind = (typeof ACCOMMODATION_KINDS)[number];
+
+export interface Briefing {
+  instructions: string[];
+  mandatory_checks: string[];
+  notice: {
+    version: string;
+    items: { purpose: ConsentPurpose; text: string; required: boolean }[];
+  };
+  accommodations: { requested: string[]; approved: string[] };
+  answer_mode: "voice" | "text";
+  third_eye: "off" | "optional" | "required";
+}
+
+export interface ConsentBody {
+  notice_version: string;
+  items: { purpose: ConsentPurpose; accepted: boolean }[];
+}
+
+export interface ConsentResult {
+  id: string;
+  complete: boolean;
+  missing: string[];
+}
+
+export interface Question {
+  id: string;
+  index: number;
+  text: string;
+  type: string;
+  time_limit_seconds: number | null;
+  workspace: "none" | "code" | "whiteboard";
+  languages: string[];
+}
+
+export type VoiceState =
+  | "listening"
+  | "thinking"
+  | "speaking"
+  | "waiting"
+  | "paused"
+  | "ended"
+  | "error";
+
+export interface InterviewState {
+  status: string;
+  remaining_seconds: number;
+  answer_mode: "voice" | "text";
+  question: Question | null;
+  voice: VoiceState;
+  stage: string;
+  message: string | null;
+  notice: { kind: string } | null;
+  third_eye?: string;
+  workspace?: string;
+}
+
+export interface StartResult {
+  livekit_url: string | null;
+  room: string;
+  participant_identity?: string;
+  participant_token?: string;
+  token_expires_at?: string;
+  state: InterviewState;
+}

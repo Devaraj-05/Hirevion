@@ -89,8 +89,20 @@
   },
   "ready": {
     "title": "You're ready",
-    "body": "Your computer passed the check. The interview screen arrives in the next release of this app.",
-    "back": "Back to your interviews"
+    "body": "Your computer passed the check and your consent is recorded. The interview starts as soon as you press Start.",
+    "start": "Start the interview",
+    "starting": "Starting…",
+    "back": "Back to your interviews",
+    "errors": {
+      "third-eye-required": "This interview needs your phone as a second camera first.",
+      "media-unavailable": "The interview service is busy. Try again in a moment.",
+      "checks-incomplete": "Run the system check again before starting.",
+      "consents-missing": "Give your consent before starting.",
+      "interview-not-open": "This interview hasn't opened yet.",
+      "interview-expired": "The window for this interview has closed.",
+      "resume-limit-reached": "This interview can't be resumed again. Contact the company.",
+      "unknown": "The interview couldn't start. Try again."
+    }
   },
   "errors": {
     "invalid-credentials": "That email address and password don't match.",
@@ -133,5 +145,81 @@
       "fps": "Face detection: {fps} frames per second",
       "stopped": "Face detection is off."
     }
+  },
+  "briefing": {
+    "title": "Before you start",
+    "continue": "Continue to the system check",
+    "back": "Back to your interviews",
+    "textMode": "You'll answer in writing: type each answer and send it."
+  },
+  "consent": {
+    "title": "Your consent",
+    "intro": "Choose what you agree to. Required items are needed to take this interview; if you can't agree to one, you can ask for an accommodation instead.",
+    "required": "required",
+    "agree": "I agree, continue",
+    "submitWithout": "Continue without the required items",
+    "back": "Back to your interviews",
+    "purposes": {
+      "camera": "Camera",
+      "microphone": "Microphone",
+      "screen": "Screen recording",
+      "audio": "Audio recording",
+      "video": "Video recording",
+      "third_eye": "Phone camera (third eye)",
+      "transcript": "Transcript",
+      "coding_activity": "Coding activity",
+      "system_telemetry": "System information",
+      "proctoring_events": "Proctoring events"
+    },
+    "accommodationTitle": "Ask for an accommodation",
+    "accommodationIntro": "Tell the company what you need. A recruiter reviews your request before the interview.",
+    "kinds": {
+      "extended_time": "Extra time",
+      "text_answers": "Answer in writing",
+      "breaks": "Breaks during the interview",
+      "assistive_technology": "Assistive technology (screen reader, magnifier)",
+      "relaxed_gaze": "Relaxed face and gaze rules",
+      "third_eye_waiver": "No phone camera"
+    },
+    "note": "Anything else the recruiter should know",
+    "request": "Send the request",
+    "requested": "Your request was sent. You'll hear back by email."
+  },
+  "interview": {
+    "title": "Interview",
+    "timeLeft": "Time left",
+    "connection": {
+      "connecting": "Connecting",
+      "connected": "Connected",
+      "reconnecting": "Reconnecting",
+      "off": "Text mode"
+    },
+    "voice": {
+      "listening": "Listening",
+      "thinking": "Thinking",
+      "speaking": "Speaking",
+      "waiting": "Waiting",
+      "paused": "Paused",
+      "ended": "Finished",
+      "error": "Having trouble, please wait"
+    },
+    "notice": "Please check: {kind}",
+    "questionNumber": "Question {index}",
+    "answerLabel": "Your answer",
+    "typeInstead": "Prefer to type? Write your answer here",
+    "sendAnswer": "Send answer",
+    "controls": {
+      "done": "I'm done answering",
+      "repeat": "Repeat the question",
+      "moment": "I need a moment"
+    },
+    "end": "End the interview",
+    "endConfirm": "Yes, end it now",
+    "keepGoing": "Keep going"
+  },
+  "completed": {
+    "title": "Thank you",
+    "body": "Your interview is finished. You can close the app once your recordings have finished uploading.",
+    "back": "Back to your interviews"
   }
 }
