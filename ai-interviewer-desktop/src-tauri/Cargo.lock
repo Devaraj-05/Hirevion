@@ -1705,6 +1705,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "hv-event-queue"
+version = "0.1.0"
+dependencies = [
+ "fastrand",
+ "hv-api-client",
+ "hv-monitor",
+ "hv-security",
+ "serde",
+ "serde_json",
+ "tokio",
+ "windows",
+ "wiremock",
+]
+
+[[package]]
+name = "hv-monitor"
+version = "0.1.0"
+dependencies = [
+ "hv-security",
+ "serde",
+ "serde_json",
+ "sha2",
+ "windows",
+ "windows-core",
+]
+
+[[package]]
 name = "hv-recorder"
 version = "0.1.0"
 dependencies = [

@@ -1,0 +1,27 @@
+[package]
+name = "hv-event-queue"
+description = "Proctoring events for the Hirevion desktop app: policy matching, on-device rules, a durable sequenced queue, and its uploader with heartbeats."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+fastrand = "2.3.0"
+hv-api-client = { path = "../api-client" }
+hv-monitor = { path = "../monitor" }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"
+tokio = { version = "1.47.1", features = ["macros", "rt", "sync", "time"] }
+
+[dev-dependencies]
+hv-security = { path = "../security" }
+tokio = { version = "1.47.1", features = ["macros", "rt-multi-thread", "test-util"] }
+wiremock = "0.6.5"
+
+[target.'cfg(windows)'.dev-dependencies]
+# The end-to-end test creates a helper window.
+windows = { workspace = true, features = ["Win32_System_LibraryLoader"] }
