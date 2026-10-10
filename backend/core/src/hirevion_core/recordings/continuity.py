@@ -12,6 +12,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 from hirevion_core.recordings import tracks
 
@@ -35,6 +36,43 @@ def shortest_silence() -> int:
     """The smallest allowance of any level: interviews that haven't been quiet that long needn't
     be looked at."""
     return max(FLOOR_SECONDS, min(ALLOWED_SILENCE_SECONDS.values()))
+
+
+def gap_payload(
+    interview_id: UUID,
+    track: str,
+    *,
+    kind: str,
+    state: str,
+    from_seq: int,
+    to_seq: int | None,
+    from_time: datetime | None,
+    to_time: datetime | None,
+    **extra: Any,
+) -> dict[str, Any]:
+    """The `recording.gap` outbox event (SP-14 turns it into `SCREEN_CAPTURE_STOPPED` or
+    `TELEMETRY_GAP`).
+
+    - `kind` is `stalled` (a track went silent for longer than its policy allows) or `skipped`
+      (segment numbers the desktop never produced).
+    - `state` is `open` while a stall lasts, and `closed` once it ended; `to_seq` and `to_time`
+      are null until then. A closed stall's `to_seq` is the last number that didn't arrive in
+      time, so `to_seq < from_seq` means the segments came, but late.
+    - Times are server time, ISO 8601.
+    """
+    payload: dict[str, Any] = {
+        "interview_id": str(interview_id),
+        "track": track,
+        "kind": kind,
+        "state": state,
+        "from_seq": from_seq,
+        "to_seq": to_seq,
+        "from_time": from_time.isoformat() if from_time else None,
+        "to_time": to_time.isoformat() if to_time else None,
+    }
+    for name, value in extra.items():
+        payload[name] = value.isoformat() if isinstance(value, datetime) else value
+    return payload
 
 
 @dataclass(frozen=True, slots=True)

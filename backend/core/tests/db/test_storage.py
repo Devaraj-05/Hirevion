@@ -1,7 +1,9 @@
 """Blob storage against Azurite (the local stack, or the CI container)."""
 
+import hashlib
 from collections.abc import AsyncIterator
 from datetime import timedelta
+from pathlib import Path
 
 import httpx
 import pytest
@@ -95,3 +97,25 @@ async def test_setup_is_idempotent_and_allows_browser_uploads(storage: StorageSe
         )
     assert preflight.status_code == 200
     assert preflight.headers["access-control-allow-origin"] == WEB_ORIGIN
+
+
+async def test_a_blob_can_be_hashed_without_holding_it_in_memory(storage: StorageService) -> None:
+    path = interview_blob(uuid7(), uuid7(), "screen", "screen-1-000001.mp4")
+    data = b"0123456789" * 300_000  # 3 MB: several chunks
+    await storage.put(path, data, "video/mp4")
+    assert await storage.digest(path) == (len(data), hashlib.sha256(data).hexdigest())
+    await storage.delete(path)
+    assert await storage.digest(path) is None
+
+
+async def test_files_stream_to_and_from_blobs(storage: StorageService, tmp_path: Path) -> None:
+    path = interview_blob(uuid7(), uuid7(), "camera", "camera-full.webm")
+    source = tmp_path / "source.bin"
+    source.write_bytes(b"\x1aE\xdf\xa3" * 100_000)
+    await storage.upload_file(path, source, "video/webm")
+    target = tmp_path / "target.bin"
+    await storage.download_to(path, target)
+    assert target.read_bytes() == source.read_bytes()
+    await storage.delete(path)
+    with pytest.raises(FileNotFoundError):
+        await storage.download_to(path, tmp_path / "missing.bin")

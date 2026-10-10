@@ -131,6 +131,12 @@ async def interview_principal(request: Request, interview_id: UUID) -> Candidate
     return principal
 
 
+async def session_principal(request: Request) -> CandidatePrincipal:
+    """An interview-session token with its proof, for routes whose path doesn't name the
+    interview (a recording segment's body or id does); the route compares it with the token's."""
+    return await _principal(request, "interview")
+
+
 def app_info(version: str, channel: str, os: str, arch: str) -> AppInfo:
     return AppInfo(version=version, channel=channel, os=os, arch=arch)
 
@@ -138,4 +144,5 @@ def app_info(version: str, channel: str, os: str, arch: str) -> AppInfo:
 DeviceProof = Annotated[Proof, Depends(device_proof)]
 Candidate = Annotated[CandidatePrincipal, Depends(candidate_principal)]
 InterviewSession = Annotated[CandidatePrincipal, Depends(interview_principal)]
+AnyInterviewSession = Annotated[CandidatePrincipal, Depends(session_principal)]
 Service = Annotated[CandidateAuthService, Depends(candidate_auth)]

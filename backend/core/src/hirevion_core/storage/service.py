@@ -8,9 +8,12 @@ talks to the internal one (`http://127.0.0.1:10000/<account>`, Azurite).
 
 from __future__ import annotations
 
+import asyncio
+import hashlib
 from collections.abc import Sequence
 from contextlib import suppress
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from urllib.parse import quote
 from uuid import UUID
 
@@ -127,6 +130,40 @@ class StorageService:
 
     async def exists(self, path: BlobPath) -> bool:
         return bool(await self._container.get_blob_client(str(path)).exists())
+
+    async def digest(self, path: BlobPath) -> tuple[int, str] | None:
+        """The size and SHA-256 (hex) of a blob, read in chunks so a large one never sits in
+        memory; None if there is no such blob."""
+        try:
+            download = await self._container.download_blob(str(path))
+        except ResourceNotFoundError:
+            return None
+        sha256 = hashlib.sha256()
+        size = 0
+        async for chunk in download.chunks():
+            sha256.update(chunk)
+            size += len(chunk)
+        return size, sha256.hexdigest()
+
+    async def download_to(self, path: BlobPath, destination: Path) -> None:
+        """Streams a blob into a local file; FileNotFoundError if there is no such blob."""
+        try:
+            download = await self._container.download_blob(str(path))
+        except ResourceNotFoundError as error:
+            raise FileNotFoundError(str(path)) from error
+        with destination.open("wb") as handle:
+            async for chunk in download.chunks():
+                await asyncio.to_thread(handle.write, chunk)
+
+    async def upload_file(self, path: BlobPath, source: Path, content_type: str) -> None:
+        """Streams a local file into a blob (replacing it)."""
+        with source.open("rb") as handle:
+            await self._container.upload_blob(
+                str(path),
+                handle,
+                overwrite=True,
+                content_settings=ContentSettings(content_type=content_type),
+            )
 
     async def delete(self, path: BlobPath) -> None:
         with suppress(ResourceNotFoundError):
