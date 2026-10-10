@@ -330,6 +330,11 @@ Dates are targets in IST. A box is ticked in the PR that merges the part.
     - the orb, captions, timer and controls;
     - joining the LiveKit room per `interview-session.md`;
     - the workspace host and the upload-drain screen.
+  - **Done on `sp-08b-services`:**
+    - `services_start` and `services_stop` run the SP-11 monitor and proctoring queue, the SP-12 screen, camera and microphone recording, and the segment upload inside the interview;
+    - the face module feeds the proctoring queue;
+    - the upload-drain screen says "safe to close" only when every segment is settled.
+  - **Still open in B3:** the workspace host, packaging, and the third-eye status in heartbeats (it reports `not_required` until SP-10).
   - **Packaging:**
     - NSIS installers for x64 and ARM64;
     - development signing and the signed updater;
