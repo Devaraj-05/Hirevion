@@ -307,7 +307,7 @@ Dates are targets in IST. A box is ticked in the PR that merges the part.
     - the update gate;
     - all eleven §29 system checks, with their results stored;
     - the sign-in screens, on a stub until A2 merges.
-- [ ] **B2 in parallel, three subagents in worktrees (Oct 11–12):**
+- [x] **B2 in parallel, three subagents in worktrees (Oct 11–12):** done 2026-10-10. SP-11 (`hv-monitor`, `hv-event-queue`; 60 tests), SP-12 client (`hv-segment-store`, `hv-uploader`, `hv-recorder`, `src/recording`; 0.8% CPU and 0.8 MB/min measured), SP-15a desktop (`src/vision`; 127 tests).
   - **SP-11 Native monitoring.** Exit criteria:
     - a capture-excluded window, a blocked or renamed process, and a second monitor each raise their event within 2 s;
     - no keystroke content is logged.
@@ -323,18 +323,18 @@ Dates are targets in IST. A box is ticked in the PR that merges the part.
     - face-quality guidance during the system check.
 
     Exit criterion: CPU stays within budget.
-- [ ] **B3 SP-08b Desktop foundation, part 2 (Oct 12–13).**
+- [ ] **B3 SP-08b Desktop foundation, part 2 (Oct 12–13).** Interview path and services done 2026-10-11 (PR from `feat/sp-08b-desktop-interview`); packaging moves to SP-08c, below.
   - **Before the interview:** instructions, itemised consent and accommodations.
   - **The interview UI:**
     - fullscreen and lockdown;
     - the orb, captions, timer and controls;
     - joining the LiveKit room per `interview-session.md`;
     - the workspace host and the upload-drain screen.
-  - **Done on `sp-08b-services`:**
+  - **Done (briefing, consent, ready, the interview over LiveKit, text mode) and, on `sp-08b-services`:**
     - `services_start` and `services_stop` run the SP-11 monitor and proctoring queue, the SP-12 screen, camera and microphone recording, and the segment upload inside the interview;
     - the face module feeds the proctoring queue;
     - the upload-drain screen says "safe to close" only when every segment is settled.
-  - **Still open in B3:** the workspace host, packaging, and the third-eye status in heartbeats (it reports `not_required` until SP-10).
+  - **Still open (SP-08c):** the workspace host for code and whiteboard (with SP-16), packaging, and the third-eye status in heartbeats (it reports `not_required` until SP-13).
   - **Packaging:**
     - NSIS installers for x64 and ARM64;
     - development signing and the signed updater;
