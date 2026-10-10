@@ -4,6 +4,13 @@ import { Room, RoomEvent } from "livekit-client";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslations } from "use-intl";
 import {
+  livekitTracks,
+  nativeDeps,
+  nativeOptions,
+  openLocalTracks,
+} from "../interview/native-services";
+import { InterviewServices } from "../interview/services";
+import {
   CONTROL_TOPIC,
   type ControlAction,
   controlMessage,
@@ -12,7 +19,13 @@ import {
   parseStateMessage,
   STATE_TOPIC,
 } from "../interview/session";
-import { commands, type InterviewState, type StartResult } from "../native/commands";
+import { UPLOAD_POLL_MS, uploadView } from "../interview/upload";
+import {
+  commands,
+  type InterviewState,
+  type StartResult,
+  type UploadProgress,
+} from "../native/commands";
 import { type ErrorKey, errorKey } from "./errors";
 import { ErrorText } from "./shell";
 
@@ -43,13 +56,18 @@ export function InterviewScreen({
   );
   const [error, setError] = useState<ErrorKey | null>(null);
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const [servicesProblem, setServicesProblem] = useState(false);
   const room = useRef<Room | null>(null);
+  const services = useRef<InterviewServices | null>(null);
   const ended = useRef(false);
 
   const finish = useCallback(
     async (reason: "finished" | "candidate_ended") => {
       if (ended.current) return;
       ended.current = true;
+      // Monitoring, the face module and the recording stop first, so their last events and
+      // segments are saved while the interview is still open; the upload carries on after.
+      await services.current?.stop();
       try {
         await commands.complete(interviewId, reason);
       } catch (failure) {
@@ -82,6 +100,24 @@ export function InterviewScreen({
     if (state.status === "completed" || state.voice === "ended") void finish("finished");
   }, [state.status, state.voice, finish]);
 
+  // The interview services (SP-08b): Rust's monitor, proctoring queue and recording, and the
+  // webview's face module and camera/microphone recording that feed them.
+  useEffect(() => {
+    const created = new InterviewServices(interviewId, nativeDeps, {
+      ...nativeOptions,
+      onProblem: () => setServicesProblem(true),
+      onReady: () => setServicesProblem(false),
+    });
+    services.current = created;
+    // Text mode has no room to wait for: the services start now, on a camera and microphone
+    // the app opens itself.
+    if (!start.livekit_url || !start.participant_token) void created.start(openLocalTracks);
+    return () => {
+      created.dispose();
+      if (services.current === created) services.current = null;
+    };
+  }, [interviewId, start.livekit_url, start.participant_token]);
+
   // Voice: join the room, publish the microphone and camera, listen to the agent.
   useEffect(() => {
     if (!start.livekit_url || !start.participant_token) return;
@@ -103,10 +139,14 @@ export function InterviewScreen({
         setConnection("connected");
         await next.localParticipant.setMicrophoneEnabled(true);
         await next.localParticipant.setCameraEnabled(true);
+        // The same camera and microphone tracks go to the face module and the recorder.
+        if (room.current === next) void services.current?.start(async () => livekitTracks(next));
       })
       .catch((failure: unknown) => {
         setConnection("off");
         setError(errorKey(failure));
+        // The interview goes on in text mode, and so does the monitoring.
+        if (room.current === next) void services.current?.start(openLocalTracks);
       });
     return () => {
       next.unregisterTextStreamHandler(CAPTION_TOPIC);
@@ -164,6 +204,12 @@ export function InterviewScreen({
           <p className="max-w-xl text-center text-muted-foreground text-sm">{caption}</p>
         ) : null}
       </div>
+
+      {servicesProblem ? (
+        <p role="status" className="rounded-md bg-warning-subtle p-3 text-sm text-warning">
+          {t("servicesProblem")}
+        </p>
+      ) : null}
 
       {state.notice ? (
         <p role="alert" className="rounded-md bg-warning-subtle p-3 text-sm text-warning">
@@ -234,14 +280,75 @@ export function InterviewScreen({
   );
 }
 
-export function CompletedScreen({ onBack }: { onBack: () => void }) {
+/** Asks Rust how much of the recording the server holds, until it holds all of it. */
+function useUploadProgress(interviewId: string): UploadProgress | null {
+  const [progress, setProgress] = useState<UploadProgress | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    let timer: number | undefined;
+    const poll = async () => {
+      try {
+        const next = await commands.uploadProgress(interviewId);
+        if (cancelled) return;
+        setProgress(next);
+        if (next.done) return;
+      } catch {
+        // Keep the last reading; "safe to close" needs an answer that says so.
+      }
+      if (!cancelled) timer = window.setTimeout(() => void poll(), UPLOAD_POLL_MS);
+    };
+    void poll();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [interviewId]);
+  return progress;
+}
+
+/** PRD §51: the app says it is safe to close only when every segment is acknowledged. */
+export function CompletedScreen({
+  interviewId,
+  onBack,
+}: {
+  interviewId: string;
+  onBack: () => void;
+}) {
   const t = useTranslations("completed");
+  const view = uploadView(useUploadProgress(interviewId));
   return (
     <section className="grid gap-4" aria-labelledby="completed-title">
       <h1 id="completed-title" className="font-semibold text-2xl">
         {t("title")}
       </h1>
       <p>{t("body")}</p>
+      <div className="grid gap-2" aria-live="polite">
+        {view.state === "done" ? (
+          <>
+            <p role="status" className="font-medium text-success">
+              {t("safeToClose")}
+            </p>
+            {view.gaps > 0 ? (
+              <p className="text-muted-foreground text-sm">{t("gaps", { count: view.gaps })}</p>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <progress
+              className="h-2 w-full accent-accent"
+              max={100}
+              value={view.state === "uploading" ? view.percent : undefined}
+              aria-label={t("uploadLabel")}
+            />
+            <p className="text-muted-foreground text-sm">
+              {view.state === "uploading"
+                ? t("uploading", { percent: view.percent, pending: view.pending })
+                : t("checking")}
+            </p>
+            <p className="font-medium">{t("keepOpen")}</p>
+          </>
+        )}
+      </div>
       <Button variant="secondary" className="w-fit" onClick={onBack}>
         {t("back")}
       </Button>

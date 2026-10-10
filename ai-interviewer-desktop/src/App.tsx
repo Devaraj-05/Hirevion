@@ -172,7 +172,7 @@ function CandidateApp() {
           />
         ) : null}
         {state.screen === "completed" ? (
-          <CompletedScreen onBack={() => send({ type: "back" })} />
+          <CompletedScreen interviewId={state.interviewId} onBack={() => send({ type: "back" })} />
         ) : null}
       </Shell>
       <Toaster theme="system" />

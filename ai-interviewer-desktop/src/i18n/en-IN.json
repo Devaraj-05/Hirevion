@@ -215,11 +215,18 @@
     },
     "end": "End the interview",
     "endConfirm": "Yes, end it now",
-    "keepGoing": "Keep going"
+    "keepGoing": "Keep going",
+    "servicesProblem": "Some of the checks that protect your interview didn't start. Please keep this window open; the app is trying again."
   },
   "completed": {
     "title": "Thank you",
-    "body": "Your interview is finished. You can close the app once your recordings have finished uploading.",
-    "back": "Back to your interviews"
+    "body": "Your interview is finished. Please keep this window open until your recordings have finished uploading.",
+    "back": "Back to your interviews",
+    "uploadLabel": "Upload progress",
+    "checking": "Checking your recordings…",
+    "uploading": "{percent}% uploaded. {pending, plural, one {# part} other {# parts}} still to go.",
+    "keepOpen": "Please don't close the app yet.",
+    "safeToClose": "Everything is uploaded. It's safe to close the app.",
+    "gaps": "{count, plural, one {# part of your recording couldn't be uploaded, so the recording will have a gap.} other {# parts of your recording couldn't be uploaded, so the recording will have gaps.}}"
   }
 }

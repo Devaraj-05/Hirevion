@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { SystemCheckPayload } from "../checks/payload";
 import type { CheckResult } from "../checks/types";
+import type { ProctoringEventDraft } from "../vision/types";
 
 /**
  * The Rust side of the app (`src-tauri/src/app`). The webview never holds a token or calls the
@@ -113,7 +114,55 @@ export const commands = {
     }),
   complete: (interviewId: string, reason: "finished" | "candidate_ended") =>
     interviewRequest<{ status: string }>(interviewId, "complete", { reason }),
+  /** Starts the proctor session, the native monitor and recording; safe to call again. */
+  servicesStart: (interviewId: string) =>
+    invoke<ServicesStarted>("services_start", { interviewId }),
+  /** Ends monitoring and screen recording; the rest of the recording uploads in the background. */
+  servicesStop: () => invoke<null>("services_stop"),
+  /** The camera and microphone in use, by label; `null` for one that isn't capturing. */
+  proctoringSetDevices: (camera: string | null, mic: string | null) =>
+    invoke<null>("proctoring_set_devices", { camera, mic }),
+  /** A camera event from the face module; Rust numbers it and sends it with the others. */
+  proctoringEnqueue: (event: ProctoringEventDraft) => invoke<null>("proctoring_enqueue", { event }),
+  uploadProgress: (interviewId: string) =>
+    invoke<UploadProgress>("upload_progress", { interviewId }),
 };
+
+/** What `services_start` reports: which parts run, and which didn't start (try again). */
+export interface ServicesStarted {
+  proctoring: boolean;
+  monitoring: boolean;
+  recording: boolean;
+  screen: boolean;
+  /** The proctor policy's `thresholds` and `accommodations`, for the camera analysis. */
+  policy: { thresholds?: Record<string, unknown>; accommodations?: string[] } | null;
+  problems: { part: "proctoring" | "recording"; code: string }[];
+}
+
+/** How much of the recording the server has acknowledged (the upload-drain screen). */
+export interface UploadProgress {
+  pending: number;
+  pending_bytes: number;
+  acknowledged: number;
+  /** Segments whose file is gone: the server sees a gap. */
+  lost: number;
+  /** Segments the server refused for good. */
+  rejected: number;
+  /** 0 to 100; 100 only when `done`. */
+  percent: number;
+  /** Recording hasn't stopped, so more segments will follow. */
+  recording: boolean;
+  /** Nothing left to upload and nothing more to record: closing the app is safe. */
+  done: boolean;
+}
+
+/** Events Rust sends the webview while the services run. */
+export const SERVICES_EVENTS = {
+  /** The server won't take a camera or microphone track (payload: the track name). */
+  trackRefused: "hv:track-refused",
+  /** The services are stopping: stop recording the camera and microphone. */
+  stopMedia: "hv:stop-media",
+} as const;
 
 /** The interview calls (contract interview-session), made by Rust with the session token. */
 export type InterviewAction =
