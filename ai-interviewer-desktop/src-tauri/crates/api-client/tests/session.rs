@@ -340,3 +340,60 @@ async fn signing_out_when_signed_out_is_fine() {
     let f = fixture().await;
     f.session.sign_out().await.expect("nothing to do");
 }
+
+#[tokio::test]
+async fn a_token_the_server_rejects_is_refreshed_once_and_the_call_retried() {
+    let f = fixture().await;
+    mount_login(&f.server, "at_1", 600, "rt_1").await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/candidate-auth/me"))
+        .and(header("authorization", "DPoP at_1"))
+        .respond_with(ResponseTemplate::new(401).set_body_json(problem(401, "token-invalid")))
+        .expect(1)
+        .mount(&f.server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/api/v1/candidate-auth/refresh"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(token_pair("at_2", 600, "rt_2")))
+        .expect(1)
+        .mount(&f.server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/candidate-auth/me"))
+        .and(header("authorization", "DPoP at_2"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "candidate": { "id": "c-1", "name": "Asha Rao", "email": "asha@example.test", "locale": "en-IN" },
+            "organization": { "id": "o-1", "name": "Acme", "support_email": null },
+            "interviews": []
+        })))
+        .expect(1)
+        .mount(&f.server)
+        .await;
+
+    f.session.sign_in(&login_request()).await.expect("sign in");
+    let me = f.session.me().await.expect("me after one refresh");
+    assert_eq!(me.candidate.name, "Asha Rao");
+    assert_eq!(stored(&f.vault).as_deref(), Some("rt_2"));
+}
+
+#[tokio::test]
+async fn a_token_rejected_again_after_refreshing_ends_the_session() {
+    let f = fixture().await;
+    mount_login(&f.server, "at_1", 600, "rt_1").await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/candidate-auth/me"))
+        .respond_with(ResponseTemplate::new(401).set_body_json(problem(401, "token-invalid")))
+        .expect(2)
+        .mount(&f.server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/api/v1/candidate-auth/refresh"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(token_pair("at_2", 600, "rt_2")))
+        .expect(1)
+        .mount(&f.server)
+        .await;
+
+    f.session.sign_in(&login_request()).await.expect("sign in");
+    assert!(matches!(f.session.me().await, Err(ApiError::SignedOut)));
+    assert_eq!(stored(&f.vault), None);
+}

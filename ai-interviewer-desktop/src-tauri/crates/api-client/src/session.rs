@@ -96,14 +96,45 @@ impl SessionManager {
 
     /// The candidate, organisation and interview list.
     pub async fn me(&self) -> Result<Me, ApiError> {
-        let token = self.access_token().await?;
-        auth::me(&self.api, &token).await
+        self.authorized(|token| async move { auth::me(&self.api, &token).await })
+            .await
     }
 
     /// An interview-session token for one interview.
     pub async fn session_token(&self, interview_id: &str) -> Result<SessionToken, ApiError> {
+        self.authorized(|token| async move {
+            auth::session_token(&self.api, &token, interview_id).await
+        })
+        .await
+    }
+
+    /// Runs `call` with a valid access token. The server answers `401 token-invalid` for an
+    /// expired or revoked token (contract candidate-auth): that forces one refresh and one
+    /// retry, and a second refusal ends the session.
+    async fn authorized<T, F, Fut>(&self, call: F) -> Result<T, ApiError>
+    where
+        F: Fn(String) -> Fut,
+        Fut: std::future::Future<Output = Result<T, ApiError>>,
+    {
         let token = self.access_token().await?;
-        auth::session_token(&self.api, &token, interview_id).await
+        match call(token).await {
+            Err(error) if error.is_problem("token-invalid") => {}
+            other => return other,
+        }
+        let token = {
+            let mut access = self.access.lock().await;
+            // Forget the rejected token, so the next one comes from the refresh token.
+            *access = None;
+            self.fresh_token(&mut access).await?
+        };
+        match call(token).await {
+            Err(error) if error.is_problem("token-invalid") => {
+                let mut access = self.access.lock().await;
+                self.clear(&mut access);
+                Err(ApiError::SignedOut)
+            }
+            other => other,
+        }
     }
 
     /// Signs out: revokes the refresh family on the server, then forgets the tokens.
