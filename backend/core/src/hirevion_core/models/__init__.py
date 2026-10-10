@@ -43,6 +43,7 @@ from hirevion_core.models.job import Job, JobSkill, JobVersion
 from hirevion_core.models.organization import Organization
 from hirevion_core.models.outbox_event import OutboxEvent
 from hirevion_core.models.quota import Quota
+from hirevion_core.models.recording import Recording, RecordingSegment
 from hirevion_core.models.role import Role, RolePermission, UserRole
 from hirevion_core.models.screening import ApplicationHistory, ScreeningConfig, ScreeningResult
 from hirevion_core.models.skill import Skill, SkillAlias
@@ -90,6 +91,8 @@ __all__ = [
     "Question",
     "QuestionVersion",
     "Quota",
+    "Recording",
+    "RecordingSegment",
     "Role",
     "RolePermission",
     "ScreeningConfig",
