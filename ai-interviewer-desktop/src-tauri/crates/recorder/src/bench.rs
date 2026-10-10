@@ -19,6 +19,8 @@ pub struct BenchArgs {
     pub hardware: bool,
     pub border: bool,
     pub all_displays: bool,
+    /// NV12 textures in the converter ring (ADR-0006 follow-up: try 4 instead of 8).
+    pub ring: usize,
 }
 
 impl Default for BenchArgs {
@@ -39,6 +41,7 @@ impl Default for BenchArgs {
             hardware: true,
             border: true,
             all_displays: true,
+            ring: 8,
         }
     }
 }
@@ -62,6 +65,7 @@ pub fn parse(args: impl IntoIterator<Item = String>) -> Result<BenchArgs, String
             "--bitrate" => parsed.bitrate = positive(&option, args.next())?,
             "--gop-seconds" => parsed.gop_seconds = positive(&option, args.next())?,
             "--quality" => parsed.quality = Some(quality(&option, args.next())?),
+            "--ring" => parsed.ring = positive(&option, args.next())?,
             _ => return Err(format!("unknown option {option}")),
         }
     }
@@ -140,8 +144,11 @@ mod tests {
             "--software",
             "--no-border",
             "--primary-only",
+            "--ring",
+            "4",
         ])
         .expect("valid options");
+        assert_eq!(args.ring, 4);
         assert_eq!(args.seconds, 5);
         assert_eq!(args.fps, 30);
         assert_eq!(args.segment_seconds, 2);

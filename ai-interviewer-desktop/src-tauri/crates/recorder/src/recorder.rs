@@ -1,12 +1,16 @@
-//! The recording loop: one thread per display captures at a fixed rate, converts on the
-//! GPU, encodes H.264 and rotates to a new MP4 segment every few seconds. Opening a
-//! segment's encoder (about 350 ms for Intel Quick Sync) happens ahead of time on a helper
-//! thread, and finished segments are hashed and saved by a finalizer thread, so the capture
-//! loop never waits for either.
+//! The screen recording service: one thread per display captures at a fixed rate, converts
+//! on the GPU, encodes H.264 and rotates to a new MP4 segment every few seconds (ADR-0006).
+//!
+//! - Opening a segment's encoder (about 350 ms for Intel Quick Sync) happens ahead of time on
+//!   a helper thread, so rotation never stalls capture.
+//! - Finished segments are finalized on a separate thread and handed, still in memory, to a
+//!   [`SegmentSink`] (the encrypted segment store). Nothing is written to disk unencrypted.
+//! - Each segment carries its track (`screen-1` is the primary display), its seq (from 0) and
+//!   its first frame's time in server milliseconds.
 
 use crate::clock::FrameClock;
-use crate::hash::{hex, sha256};
 use crate::mp4::looks_like_mp4;
+use crate::timeline::{duration_ms, screen_tracks, server_ms_at};
 use crate::writer::{self, DeviceManager, EncoderConfig, RateControl, SegmentWriter};
 use hv_screen_capture::capture::{CaptureOptions, CapturedFrame, MonitorCapture};
 use hv_screen_capture::context::Context;
@@ -14,28 +18,33 @@ use hv_screen_capture::convert::Nv12Converter;
 use hv_screen_capture::device::{GpuDevice, init_com_mta};
 use hv_screen_capture::geometry::{Size, fit_even};
 use hv_screen_capture::monitors::{self, MonitorInfo};
-use std::fs;
-use std::io::Write as _;
-use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::thread::{self, JoinHandle};
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant};
 use windows::Win32::Foundation::{E_FAIL, E_INVALIDARG};
 use windows_core::{Error, Result};
 
-/// NV12 textures the converter cycles through. It must exceed the frames a hardware
-/// encoder keeps in flight.
-const CONVERTER_RING: usize = 8;
+/// The server's clock: milliseconds since the Unix epoch (the API client's
+/// `server_now_ms`). Segment start times are stamped with it.
+pub type ServerClock = Arc<dyn Fn() -> i64 + Send + Sync>;
 
-/// Called on the finalizer thread after each segment is saved.
-pub type SegmentCallback = Arc<dyn Fn(&SegmentRecord) + Send + Sync>;
+/// Receives finished segments, on each display's finalizer thread.
+pub trait SegmentSink: Send + Sync {
+    /// A complete segment. Store it (encrypted) quickly: the next one follows in seconds.
+    fn segment(&self, segment: RecordedSegment);
 
-/// What to record.
-#[derive(Clone)]
+    /// A display stopped recording (capture or encoder failure). Its finished segments were
+    /// already delivered.
+    fn display_failed(&self, track: &str, error: &str) {
+        let _ = (track, error);
+    }
+}
+
+/// What to record. The defaults are ADR-0006's measured settings.
+#[derive(Debug, Clone)]
 pub struct RecorderConfig {
-    pub out_dir: PathBuf,
     pub fps: u32,
     pub segment_seconds: u32,
     pub max_size: Size,
@@ -45,19 +54,73 @@ pub struct RecorderConfig {
     pub hardware: bool,
     pub border: bool,
     pub all_displays: bool,
-    pub on_segment: Option<SegmentCallback>,
+    /// NV12 textures the converter cycles through; must exceed the frames a hardware
+    /// encoder keeps in flight.
+    pub converter_ring: usize,
 }
 
-/// One finished segment on disk.
+impl Default for RecorderConfig {
+    fn default() -> Self {
+        Self {
+            fps: 15,
+            segment_seconds: 10,
+            max_size: Size {
+                width: 1920,
+                height: 1080,
+            },
+            bitrate: 1_500_000,
+            // Constant quality 50 with one keyframe per segment.
+            rate_control: RateControl::Quality(50),
+            gop_seconds: 10,
+            hardware: true,
+            border: true,
+            all_displays: true,
+            converter_ring: 8,
+        }
+    }
+}
+
+/// One finished segment, in memory.
+pub struct RecordedSegment {
+    /// `screen-1`, `screen-2`, …
+    pub track: String,
+    /// The display's index in Windows' order.
+    pub display: usize,
+    /// From 0 per track.
+    pub seq: u64,
+    /// The first frame's time, in server milliseconds.
+    pub started_at_ms: i64,
+    pub duration_ms: u32,
+    pub frames: u32,
+    /// The MP4 file.
+    pub bytes: Vec<u8>,
+    pub finalize_ms: f64,
+    pub valid_mp4: bool,
+}
+
+impl std::fmt::Debug for RecordedSegment {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RecordedSegment")
+            .field("track", &self.track)
+            .field("seq", &self.seq)
+            .field("started_at_ms", &self.started_at_ms)
+            .field("duration_ms", &self.duration_ms)
+            .field("frames", &self.frames)
+            .field("bytes", &self.bytes.len())
+            .field("valid_mp4", &self.valid_mp4)
+            .finish_non_exhaustive()
+    }
+}
+
+/// A segment's description, kept in the report.
 #[derive(Debug, Clone)]
 pub struct SegmentRecord {
-    pub display: usize,
+    pub track: String,
     pub seq: u64,
-    pub path: PathBuf,
-    pub started_unix_ms: u128,
+    pub started_at_ms: i64,
+    pub duration_ms: u32,
     pub frames: u32,
     pub bytes: usize,
-    pub sha256: String,
     pub finalize_ms: f64,
     pub valid_mp4: bool,
 }
@@ -66,6 +129,7 @@ pub struct SegmentRecord {
 #[derive(Debug, Clone, Default)]
 pub struct DisplayReport {
     pub display: usize,
+    pub track: String,
     pub monitor: String,
     pub adapter: String,
     pub source: Size,
@@ -84,41 +148,75 @@ pub struct DisplayReport {
     /// Time to open the next segment's writer at each rotation.
     pub rotate_ms: Vec<f64>,
     pub segments: Vec<SegmentRecord>,
+    /// Segments whose MP4 couldn't be finished.
+    pub failed_segments: u64,
     pub error: Option<String>,
 }
 
-/// A running recorder; call [`Recorder::stop`] to finish the last segments.
+/// A running recording of every display; call [`Recorder::stop`] to finish the last
+/// segments.
 pub struct Recorder {
     stop: Arc<AtomicBool>,
     threads: Vec<JoinHandle<DisplayReport>>,
+    tracks: Vec<String>,
 }
 
 impl Recorder {
-    pub fn start(config: RecorderConfig) -> Result<Self> {
+    /// Starts one recording thread per display (or only the primary one).
+    pub fn start(
+        config: RecorderConfig,
+        sink: Arc<dyn SegmentSink>,
+        clock: ServerClock,
+    ) -> Result<Self> {
         if FrameClock::new(config.fps, config.segment_seconds).is_none() {
             return Err(Error::new(
                 E_INVALIDARG,
                 "fps and segment length must be positive",
             ));
         }
-        let displays: Vec<MonitorInfo> = monitors::enumerate()?
-            .into_iter()
-            .filter(|monitor| config.all_displays || monitor.primary)
-            .collect();
+        let displays = monitors::enumerate()?;
+        let primary: Vec<bool> = displays.iter().map(|monitor| monitor.primary).collect();
         let stop = Arc::new(AtomicBool::new(false));
-        let threads = displays
-            .into_iter()
-            .enumerate()
-            .map(|(display, monitor)| {
-                let config = config.clone();
-                let stop = Arc::clone(&stop);
-                thread::spawn(move || record_display(display, &monitor, &config, &stop))
-            })
-            .collect();
-        Ok(Self { stop, threads })
+        let mut threads = Vec::new();
+        let mut tracks = Vec::new();
+        for (display, track) in screen_tracks(&primary) {
+            if !config.all_displays && !displays[display].primary {
+                continue;
+            }
+            let monitor = displays[display].clone();
+            let job = DisplayJob {
+                display,
+                track: track.clone(),
+                monitor,
+                config: config.clone(),
+                sink: Arc::clone(&sink),
+                clock: Arc::clone(&clock),
+            };
+            let stop = Arc::clone(&stop);
+            threads.push(thread::spawn(move || record_display(job, &stop)));
+            tracks.push(track);
+        }
+        Ok(Self {
+            stop,
+            threads,
+            tracks,
+        })
     }
 
-    /// Stops every display, waits for the last segments to be saved and returns the reports.
+    /// The tracks being recorded, `screen-1` first.
+    #[must_use]
+    pub fn tracks(&self) -> &[String] {
+        &self.tracks
+    }
+
+    /// Whether every display thread is still recording.
+    #[must_use]
+    pub fn is_recording(&self) -> bool {
+        !self.threads.iter().any(JoinHandle::is_finished)
+    }
+
+    /// Stops every display, waits for the last segments to reach the sink and returns the
+    /// reports.
     #[must_use]
     pub fn stop(self) -> Vec<DisplayReport> {
         self.stop.store(true, Ordering::Relaxed);
@@ -134,49 +232,57 @@ impl Recorder {
     }
 }
 
+struct DisplayJob {
+    display: usize,
+    track: String,
+    monitor: MonitorInfo,
+    config: RecorderConfig,
+    sink: Arc<dyn SegmentSink>,
+    clock: ServerClock,
+}
+
 struct Pending {
     seq: u64,
-    started: SystemTime,
+    started_at_ms: i64,
     writer: SegmentWriter,
 }
 
-fn record_display(
-    display: usize,
-    monitor: &MonitorInfo,
-    config: &RecorderConfig,
-    stop: &AtomicBool,
-) -> DisplayReport {
+fn record_display(job: DisplayJob, stop: &AtomicBool) -> DisplayReport {
     let mut report = DisplayReport {
-        display,
-        monitor: monitor.name.clone(),
+        display: job.display,
+        track: job.track.clone(),
+        monitor: job.monitor.name.clone(),
         ..DisplayReport::default()
     };
-    let dir = config.out_dir.join(format!("display-{display}"));
     let (to_finalizer, pending) = mpsc::channel::<Pending>();
     let finalizer = {
-        let dir = dir.clone();
-        let callback = config.on_segment.clone();
-        thread::spawn(move || finalize_segments(display, &dir, &pending, callback.as_ref()))
+        let track = job.track.clone();
+        let sink = Arc::clone(&job.sink);
+        let frame_clock = FrameClock::new(job.config.fps, job.config.segment_seconds);
+        thread::spawn(move || finalize_segments(&track, job.display, frame_clock, &pending, &*sink))
     };
-    if let Err(error) = capture_loop(monitor, config, stop, &dir, &to_finalizer, &mut report) {
-        report.error = Some(error.message());
-    }
+    let result = capture_loop(&job, stop, &to_finalizer, &mut report);
     drop(to_finalizer);
-    report.segments = finalizer.join().unwrap_or_default();
+    let (segments, failed) = finalizer.join().unwrap_or_default();
+    report.segments = segments;
+    report.failed_segments = failed;
+    if let Err(error) = result {
+        let message = error.message();
+        job.sink.display_failed(&job.track, &message);
+        report.error = Some(message);
+    }
     report
 }
 
 fn capture_loop(
-    monitor: &MonitorInfo,
-    config: &RecorderConfig,
+    job: &DisplayJob,
     stop: &AtomicBool,
-    dir: &Path,
     to_finalizer: &mpsc::Sender<Pending>,
     report: &mut DisplayReport,
 ) -> Result<()> {
+    let config = &job.config;
     init_com_mta().context("join the COM multithreaded apartment")?;
     writer::startup()?;
-    fs::create_dir_all(dir).map_err(|error| Error::new(E_INVALIDARG, error.to_string()))?;
     let clock = FrameClock::new(config.fps, config.segment_seconds)
         .ok_or_else(|| Error::new(E_INVALIDARG, "fps and segment length must be positive"))?;
     let interval = Duration::from_secs(1) / config.fps;
@@ -189,11 +295,12 @@ fn capture_loop(
         border: config.border,
         min_interval: Some(interval),
     };
-    let mut capture = MonitorCapture::start(&gpu, monitor.hmonitor(), options)?;
+    let mut capture = MonitorCapture::start(&gpu, job.monitor.hmonitor(), options)?;
     let first = first_frame(&mut capture, Duration::from_secs(3))?;
     report.source = first.size;
     report.output = fit_even(first.size, config.max_size);
-    let mut converter = Nv12Converter::new(&gpu, first.size, report.output, CONVERTER_RING)?;
+    let ring = config.converter_ring.max(2);
+    let mut converter = Nv12Converter::new(&gpu, first.size, report.output, ring)?;
     let mut current = converter.convert(&first.texture)?;
     drop(first);
 
@@ -208,8 +315,9 @@ fn capture_loop(
     let writers = WriterFactory::start(manager, encoder);
     let mut writer = writers.take()?;
     report.transforms = writer.transforms().to_owned();
-    let mut segment_started = SystemTime::now();
     let start = Instant::now();
+    let origin_ms = (job.clock)();
+    let mut segment_started_ms = origin_ms;
     let mut frame: u64 = 0;
 
     while !stop.load(Ordering::Relaxed) {
@@ -228,10 +336,13 @@ fn capture_loop(
             let rotation = Instant::now();
             let next = writers.take()?;
             let finished = std::mem::replace(&mut writer, next);
-            let started = std::mem::replace(&mut segment_started, SystemTime::now());
+            let started_at_ms = std::mem::replace(
+                &mut segment_started_ms,
+                server_ms_at(origin_ms, start, work),
+            );
             let _ = to_finalizer.send(Pending {
                 seq: position.seq - 1,
-                started,
+                started_at_ms,
                 writer: finished,
             });
             report.rotate_ms.push(millis(rotation.elapsed()));
@@ -240,7 +351,7 @@ fn capture_loop(
         if let Some(captured) = capture.latest()? {
             if captured.size != converter.source_size() {
                 // The display changed resolution: keep the encoder's size and rescale into it.
-                converter = Nv12Converter::new(&gpu, captured.size, report.output, CONVERTER_RING)?;
+                converter = Nv12Converter::new(&gpu, captured.size, report.output, ring)?;
             }
             current = converter.convert(&captured.texture)?;
         } else {
@@ -260,7 +371,7 @@ fn capture_loop(
         let seq = clock.position(frame.saturating_sub(1)).seq;
         let _ = to_finalizer.send(Pending {
             seq,
-            started: segment_started,
+            started_at_ms: segment_started_ms,
             writer,
         });
     }
@@ -338,74 +449,54 @@ fn first_frame(capture: &mut MonitorCapture, timeout: Duration) -> Result<Captur
     }
 }
 
+/// Finishes each segment's MP4 and hands it to the sink. Returns the descriptions and the
+/// number of segments that couldn't be finished.
 fn finalize_segments(
+    track: &str,
     display: usize,
-    dir: &Path,
+    clock: Option<FrameClock>,
     pending: &mpsc::Receiver<Pending>,
-    callback: Option<&SegmentCallback>,
-) -> Vec<SegmentRecord> {
+    sink: &dyn SegmentSink,
+) -> (Vec<SegmentRecord>, u64) {
     let _ = init_com_mta();
     let mut records = Vec::new();
+    let mut failed = 0;
     for Pending {
         seq,
-        started,
+        started_at_ms,
         writer,
     } in pending
     {
         let frames = writer.frames();
         let finalize = Instant::now();
         let Ok(bytes) = writer.finish() else {
+            failed += 1;
             continue;
         };
-        let finalize_ms = millis(finalize.elapsed());
-        let path = dir.join(format!("{seq:06}.mp4"));
-        if fs::write(&path, &bytes).is_err() {
-            continue;
-        }
         let record = SegmentRecord {
-            display,
+            track: track.to_owned(),
             seq,
-            path,
-            started_unix_ms: started
-                .duration_since(UNIX_EPOCH)
-                .map_or(0, |d| d.as_millis()),
+            started_at_ms,
+            duration_ms: clock.map_or(0, |clock| duration_ms(&clock, frames)),
             frames,
             bytes: bytes.len(),
-            sha256: sha256(&bytes)
-                .map(|digest| hex(&digest))
-                .unwrap_or_default(),
-            finalize_ms,
+            finalize_ms: millis(finalize.elapsed()),
             valid_mp4: looks_like_mp4(&bytes),
         };
-        append_manifest(dir, &record);
-        if let Some(callback) = callback {
-            callback(&record);
-        }
+        sink.segment(RecordedSegment {
+            track: record.track.clone(),
+            display,
+            seq,
+            started_at_ms,
+            duration_ms: record.duration_ms,
+            frames,
+            bytes,
+            finalize_ms: record.finalize_ms,
+            valid_mp4: record.valid_mp4,
+        });
         records.push(record);
     }
-    records
-}
-
-fn append_manifest(dir: &Path, record: &SegmentRecord) {
-    let line = format!(
-        "{{\"display\":{},\"seq\":{},\"started_unix_ms\":{},\"frames\":{},\"bytes\":{},\
-         \"sha256\":\"{}\",\"finalize_ms\":{:.1},\"valid_mp4\":{}}}\n",
-        record.display,
-        record.seq,
-        record.started_unix_ms,
-        record.frames,
-        record.bytes,
-        record.sha256,
-        record.finalize_ms,
-        record.valid_mp4
-    );
-    if let Ok(mut file) = fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(dir.join("manifest.jsonl"))
-    {
-        let _ = file.write_all(line.as_bytes());
-    }
+    (records, failed)
 }
 
 fn millis(duration: Duration) -> f64 {

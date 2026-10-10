@@ -1,20 +1,26 @@
-//! Records the screen for a while and reports CPU, sizes and timings (SP-00d).
+//! Records the screen for a while and reports CPU, sizes and timings (SP-00d, SP-12).
 //!
 //! cargo run --release -p hv-recorder --example capture_bench -- --seconds 60 --out <dir>
 //! Defaults (ADR-0006): 15 fps, 10 s segments, up to 1920x1080, constant quality 50,
-//! one keyframe per segment, hardware encoder when available.
-//! Options: --fps --segment-seconds --max-width --max-height --quality 1-100
+//! one keyframe per segment, hardware encoder when available, an 8-texture ring.
+//! Options: --fps --segment-seconds --max-width --max-height --quality 1-100 --ring
 //!          --vbr --bitrate --gop-seconds --software --no-border --primary-only
+//!
+//! A development tool: it writes the segments to `<out>/<track>/` UNENCRYPTED so they can be
+//! inspected with ffprobe. The app hands them to the encrypted segment store instead.
 
 use hv_recorder::bench::{self, BenchArgs};
 use hv_recorder::process;
-use hv_recorder::recorder::{DisplayReport, Recorder, RecorderConfig, SegmentRecord};
+use hv_recorder::recorder::{
+    DisplayReport, RecordedSegment, Recorder, RecorderConfig, SegmentSink, ServerClock,
+};
 use hv_recorder::stats::{cpu_percent, percentile};
 use hv_recorder::writer::RateControl;
+use std::path::PathBuf;
 use std::process::ExitCode;
 use std::sync::Arc;
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use windows::Win32::UI::HiDpi::{
     DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, SetProcessDpiAwarenessContext,
 };
@@ -38,24 +44,39 @@ fn main() -> ExitCode {
     }
 }
 
-fn run(args: &BenchArgs) -> windows_core::Result<()> {
-    let on_segment: Arc<dyn Fn(&SegmentRecord) + Send + Sync> = Arc::new(|record| {
+/// Saves each segment as `<out>/<track>/<seq>.mp4` and prints a line about it.
+struct DirectorySink(PathBuf);
+
+impl SegmentSink for DirectorySink {
+    fn segment(&self, segment: RecordedSegment) {
+        let dir = self.0.join(&segment.track);
+        let saved = std::fs::create_dir_all(&dir).and_then(|()| {
+            std::fs::write(dir.join(format!("{:06}.mp4", segment.seq)), &segment.bytes)
+        });
         println!(
-            "display {} segment {:06}: {} frames, {:.2} MB, finalize {:.0} ms{}",
-            record.display,
-            record.seq,
-            record.frames,
-            megabytes(record.bytes),
-            record.finalize_ms,
-            if record.valid_mp4 {
+            "{} segment {:06}: {} frames, {} ms, {:.2} MB, finalize {:.0} ms{}{}",
+            segment.track,
+            segment.seq,
+            segment.frames,
+            segment.duration_ms,
+            megabytes(segment.bytes.len()),
+            segment.finalize_ms,
+            if segment.valid_mp4 {
                 ""
             } else {
                 ", NOT A COMPLETE MP4"
-            }
+            },
+            if saved.is_ok() { "" } else { ", NOT SAVED" }
         );
-    });
+    }
+
+    fn display_failed(&self, track: &str, error: &str) {
+        println!("{track} stopped: {error}");
+    }
+}
+
+fn run(args: &BenchArgs) -> windows_core::Result<()> {
     let config = RecorderConfig {
-        out_dir: args.out.clone(),
         fps: args.fps,
         segment_seconds: args.segment_seconds,
         max_size: args.max_size,
@@ -65,10 +86,10 @@ fn run(args: &BenchArgs) -> windows_core::Result<()> {
         hardware: args.hardware,
         border: args.border,
         all_displays: args.all_displays,
-        on_segment: Some(on_segment),
+        converter_ring: args.ring,
     };
     println!(
-        "recording {} s at {} fps, {} s segments, {}, {} encoder -> {}",
+        "recording {} s at {} fps, {} s segments, {}, {} encoder, {}-texture ring -> {}",
         args.seconds,
         args.fps,
         args.segment_seconds,
@@ -81,12 +102,19 @@ fn run(args: &BenchArgs) -> windows_core::Result<()> {
         } else {
             "software"
         },
+        args.ring,
         args.out.display()
     );
+    // The bench has no server: local time stands in for the server clock.
+    let clock: ServerClock = Arc::new(|| {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_or(0, |d| i64::try_from(d.as_millis()).unwrap_or(i64::MAX))
+    });
 
     let cpu_start = process::cpu_snapshot()?;
     let started = Instant::now();
-    let recorder = Recorder::start(config)?;
+    let recorder = Recorder::start(config, Arc::new(DirectorySink(args.out.clone())), clock)?;
     thread::sleep(Duration::from_secs(args.seconds));
     let reports = recorder.stop();
     let elapsed = started.elapsed();
@@ -110,8 +138,8 @@ fn run(args: &BenchArgs) -> windows_core::Result<()> {
 
 fn print_display(report: &DisplayReport, elapsed: Duration, fps: u32) {
     println!(
-        "\ndisplay {} ({}) on {}",
-        report.display, report.monitor, report.adapter
+        "\n{} (display {}, {}) on {}",
+        report.track, report.display, report.monitor, report.adapter
     );
     if let Some(error) = &report.error {
         println!("  ERROR: {error}");
@@ -142,11 +170,20 @@ fn print_display(report: &DisplayReport, elapsed: Duration, fps: u32) {
     let valid = report.segments.iter().filter(|s| s.valid_mp4).count();
     let minutes = elapsed.as_secs_f64() / 60.0;
     println!(
-        "  segments: {} ({valid} complete MP4s), {:.1} MB total, {:.1} MB per minute",
+        "  segments: {} ({valid} complete MP4s, {} failed), {:.1} MB total, {:.1} MB per minute",
         report.segments.len(),
+        report.failed_segments,
         megabytes(bytes),
         megabytes(bytes) / minutes.max(f64::EPSILON)
     );
+    let starts: Vec<String> = report
+        .segments
+        .windows(2)
+        .map(|pair| format!("{}", pair[1].started_at_ms - pair[0].started_at_ms))
+        .collect();
+    if !starts.is_empty() {
+        println!("  start-to-start (ms): {}", starts.join(", "));
+    }
 }
 
 fn print_timing(label: &str, values: &[f64]) {

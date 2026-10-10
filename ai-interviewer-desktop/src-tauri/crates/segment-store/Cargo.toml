@@ -1,0 +1,22 @@
+[package]
+name = "hv-segment-store"
+description = "The encrypted local queue of recording segments: AES-256-GCM files and a crash-safe SQLite manifest."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+aes-gcm = { version = "0.10.3", features = ["std", "zeroize"] }
+hv-security = { path = "../security" }
+# SQLite is public domain; `bundled` compiles it in, so no system library is needed.
+rusqlite = { version = "0.40.2", default-features = false, features = ["bundled"] }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"
+sha2 = "0.10.9"
+thiserror = "2.0.17"
+uuid = { version = "1.18.1", features = ["v4"] }
+zeroize = "1.9.1"
