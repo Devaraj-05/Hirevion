@@ -12,11 +12,18 @@
 
 mod event;
 mod policy;
+mod queue;
 mod rules;
+mod uploader;
 
 pub use event::{EventDraft, EventName, Evidence, ProctorEvent, Source, rfc3339_ms};
 pub use policy::{
     AppRule, AppRules, BlockMatch, Condition, MatchKind, PolicyMatcher, SessionPolicy,
     SeverityHint, Threshold,
 };
+pub use queue::EventQueue;
 pub use rules::{DeviceRules, Thresholds};
+pub use uploader::{
+    ApiSource, DeviceStatus, SESSION_CLOSED, UploadState, Uploader, UploaderConfig, UploaderHandle,
+    open_session,
+};
