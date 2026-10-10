@@ -94,6 +94,8 @@ pub async fn sign_out(state: State<'_, AppState>) -> CommandResult<()> {
     match &state.backend {
         Backend::Stub(stub) => stub.sign_out(),
         Backend::Live(session) => {
+            // The uploads need the session; the segments wait on disk for the next sign-in.
+            state.services.cancel_background();
             let _ = session.sign_out().await;
         }
     }
@@ -104,7 +106,12 @@ pub async fn sign_out(state: State<'_, AppState>) -> CommandResult<()> {
 pub async fn profile(state: State<'_, AppState>) -> CommandResult<ProfileView> {
     match &state.backend {
         Backend::Stub(stub) => stub.profile(),
-        Backend::Live(session) => Ok(session.me().await?.into()),
+        Backend::Live(session) => {
+            let me = session.me().await?;
+            // Signed in: upload what an earlier run (a crash, a closed laptop) left behind.
+            state.services.resume_pending();
+            Ok(me.into())
+        }
     }
 }
 

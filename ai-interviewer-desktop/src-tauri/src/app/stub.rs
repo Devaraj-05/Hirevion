@@ -300,18 +300,31 @@ mod tests {
     fn runs_a_text_mode_interview_to_the_end() {
         let stub = Stub::default();
         assert_eq!(
-            stub.interview("iv", InterviewAction::Briefing, None).unwrap_err().code,
+            stub.interview("iv", InterviewAction::Briefing, None)
+                .unwrap_err()
+                .code,
             "signed-out"
         );
         stub.sign_in("asha@x.test", PASSWORD).expect("signed in");
-        let briefing = stub.interview("iv", InterviewAction::Briefing, None).expect("briefing");
-        assert_eq!(briefing["notice"]["items"].as_array().map(Vec::len), Some(10));
-        let started = stub.interview("iv", InterviewAction::Start, None).expect("start");
+        let briefing = stub
+            .interview("iv", InterviewAction::Briefing, None)
+            .expect("briefing");
+        assert_eq!(
+            briefing["notice"]["items"].as_array().map(Vec::len),
+            Some(10)
+        );
+        let started = stub
+            .interview("iv", InterviewAction::Start, None)
+            .expect("start");
         assert_eq!(started["state"]["question"]["index"], 1);
         let mut state = started;
         for _ in 0..QUESTIONS.len() {
             state = stub
-                .interview("iv", InterviewAction::Answer, Some(&json!({ "text": "an answer" })))
+                .interview(
+                    "iv",
+                    InterviewAction::Answer,
+                    Some(&json!({ "text": "an answer" })),
+                )
                 .expect("answer");
         }
         assert_eq!(state["state"]["status"], "completed");

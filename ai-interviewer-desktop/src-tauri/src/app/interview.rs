@@ -43,18 +43,23 @@ impl InterviewAction {
     }
 }
 
-/// Interview ids are UUIDs; anything else never reaches a URL path.
-pub fn interview_path(interview_id: &str, rest: &str) -> CommandResult<String> {
+/// Interview ids are UUIDs; anything else never reaches a URL path, a file name or a store.
+pub fn check_interview_id(interview_id: &str) -> CommandResult<()> {
     let valid = !interview_id.is_empty()
         && interview_id.len() <= 64
         && interview_id
             .chars()
             .all(|c| c.is_ascii_hexdigit() || c == '-');
     if valid {
-        Ok(format!("interviews/{interview_id}/{rest}"))
+        Ok(())
     } else {
         Err(CommandError::new("invalid-interview", None))
     }
+}
+
+pub fn interview_path(interview_id: &str, rest: &str) -> CommandResult<String> {
+    check_interview_id(interview_id)?;
+    Ok(format!("interviews/{interview_id}/{rest}"))
 }
 
 /// Session tokens per interview, kept until the server rejects one.
@@ -62,11 +67,11 @@ pub fn interview_path(interview_id: &str, rest: &str) -> CommandResult<String> {
 pub struct SessionTokens(Mutex<HashMap<String, String>>);
 
 impl SessionTokens {
-    fn get(&self, interview_id: &str) -> Option<String> {
+    pub fn get(&self, interview_id: &str) -> Option<String> {
         self.0.lock().ok()?.get(interview_id).cloned()
     }
 
-    fn put(&self, interview_id: &str, token: String) {
+    pub fn put(&self, interview_id: &str, token: String) {
         if let Ok(mut tokens) = self.0.lock() {
             tokens.insert(interview_id.to_owned(), token);
         }
@@ -79,7 +84,7 @@ impl SessionTokens {
     }
 }
 
-async fn session_token(
+pub async fn session_token(
     session: &SessionManager,
     tokens: &SessionTokens,
     interview_id: &str,

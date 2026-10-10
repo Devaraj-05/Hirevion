@@ -80,11 +80,19 @@ serde_json = "1"
 tauri = { version = "2.12.0", features = [] }
 tauri-plugin-single-instance = "2"
 url = "2"
+# SP-08b: the watchers, the proctoring queue and the recording pipeline run inside the app.
+tokio = { version = "1.47.1", features = ["macros", "rt", "sync", "time"] }
 hv-api-client = { path = "crates/api-client" }
+hv-event-queue = { path = "crates/event-queue" }
+hv-monitor = { path = "crates/monitor" }
 hv-security = { path = "crates/security" }
+hv-segment-store = { path = "crates/segment-store" }
 hv-system-check = { path = "crates/system-check" }
+hv-uploader = { path = "crates/uploader" }
 
 [target.'cfg(windows)'.dependencies]
+# The screen recorder is Media Foundation, so it exists on Windows only.
+hv-recorder = { path = "crates/recorder" }
 webview2-com = "0.39.1"
 windows = { workspace = true }
 windows-core = { workspace = true }

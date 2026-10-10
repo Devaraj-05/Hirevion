@@ -69,6 +69,13 @@ pub fn run() {
             app::commands::screen_capture_probe,
             app::commands::api_round_trip,
             app::interview::interview_request,
+            app::service_commands::services_start,
+            app::service_commands::services_stop,
+            app::service_commands::proctoring_set_devices,
+            app::service_commands::proctoring_enqueue,
+            app::service_commands::recording_clock,
+            app::service_commands::recording_store_segment,
+            app::service_commands::upload_progress,
             spike::spike_config,
             spike::spike_report,
             spike::spike_save_segment
@@ -85,10 +92,27 @@ pub fn run() {
         app::commands::native_checks,
         app::commands::screen_capture_probe,
         app::commands::api_round_trip,
-        app::interview::interview_request
+        app::interview::interview_request,
+        app::service_commands::services_start,
+        app::service_commands::services_stop,
+        app::service_commands::proctoring_set_devices,
+        app::service_commands::proctoring_enqueue,
+        app::service_commands::recording_clock,
+        app::service_commands::recording_store_segment,
+        app::service_commands::upload_progress
     ]);
 
     builder
-        .run(tauri::generate_context!())
-        .expect("the Hirevion desktop app failed to start");
+        .build(tauri::generate_context!())
+        .expect("the Hirevion desktop app failed to start")
+        .run(|app, event| {
+            // Closing the app mid-interview: stop the monitor and the screen recorder cleanly.
+            // Whatever hasn't reached the server stays encrypted on disk and uploads at the
+            // next launch.
+            if matches!(event, tauri::RunEvent::Exit)
+                && let Some(state) = app.try_state::<app::AppState>()
+            {
+                state.services.stop_for_exit();
+            }
+        });
 }

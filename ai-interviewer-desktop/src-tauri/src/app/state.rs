@@ -8,6 +8,7 @@ use hv_api_client::{ApiClient, SessionManager, Url, user_agent};
 use hv_security::{Signer, Vault};
 
 use super::interview::SessionTokens;
+use super::services::Services;
 use super::stub::Stub;
 use super::views::AppInfoView;
 
@@ -19,7 +20,7 @@ const DEFAULT_API_URL: &str = match option_env!("HV_API_URL") {
 pub const CHANNEL: &str = "stable";
 
 pub enum Backend {
-    Live(Box<SessionManager>),
+    Live(Arc<SessionManager>),
     Stub(Stub),
 }
 
@@ -27,18 +28,13 @@ pub struct AppState {
     pub info: AppInfoView,
     pub device_name: String,
     pub backend: Backend,
-    /// Interview-session tokens, kept until the server rejects one.
-    pub session_tokens: SessionTokens,
-    /// `WEBVIEW2_*` variables that were set at launch, and whether a debugger was attached.
-    #[expect(
-        dead_code,
-        reason = "SP-11 reports these as CLIENT_INTEGRITY_WARNING events"
-    )]
+    /// Interview-session tokens, kept until the server rejects one. Shared with the uploaders.
+    pub session_tokens: Arc<SessionTokens>,
+    /// Monitoring, proctoring events and recordings during an interview.
+    pub services: Services,
+    /// `WEBVIEW2_*` variables that were set at launch, and whether a debugger was attached;
+    /// the monitor reports them as `CLIENT_INTEGRITY_WARNING` events.
     pub integrity_variables: Vec<String>,
-    #[expect(
-        dead_code,
-        reason = "SP-11 reports these as CLIENT_INTEGRITY_WARNING events"
-    )]
     pub debugger_present: bool,
 }
 
@@ -96,8 +92,9 @@ impl AppState {
         let device_name = std::env::var("COMPUTERNAME").unwrap_or_else(|_| "Windows PC".to_owned());
         let stub = cfg!(debug_assertions)
             && std::env::var("HV_DESKTOP_STUB").is_ok_and(|value| value == "1");
-        let backend = if stub {
-            Backend::Stub(Stub::default())
+        let session_tokens = Arc::new(SessionTokens::default());
+        let (backend, services) = if stub {
+            (Backend::Stub(Stub::default()), Services::disabled())
         } else {
             // The User-Agent wants the build ("26200.9457"), the last word of the description.
             let build = os.rsplit(' ').next().unwrap_or("unknown");
@@ -107,16 +104,19 @@ impl AppState {
                 user_agent(version, build, arch()),
             )
             .map_err(|error| error.to_string())?;
-            Backend::Live(Box::new(SessionManager::new(
-                api,
-                Vault::new(data_dir.join("vault")),
-            )))
+            let session = Arc::new(SessionManager::new(api, Vault::new(data_dir.join("vault"))));
+            // The recording store opens at launch; a crash's leftovers are repaired here and
+            // uploaded after sign-in.
+            let services =
+                Services::live(version, data_dir, session.clone(), session_tokens.clone());
+            (Backend::Live(session), services)
         };
         Ok(Self {
             info,
             device_name,
             backend,
-            session_tokens: SessionTokens::default(),
+            session_tokens,
+            services,
             integrity_variables,
             debugger_present,
         })
