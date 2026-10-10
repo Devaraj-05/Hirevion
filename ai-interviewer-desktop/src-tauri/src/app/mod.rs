@@ -2,6 +2,7 @@
 
 pub mod commands;
 mod error;
+pub mod interview;
 pub mod state;
 mod stub;
 mod views;

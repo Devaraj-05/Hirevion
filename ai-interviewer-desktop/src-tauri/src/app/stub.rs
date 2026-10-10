@@ -1,13 +1,16 @@
-//! Canned answers for debug builds before the candidate sign-in API exists (`HV_DESKTOP_STUB=1`,
-//! runbook). Any email signs in with the password `stub`; an email starting `new` asks for the
-//! code `123456`. Release builds never use it.
+//! Canned answers for debug builds without the API (`HV_DESKTOP_STUB=1`, runbook). Any email
+//! signs in with the password `stub`; an email starting `new` asks for the code `123456`. The
+//! interview runs in text mode with three canned questions. Release builds never use it.
 
 use std::sync::Mutex;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use hv_api_client::auth::{Candidate, Interview, Organization};
 
+use serde_json::{Value, json};
+
 use super::error::{CommandError, CommandResult};
+use super::interview::InterviewAction;
 use super::views::{ChecksSubmitted, ProfileView, SignInView};
 
 pub const PASSWORD: &str = "stub";
@@ -17,7 +20,26 @@ const CHALLENGE: &str = "stub-challenge";
 #[derive(Default)]
 pub struct Stub {
     email: Mutex<Option<String>>,
+    answered: Mutex<usize>,
 }
+
+const QUESTIONS: [&str; 3] = [
+    "Tell me about a backend service you built and how you kept it reliable.",
+    "How would you find out why an API endpoint became slow in production?",
+    "Explain how you would design idempotent retries for a payment request.",
+];
+const PURPOSES: [&str; 10] = [
+    "camera",
+    "microphone",
+    "screen",
+    "audio",
+    "video",
+    "third_eye",
+    "transcript",
+    "coding_activity",
+    "system_telemetry",
+    "proctoring_events",
+];
 
 fn iso(at: SystemTime) -> String {
     let seconds = at
@@ -143,6 +165,84 @@ impl Stub {
         }
     }
 
+    /// The interview calls in text mode (contract interview-session), without LiveKit.
+    pub fn interview(
+        &self,
+        interview_id: &str,
+        action: InterviewAction,
+        body: Option<&Value>,
+    ) -> CommandResult<Value> {
+        self.email()?;
+        let answered = || self.answered.lock().map_or(0, |count| *count);
+        let state = |answered: usize| {
+            let question = QUESTIONS.get(answered).map(|text| {
+                json!({ "id": format!("stub-q{answered}"), "index": answered + 1, "text": text,
+                        "type": "technical", "time_limit_seconds": 300, "workspace": "none", "languages": [] })
+            });
+            json!({ "state": {
+                "status": if question.is_some() { "in_progress" } else { "completed" },
+                "remaining_seconds": 2700 - 300 * answered,
+                "third_eye": "optional", "workspace": "none", "answer_mode": "text",
+                "question": question,
+                "voice": if question.is_some() { "waiting" } else { "ended" },
+                "stage": if question.is_some() { "medium" } else { "completion" },
+                "message": question.as_ref().map(|q| q["text"].clone()),
+                "notice": null
+            }})
+        };
+        Ok(match action {
+            InterviewAction::Briefing => json!({
+                "instructions": [
+                    "Find a quiet, well-lit room and sit facing your camera.",
+                    "Close other apps; only this app may be open during the interview.",
+                    "Keep your face visible and stay in front of the screen.",
+                    "Speak clearly and take a moment to think when you need it.",
+                    "Don't use notes, other people or other devices unless allowed.",
+                    "If you lose your connection, open the app again to resume."
+                ],
+                "mandatory_checks": ["camera", "microphone", "screen_capture", "media_foundation"],
+                "notice": { "version": "stub-2026-10-10", "items": PURPOSES.iter().map(|purpose| json!({
+                    "purpose": purpose,
+                    "text": format!("We record {} during the interview for review.", purpose.replace('_', " ")),
+                    "required": *purpose != "third_eye" && *purpose != "coding_activity"
+                })).collect::<Vec<_>>() },
+                "accommodations": { "requested": [], "approved": [] },
+                "answer_mode": "text",
+                "third_eye": "optional"
+            }),
+            InterviewAction::SystemChecks => {
+                serde_json::to_value(self.submit(body.unwrap_or(&Value::Null)))
+                    .map_err(|error| CommandError::new("unexpected-response", error.to_string()))?
+            }
+            InterviewAction::Consents => {
+                json!({ "id": "stub-consent", "complete": true, "missing": [] })
+            }
+            InterviewAction::Accommodations => {
+                json!({ "id": "stub-accommodation", "status": "requested" })
+            }
+            InterviewAction::Start => {
+                let mut answer = state(answered());
+                answer["livekit_url"] = Value::Null;
+                answer["room"] = json!(format!("iv-{interview_id}"));
+                answer
+            }
+            InterviewAction::Session => state(answered()),
+            InterviewAction::Answer => {
+                if let Ok(mut count) = self.answered.lock() {
+                    *count = (*count + 1).min(QUESTIONS.len());
+                }
+                state(answered())
+            }
+            InterviewAction::Workspace => Value::Null,
+            InterviewAction::Complete => {
+                if let Ok(mut count) = self.answered.lock() {
+                    *count = 0;
+                }
+                json!({ "status": "completed" })
+            }
+        })
+    }
+
     fn email(&self) -> CommandResult<String> {
         self.email
             .lock()
@@ -194,6 +294,28 @@ mod tests {
         assert!(stub.submit(&passing).passed);
         let failing = serde_json::json!({ "results": [{ "check": "camera", "status": "fail" }] });
         assert_eq!(stub.submit(&failing).failed_mandatory.len(), 4);
+    }
+
+    #[test]
+    fn runs_a_text_mode_interview_to_the_end() {
+        let stub = Stub::default();
+        assert_eq!(
+            stub.interview("iv", InterviewAction::Briefing, None).unwrap_err().code,
+            "signed-out"
+        );
+        stub.sign_in("asha@x.test", PASSWORD).expect("signed in");
+        let briefing = stub.interview("iv", InterviewAction::Briefing, None).expect("briefing");
+        assert_eq!(briefing["notice"]["items"].as_array().map(Vec::len), Some(10));
+        let started = stub.interview("iv", InterviewAction::Start, None).expect("start");
+        assert_eq!(started["state"]["question"]["index"], 1);
+        let mut state = started;
+        for _ in 0..QUESTIONS.len() {
+            state = stub
+                .interview("iv", InterviewAction::Answer, Some(&json!({ "text": "an answer" })))
+                .expect("answer");
+        }
+        assert_eq!(state["state"]["status"], "completed");
+        assert!(state["state"]["question"].is_null());
     }
 
     #[test]

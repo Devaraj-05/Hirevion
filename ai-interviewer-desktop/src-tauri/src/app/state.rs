@@ -7,6 +7,7 @@ use std::sync::Arc;
 use hv_api_client::{ApiClient, SessionManager, Url, user_agent};
 use hv_security::{Signer, Vault};
 
+use super::interview::SessionTokens;
 use super::stub::Stub;
 use super::views::AppInfoView;
 
@@ -26,6 +27,8 @@ pub struct AppState {
     pub info: AppInfoView,
     pub device_name: String,
     pub backend: Backend,
+    /// Interview-session tokens, kept until the server rejects one.
+    pub session_tokens: SessionTokens,
     /// `WEBVIEW2_*` variables that were set at launch, and whether a debugger was attached.
     #[expect(
         dead_code,
@@ -113,6 +116,7 @@ impl AppState {
             info,
             device_name,
             backend,
+            session_tokens: SessionTokens::default(),
             integrity_variables,
             debugger_present,
         })

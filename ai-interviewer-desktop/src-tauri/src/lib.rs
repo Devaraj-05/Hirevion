@@ -68,7 +68,7 @@ pub fn run() {
             app::commands::native_checks,
             app::commands::screen_capture_probe,
             app::commands::api_round_trip,
-            app::commands::submit_checks,
+            app::interview::interview_request,
             spike::spike_config,
             spike::spike_report,
             spike::spike_save_segment
@@ -85,7 +85,7 @@ pub fn run() {
         app::commands::native_checks,
         app::commands::screen_capture_probe,
         app::commands::api_round_trip,
-        app::commands::submit_checks
+        app::interview::interview_request
     ]);
 
     builder

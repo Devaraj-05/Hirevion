@@ -150,6 +150,23 @@ impl ApiClient {
         serde_json::from_slice(&bytes).map_err(|e| ApiError::Decode(format!("{path}: {e}")))
     }
 
+    /// Sends a request and returns its JSON answer as it is, or `null` when the answer has no
+    /// body (`202`, `204`). For calls whose answers the caller passes on without reading.
+    pub async fn send_value(
+        &self,
+        method: Method,
+        path: &str,
+        body: Option<&serde_json::Value>,
+        token: Option<&str>,
+    ) -> Result<serde_json::Value, ApiError> {
+        let response = self.execute(method, path, body, token).await?;
+        let bytes = response.bytes().await.map_err(network)?;
+        if bytes.iter().all(u8::is_ascii_whitespace) {
+            return Ok(serde_json::Value::Null);
+        }
+        serde_json::from_slice(&bytes).map_err(|e| ApiError::Decode(format!("{path}: {e}")))
+    }
+
     /// Sends a request whose answer has no body we need (`202`, `204`).
     pub async fn send_no_content<B: Serialize + ?Sized>(
         &self,

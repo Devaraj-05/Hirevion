@@ -1,16 +1,13 @@
 //! The commands the webview calls instead of the API (master plan §6.4, ADR-0018). Each
 //! returns only what the screens show; tokens stay in Rust. Failures are `CommandError`s.
 
-use hv_api_client::Method;
 use hv_api_client::auth::{self, AppInfo, DeviceInfo, LoginRequest, OtpVerify};
 use hv_system_check::CheckResult;
 use tauri::State;
 
 use super::error::{CommandError, CommandResult};
 use super::state::{AppState, Backend};
-use super::views::{
-    AppInfoView, ChecksSubmitted, ProfileView, ReleaseView, RoundTripView, SignInView,
-};
+use super::views::{AppInfoView, ProfileView, ReleaseView, RoundTripView, SignInView};
 
 #[tauri::command]
 pub fn app_info(state: State<'_, AppState>) -> AppInfoView {
@@ -134,64 +131,6 @@ pub async fn api_round_trip(state: State<'_, AppState>) -> CommandResult<RoundTr
             Ok(RoundTripView {
                 rtt_ms: sample.round_trip_ms,
             })
-        }
-    }
-}
-
-/// Interview ids are UUIDs; anything else never reaches a URL path.
-fn interview_path(interview_id: &str, rest: &str) -> CommandResult<String> {
-    let valid = !interview_id.is_empty()
-        && interview_id.len() <= 64
-        && interview_id
-            .chars()
-            .all(|c| c.is_ascii_hexdigit() || c == '-');
-    if valid {
-        Ok(format!("interviews/{interview_id}/{rest}"))
-    } else {
-        Err(CommandError::new("invalid-interview", None))
-    }
-}
-
-/// Uploads the system check (contract interview-session) with this interview's session token.
-#[tauri::command]
-pub async fn submit_checks(
-    state: State<'_, AppState>,
-    interview_id: String,
-    payload: serde_json::Value,
-) -> CommandResult<ChecksSubmitted> {
-    let path = interview_path(&interview_id, "system-checks")?;
-    match &state.backend {
-        Backend::Stub(stub) => Ok(stub.submit(&payload)),
-        Backend::Live(session) => {
-            let token = session.session_token(&interview_id).await?;
-            Ok(session
-                .api()
-                .send(
-                    Method::POST,
-                    &path,
-                    Some(&payload),
-                    Some(&token.session_token),
-                )
-                .await?)
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn only_uuid_like_interview_ids_reach_a_path() {
-        assert_eq!(
-            interview_path("0190f1a2-0000-7000-8000-000000000000", "system-checks").expect("valid"),
-            "interviews/0190f1a2-0000-7000-8000-000000000000/system-checks"
-        );
-        for bad in ["", "../me", "a/b", "x?y=1", "%2e%2e"] {
-            assert_eq!(
-                interview_path(bad, "system-checks").unwrap_err().code,
-                "invalid-interview"
-            );
         }
     }
 }

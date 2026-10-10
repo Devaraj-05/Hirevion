@@ -366,3 +366,31 @@ fn now_ms() -> i64 {
         .expect("time")
         .as_millis() as i64
 }
+
+#[tokio::test]
+async fn send_value_returns_the_body_or_null_when_there_is_none() {
+    let (server, api) = server_and_client().await;
+    Mock::given(method("POST"))
+        .and(path("/api/v1/things/accepted"))
+        .respond_with(ResponseTemplate::new(202))
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/api/v1/things/answered"))
+        .respond_with(
+            ResponseTemplate::new(202).set_body_json(json!({ "state": { "voice": "thinking" } })),
+        )
+        .mount(&server)
+        .await;
+
+    let empty = api
+        .send_value(Method::POST, "things/accepted", Some(&json!({})), None)
+        .await
+        .expect("an empty answer");
+    assert_eq!(empty, serde_json::Value::Null);
+    let answered = api
+        .send_value(Method::POST, "things/answered", None, None)
+        .await
+        .expect("a JSON answer");
+    assert_eq!(answered["state"]["voice"], "thinking");
+}
