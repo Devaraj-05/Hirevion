@@ -16,7 +16,7 @@
   - `calibration` and `agreement`: reviewers' own scores per question, weighted kappa and Spearman per organisation.
   - `harness`: the labelled synthetic set, the metrics and the gate (`hv eval-interviews`).
   - `mockgrader`: the deterministic grader behind the mock profile.
-- **Tables (migration 0016):** `evaluations` (one per run, with the pinned versions, skills, summary and, for re-runs, the diff), `question_evaluations` (the eight dimensions with evidence), `human_scores`. `ai_invocations` already holds the §79 fields (model, model version, prompt, rubric and evaluation versions, timestamp, input references, output), so it is not extended: each call carries the evaluation, interview and question ids in `input_refs`.
+- **Tables (migration 0017):** `evaluations` (one per run, with the pinned versions, skills, summary and, for re-runs, the diff), `question_evaluations` (the eight dimensions with evidence), `human_scores`. `ai_invocations` already holds the §79 fields (model, model version, prompt, rubric and evaluation versions, timestamp, input references, output), so it is not extended: each call carries the evaluation, interview and question ids in `input_refs`.
 - **API (`hirevion_api.evaluation`):**
   - `GET /interviews/{id}/evaluation` and `/evaluation/questions/{question_id}`;
   - `POST /interviews/{id}/questions/{question_id}/human-scores` and `GET .../human-scores`;

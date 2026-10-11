@@ -2,8 +2,8 @@
 question's eight scores with their evidence, and the reviewers' own scores for calibration.
 `ai_invocations` already holds the §79 fields, so it is not changed.
 
-Revision ID: 0016
-Revises: 0015
+Revision ID: 0017
+Revises: 0016
 Create Date: 2026-10-10
 """
 
@@ -16,8 +16,8 @@ from sqlalchemy.dialects import postgresql
 
 from hirevion_core.db.rls import grant_sql, tenant_policy_sql
 
-revision: str = "0016"
-down_revision: str | Sequence[str] | None = "0015"
+revision: str = "0017"
+down_revision: str | Sequence[str] | None = "0016"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

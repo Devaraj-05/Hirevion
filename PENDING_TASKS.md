@@ -175,7 +175,7 @@ A box is ticked in the PR that merges the part. Deliverables are in MASTER §14;
 - [x] **C0** Review `interview-session.md` and `proctoring.md`. Depends on: nothing.
 - [x] **C1–C3 SP-09a–c AI interview engine.** Depends on: SP-01, SP-06, A1. See MASTER §14 SP-09.
   - Exit: every persona finishes a full interview; a killed agent resumes within 10 s; required skills are covered. The voice p95 is measured on this PC with `hv-voice-bench`.
-- [ ] **C4 SP-10 Evaluation and AI governance.** Depends on: C3. See MASTER §14 SP-10.
+- [x] **C4 SP-10 Evaluation and AI governance.** Depends on: C3. See MASTER §14 SP-10.
   - Exit: every score has verified evidence; re-runs reproduce; a regressed prompt is blocked.
 - [ ] **C5 SP-14 Proctoring engine and live monitoring.** Depends on: C3, B2, D2. See MASTER §14 SP-14.
   - Also (moved from D2): evidence snapshots, screen and camera at event time, asked for by SP-14's events.
