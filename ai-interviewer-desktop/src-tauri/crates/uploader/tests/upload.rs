@@ -166,7 +166,9 @@ async fn a_failing_ack_keeps_the_local_file_and_retries_only_the_ack() {
     let file = store.segment_path(&stored);
     let uploader = uploader(&fake.uri(), &store);
 
-    let drained = tokio::time::timeout(Duration::from_millis(400), uploader.drain(INTERVIEW)).await;
+    // Generous: CI runners are slow; the assertion is that the ack is retried, not how fast.
+    let drained =
+        tokio::time::timeout(Duration::from_millis(3_000), uploader.drain(INTERVIEW)).await;
 
     assert!(drained.is_err(), "can't finish without an ack");
     let row = store.get(stored.id).expect("get").expect("row");
@@ -330,5 +332,10 @@ async fn the_bandwidth_cap_paces_the_upload_and_can_be_lifted() {
         .expect("put");
     let started = Instant::now();
     drain(&uploader).await;
-    assert!(started.elapsed() < Duration::from_millis(500));
+    let uncapped = started.elapsed();
+    // Relative, not absolute: a slow CI runner still uploads faster without the cap.
+    assert!(
+        uncapped < capped,
+        "uncapped {uncapped:?}, capped {capped:?}"
+    );
 }
