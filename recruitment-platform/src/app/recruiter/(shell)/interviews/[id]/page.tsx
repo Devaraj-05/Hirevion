@@ -23,5 +23,13 @@ export default async function InterviewDetailPage({ params }: { params: Promise<
     );
   }
   const { id } = await params;
-  return <InterviewPage id={id} canManage={can(session, "interviews.manage")} />;
+  return (
+    <InterviewPage
+      id={id}
+      canManage={can(session, "interviews.manage")}
+      canReview={can(session, "reports.interview.view")}
+      canRerun={can(session, "admin.ai.manage")}
+      canMeasure={can(session, "reports.analytics.view")}
+    />
+  );
 }

@@ -1523,6 +1523,82 @@
         "other": "couldn't be given an interview"
       }
     },
+    "evaluation": {
+      "title": "Evaluation",
+      "loadFailed": "The evaluation couldn't be loaded.",
+      "retry": "Try again",
+      "states": {
+        "none": "The interview hasn't been evaluated yet.",
+        "evaluating": "The interview is being evaluated. This page updates when it's done.",
+        "ready": "The evaluation is ready.",
+        "failed": "The evaluation couldn't be completed."
+      },
+      "overall": "Overall score",
+      "communication": "Communication",
+      "codingPending": "Coding is evaluated separately and isn't in these scores yet.",
+      "skills": "Skills",
+      "notAssessed": "Not assessed",
+      "questionCount": "{count, plural, one {# question} other {# questions}}",
+      "supported": "Evidence verified",
+      "unsupported": "No verified evidence",
+      "noQuote": "No quote supports this.",
+      "noneListed": "None.",
+      "strengths": "Strengths",
+      "gaps": "Knowledge gaps",
+      "followUps": "Follow-up questions",
+      "noFollowUps": "No follow-up questions were asked.",
+      "followUpLine": "{asked, plural, one {# follow-up} other {# follow-ups}} averaged {mean} against {main} on the main questions.",
+      "flags": "Flags for review: {flags}",
+      "versions": "Scored by {model} with prompt {prompt}, rubric {rubric} and evaluation {evaluation}.",
+      "rerun": "Repeat with pinned versions",
+      "retryEvaluation": "Retry the evaluation",
+      "rerunQueued": "Queued. The result is compared with this evaluation when it finishes.",
+      "retryQueued": "Queued. This page updates when the evaluation is done.",
+      "questions": "Questions and your own scores",
+      "youScored": "You scored this",
+      "yourScores": "Your scores, 0 to 10",
+      "blindFirst": "Score the answer yourself first. The AI's scores appear beside yours once you save.",
+      "note": "Note",
+      "save": "Save my scores",
+      "saved": "Your scores are saved.",
+      "dimension": "Dimension",
+      "yourScore": "You",
+      "aiScore": "AI",
+      "difference": "AI minus you",
+      "capped": "Capped at 5: no quote could be verified.",
+      "missing": "Missed: {concepts}",
+      "errors": {
+        "invalid": "Use a number from 0 to 10.",
+        "range": "Scores run from 0 to 10."
+      },
+      "dimensions": {
+        "relevance": "Relevance",
+        "correctness": "Correctness",
+        "completeness": "Completeness",
+        "technical_depth": "Technical depth",
+        "reasoning": "Reasoning",
+        "clarity": "Clarity",
+        "communication": "Communication",
+        "evidence": "Evidence"
+      },
+      "agreement": {
+        "title": "Agreement with reviewers",
+        "loadFailed": "The agreement figures couldn't be loaded.",
+        "none": "No reviewer has scored an answer yet.",
+        "counts": "{pairs} scores from {reviewers, plural, one {# reviewer} other {# reviewers}} on {questions, plural, one {# question} other {# questions}}.",
+        "kappa": "Weighted kappa",
+        "spearman": "Spearman",
+        "gap": "Mean gap",
+        "withinOne": "Within one point",
+        "bias": "AI minus reviewers",
+        "levels": {
+          "insufficient": "Too few scores to say yet",
+          "strong": "Strong agreement",
+          "moderate": "Moderate agreement",
+          "weak": "Weak agreement"
+        }
+      }
+    },
     "session": {
       "coverage": "Skill coverage",
       "notStarted": "The interview hasn't started yet.",
