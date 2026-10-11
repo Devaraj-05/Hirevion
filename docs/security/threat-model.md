@@ -1,7 +1,7 @@
 # Threat model
 
 - **Readers:** whoever changes a sub-project's trust boundaries, and the reviewers of the pentest scope (master plan §9, §16).
-- **Method:** STRIDE per sub-project: what it protects, where its trust boundaries are, each threat with the control that answers it, and what's left (residual risk). Each part adds its section in the PR that builds it (PENDING_TASKS.md §6).
+- **Method:** STRIDE per sub-project: what it protects, where its trust boundaries are, each threat with the control that answers it, and what's left (residual risk). Each part adds its section in the PR that builds it (PENDING_TASKS.md §5).
 - **Shared controls** every section relies on, not repeated below:
   - row-level security per organisation, forced, with the isolation harness in CI (ADR-0009);
   - server-side sessions with CSRF and `__Host-` cookies (ADR-0013);

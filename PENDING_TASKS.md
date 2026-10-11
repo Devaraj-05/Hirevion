@@ -1,14 +1,14 @@
-# Hirevion — delivery plan to 2026-10-15
+# Hirevion — delivery plan
 
-- **Readers:** the product owner (Devaraj-05) and every Claude Code session that builds a lane, in the cloud or on the local Windows PC.
-- **Updated:** 2026-10-09, after SP-00 to SP-06 were merged to `main`.
+- **Readers:** the product owner (Devaraj-05) and every Claude Code session or subagent that builds a part.
 - **Sources of truth:**
   - `MASTER_IMPLEMENTATION_PLAN.md` holds every part's full deliverables (§14) and PRD coverage (Appendix A).
-  - This file holds who builds what, when, and how.
+  - This file holds the order, the dependencies, the exit criteria and the rules.
+  - `docs/STATUS.md` holds what is merged, what is in progress and what blocks.
 
 ## 1. Goal
 
-- **The target.** By the end of 2026-10-15 (IST), every remaining sub-project, SP-07 to SP-22 plus SP-23's automated parts, is:
+- **The target.** Every remaining sub-project, SP-07 to SP-22 plus SP-23's automated parts, is:
   - built and tested;
   - merged to `main` with CI green;
   - covered by an automated run of the PRD §107 golden path on the mock AI.
@@ -21,7 +21,7 @@
 | P2 | SSO/SCIM, ATS and public API, analytics, administration and governance | CP5 |
 | P3 | SP-23 automated hardening: load, fuzzing, ZAP, backup drills, dashboards, cost model | CP6 |
 
-- **Outside what the agents can do.** These need you or a third party, and are scheduled from 2026-10-16:
+- **Outside what the agents can do.** These need you or a third party, after the build:
   - live Gemini, Deepgram and OpenAI tuning, which needs your valid keys;
   - the desktop hardware matrix (webcams, two monitors, headset, Windows 10, N edition, low-spec laptop);
   - real phones for third-eye;
@@ -33,101 +33,45 @@
 
 ## 2. Where things stand
 
-| Part | State |
-|---|---|
-| SP-00 to SP-06 (foundations, backend core, identity, web shell, jobs and resumes, screening, interview configuration) | Merged to `main` (PRs #1–#5 merged 2026-10-09) |
-| B1 SP-08a (desktop sign-in, device keys, system check) | Merged to `main` (PR #6, 2026-10-09) |
-| A0, C0, D0 contract reviews; A1 SP-07a; A2 SP-07c; C1–C3 SP-09 | Built on the cloud branch `claude/busy-mccarthy-t8re1u` (PR #7); integrated with SP-08a on `integrate/cloud-lanes` on 2026-10-09 |
-| D1 H0 catch-up | Partly done on the cloud branch: policy drafts, threat models SP-01 to SP-06 and the traceability check. CI gates, the dashboard KPIs and the SP-04a to SP-06 review remain (see D1 below) |
-| The rest of section 7 | Not started |
+See [docs/STATUS.md](docs/STATUS.md).
 
-**Cloud-lane progress (lanes A, C and D, 2026-10-09):** 8 of the 23 cloud items are done (A0, A1, A2, C0, C1, C2, C3 and D0), and D1 is half done. Still to do, in order: finish D1, then D2, C4, C5, D3, A3, A5, A4, C6, C7, D4, D5, D6, A6 and D7. Lane B (the Windows desktop) is not started.
+## 3. The team
 
-What the cloud branch adds:
-- **A1 SP-07a:** interviews, invitations, the lifecycle state machine and the scheduler; webhook topics.
-- **A2 SP-07c:** desktop candidate auth (§28's six checks, a one-time code, a DPoP device key, refresh and logout), the interview list, the release check and the update manifest.
-- **C1 to C3 SP-09 (ADR-0030):**
-  - migration `0015`; the deterministic engine in `hirevion_core.engine` (state, orchestrator, guardrails, answer analysis, follow-ups, timing);
-  - the session service and the conductor (turn lock, optimistic `state_seq`, checkpoints, resume and abandon);
-  - LiveKit media with a fake backend; signed LiveKit webhooks; the realtime stream and the live websocket;
-  - transcripts (VTT and JSON) written on completion;
-  - the agent rewrite (a single-agent lock with takeover within 10 s);
-  - the `tools/interview-simulator` personas and `hv interview-sim`;
-  - the web pages; the interview-session contract.
-  - Checks: 1266 pytest and 223 web tests passing; Playwright `interview-session.spec.ts` passing.
-- **D1 so far:**
-  - `docs/policies/` (privacy, recording, proctoring, data retention, deletion and support; drafts for legal review);
-  - SP-01 to SP-06 sections in `docs/security/threat-model.md`;
-  - `hv trace --check` (`tools/devcli/src/hirevion_devcli/trace.py`, with its tests), run in CI.
-
-## 3. The team: four lanes running at once
-
-**Change, 2026-10-09 evening (product owner):**
-- The Claude Code cloud credits are used up.
-- **Every lane now runs on the local Windows PC.** The main session coordinates; lanes A, C and D run as background subagents in git worktrees, like lane B's parallel parts. Everything merges into one branch (`main`).
+- **Every lane runs on the local Windows PC.** The main session coordinates; parts run as background subagents in git worktrees. Everything merges into `main`.
 - **Pace.** The account's usage limit, which resets about every five hours, sets the pace more than the number of agents.
   - Run about three subagents at a time.
   - Give each a narrow brief.
   - Resume a stopped subagent instead of restarting it, so its context isn't rebuilt.
 
-| Lane | Runs on | Builds |
-|---|---|---|
-| **A** Candidate access and reporting | Cloud session 1 | SP-07a, 07c, 07b, 18, 17, 21 |
-| **B** Desktop and native | **The local Windows PC** (Tauri, Rust, webcams, Media Foundation) | SP-08a, then 11 + 12 (client) + 15a in parallel, then 08b, then the 16, 13 and 15b desktop parts |
-| **C** Interview AI and realtime | Cloud session 2 | SP-09a, 09b, 09c, 10, 14, 16 (server), the vision agent (15a and 15b server) |
-| **D** Quality, media services, identity and governance | Cloud session 3 | The H0 catch-up, SP-12 (server), 13, 19, 22, 20, 23 |
+| Lane | Builds |
+|---|---|
+| **A** Candidate access and reporting | SP-07a, 07c, 07b, 18, 17, 21 |
+| **B** Desktop and native (needs Windows: Tauri, Rust, webcams, Media Foundation) | SP-08a, then 11 + 12 (client) + 15a in parallel, then 08b/08c, then the 16, 13 and 15b desktop parts |
+| **C** Interview AI and realtime | SP-09a, 09b, 09c, 10, 14, 16 (server), the vision agent (15a and 15b server) |
+| **D** Quality, media services, identity and governance | The H0 catch-up, SP-12 (server), 13, 19, 22, 20, 23 |
 
 - **Models:**
   - Use the strongest model for the security-critical and complex parts: 07c, 09, 12, 13, 14, 16, 19.
   - A faster model is fine for documentation, CI configuration, i18n and simple CRUD pages.
-- **Lane B also integrates.** It merges any green PR a cloud session couldn't merge itself (section 6).
+- **The main session integrates.** It merges any green PR a subagent couldn't merge itself (section 5).
 
-## 4. Starting a cloud session
+## 4. Contracts first
 
-1. In Claude Code on the web, connect `github.com/Devaraj-05/Hirevion` and choose the branch `main`.
-2. **Network access** must allow:
-   - `pypi.org`, `files.pythonhosted.org`, `astral.sh`;
-   - `registry.npmjs.org`, `nodejs.org`;
-   - `github.com`, `objects.githubusercontent.com`;
-   - the Ubuntu package mirrors.
-3. **No secrets.** Sessions use the mock AI. Never paste API keys or passwords into a cloud session.
-4. Paste the prompt below, with your lane's letter and name filled in.
-5. Testing happens on the local PC, from `main` (section 9). Problems found there go to the lane's chat or to section 9's "Found in testing" list.
+The desktop calls APIs that other lanes build. The five contracts live in `docs/api/contracts/`. The README there holds the shared rules: DPoP-bound tokens, RFC 9457 error codes, server time and idempotent retries.
 
-```text
-You are Lane <A|C|D> of the Hirevion build: <lane name from PENDING_TASKS.md section 3>.
-1. Read CLAUDE.md, then PENDING_TASKS.md sections 5–8 and your lane in section 7. For each part,
-   read only its MASTER_IMPLEMENTATION_PLAN.md §14 entry and the sections and ADRs it cites; grep
-   the PRD for the cited § numbers instead of reading it whole.
-2. Run `bash scripts/session-setup.sh` once (git identity, hooks, toolchains, services).
-3. Build your lane's parts in order without stopping to ask: decide with sensible defaults and
-   record each decision in the part's plan or ADR. Review your contracts (section 5) first.
-4. Every part meets the definition of done and the merge protocol (section 6). Tick your own
-   boxes in section 7 in the same PR.
-5. Never wait idle: while CI runs, plan the next part; if a part waits on another lane, build
-   against its contract and carry on.
-6. Before starting each part, pull `main` and fix your lane's open items under "Found in testing"
-   (PENDING_TASKS.md section 9) first: the product owner tests on a local PC and reports there.
-7. Keep going until your lane is done. Report one short paragraph per merged part.
-```
+- **Review.** Each owning lane reviews its contract first, then implements it exactly.
+- **Changes.** A change goes in a small PR that edits the contract and adds a line under its "Changes".
+- **The desktop** codes against the contracts until the real endpoints merge.
 
-## 5. Contracts first
+| Contract file | Provider | Covers |
+|---|---|---|
+| `candidate-auth.md` | A (SP-07c) | Login with §28's six checks, one-time code verify, device-key registration, refresh, logout, interview list; release check and update manifest |
+| `interview-session.md` | C (SP-09a) | Start (LiveKit URL and join token), text answer, complete, session state, clock sync, system-check results |
+| `proctoring.md` | C (SP-14) | Proctor session, batched signed and sequenced events (§67 schema), heartbeat, acknowledgements |
+| `recordings.md` | D (SP-12) | Segment upload URL, hash-verified acknowledgement, recovery listing |
+| `third-eye.md` | D (SP-13) | Issue the pairing QR, redeem, revoke, status events |
 
-The desktop (lane B) calls APIs that other lanes build. **Lane B drafted all five contracts on 2026-10-09** in `docs/api/contracts/`. The README there holds the shared rules: DPoP-bound tokens, RFC 9457 error codes, server time and idempotent retries.
-
-- **Review.** Each owning lane reviews its contract in its first hour, then implements it exactly.
-- **Changes.** A change goes in a small PR that edits the contract and adds a dated line under its "Changes".
-- **Lane B** codes against the contracts until the real endpoints merge.
-
-| Contract file | Provider | Needed by lane B | Covers |
-|---|---|---|---|
-| `candidate-auth.md` | A (SP-07c) | Oct 11 | Login with §28's six checks, one-time code verify, device-key registration, refresh, logout, interview list; release check and update manifest |
-| `interview-session.md` | C (SP-09a) | Oct 12 | Start (LiveKit URL and join token), text answer, complete, session state, clock sync, system-check results |
-| `proctoring.md` | C (SP-14) | Oct 11 | Proctor session, batched signed and sequenced events (§67 schema), heartbeat, acknowledgements |
-| `recordings.md` | D (SP-12) | Oct 11 | Segment upload URL, hash-verified acknowledgement, recovery listing |
-| `third-eye.md` | D (SP-13) | Oct 12 | Issue the pairing QR, redeem, revoke, status events |
-
-## 6. Rules for every part
+## 5. Rules for every part
 
 **Definition of done:**
 
@@ -143,7 +87,7 @@ The desktop (lane B) calls APIs that other lanes build. **Lane B drafted all fiv
    - the runbook section;
    - the Appendix A rows;
    - a threat-model section in `docs/security/threat-model.md`;
-   - your boxes here.
+   - your box here, and `docs/STATUS.md`.
 
 **Merge protocol.** You may merge your own green PRs, by fast-forward only, so every commit stays authored and committed by Devaraj-05.
 
@@ -164,7 +108,7 @@ The desktop (lane B) calls APIs that other lanes build. **Lane B drafted all fiv
    ```
 
    If `main` moved in the meantime, rebase, `git push --force-with-lease` your own branch, wait for green, and retry.
-5. **If the session can't push to `main`:** leave the PR green with the title prefix `[ready]`, and lane B merges it by fast-forward.
+5. **If a subagent can't push to `main`:** leave the PR green with the title prefix `[ready]`, and the main session merges it by fast-forward.
 6. **Never:**
    - use GitHub's merge button (it makes GitHub the committer);
    - `--no-verify`;
@@ -177,7 +121,7 @@ The desktop (lane B) calls APIs that other lanes build. **Lane B drafted all fiv
 - **Permissions** (catalogue, the web's `permissions.ts`, labels) and the authorisation matrix's `EXPECTED` table: append your rows; on a conflict, keep both.
 - **Router registrations** in `backend/api/src/hirevion_api/app.py`, and the route manifest: append; keep both.
 - **Generated files:** never hand-merge them; regenerate after the rebase.
-- **This file:** tick only your own lane's boxes.
+- **This file:** tick only your own part's box.
 - **ADR numbers:** each lane uses its own block, so numbers never collide: lane A 0020–0029, lane B 0018–0019 then 0050–0059, lane C 0030–0039, lane D 0040–0049. Add your row to `docs/architecture/adr/README.md` in number order; on a conflict, keep both.
 
 **Saving credits:**
@@ -189,350 +133,104 @@ The desktop (lane B) calls APIs that other lanes build. **Lane B drafted all fiv
   - Locally, run only the tests you touched, plus the part's own end-to-end spec.
 - **Push sparingly:** when a part is ready, and once mid-part as a backup at most.
 - **Don't touch what you didn't change:** no reformatting untouched files, no regenerating unchanged outputs, no rerunning green suites "just to check".
-- **Subagents:** only for truly independent work; lane B's step B2 is the planned case.
+- **Subagents:** one per independent part, about three at a time (section 3).
 
-## 7. The lanes, day by day
+## 6. The parts
 
-Dates are targets in IST. A box is ticked in the PR that merges the part.
+A box is ticked in the PR that merges the part. Deliverables are in MASTER §14; only what §14 doesn't say is written here.
 
-### Lane A — candidate access and reporting (cloud session 1)
+### Lane A — candidate access and reporting
 
-- [x] **A0 (Oct 10, first hour):** review `docs/api/contracts/candidate-auth.md` and record any changes the way the contracts README says.
-- [x] **A1 SP-07a Interviews and invitations (Oct 10).**
-  - **Interviews:**
-    - the state machine (scheduled, invited, in progress, interrupted, completed, evaluating, evaluated, expired, cancelled, abandoned), with an event history;
-    - single and bulk assignment producing §24's nine fields and a policy snapshot (pinning the template version);
-    - reviewers.
-  - **Invitations and scheduling:**
-    - invitations with all eight §25 contents, in en-IN and en-US;
-    - reminders, expiry, rescheduling and cancellation, from a scheduler loop in the worker.
-  - **Candidate accounts:** created on invitation, with a set-password link.
-  - **Data and settings:**
-    - the `interviews.manage` permission;
-    - application stages `interview` and `interviewed`;
-    - the organisation's support email;
-    - the job's "Interview Template" field (PRD §11, missed in SP-06).
-  - **Pages:**
-    - the ranking's "Create interview" action;
-    - `/interviews` (Upcoming, Live, Completed) and `/interviews/[id]`;
-    - the candidates' Interview and Completed tabs;
-    - the interview KPIs on the dashboard.
-  - **Exit criteria:**
-    - the invitation reaches Mailpit with all eight contents;
-    - editing the template afterwards leaves the interview on its pinned version;
-    - bulk assignment reports what it skipped.
-- [x] **A2 SP-07c Desktop candidate auth and releases (Oct 10–11).**
-  - **Login:** checks §28's six items.
-  - **Device binding:**
-    - an email one-time code on a new device (an organisation setting);
-    - ES256 device-key registration;
-    - DPoP (RFC 9449) with a replay cache in Valkey.
-  - **Tokens:**
-    - a 10-minute access JWT bound to the key (`cnf.jkt`);
-    - a rotating refresh token (8 hours absolute; reuse revokes the family);
-    - an interview-session token.
-  - **Desktop releases:**
-    - the release registry (channel, minimum version, rollout %, signatures);
-    - the Tauri update manifest;
-    - `/platform/desktop-releases`;
-    - an outdated app answered with 426.
-  - **Exit criteria:** a replayed proof, a stolen token without the key, and an outdated version are each refused.
-- [ ] **A3 SP-07b Candidate portal (Oct 11).**
-  - **Sessions:** on the `candidate.` host, with an isolated `__Host-` cookie, CSRF, the Caddy `/api` route, and the portal origin allowed.
-  - **Sign-in:** invitation → set password; sign in; reset password.
-  - **Pages:**
-    - interviews with their windows and countdowns;
-    - download and requirements;
-    - notices: §83's ten disclosures and six policies, from lane D's drafts;
-    - a report placeholder until A5.
-  - **Requests:** reschedule, support, accommodation, data rights and consent withdrawal, with a recruiter view.
-  - **Exit criterion (Playwright):** invitation email → set password → the interview is listed; a reschedule request reaches the recruiter.
-- [ ] **A4 SP-18 Notifications and webhooks (Oct 12).**
-  - **Notifications:**
-    - §75's three channels and eight events;
-    - per-user preferences;
-    - the notification centre and the `/ws` notification channel.
-  - **Webhooks:**
-    - §77's nine events;
-    - HMAC signatures, replay protection, retries, dead-letter, redelivery, secret rotation;
-    - the SSRF-safe client;
-    - the webhook admin page.
-  - **The scheduler:** takes over A1's loop.
-  - **Exit criteria:**
-    - the reference receiver verifies signatures;
-    - retry and dead-letter work;
-    - a replayed delivery is refused.
-- [ ] **A5 SP-17 Reports, review and Candidate 360 (Oct 13–14; needs C4, C5 and D2).**
-  - **Reports:**
-    - the interview (13 sections), proctoring (14), coding, internal candidate and candidate-visible reports;
-    - each as a web view and a Playwright PDF.
-  - **Review:**
-    - the review workspace with a synced player and jumps to evidence;
-    - notes and Hiring Manager input;
-    - score changes;
-    - §72's nine statuses and the human decision.
-  - **Candidate 360:**
-    - all thirteen tabs;
-    - the unified timeline;
-    - the pending-review queue;
-    - moving cards on the pipeline board.
-  - **Exit criteria:**
-    - the CP3 golden path passes;
-    - every report section is populated from a simulator run;
-    - views, downloads and score changes are audited.
-- [ ] **A6 SP-21 Analytics and KPIs (Oct 14–15).**
-  - **Deliverables:**
-    - §73's twelve analytics;
-    - §74's funnel;
-    - §106's twenty KPIs;
-    - the bias view;
-    - all ten dashboard KPIs and seven filters on real data;
-    - CSV export.
-  - **Exit criteria:**
-    - every metric is defined and tested against seed data;
-    - every chart passes axe.
+- [x] **A0** Review `docs/api/contracts/candidate-auth.md`. Depends on: nothing.
+- [x] **A1 SP-07a Interviews and invitations.** Depends on: SP-02, SP-06. See MASTER §14 SP-07.
+  - Exit: the invitation reaches Mailpit with all eight contents; editing the template afterwards leaves the interview on its pinned version; bulk assignment reports what it skipped.
+- [x] **A2 SP-07c Desktop candidate auth and releases.** Depends on: A1. See MASTER §14 SP-07.
+  - Exit: a replayed proof, a stolen token without the key, and an outdated version are each refused.
+- [ ] **A3 SP-07b Candidate portal.** Depends on: A1, D1 policy drafts. See MASTER §14 SP-07 (§6.3).
+  - Exit (Playwright): invitation email → set password → the interview is listed; a reschedule request reaches the recruiter.
+- [ ] **A4 SP-18 Notifications and webhooks.** Depends on: SP-01, A1 (takes over A1's scheduler loop). See MASTER §14 SP-18.
+  - Exit: the reference receiver verifies signatures; retry and dead-letter work; a replayed delivery is refused.
+- [ ] **A5 SP-17 Reports, review and Candidate 360.** Depends on: C4, C5, D2. See MASTER §14 SP-17.
+  - Exit: the CP3 golden path passes; every report section is populated from a simulator run; views, downloads and score changes are audited.
+- [ ] **A6 SP-21 Analytics and KPIs.** Depends on: A5. See MASTER §14 SP-21.
+  - Exit: every metric is defined and tested against seed data; every chart passes axe.
 
 ### Lane B — desktop and native (the local Windows PC)
 
-- [x] **B1 SP-08a Desktop foundation, part 1 (Oct 10).** Done 2026-10-09 (ADR-0018; plan `2026-10-09-sp-08a-desktop-foundation.md`).
-  - **The Tauri app.**
-  - **The `security` crate:**
-    - a CNG/TPM device key;
-    - a DPoP signer;
-    - a DPAPI token vault;
-    - environment sanitising and a debugger check;
-    - a single instance.
-  - **The `api-client` crate:** reqwest with rustls and DPoP, against `candidate-auth.md`.
-  - **Startup:**
-    - the update gate;
-    - all eleven §29 system checks, with their results stored;
-    - the sign-in screens, on a stub until A2 merges.
-- [x] **B2 in parallel, three subagents in worktrees (Oct 11–12):** done 2026-10-10. SP-11 (`hv-monitor`, `hv-event-queue`; 60 tests), SP-12 client (`hv-segment-store`, `hv-uploader`, `hv-recorder`, `src/recording`; 0.8% CPU and 0.8 MB/min measured), SP-15a desktop (`src/vision`; 127 tests).
-  - **SP-11 Native monitoring.** Exit criteria:
-    - a capture-excluded window, a blocked or renamed process, and a second monitor each raise their event within 2 s;
-    - no keystroke content is logged.
-  - **SP-12 Client recording:**
-    - Windows Graphics Capture → Media Foundation H.264 10-second segments;
-    - WebCodecs camera and mic segments;
-    - AES-GCM storage;
-    - a resumable uploader against `recordings.md`.
+- [x] **B1 SP-08a Desktop foundation, part 1.** Depends on: `candidate-auth.md`. See MASTER §14 SP-08.
+- [x] **B2 SP-11, SP-12 client, SP-15a desktop**, three subagents in parallel. Depends on: B1. See MASTER §14 SP-11, SP-12, SP-15a.
+  - Exit SP-11: a capture-excluded window, a blocked or renamed process, and a second monitor each raise their event within 2 s; no keystroke content is logged.
+  - Exit SP-12 client: the chaos tests lose no acknowledged segment; drift stays under 100 ms.
+  - Exit SP-15a desktop: CPU stays within budget.
+- [ ] **B3 SP-08b/08c Desktop foundation, part 2.** Depends on: B2, C1. See MASTER §14 SP-08.
+  - Interview path and services are merged. Still open (SP-08c): packaging, the workspace host for code and whiteboard (with C6), and the third-eye status in heartbeats (`not_required` until D3).
+  - Exit: the tauri-driver test (login → checks → consent → ready) passes; installs without admin rights; updates are verified and a downgrade is refused.
+- [ ] **B4 Desktop parts of SP-16, SP-13 and SP-15b.** Depends on: B3, C6, D3. See MASTER §14 SP-16, SP-13, SP-15b.
+  - Exit: as in those §14 entries, for the desktop side.
+- [ ] **B5 Windows golden path and chaos drills.** Depends on: B3, B4. See MASTER §16 (chaos drills).
+  - Exit: kill the app, drop the network, unplug a device, fail an upload — each ends with complete recordings, the right events and the interview resumed; the installer checks pass.
 
-    Exit criteria: the chaos tests lose no acknowledged segment; drift stays under 100 ms.
-  - **SP-15a Computer vision on the device:**
-    - a MediaPipe worker for the five face signals;
-    - face-quality guidance during the system check.
+### Lane C — interview AI and realtime
 
-    Exit criterion: CPU stays within budget.
-- [ ] **B3 SP-08b Desktop foundation, part 2 (Oct 12–13).** Interview path and services done 2026-10-11 (PR from `feat/sp-08b-desktop-interview`); packaging moves to SP-08c, below.
-  - **Before the interview:** instructions, itemised consent and accommodations.
-  - **The interview UI:**
-    - fullscreen and lockdown;
-    - the orb, captions, timer and controls;
-    - joining the LiveKit room per `interview-session.md`;
-    - the workspace host and the upload-drain screen.
-  - **Done (briefing, consent, ready, the interview over LiveKit, text mode) and, on `sp-08b-services`:**
-    - `services_start` and `services_stop` run the SP-11 monitor and proctoring queue, the SP-12 screen, camera and microphone recording, and the segment upload inside the interview;
-    - the face module feeds the proctoring queue;
-    - the upload-drain screen says "safe to close" only when every segment is settled.
-  - **Still open (SP-08c):** the workspace host for code and whiteboard (with SP-16), packaging, and the third-eye status in heartbeats (it reports `not_required` until SP-13).
-  - **Packaging:**
-    - NSIS installers for x64 and ARM64;
-    - development signing and the signed updater;
-    - GlitchTip;
-    - i18n and a11y.
-  - **Exit criteria:**
-    - the tauri-driver test (login → checks → consent → ready) passes;
-    - installs without admin rights;
-    - updates are verified and a downgrade is refused.
-- [ ] **B4 Desktop parts of SP-16, SP-13 and SP-15b (Oct 13–14):**
-  - Monaco with a language picker, Run and Submit, the whiteboard, and §48's telemetry;
-  - third-eye QR pairing and the placement guide;
-  - gaze, pose and hands, phone and obstruction detection on the device.
-- [ ] **B5 Windows golden path and chaos drills (Oct 15):**
-  - kill the app, drop the network, unplug a device, fail an upload;
-  - check the installer.
+- [x] **C0** Review `interview-session.md` and `proctoring.md`. Depends on: nothing.
+- [x] **C1–C3 SP-09a–c AI interview engine.** Depends on: SP-01, SP-06, A1. See MASTER §14 SP-09.
+  - Exit: every persona finishes a full interview; a killed agent resumes within 10 s; required skills are covered. The voice p95 is measured on this PC with `hv-voice-bench`.
+- [ ] **C4 SP-10 Evaluation and AI governance.** Depends on: C3. See MASTER §14 SP-10.
+  - Exit: every score has verified evidence; re-runs reproduce; a regressed prompt is blocked.
+- [ ] **C5 SP-14 Proctoring engine and live monitoring.** Depends on: C3, B2, D2. See MASTER §14 SP-14.
+  - Exit: p95 latency to the dashboard is under 1 s; a reconnect gets the missed alerts; dismissed events are audited.
+- [ ] **C6 SP-16 Coding, server side.** Depends on: C3. See MASTER §14 SP-16.
+  - Exit: the sandbox-escape suite holds; all four languages run end to end.
+- [ ] **C7 Vision agent (SP-15a and SP-15b server).** Depends on: C5, D3. See MASTER §14 SP-15a, SP-15b.
+  - Exit: each detector's precision and recall is reported on the labelled set; no signal is shown as proof.
 
-**B is also the integrator:** every few hours, merge `[ready]` PRs by fast-forward (section 6).
+### Lane D — quality, media services, identity and governance
 
-### Lane C — interview AI and realtime (cloud session 2)
+- [x] **D0** Review `recordings.md` and `third-eye.md`. Depends on: nothing.
+- [ ] **D1 Catch-up H0** (what SP-04a to SP-06 skipped). Depends on: nothing. Plan: `docs/superpowers/plans/2026-10-09-h0-catch-up.md`.
+  - [x] Policy drafts in `docs/policies/`.
+  - [ ] CI gates: `pytest-cov` failing below 85% on `hirevion_core` domain modules, plus Vitest coverage; Semgrep and Bandit; osv-scanner over all the lockfiles; `pip-licenses` and `license-checker`; Trivy and a Syft SBOM for the API image.
+  - [x] Traceability: `hv trace --check`, run in CI.
+  - [x] Threat models for SP-01 to SP-06.
+  - [ ] Code review: `/code-review` over the SP-04a to SP-06 code, with the findings fixed.
+  - [ ] Dashboard: KPIs from real data (PRD §10) for jobs and candidates.
+- [ ] **D2 SP-12 Server side.** Depends on: SP-01, `recordings.md`. See MASTER §14 SP-12.
+  - Exit: as in MASTER §14 SP-12 (with B2's client).
+- [ ] **D3 SP-13 Third-eye.** Depends on: C3, D2. See MASTER §14 SP-13.
+  - Exit: a reused token is refused; revoking kicks the old device; a locked phone is flagged within 10 s.
+- [ ] **D4 SP-19 Enterprise identity** (includes TOTP MFA, moved from SP-02). Depends on: SP-02. See MASTER §14 SP-19.
+  - Exit: Keycloak logins work; SCIM compliance passes; SAML signature wrapping is refused.
+- [ ] **D5 SP-22 Administration and governance.** Depends on: A5, C5. See MASTER §14 SP-22.
+  - Exit: retention respects holds; the DSR bundle is complete; every change is audited.
+- [ ] **D6 SP-20 ATS integrations and public API.** Depends on: A4, A5. See MASTER §14 SP-20.
+  - Exit: as in MASTER §14 SP-20.
+- [ ] **D7 SP-23 Automated hardening.** Depends on: everything above. See MASTER §14 SP-23.
+  - Exit: the §107 golden-path test passes on the mock (with C's simulator); every CI gate is green; the §105 checklist status is recorded.
 
-- [x] **C0 (Oct 10, first hour):** review `docs/api/contracts/interview-session.md` and `proctoring.md`; record any changes the way the contracts README says.
-- [x] **C1 SP-09a (Oct 10):** done (ADR-0030; built with C2 and C3).
-  - rooms, least-privilege tokens and explicit agent dispatch;
-  - the voice pipeline (Deepgram STT and TTS plugins, mock in CI);
-  - §35's ten states;
-  - `tools/interview-simulator` with its personas.
-- [x] **C2 SP-09b (Oct 11):** done (ADR-0030).
-  - §34's nine orchestrator components and twelve state fields;
-  - per-question time limits and follow-up rules;
-  - coverage and provenance;
-  - the difficulty ladder and time control;
-  - final questions from the FAQ;
-  - text-answer mode;
-  - guardrails.
-- [x] **C3 SP-09c (Oct 11–12):** done (ADR-0030). Every persona finishes in CI; a replacement agent takes over within 10 s (`test_bridge.py`); required skills are covered. The voice path's p95 is measured on the Windows machine with `hv-voice-bench`.
-  - transcript segments and artifacts (JSON, VTT, TXT);
-  - §91's events over `realtime`;
-  - per-turn checkpoints, the resume policy and crash recovery.
-  - **Exit criteria:**
-    - every persona finishes a full interview;
-    - a killed agent resumes within 10 s;
-    - required skills are covered.
-- [ ] **C4 SP-10 Evaluation and AI governance (Oct 12).**
-  - **Deliverables:**
-    - the live AnswerAnalyzer and the async evaluator over §44's eight dimensions, each score with evidence;
-    - skill and final evaluations;
-    - pinned re-runs;
-    - the eval harness gate in CI;
-    - the human-calibration workflow.
-  - **Exit criteria:**
-    - every score has verified evidence;
-    - re-runs reproduce;
-    - a regressed prompt is blocked.
-- [ ] **C5 SP-14 Proctoring engine and live monitoring (Oct 13).**
-  - **Deliverables:**
-    - the §54 pipeline and §67 schema;
-    - the severity table and rule engine;
-    - the evidence manager;
-    - state observed by the server (LiveKit webhooks, upload continuity, heartbeats);
-    - alerts and nudges;
-    - event review;
-    - the live dashboard on `/ws/proctoring`.
-  - **Exit criteria:**
-    - p95 latency to the dashboard is under 1 s;
-    - a reconnect gets the missed alerts;
-    - dismissed events are audited.
-- [ ] **C6 SP-16 Coding, server side (Oct 14).**
-  - **Deliverables:**
-    - `sandbox-runner` (a fresh hardened container per run) and `coding-service`;
-    - the Python, Node, TypeScript and SQL runners;
-    - question tests;
-    - CodingController;
-    - §47's evaluation;
-    - the coding report data.
-  - **Exit criteria:**
-    - the sandbox-escape suite holds;
-    - all four languages run end to end.
-- [ ] **C7 Vision agent (Oct 14–15):**
-  - SP-15a's server-side checks of face events;
-  - SP-15b's third-eye analysis, speech analytics, extra-speaker detection and cross-camera correlation.
-  - **Exit criteria:**
-    - each detector's precision and recall is reported on the labelled set;
-    - no signal is shown as proof.
+## 7. Checkpoints
 
-### Lane D — quality, media services, identity and governance (cloud session 3)
+| Checkpoint | What shows it |
+|---|---|
+| **CP2** | A simulator persona completes a voice interview on the mock (C), with recording acknowledged (D2) and evaluation (C4). The desktop goes from login to "Ready" against the real candidate auth (A2 + B1). |
+| **CP3** | Interviews, the portal, third-eye, live monitoring and reports: the §104 MVP end to end. |
+| **CP4** | Coding, advanced proctoring, notifications and webhooks. |
+| **CP5 + CP6 (automated)** | SSO/SCIM, ATS and public API, analytics, administration; the golden path and every CI gate green. |
 
-- [x] **D0 (Oct 10, first hour):** review `docs/api/contracts/recordings.md` and `third-eye.md`; record any changes the way the contracts README says.
-- [ ] **D1 Catch-up H0 (Oct 10). Things the plan promised and SP-04a to SP-06 skipped.** Partly done: the policies, the traceability check and the threat models are done; the CI gates, the code review and the dashboard remain. Plan: `docs/superpowers/plans/2026-10-09-h0-catch-up.md`.
-  - [x] **Policy drafts:** `docs/policies/` with privacy, recording, proctoring, data retention, the deletion process and the support contact. **Do this first: A3 needs them.**
-  - [ ] **CI gates:**
-    - coverage: `pytest-cov` failing below 85% on `hirevion_core` domain modules, plus Vitest coverage;
-    - Semgrep and Bandit;
-    - osv-scanner over all the lockfiles;
-    - `pip-licenses` and `license-checker`;
-    - Trivy and a Syft SBOM for the API image.
-  - [x] **Traceability:** `hv trace --check`, run in CI: a check that every Appendix A row names a sub-project and points at existing code and tests.
-  - [x] **Threat models:** `docs/security/threat-model.md`, covering SP-01 to SP-06.
-  - [ ] **Code review:** `/code-review` over the SP-04a to SP-06 code, with the findings fixed.
-  - [ ] **Dashboard:** KPIs from real data (PRD §10) for jobs and candidates.
-- [ ] **D2 SP-12 Server side (Oct 11).**
-  - **Deliverables:**
-    - segment upload URLs (write-only, per blob, 15 minutes);
-    - hash-verified acknowledgement;
-    - `media-worker` (ffmpeg as a separate process) assembling the tracks and the timeline map;
-    - Egress for the conversation audio and third-eye;
-    - evidence snapshots;
-    - audited playback URLs;
-    - `RECORDING_STATUS`;
-    - §85's storage layout.
-- [ ] **D3 SP-13 Third-eye (Oct 12).**
-  - **Deliverables:**
-    - pairing tokens: short-lived, single-use, bound to the interview and the candidate;
-    - a publish-only LiveKit token;
-    - the `third-eye/` mobile web app (permissions, placement guide, Wake Lock, reconnect);
-    - status events;
-    - revocation.
-  - **Exit criteria:**
-    - a reused token is refused;
-    - revoking kicks the old device;
-    - a locked phone is flagged within 10 s.
-- [ ] **D4 SP-19 Enterprise identity (Oct 13).**
-  - **Deliverables:**
-    - Entra ID, OIDC and SAML per organisation;
-    - home-realm discovery and just-in-time provisioning;
-    - SCIM 2.0;
-    - TOTP MFA with recovery codes;
-    - passkeys;
-    - SSO-only mode.
-  - **Exit criteria:**
-    - Keycloak logins work;
-    - SCIM compliance passes;
-    - SAML signature wrapping is refused.
-- [ ] **D5 SP-22 Administration and governance (Oct 13–14).**
-  - **Deliverables:**
-    - branding;
-    - the AI configuration;
-    - editable proctoring policies;
-    - the app category catalogue;
-    - retention with legal holds;
-    - DSR and consent tooling;
-    - usage, cost and quotas;
-    - server-backed saved views;
-    - a people search;
-    - the platform pages;
-    - localisation packs.
-  - **Exit criteria:**
-    - retention respects holds;
-    - the DSR bundle is complete;
-    - every change is audited.
-- [ ] **D6 SP-20 ATS integrations and public API (Oct 14–15; the results sync needs A5).**
-  - **Deliverables:**
-    - a provider-neutral adapter;
-    - adapters for custom REST, webhooks, Greenhouse, Lever, Workday, SuccessFactors, Oracle and iCIMS;
-    - contract tests against local mocks;
-    - scoped API keys;
-    - rate limits;
-    - the published docs.
-- [ ] **D7 SP-23 automated hardening (Oct 15).**
-  - **Deliverables:**
-    - the §107 golden-path test on the mock, using lane C's simulator;
-    - k6 load;
-    - parser fuzzing;
-    - a ZAP baseline;
-    - a backup and restore script and drill;
-    - §96's dashboards and alerts;
-    - performance budgets;
-    - runbooks;
-    - the cost-model report;
-    - the §105 checklist status.
+- **Daily report.** The main session posts one: what merged, what's red, and which lane is at risk. A slipping lane drops to its next-lowest-priority part, never its P0 work.
 
-## 8. Checkpoints
+## 8. Testing on this PC
 
-| When (IST) | Checkpoint | What shows it |
-|---|---|---|
-| Oct 12, evening | **CP2** | A simulator persona completes a voice interview on the mock (C), with recording acknowledged (D2) and evaluation (C4). The desktop goes from login to "Ready" against the real candidate auth (A2 + B1). |
-| Oct 13, evening | **CP3** | Interviews, the portal, third-eye, live monitoring and reports: the §104 MVP end to end. |
-| Oct 14, evening | **CP4** | Coding, advanced proctoring, notifications and webhooks. |
-| Oct 15, evening | **CP5 + CP6 (automated)** | SSO/SCIM, ATS and public API, analytics, administration; the golden path and every CI gate green. |
-
-- **Morning report.** Lane B posts one each day: what merged, what's red, and which lane is at risk. A slipping lane drops to its next-lowest-priority part, never its P0 work.
-
-## 9. Your part: development in the cloud, testing on this PC
-
-**The split:**
-- **Cloud sessions develop** lanes A, C and D: backend, web, AI, realtime and administration. Each one merges its own green PRs to `main`.
-- **This PC develops lane B only** (the desktop). It needs Windows to build and run: the TPM, screen capture, Media Foundation, WebView2, webcams. GitHub's Windows CI can compile and unit-test it, but can't run it against real hardware.
-- **This PC is also where you test everything,** from `main`, at the checkpoints below. Local testing costs no cloud credits.
+Everything is built and tested on this PC. GitHub's Windows CI can compile and unit-test the desktop, but can't run it against real hardware.
 
 **Setting up once:**
-1. Keep this PC on, stop it from sleeping, keep Docker Desktop running, and keep Claude Code open in the repo (lane B).
-2. Fix `GEMINI_API_KEY` in the local `.env`. Never put a key in a cloud session.
+1. Keep this PC awake, Docker Desktop running, and Claude Code open in the repo.
+2. Fix `GEMINI_API_KEY` in the local `.env`.
 
 **Each time you test** (in Git Bash, from `D:/Deva/Hirevion`):
 
 ```bash
-git checkout main && git pull --ff-only     # or a lane's branch, to test a PR before it merges
-pnpm install && uv sync                     # after other lanes added dependencies
+git checkout main && git pull --ff-only     # or a part's branch, to test a PR before it merges
+pnpm install && uv sync                     # after a part added dependencies
 uv run hv up                                # databases, storage, mail, LiveKit (Docker)
 uv run hv migrate && uv run hv seed-identity
 uv run hv api                               # the API on 127.0.0.1:8000 (keep it running)
@@ -544,34 +242,24 @@ pnpm --filter @hirevion/ai-interviewer-desktop tauri dev       # the candidate a
 - **Email:** invitations, codes and resets arrive in Mailpit at http://127.0.0.1:8025.
 - **Sign-in:** the seeded recruiter is `recruiter@acme.example.test`, and the password is `HV_SEED_PASSWORD` in `.env`.
 
-**What to test, and when** (each step builds on the one before):
+**What to test, at each checkpoint** (each step builds on the one before):
 
 | Checkpoint | Try this here |
 |---|---|
-| CP2 (Oct 12) | Create a job, upload resumes and shortlist. Build a template and invite a candidate (A1). Set the candidate's password from the Mailpit email (A3). Sign in to the desktop app, run the system check with your webcam, and start an interview: talk to the AI voice, finish, and watch the upload drain. |
-| CP3 (Oct 13) | Pair your phone as the third eye (same Wi-Fi). Watch the interview live from the web app, with alerts as you look away or switch windows. Open the interview and proctoring reports and the review screen. |
-| CP4 (Oct 14) | A coding question (run and submit). Advanced proctoring (phone in view, a second person). Notification emails and webhook deliveries. |
-| CP5/6 (Oct 15) | SSO with the local Keycloak, administration pages, analytics, and the golden path from start to finish. |
+| CP2 | Create a job, upload resumes and shortlist. Build a template and invite a candidate (A1). Set the candidate's password from the Mailpit email (A3). Sign in to the desktop app, run the system check with your webcam, and start an interview: talk to the AI voice, finish, and watch the upload drain. |
+| CP3 | Pair your phone as the third eye (same Wi-Fi). Watch the interview live from the web app, with alerts as you look away or switch windows. Open the interview and proctoring reports and the review screen. |
+| CP4 | A coding question (run and submit). Advanced proctoring (phone in view, a second person). Notification emails and webhook deliveries. |
+| CP5/6 | SSO with the local Keycloak, administration pages, analytics, and the golden path from start to finish. |
 
-**Reporting a problem:**
-- **Fastest:** write it in the chat of the lane that owns the feature. Section 7 says which lane built what.
-- **Otherwise:** add it under "Found in testing" below, on `main`, as `- [ ] <lane letter>: <what you did>, <what happened>, <what you expected>`. Each lane checks this list before starting its next part and fixes its own items first.
+**Reporting a problem:** add it under "Found in testing" below, on `main`, as `- [ ] <part id>: <what you did>, <what happened>, <what you expected>`. Each part's owner checks this list before starting its next part and fixes its own items first.
 
-**Also:**
-- **Each day (about 10 minutes):** skim section 7's boxes and lane B's morning report, and check that CI on `main` is green.
-- **From Oct 16:** the hardware, phone, NVDA and live-vendor checks in section 1, plus the long-lead items:
-  - the code-signing certificate;
-  - a domain;
-  - the OpenAI organisation;
-  - the Deepgram DPA;
-  - counsel review;
-  - booking the pentest.
+**After the build:** the hardware, phone, NVDA and live-vendor checks in section 1, plus the long-lead items in MASTER §17.
 
 ### Found in testing
 
 - (none yet)
 
-## 10. Deferrals recorded in code, so nothing is lost
+## 9. Deferrals recorded in code, so nothing is lost
 
 - **A1 (SP-07a):** done (ADR-0020): the "Create interview" action, the candidates' Interview and Completed tabs, and interviews pinning a template version, its questions and its policy.
 - **C2 (SP-09b):** done (ADR-0030): question time limits and follow-up rules are used live.

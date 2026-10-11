@@ -170,17 +170,6 @@ Each application has its own build, tests and release pipeline.
     - System-design questions use a whiteboard (Excalidraw, MIT); its snapshot goes into the evaluation.
     - All other questions show a question card and notes.
 
-### 3.3 Timeline reality
-
-- **Effort:** the full PRD is about 290 senior engineer-days of conventional work.
-- **Solo pace:** Claude Code subagents do most of the implementation while you review and test on real hardware. At that pace, the full-feature local build lands around **Nov 10 (aggressive) to Nov 28 (expected)**; see §15.
-- **Oct 15:** your earlier "Full GA on Oct 15" can't coexist with today's direction (local-first, nothing skipped, solo). What Oct 15 can realistically be (aggressive) is **CP3**: the complete core hiring loop — PRD §104 MVP plus live monitoring, reports and third-eye — running end-to-end locally.
-- **Recommendation**, to confirm in the Cloud Migration Plan: start that plan at CP3, so the core loop goes live in phases around late October or early November while CP4–CP6 continue. **Quality gates never move; dates do.**
-- **Re-plan, 2026-10-09:**
-  - **Pace so far:** SP-00 to SP-06 (8 parts) took 6 active days, built one lane at a time, inline. Four green PRs are waiting to be merged.
-  - **Behind the aggressive dates; the expected ones are still reachable**, but only with the three parallel lanes and daily merges (§15). The one-lane estimate is in §15 too.
-  - **The rest of the work is in [PENDING_TASKS.md](PENDING_TASKS.md).**
-
 ## 4. Scope boundaries
 
 - **Out of scope (§4):**
@@ -1443,82 +1432,19 @@ It starts with the interview simulator as its client.
   - Every CP6 gate is green.
   - The cloud-dependent §105 items are handed to the Cloud Migration Plan with acceptance criteria.
 
-## 15. Schedule & checkpoints (solo + Claude Code)
+## 15. Checkpoints
 
-**Assumptions:**
-- About 10–12 focused hours a day, 6–7 days a week.
-- Up to 3 parallel subagents, each in its own git worktree. You choose the execution mode at the first hand-off; inline execution is also possible but pushes every date later.
-- No scope additions.
+A checkpoint is a demo plus quality gates. Lanes, order and priorities are in [PENDING_TASKS.md](PENDING_TASKS.md); progress is in [docs/STATUS.md](docs/STATUS.md).
 
-A checkpoint is a demo plus quality gates, not a promised date.
-
-| CP | Outcome | Aggressive | Expected |
-|---|---|---|---|
-| 0 | Stack up; spikes decide the models, capture/encode path and LiveKit networking | Sep 30 | Oct 1 |
-| 1 | Recruiter: job → JD → 200 resumes → evidence-backed ranking → shortlist | Oct 5 | Oct 8 |
-| 2 | Candidate completes a voice interview in the desktop app, with recording, core proctoring and evaluation | Oct 11 | Oct 16 |
-| 3 | Core hiring loop: PRD §104 MVP plus live monitoring, reports and third-eye | **Oct 15** | Oct 22 |
-| 4 | Coding interview, advanced proctoring, notifications & webhooks | Oct 25 | Nov 5 |
-| 5 | SSO/SCIM, ATS & public API, analytics, admin & governance, localisation | Nov 3 | Nov 17 |
-| 6 | Hardened: PRD §105 checklist green locally; cost model feeds the Cloud Migration Plan | Nov 10 | Nov 28 |
-
-**Parallel lanes:**
-- Backend and web: SP-02–07.
-- Desktop native: SP-08, 11, 12.
-- AI and vision: SP-09, 10, 15.
-
-**Cadence:**
-- You test the latest desktop build on real hardware every day.
-- Every week we re-plan against actual progress.
-
-**Re-plan, 2026-10-09** (the first weekly re-plan, after SP-06).
-
-What actually happened:
-- **One lane, inline.** Every part ran inline in one session, one at a time; the parallel lanes above never started.
-- **Desktop not started.** The desktop lane — the riskiest remaining work — hasn't begun.
-- **Nothing merged since SP-02b.** PRs #1–#4 are stacked and waiting.
-
-The estimates before the product owner's decision below (superseded: the target is now 2026-10-15 with four lanes):
-
-| CP | Original (expected) | Re-plan, three lanes | Re-plan, one lane |
-|---|---|---|---|
-| 2 | Oct 16 | Oct 24 | Nov 3 |
-| 3 | Oct 22 | Nov 1 | Nov 15 |
-| 4 | Nov 5 | Nov 10 | Nov 27 |
-| 5 | Nov 17 | Nov 16 | Dec 6 |
-| 6 | Nov 28 | Nov 25 | Dec 15 |
-
-- **Assumptions:**
-  - work every day from 2026-10-10;
-  - PRs merged within a day of going green;
-  - the Gemini key fixed before SP-09.
-- **One-lane basis:** about 0.75 active days per backend/web part and about 1.5 per desktop or native part, over the roughly 27 parts left.
-
-**Decision, 2026-10-09 (product owner):**
-- Every lane runs at once.
-- Development must be finished by **2026-10-15**, with access 24 hours a day.
-- Credits are used carefully.
-
-[PENDING_TASKS.md](PENDING_TASKS.md) holds the operating plan: lanes, day targets, contracts, prompts, merge protocol.
-
-| Lane | Order | Where it runs |
-|---|---|---|
-| **A** candidate access and reporting | SP-07a, SP-07c, SP-07b, SP-18, SP-17, SP-21 | Cloud session 1 |
-| **B** desktop and native | SP-08a; then SP-11, SP-12 (client) and SP-15a in parallel; SP-08b; then the SP-16, SP-13 and SP-15b desktop parts | The local Windows PC only (Tauri, Rust, webcams, Media Foundation); also the integrator |
-| **C** interview AI and realtime | SP-09a–c, SP-10, SP-14, SP-16 (server), the vision agent | Cloud session 2 |
-| **D** quality, media services, identity and governance | The H0 catch-up, SP-12 (server), SP-13, SP-19, SP-22, SP-20, SP-23 (automated parts) | Cloud session 3 |
-
-**Priority if time runs short:**
-- P0: CP2 and CP3 (the §104 MVP).
-- P1: CP4.
-- P2: CP5.
-- P3: SP-23's automated hardening.
-
-Nothing is dropped; lower priorities finish after Oct 15.
-
-**Starting early.**
-- **Contracts first.** Lane B drafted the desktop's API contracts in `docs/api/contracts/` on 2026-10-09; the owning lanes review and implement them.
-- **Neither lane waits for SP-07c.** SP-08a starts against a stub sign-in, and SP-09a uses the interview simulator as its client.
+| CP | Outcome |
+|---|---|
+| 0 | Stack up; spikes decide the models, capture/encode path and LiveKit networking |
+| 1 | Recruiter: job → JD → 200 resumes → evidence-backed ranking → shortlist |
+| 2 | Candidate completes a voice interview in the desktop app, with recording, core proctoring and evaluation |
+| 3 | Core hiring loop: PRD §104 MVP plus live monitoring, reports and third-eye |
+| 4 | Coding interview, advanced proctoring, notifications & webhooks |
+| 5 | SSO/SCIM, ATS & public API, analytics, admin & governance, localisation |
+| 6 | Hardened: PRD §105 checklist green locally; cost model feeds the Cloud Migration Plan |
 
 **Merging:**
 - Each part opens its PR against `main`.
@@ -1600,39 +1526,8 @@ Nothing is dropped; lower priorities finish after Oct 15.
   8. The webhook is delivered, the audit trail is complete and analytics update.
   9. The retention and DSR jobs are verified.
 
-## 17. Day-0 & execution sequence
+## 17. Owner actions still open
 
-**After you approve this plan, in order — no implementation before step 3:**
-
-1. **Make the git rules durable:**
-   - Create `CLAUDE.md` with the section below.
-   - Disable commit and PR attribution in the project `.claude/settings.json` (via the update-config skill).
-   - Add `.githooks/commit-msg`, which rejects any Claude/Anthropic co-author or "Generated with" line.
-   - Add `.githooks/pre-commit`, which rejects any author or committer other than `padma.devaraj1800@gmail.com`.
-   - Run `git config core.hooksPath .githooks`.
-   - Save the rule to memory.
-2. **Create `MASTER_IMPLEMENTATION_PLAN.md`** at the repo root with this plan's content, and link it from `CLAUDE.md`. Commit and push as Devaraj-05.
-3. **Review gate:** you review `MASTER_IMPLEMENTATION_PLAN.md`. I apply any changes you ask for.
-4. **Start building:** write the SP-00 detailed plan (writing-plans), confirm the execution mode with you, and start implementing.
-
-```markdown
-## Git identity & attribution (MANDATORY)
-- Commit and push ONLY as `Devaraj-05 <padma.devaraj1800@gmail.com>` (author and committer). This repo's local git config holds that identity; the global config is a different account — never use it here, never pass `--author` or `-c user.*` overrides.
-- Before every commit verify `git config user.name` = Devaraj-05 and `git config user.email` = padma.devaraj1800@gmail.com.
-- NEVER add `Co-Authored-By:` trailers, "Generated with Claude Code", or any Claude/Anthropic attribution to commit messages, PR titles/bodies, tags, release notes or code comments. Claude must never appear as a contributor on GitHub.
-- These rules override any default attribution behaviour.
-```
-
-**Your actions, in parallel today:**
-
-- **Toolchain:**
-  - Docker Desktop on WSL2, with at least 12 GB RAM, 6 CPUs and 100 GB disk allocated.
-  - An NVIDIA driver with WSL GPU support, if the PC has an NVIDIA GPU.
-  - Visual Studio 2022 Build Tools (C++ workload and Windows SDK).
-  - rustup.
-  - Node 24 LTS and pnpm.
-  - Python 3.12 and uv.
-  - GitHub CLI, logged in as Devaraj-05.
 - **API keys:** put your Gemini and Deepgram keys in the gitignored root `.env` (`uv run hv env-sync` adds any missing settings); the OpenAI key is needed only for production. No GPU is needed.
 - **Test devices:**
   - An Android phone and an iPhone for third-eye.

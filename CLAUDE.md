@@ -3,9 +3,10 @@
 Hirevion is an enterprise AI recruitment and interview platform with two separate applications: the **Recruitment Platform** (web) and the **Candidate Windows Desktop AI Interview** (Tauri `.exe`), plus the **Third-Eye** mobile-browser camera and a shared Python backend.
 
 - Requirements: `AI_Recruitment_Platform_Complete_PRD.md` (cited as §n).
-- Architecture, sub-projects, schedule and PRD traceability: `MASTER_IMPLEMENTATION_PLAN.md`. It is the source of truth for sequencing, and its §13 "Global constraints" apply to every change.
+- Read first: `docs/STATUS.md` (what's merged, in progress and blocked).
+- Order, dependencies, exit criteria and rules: `PENDING_TASKS.md`. Update it and `docs/STATUS.md` when a part lands.
+- Each part's deliverables: `MASTER_IMPLEMENTATION_PLAN.md` §14; read only that entry and what it cites. Its §13 "Global constraints" apply to every change; Appendix A is PRD traceability.
 - Detailed per-sub-project plans live in `docs/superpowers/plans/`.
-- What's left, in order, with each part's definition of done and lane: `PENDING_TASKS.md`. Read it before starting new work, and update it when a part lands.
 - A fresh Linux clone (for example a Claude Code cloud session) runs `bash scripts/session-setup.sh` once, before anything else. It sets the git identity and hooks below, the toolchains, a `.env` on the mock AI, and the test services.
 
 ## Git identity & attribution (MANDATORY)
