@@ -18,8 +18,8 @@ from hirevion_api.proctoring.schemas import (
     EvidenceUploadResponse,
     HeartbeatAck,
     HeartbeatBody,
-    SessionBody,
     ProctorSessionResponse,
+    SessionBody,
     SnapshotRequest,
 )
 from hirevion_api.ratelimit import enforce
