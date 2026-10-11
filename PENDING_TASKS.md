@@ -177,7 +177,7 @@ A box is ticked in the PR that merges the part. Deliverables are in MASTER §14;
   - Exit: every persona finishes a full interview; a killed agent resumes within 10 s; required skills are covered. The voice p95 is measured on this PC with `hv-voice-bench`.
 - [x] **C4 SP-10 Evaluation and AI governance.** Depends on: C3. See MASTER §14 SP-10.
   - Exit: every score has verified evidence; re-runs reproduce; a regressed prompt is blocked.
-- [ ] **C5 SP-14 Proctoring engine and live monitoring.** Depends on: C3, B2, D2. See MASTER §14 SP-14.
+- [x] **C5 SP-14 Proctoring engine and live monitoring.** Depends on: C3, B2, D2. See MASTER §14 SP-14.
   - Also (moved from D2): evidence snapshots, screen and camera at event time, asked for by SP-14's events.
   - Exit: p95 latency to the dashboard is under 1 s; a reconnect gets the missed alerts; dismissed events are audited.
 - [ ] **C6 SP-16 Coding, server side.** Depends on: C3. See MASTER §14 SP-16.

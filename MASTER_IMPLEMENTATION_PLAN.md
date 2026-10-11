@@ -1628,8 +1628,8 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 51 | Encrypted buffer → queue → retry → server acknowledgement; crash/network recovery | SP-12 (device queue: lane B; server, D2: hash-verified acknowledgement and the recovery listing in `hirevion_core.recordings.segments`, continuity events in `hirevion_core.recordings.monitor`; `test_recordings_api.py`, `test_recording_monitor.py`) |
 | 52 | Third-eye flow; 5 token properties | SP-13 |
 | 53 | 7 third-eye signals, as evidence only | SP-15b (plus SP-13 transport) |
-| 54 | 7 sources; 8-stage pipeline | SP-14 |
-| 55 | 14 events | SP-11, SP-12, SP-13, SP-14, SP-15a/b (§6.12 table) |
+| 54 | 7 sources; 8-stage pipeline | SP-14 (delivered, C5: `hirevion_core.proctoring.normaliser`, `hirevion_core.proctoring.aggregator`, `hirevion_core.proctoring.rules`, `hirevion_core.proctoring.evidence`, `hirevion_core.proctoring.service`; the report is `GET /proctoring/{interview_id}`; `test_rules.py`, `test_pipeline.py`, `test_proctor_engine.py`) |
+| 55 | 14 events | SP-11, SP-12, SP-13, SP-14 (delivered: all 14 plus the §6.12 additions and `DEVICE_CHANGE`, `UNEXPECTED_WINDOW`, `TELEMETRY_GAP`, `THIRD_EYE_RECONNECTED`, in `hirevion_core.proctoring.catalogue`), SP-15a/b (§6.12 table) |
 | 56 | OpenCV, MediaPipe, ONNX Runtime; 5 face signals; temporal thresholds | SP-15a |
 | 57 | Gaze pipeline; 3 gaze events; not proof | SP-15b |
 | 58 | 4 pose/hand signals plus editor correlation | SP-15b |
@@ -1638,10 +1638,10 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 61 | Blocked/allowed apps and categories; 6 detection attributes | SP-11, SP-22 |
 | 62 | 4 focus detections; 4 stored fields | SP-11 |
 | 63 | 5 display/device changes, as evidence | SP-11, SP-13 |
-| 64 | INFO/WARNING/CRITICAL; configurable; examples | SP-14, SP-22 |
-| 65 | Realtime path; 8 things the recruiter sees | SP-14 (Streams instead of Pub/Sub, per §3.2) |
-| 66 | Live dashboard layout | SP-14 |
-| 67 | 7 evidence types; JSON schema | SP-12, SP-14 (evidence snapshots) |
+| 64 | INFO/WARNING/CRITICAL; configurable; examples | SP-14 (delivered: the §6.12 table, escalation and gaze in `hirevion_core.proctoring.rules`, pinned per session by `hirevion_core.proctoring.policy`; `test_rules.py`), SP-22 (the policy editor) |
+| 65 | Realtime path; 8 things the recruiter sees | SP-14 (delivered, Streams instead of Pub/Sub, per §3.2: `PROCTOR_EVENT`, `PROCTOR_STATUS` and `PROCTOR_REVIEW` on `hv:rt:interview:{id}`, `/ws/proctoring/{id}`, `hirevion_core.proctoring.live`; `test_proctoring_api.py`) |
+| 66 | Live dashboard layout | SP-14 (delivered: `monitoring-panel.tsx` on the interview page, `proctoring-state.ts`; `proctoring.test.tsx`; the camera, screen and third-eye video tiles need `POST /proctoring/{interview_id}/observe`'s token and wait for the media player) |
+| 67 | 7 evidence types; JSON schema | SP-12, SP-14 (delivered: the schema and `proctor_evidence` in `hirevion_core.proctoring.evidence`, snapshots asked for at CRITICAL events and answered through `/proctoring/evidence-uploads`; `test_proctoring_api.py`) |
 | 68 | 14 proctoring-report sections; no single score | SP-17 |
 | 69 | 13 interview-report sections | SP-17 |
 | 70 | Per-skill final evaluation, with evidence | SP-10 (`evaluation.aggregate`, `GET /interviews/{id}/evaluation`; `test_aggregate.py`; the coding slot is SP-16) |
@@ -1664,8 +1664,8 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 87 | api/worker/realtime/coding services; 15 logical modules | SP-00, SP-01 (§6.1) |
 | 88 | Azure production architecture | Cloud plan |
 | 89 | Every core table | §7; each owning SP |
-| 90 | 20 API groups; the screening, interview and proctoring example endpoints | §8; owning SPs (SP-09: `/interviews/{id}/start`, `/answer`, `/complete`, `/transcript`) |
-| 91 | 3 WebSocket channels; 10 events | SP-09 (`/ws/interviews/{id}`; `AI_SPEAKING`, `CANDIDATE_SPEAKING`, `QUESTION_STARTED`, `ANSWER_RECEIVED`, `INTERVIEW_COMPLETED` on `hv:rt:interview:{id}`), SP-12 (D2: `RECORDING_STATUS` on the same stream from `hirevion_core.recordings.monitor` and `hirevion_core.recordings.assembly`), SP-13, SP-14 (§8; `/ws/proctoring`, `/ws/recruiter` and the other five events), SP-16 |
+| 90 | 20 API groups; the screening, interview and proctoring example endpoints | §8; owning SPs (SP-09: `/interviews/{id}/start`, `/answer`, `/complete`, `/transcript`; SP-14: `/proctoring/session`, `/events`, `/heartbeat`, `/evidence-uploads`, `GET /proctoring/{interview_id}` and `/evidence`) |
+| 91 | 3 WebSocket channels; 10 events | SP-09 (`/ws/interviews/{id}`; `AI_SPEAKING`, `CANDIDATE_SPEAKING`, `QUESTION_STARTED`, `ANSWER_RECEIVED`, `INTERVIEW_COMPLETED` on `hv:rt:interview:{id}`), SP-12 (D2: `RECORDING_STATUS` on the same stream from `hirevion_core.recordings.monitor` and `hirevion_core.recordings.assembly`), SP-13, SP-14 (delivered, `/ws/proctoring/{id}` and `PROCTOR_EVENT`; `/ws/recruiter` and the other events with their owners), SP-16 |
 | 92 | Third-eye realtime path | SP-13 |
 | 93 | Repository structure | SP-00 (§12) |
 | 94 | Technology stack (local parts) | §2; Azure part in the Cloud plan |

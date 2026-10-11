@@ -455,6 +455,25 @@ How it works is in [ADR-0031](../architecture/adr/0031-evaluation-and-governance
 - **Reviewers' calibration:** on a finished interview's page, open a question, score the eight dimensions yourself and save; the AI's scores and their quotes appear beside yours. Organisation admins and recruiters (`reports.analytics.view`) see the organisation's weighted kappa, Spearman, mean gap and the AI's bias under the interview's evaluation.
 - **Database tests while other lanes test:** the test database and Valkey database 15 are shared, so run with your own database (`CREATE DATABASE hirevion_test_c4`, then `HV_TEST_DATABASE=hirevion_test_c4 uv run pytest ...`) to avoid another session rebuilding the schema under you.
 
+### Proctoring (engine and live view)
+
+How it works is in [ADR-0031](../architecture/adr/0031-proctoring-engine.md); the desktop's wire format is `docs/api/contracts/proctoring.md`.
+
+- **Run it:** the proctoring watcher and the `recording.gap` consumer run with the other workers (`hv api`, or `hv worker`). Without them events are still stored and alerted, but missed heartbeats, a camera LiveKit saw go down and recording gaps are not turned into events.
+- **Feed it without the desktop:** the interview simulator's `DesktopClient` signs in like the app; after `start`, `POST /proctoring/session` and then `/events` and `/heartbeat` with its session token (see `backend/api/tests/test_proctoring_api.py` for every call).
+- **What a level turns on:** `off` stores nothing; `basic` face and focus; `standard` adds gaze, phone, processes and displays; `strict` adds audio and the third eye, and treats a second display as CRITICAL. A template's level is copied into each interview, and the session pins the full policy when it opens, so changing a template never changes a running interview.
+- **Severities** are the master plan's §6.12 table (`hirevion_core.proctoring.rules`). To see why an event got its severity, read `details.server.reasons` on the event (for example `duration:31000ms`, `category:remote_access`, `repeated:5 in 600s`). A device's `severity_hint` is only a note.
+- **Application rules:** the platform catalogue is in `app_categories` and `app_rules` (organisation_id empty). A blocking `name` rule needs a `with` condition; the database refuses one without. Publisher names are the signer's certificate subject and are matched exactly: check them on a Windows machine with `Get-AuthenticodeSignature`. The catalogue is read-only to the API; SP-22 adds its editor.
+- **Watching live:**
+  - The interview page shows the monitoring panel to anyone with `reports.proctoring.view` and `interviews.view`; the panel starts from `GET /api/v1/proctoring/{id}/live` and follows `/api/v1/ws/proctoring/{id}?after=<last id>`.
+  - To see the raw events, run `XRANGE hv:rt:interview:<id> - +` in `valkey-cli`: `PROCTOR_EVENT`, `PROCTOR_STATUS` and `PROCTOR_REVIEW` are there next to the interview's own events.
+  - `POST /api/v1/proctoring/{id}/observe` gives a hidden, subscribe-only LiveKit token (audited).
+- **Reviewing:** an event can be confirmed, marked a false positive or not relevant with a reason (`interviews.manage` and `reports.proctoring.view`). It stays in the report and is audited (`proctoring.event_reviewed`).
+- **Nudges:** `policy.nudges` (in the pinned policy) says which events nudge the candidate, from which severity, how often and how many. They are in the interview's hot copy (`GET /session`'s `notice`) and in `hv:iv:<id>:nudges`, which the agent turns into `hv.state`.
+- **Snapshots:** a CRITICAL event records requests (`proctor_evidence` rows with no blob and `ref.status` `requested`); the desktop gets them in the heartbeat answer and answers within two minutes. Unanswered ones stay visible in the evidence list.
+- **Measuring the latency:** `uv run pytest backend/api/tests/test_proctoring_api.py -k 95th -s` prints the median, p95 and maximum from the desktop's POST to the dashboard's websocket.
+- **Tests on a busy PC:** several test runs at once share the test database and Valkey database 15. Set `HV_TEST_DATABASE=<your own database>` (create it once) and `HV_TEST_VALKEY_DB=<0-14>` to keep a run to yourself.
+
 ## Desktop app (`ai-interviewer-desktop`)
 
 The candidate app is Tauri 2: a React webview (`src/`) plus Rust (`src-tauri/`), which also

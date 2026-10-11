@@ -24,5 +24,6 @@
 | [0021](0021-candidate-desktop-auth.md) | Candidate desktop sign-in: DPoP-bound tokens, refresh families, new-device codes and a release registry | Accepted |
 | [0030](0030-interview-engine.md) | The interview engine: a deterministic policy over a checkpointed state, one conductor for every turn | Accepted |
 | [0031](0031-evaluation-and-governance.md) | Evaluation and AI governance: verified quotes, rubric-weighted scores, pinned versions and a gate | Accepted |
+| [0031](0031-proctoring-engine.md) | The proctoring engine: the server decides, what it sees itself is the ground truth, and nothing a reviewer dismisses is deleted | Accepted |
 
 New decisions copy [0000-template.md](0000-template.md) and take the next number.

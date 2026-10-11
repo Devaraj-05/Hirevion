@@ -344,3 +344,41 @@
 - An injection phrased to look like a good answer can still raise a score within the bounds; the gate covers the known phrasings, reviewers' calibration shows drift, and the scores are inputs to a human decision (master plan §3.2).
 - A hosted model's output varies run to run; re-runs are judged within a tolerance, not for equality.
 - Integrity flags are signals for a reviewer, never proof.
+
+## SP-14 Proctoring engine and live monitoring
+
+**Assets:**
+- the events, their severity and the reviews of them (the proctoring report);
+- evidence: snapshots, process metadata, references into recordings and the transcript;
+- the pinned policy and the application rules;
+- the live stream and the observer token;
+- the candidate's privacy: what the monitor reports about their computer.
+
+**Trust boundaries:**
+- the desktop app and the candidate's machine (untrusted) → the proctoring API;
+- LiveKit → the API's webhook, and the upload pipeline → the `recording.gap` topic (trusted, signed or internal);
+- the recruiter's browser → the report, the snapshot, the evidence and the live websocket;
+- the snapshot upload URL → blob storage.
+
+| Threat (STRIDE) | Example | Control |
+|---|---|---|
+| Spoofing | Events or heartbeats for another candidate's interview | The interview-session token names one interview with a DPoP proof; a proctor session of another interview is "not found"; the body's interview must be the token's |
+| Spoofing | A client reports `TELEMETRY_GAP` or `THIRD_EYE_DISCONNECTED` to confuse a report, or says a camera is "on" while it is off | Server-only events are refused as `unknown-event`; the server's own views (LiveKit tracks, upload continuity) outvote the heartbeat: a channel is down while any source says so |
+| Tampering | A hostile client lowers its own severity (`severity_hint`, a made-up `category`) or sends huge or future-dated events | The server judges every event from the pinned policy; the hint is only a note; a blocked process's category comes from the session's rule at `rule_index`; times far in the future are clamped and flagged; details are bounded; a sequence number far ahead of the last is refused |
+| Tampering | Replacing evidence after the fact, or linking someone else's blob to an event | A slot is a row; once an event claims it the slot can't be given out again (`evidence-locked`); an event can link only slots issued to its own session; the blob path is built by the server |
+| Tampering | A device sends what a key typed (a keylogger by another name) | Keys such as `keys`, `keystrokes`, `text` and `clipboard` are dropped from every event's details; the contract forbids key logging; a test holds it |
+| Tampering | A device keeps a CRITICAL event from happening by never sending it | The server sees tracks, upload continuity and heartbeats itself; a silent device is a telemetry gap; sequence gaps are events |
+| Repudiation | A reviewer dismisses a CRITICAL event and denies it | Reviews are insert-only rows with the reviewer, the reason and the previous state, and an audit entry; the event stays in the report marked as dismissed |
+| Information disclosure | Interviewers or other tenants read proctoring data | Every route needs `reports.proctoring.view` and the interview's resource scope; RLS isolates tenants; `/ws/interviews/{id}` hides the proctoring types without that permission; `/ws/proctoring` also needs `interviews.view` because the stream carries what was said |
+| Information disclosure | Evidence links leak | Download links last five minutes and are made only for stored snapshots; viewing the evidence list is audited every time, the report and live view every five minutes; the observer token is audited |
+| Information disclosure | A recruiter watches the candidate unseen by anyone, unrecorded | The observer token is hidden and subscribe-only by design (§6.12), so asking for it is audited and needs the same permissions; the candidate's notice (§83) says proctoring events are recorded |
+| Denial of service | A flood of events or snapshot slots | 240 event requests, 120 heartbeats and 120 slot requests a minute per session; a batch of at most 100 events; 500 slots and 40 snapshot requests per interview; snapshots at most 2 MB |
+| Denial of service | A gap of a million sequence numbers fills the database | A gap is one range, not rows; a number more than 100 000 ahead is refused; `missing` lists at most 500 |
+| Elevation of privilege | A reviewer without the right dismisses events | Reviewing needs `interviews.manage` and `reports.proctoring.view`; the matrix test holds both routes' guards |
+
+**Residual risks:**
+- A candidate controls their machine: a device that never reports is seen as a gap in telemetry, and its recording as a gap, but nothing stops a determined candidate using another device. Signals are descriptions for a reviewer, never proof, and the report says who or what raised each one.
+- The platform catalogue's publisher names are matched exactly by the desktop; a vendor that signs under another name is not caught until the catalogue is corrected.
+- Snapshots are requested in the heartbeat answer; a desktop that ignores them is not detected beyond the unanswered request being visible in the evidence list.
+- Hidden observers are visible to the room's administrators in LiveKit's server logs; the room list shows only visible participants.
+- Proctoring events are not partitioned or aged out yet; retention (SP-22) will decide.
