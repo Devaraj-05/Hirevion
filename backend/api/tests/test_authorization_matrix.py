@@ -183,6 +183,19 @@ EXPECTED: dict[str, tuple[tuple[str, ...], bool]] = {
         ("platform.desktop_releases.manage",),
         True,
     ),
+    "GET /api/v1/interviews/{interview_id}/evaluation": (("reports.interview.view",), False),
+    "GET /api/v1/interviews/{interview_id}/evaluation/questions/{question_id}": (
+        ("reports.interview.view",),
+        False,
+    ),
+    "PUT /api/v1/interviews/{interview_id}/questions/{question_id}/human-scores": (
+        ("reports.interview.view",),
+        False,
+    ),
+    "GET /api/v1/interviews/{interview_id}/human-scores": (("reports.interview.view",), False),
+    "GET /api/v1/evaluation/calibration": (("reports.analytics.view",), False),
+    "GET /api/v1/interviews/{interview_id}/evaluation/reruns": (("admin.ai.manage",), False),
+    "POST /api/v1/interviews/{interview_id}/evaluation/rerun": (("admin.ai.manage",), False),
 }
 
 

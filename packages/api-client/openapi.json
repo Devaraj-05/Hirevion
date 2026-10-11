@@ -198,34 +198,6 @@
         "title": "AccommodationsSummary",
         "type": "object"
       },
-      "AckBody": {
-        "properties": {
-          "sha256": {
-            "pattern": "^[0-9a-f]{64}$",
-            "title": "Sha256",
-            "type": "string"
-          }
-        },
-        "required": [
-          "sha256"
-        ],
-        "title": "AckBody",
-        "type": "object"
-      },
-      "AckResponse": {
-        "properties": {
-          "status": {
-            "const": "acknowledged",
-            "title": "Status",
-            "type": "string"
-          }
-        },
-        "required": [
-          "status"
-        ],
-        "title": "AckResponse",
-        "type": "object"
-      },
       "ActionRequest": {
         "additionalProperties": false,
         "properties": {
@@ -848,6 +820,53 @@
           "skipped"
         ],
         "title": "BulkInterviewResult",
+        "type": "object"
+      },
+      "CalibrationResponse": {
+        "properties": {
+          "bias": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bias"
+          },
+          "by_dimension": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/EvaluationAgreement"
+            },
+            "title": "By Dimension",
+            "type": "object"
+          },
+          "overall": {
+            "$ref": "#/components/schemas/EvaluationAgreement"
+          },
+          "pairs": {
+            "title": "Pairs",
+            "type": "integer"
+          },
+          "questions": {
+            "title": "Questions",
+            "type": "integer"
+          },
+          "reviewers": {
+            "title": "Reviewers",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pairs",
+          "questions",
+          "reviewers",
+          "overall",
+          "by_dimension",
+          "bias"
+        ],
+        "title": "CalibrationResponse",
         "type": "object"
       },
       "CancelBody": {
@@ -1571,6 +1590,43 @@
         "title": "CodingSettings",
         "type": "object"
       },
+      "CommunicationEvaluation": {
+        "properties": {
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/EvaluationEvidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/EvaluationStatement"
+          },
+          "supported": {
+            "title": "Supported",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "score",
+          "evidence",
+          "supported",
+          "summary"
+        ],
+        "title": "CommunicationEvaluation",
+        "type": "object"
+      },
       "CompleteBody": {
         "properties": {
           "reason": {
@@ -2016,6 +2072,461 @@
         "title": "EmailVerifyRequest",
         "type": "object"
       },
+      "EvaluationAgreement": {
+        "properties": {
+          "mean_abs_diff": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Abs Diff"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "spearman": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spearman"
+          },
+          "weighted_kappa": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weighted Kappa"
+          },
+          "within_one": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Within One"
+          }
+        },
+        "required": [
+          "n",
+          "spearman",
+          "weighted_kappa",
+          "mean_abs_diff",
+          "within_one"
+        ],
+        "title": "EvaluationAgreement",
+        "type": "object"
+      },
+      "EvaluationBody": {
+        "properties": {
+          "coding": {
+            "$ref": "#/components/schemas/EvaluationCoding"
+          },
+          "communication": {
+            "$ref": "#/components/schemas/CommunicationEvaluation"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "flags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "follow_up_performance": {
+            "$ref": "#/components/schemas/FollowUpPerformance"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "knowledge_gaps": {
+            "items": {
+              "$ref": "#/components/schemas/EvaluationFinding"
+            },
+            "title": "Knowledge Gaps",
+            "type": "array"
+          },
+          "overall_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overall Score"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/QuestionEvaluationBrief"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "rubric_weights": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Rubric Weights",
+            "type": "object"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "skills": {
+            "items": {
+              "$ref": "#/components/schemas/SkillEvaluation"
+            },
+            "title": "Skills",
+            "type": "array"
+          },
+          "strengths": {
+            "items": {
+              "$ref": "#/components/schemas/EvaluationFinding"
+            },
+            "title": "Strengths",
+            "type": "array"
+          },
+          "versions": {
+            "$ref": "#/components/schemas/EvaluationVersions"
+          }
+        },
+        "required": [
+          "id",
+          "sequence",
+          "versions",
+          "rubric_weights",
+          "created_at",
+          "completed_at",
+          "overall_score",
+          "communication",
+          "skills",
+          "strengths",
+          "knowledge_gaps",
+          "follow_up_performance",
+          "coding",
+          "flags",
+          "questions"
+        ],
+        "title": "EvaluationBody",
+        "type": "object"
+      },
+      "EvaluationCoding": {
+        "description": "Left for the coding evaluation (SP-16, PRD §47).",
+        "properties": {
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "score",
+          "source"
+        ],
+        "title": "EvaluationCoding",
+        "type": "object"
+      },
+      "EvaluationDimension": {
+        "properties": {
+          "dimension": {
+            "title": "Dimension",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/EvaluationEvidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "rationale": {
+            "title": "Rationale",
+            "type": "string"
+          },
+          "raw_score": {
+            "title": "Raw Score",
+            "type": "number"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "supported": {
+            "title": "Supported",
+            "type": "boolean"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dimension",
+          "weight",
+          "score",
+          "raw_score",
+          "supported",
+          "evidence",
+          "rationale"
+        ],
+        "title": "EvaluationDimension",
+        "type": "object"
+      },
+      "EvaluationEvidence": {
+        "description": "A quote of the candidate's words, checked against the stored transcript.",
+        "properties": {
+          "end_ms": {
+            "title": "End Ms",
+            "type": "integer"
+          },
+          "question_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question Id"
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "start_ms": {
+            "title": "Start Ms",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "quote",
+          "seq",
+          "start_ms",
+          "end_ms",
+          "question_id"
+        ],
+        "title": "EvaluationEvidence",
+        "type": "object"
+      },
+      "EvaluationFinding": {
+        "properties": {
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/EvaluationEvidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "skill": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skill"
+          },
+          "supported": {
+            "title": "Supported",
+            "type": "boolean"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "skill",
+          "evidence",
+          "supported"
+        ],
+        "title": "EvaluationFinding",
+        "type": "object"
+      },
+      "EvaluationResponse": {
+        "properties": {
+          "evaluation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvaluationBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "interview_id": {
+            "format": "uuid",
+            "title": "Interview Id",
+            "type": "string"
+          },
+          "interview_status": {
+            "title": "Interview Status",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "none",
+              "evaluating",
+              "ready",
+              "failed"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "interview_id",
+          "interview_status",
+          "state",
+          "evaluation"
+        ],
+        "title": "EvaluationResponse",
+        "type": "object"
+      },
+      "EvaluationStatement": {
+        "properties": {
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/EvaluationEvidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "supported": {
+            "title": "Supported",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "summary",
+          "evidence",
+          "supported"
+        ],
+        "title": "EvaluationStatement",
+        "type": "object"
+      },
+      "EvaluationVersions": {
+        "description": "The §79 versions this evaluation was made with (and a re-run repeats).",
+        "properties": {
+          "evaluation": {
+            "title": "Evaluation",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "rubric": {
+            "title": "Rubric",
+            "type": "string"
+          },
+          "synthesis_prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Synthesis Prompt"
+          }
+        },
+        "required": [
+          "prompt",
+          "synthesis_prompt",
+          "rubric",
+          "evaluation",
+          "model",
+          "models"
+        ],
+        "title": "EvaluationVersions",
+        "type": "object"
+      },
       "FaqItem": {
         "properties": {
           "answer": {
@@ -2036,6 +2547,59 @@
           "answer"
         ],
         "title": "FaqItem",
+        "type": "object"
+      },
+      "FollowUpPerformance": {
+        "properties": {
+          "asked": {
+            "title": "Asked",
+            "type": "integer"
+          },
+          "delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta"
+          },
+          "main_mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Main Mean"
+          },
+          "mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/EvaluationStatement"
+          }
+        },
+        "required": [
+          "asked",
+          "mean",
+          "main_mean",
+          "delta",
+          "summary"
+        ],
+        "title": "FollowUpPerformance",
         "type": "object"
       },
       "FollowUpRule": {
@@ -2077,59 +2641,6 @@
           "email"
         ],
         "title": "ForgotPasswordRequest",
-        "type": "object"
-      },
-      "GapItem": {
-        "properties": {
-          "from_seq": {
-            "title": "From Seq",
-            "type": "integer"
-          },
-          "from_time": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "From Time"
-          },
-          "reason": {
-            "enum": [
-              "missing",
-              "corrupt"
-            ],
-            "title": "Reason",
-            "type": "string"
-          },
-          "to_seq": {
-            "title": "To Seq",
-            "type": "integer"
-          },
-          "to_time": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "To Time"
-          }
-        },
-        "required": [
-          "from_seq",
-          "to_seq",
-          "from_time",
-          "to_time",
-          "reason"
-        ],
-        "title": "GapItem",
         "type": "object"
       },
       "GenerateRequest": {
@@ -2343,6 +2854,63 @@
           "created_at"
         ],
         "title": "HistoryEntry",
+        "type": "object"
+      },
+      "HumanScoreBody": {
+        "properties": {
+          "dimensions": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "maxProperties": 8,
+            "minProperties": 1,
+            "title": "Dimensions",
+            "type": "object"
+          },
+          "note": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dimensions"
+        ],
+        "title": "HumanScoreBody",
+        "type": "object"
+      },
+      "HumanScoreResponse": {
+        "properties": {
+          "dimensions": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Dimensions",
+            "type": "object"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "question_id": {
+            "format": "uuid",
+            "title": "Question Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "dimensions",
+          "note",
+          "updated_at"
+        ],
+        "title": "HumanScoreResponse",
         "type": "object"
       },
       "InterviewBriefingSettings": {
@@ -5754,193 +6322,6 @@
         "title": "PinnedQuestion",
         "type": "object"
       },
-      "PlaybackFile": {
-        "properties": {
-          "bytes": {
-            "title": "Bytes",
-            "type": "integer"
-          },
-          "container": {
-            "enum": [
-              "mp4",
-              "webm"
-            ],
-            "title": "Container",
-            "type": "string"
-          },
-          "duration_ms": {
-            "title": "Duration Ms",
-            "type": "integer"
-          },
-          "sha256": {
-            "title": "Sha256",
-            "type": "string"
-          },
-          "url": {
-            "title": "Url",
-            "type": "string"
-          }
-        },
-        "required": [
-          "url",
-          "container",
-          "bytes",
-          "sha256",
-          "duration_ms"
-        ],
-        "title": "PlaybackFile",
-        "type": "object"
-      },
-      "PlaybackResponse": {
-        "properties": {
-          "expires_at": {
-            "format": "date-time",
-            "title": "Expires At",
-            "type": "string"
-          },
-          "interview_id": {
-            "format": "uuid",
-            "title": "Interview Id",
-            "type": "string"
-          },
-          "tracks": {
-            "items": {
-              "$ref": "#/components/schemas/PlaybackTrack"
-            },
-            "title": "Tracks",
-            "type": "array"
-          }
-        },
-        "required": [
-          "interview_id",
-          "expires_at",
-          "tracks"
-        ],
-        "title": "PlaybackResponse",
-        "type": "object"
-      },
-      "PlaybackSegment": {
-        "properties": {
-          "duration_ms": {
-            "title": "Duration Ms",
-            "type": "integer"
-          },
-          "seq": {
-            "title": "Seq",
-            "type": "integer"
-          },
-          "started_at": {
-            "format": "date-time",
-            "title": "Started At",
-            "type": "string"
-          },
-          "url": {
-            "title": "Url",
-            "type": "string"
-          }
-        },
-        "required": [
-          "seq",
-          "started_at",
-          "duration_ms",
-          "url"
-        ],
-        "title": "PlaybackSegment",
-        "type": "object"
-      },
-      "PlaybackTrack": {
-        "properties": {
-          "file": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/PlaybackFile"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "first_seq": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "First Seq"
-          },
-          "gaps": {
-            "items": {
-              "$ref": "#/components/schemas/GapItem"
-            },
-            "title": "Gaps",
-            "type": "array"
-          },
-          "last_seq": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Seq"
-          },
-          "segments": {
-            "items": {
-              "$ref": "#/components/schemas/PlaybackSegment"
-            },
-            "title": "Segments",
-            "type": "array"
-          },
-          "stalled": {
-            "title": "Stalled",
-            "type": "boolean"
-          },
-          "status": {
-            "enum": [
-              "recording",
-              "assembly-pending",
-              "assembling",
-              "assembled",
-              "failed"
-            ],
-            "title": "Status",
-            "type": "string"
-          },
-          "timeline_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Timeline Url"
-          },
-          "track": {
-            "title": "Track",
-            "type": "string"
-          }
-        },
-        "required": [
-          "track",
-          "status",
-          "stalled",
-          "first_seq",
-          "last_seq",
-          "gaps",
-          "file",
-          "timeline_url",
-          "segments"
-        ],
-        "title": "PlaybackTrack",
-        "type": "object"
-      },
       "Problem": {
         "additionalProperties": true,
         "description": "An RFC 9457 problem; codes may add extension members (e.g. `errors`, `checks`).",
@@ -6285,6 +6666,182 @@
           "type"
         ],
         "title": "QuestionCreate",
+        "type": "object"
+      },
+      "QuestionEvaluationBrief": {
+        "properties": {
+          "flags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "overall_score": {
+            "title": "Overall Score",
+            "type": "number"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "question_id": {
+            "format": "uuid",
+            "title": "Question Id",
+            "type": "string"
+          },
+          "scores": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Scores",
+            "type": "object"
+          },
+          "skill": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skill"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "unsupported": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Unsupported",
+            "type": "array"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "number"
+          }
+        },
+        "required": [
+          "question_id",
+          "position",
+          "kind",
+          "skill",
+          "text",
+          "weight",
+          "overall_score",
+          "scores",
+          "unsupported",
+          "flags"
+        ],
+        "title": "QuestionEvaluationBrief",
+        "type": "object"
+      },
+      "QuestionEvaluationDetail": {
+        "properties": {
+          "dimensions": {
+            "items": {
+              "$ref": "#/components/schemas/EvaluationDimension"
+            },
+            "title": "Dimensions",
+            "type": "array"
+          },
+          "flags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "missing_concepts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Concepts",
+            "type": "array"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "overall_score": {
+            "title": "Overall Score",
+            "type": "number"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "question_id": {
+            "format": "uuid",
+            "title": "Question Id",
+            "type": "string"
+          },
+          "scores": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Scores",
+            "type": "object"
+          },
+          "skill": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skill"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "unsupported": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Unsupported",
+            "type": "array"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "number"
+          }
+        },
+        "required": [
+          "question_id",
+          "position",
+          "kind",
+          "skill",
+          "text",
+          "weight",
+          "overall_score",
+          "scores",
+          "unsupported",
+          "flags",
+          "dimensions",
+          "missing_concepts",
+          "note",
+          "model"
+        ],
+        "title": "QuestionEvaluationDetail",
         "type": "object"
       },
       "QuestionResponse": {
@@ -6848,22 +7405,6 @@
         "title": "Recording",
         "type": "object"
       },
-      "RecoveryResponse": {
-        "properties": {
-          "tracks": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/TrackProgress"
-            },
-            "title": "Tracks",
-            "type": "object"
-          }
-        },
-        "required": [
-          "tracks"
-        ],
-        "title": "RecoveryResponse",
-        "type": "object"
-      },
       "RefreshBody": {
         "additionalProperties": false,
         "properties": {
@@ -7203,6 +7744,156 @@
           }
         },
         "title": "ReleaseUpdate",
+        "type": "object"
+      },
+      "RerunQueued": {
+        "properties": {
+          "action": {
+            "enum": [
+              "evaluate",
+              "rerun"
+            ],
+            "title": "Action",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "title": "RerunQueued",
+        "type": "object"
+      },
+      "RerunResponse": {
+        "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "diff": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diff"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "evaluation_version": {
+            "title": "Evaluation Version",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "overall_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overall Score"
+          },
+          "prompt_version": {
+            "title": "Prompt Version",
+            "type": "string"
+          },
+          "requested_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested By"
+          },
+          "rerun_of": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rerun Of"
+          },
+          "rubric_version": {
+            "title": "Rubric Version",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "within_tolerance": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Within Tolerance"
+          }
+        },
+        "required": [
+          "id",
+          "sequence",
+          "status",
+          "created_at",
+          "completed_at",
+          "requested_by",
+          "rerun_of",
+          "prompt_version",
+          "rubric_version",
+          "evaluation_version",
+          "within_tolerance",
+          "overall_score",
+          "diff",
+          "error"
+        ],
+        "title": "RerunResponse",
         "type": "object"
       },
       "RescheduleBody": {
@@ -8011,77 +8702,6 @@
         "title": "ScreeningSummary",
         "type": "object"
       },
-      "SegmentBody": {
-        "properties": {
-          "bytes": {
-            "minimum": 1.0,
-            "title": "Bytes",
-            "type": "integer"
-          },
-          "codec": {
-            "enum": [
-              "h264",
-              "vp8",
-              "opus",
-              "aac"
-            ],
-            "title": "Codec",
-            "type": "string"
-          },
-          "container": {
-            "enum": [
-              "mp4",
-              "webm"
-            ],
-            "title": "Container",
-            "type": "string"
-          },
-          "duration_ms": {
-            "minimum": 1.0,
-            "title": "Duration Ms",
-            "type": "integer"
-          },
-          "interview_id": {
-            "format": "uuid",
-            "title": "Interview Id",
-            "type": "string"
-          },
-          "seq": {
-            "maximum": 10000.0,
-            "minimum": 0.0,
-            "title": "Seq",
-            "type": "integer"
-          },
-          "sha256": {
-            "pattern": "^[0-9a-f]{64}$",
-            "title": "Sha256",
-            "type": "string"
-          },
-          "started_at": {
-            "format": "date-time",
-            "title": "Started At",
-            "type": "string"
-          },
-          "track": {
-            "pattern": "^(screen-[1-8]|camera|mic)$",
-            "title": "Track",
-            "type": "string"
-          }
-        },
-        "required": [
-          "interview_id",
-          "track",
-          "seq",
-          "started_at",
-          "duration_ms",
-          "bytes",
-          "sha256",
-          "container",
-          "codec"
-        ],
-        "title": "SegmentBody",
-        "type": "object"
-      },
       "ServerTime": {
         "properties": {
           "received_at_ms": {
@@ -8585,6 +9205,67 @@
           "name"
         ],
         "title": "SkillBody",
+        "type": "object"
+      },
+      "SkillEvaluation": {
+        "properties": {
+          "dimensions": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Dimensions",
+            "type": "object"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/EvaluationEvidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "questions": {
+            "title": "Questions",
+            "type": "integer"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "skill": {
+            "title": "Skill",
+            "type": "string"
+          },
+          "supported": {
+            "title": "Supported",
+            "type": "boolean"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "number"
+          }
+        },
+        "required": [
+          "skill",
+          "weight",
+          "required",
+          "score",
+          "questions",
+          "dimensions",
+          "evidence",
+          "supported"
+        ],
+        "title": "SkillEvaluation",
         "type": "object"
       },
       "SkillResponse": {
@@ -9853,34 +10534,6 @@
         "title": "TokenPasswordRequest",
         "type": "object"
       },
-      "TrackProgress": {
-        "properties": {
-          "acknowledged_through": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Acknowledged Through"
-          },
-          "missing": {
-            "items": {
-              "type": "integer"
-            },
-            "title": "Missing",
-            "type": "array"
-          }
-        },
-        "required": [
-          "acknowledged_through",
-          "missing"
-        ],
-        "title": "TrackProgress",
-        "type": "object"
-      },
       "TranscriptQuestion": {
         "properties": {
           "answers": {
@@ -10129,39 +10782,6 @@
           "confidence"
         ],
         "title": "TranscriptSegmentResponse",
-        "type": "object"
-      },
-      "UploadResponse": {
-        "properties": {
-          "expires_at": {
-            "format": "date-time",
-            "title": "Expires At",
-            "type": "string"
-          },
-          "headers": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "title": "Headers",
-            "type": "object"
-          },
-          "segment_id": {
-            "format": "uuid",
-            "title": "Segment Id",
-            "type": "string"
-          },
-          "upload_url": {
-            "title": "Upload Url",
-            "type": "string"
-          }
-        },
-        "required": [
-          "segment_id",
-          "upload_url",
-          "expires_at",
-          "headers"
-        ],
-        "title": "UploadResponse",
         "type": "object"
       },
       "UserInvite": {
@@ -12338,6 +12958,48 @@
         ]
       }
     },
+    "/api/v1/evaluation/calibration": {
+      "get": {
+        "description": "How closely reviewers' own scores agree with the AI's across the organisation: weighted\nkappa, Spearman, the mean gap and the AI's bias, overall and per dimension.",
+        "operationId": "evaluation_calibration",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalibrationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Evaluation Calibration",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
     "/api/v1/health/live": {
       "get": {
         "description": "The process is up. It checks nothing else, so a restart can't fix what it reports.",
@@ -13945,6 +14607,294 @@
         ]
       }
     },
+    "/api/v1/interviews/{interview_id}/evaluation": {
+      "get": {
+        "description": "The final evaluation (PRD §70): the overall and skill scores, communication, strengths,\nknowledge gaps and follow-up performance, each with its verified evidence, and the\nquestions' scores. It is `none` until the interview ends, `evaluating` while the evaluator\nruns and `failed` if it gave up.",
+        "operationId": "interview_evaluation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Interview Evaluation",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/evaluation/questions/{question_id}": {
+      "get": {
+        "description": "One question's eight dimensions, each with its score, the cap if it had no verified\nquote, its quotes with their transcript times, and the concepts the answer missed.",
+        "operationId": "question_evaluation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Question Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionEvaluationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Question Evaluation",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/evaluation/rerun": {
+      "post": {
+        "description": "Queues a pinned re-run of a finished evaluation (it reports its difference under\n`/evaluation/reruns`), or, for an interview whose evaluation never finished, a retry.",
+        "operationId": "request_rerun",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RerunQueued"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Request Rerun",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/evaluation/reruns": {
+      "get": {
+        "description": "The pinned re-runs of this interview's evaluation and how far each moved.",
+        "operationId": "evaluation_reruns",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RerunResponse"
+                  },
+                  "title": "Response Evaluation Reruns",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Evaluation Reruns",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/human-scores": {
+      "get": {
+        "description": "The signed-in reviewer's own scores for this interview's questions.",
+        "operationId": "my_human_scores",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/HumanScoreResponse"
+                  },
+                  "title": "Response My Human Scores",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "My Human Scores",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
     "/api/v1/interviews/{interview_id}/invitation": {
       "post": {
         "description": "Sends a scheduled interview's invitation, or an invited one's again (with a fresh link).",
@@ -13999,10 +14949,10 @@
         ]
       }
     },
-    "/api/v1/interviews/{interview_id}/recordings": {
-      "get": {
-        "description": "Each track's assembled file and timeline map (read URLs valid for 5 minutes), or, until\nthe media worker has built it, each acknowledged segment.",
-        "operationId": "interview_recordings",
+    "/api/v1/interviews/{interview_id}/questions/{question_id}/human-scores": {
+      "put": {
+        "description": "Records the signed-in reviewer's own dimension scores for a question (calibration);\nsaving again replaces them. Other reviewers' scores are not shown.",
+        "operationId": "put_human_scores",
         "parameters": [
           {
             "in": "path",
@@ -14013,14 +14963,34 @@
               "title": "Interview Id",
               "type": "string"
             }
+          },
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Question Id",
+              "type": "string"
+            }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HumanScoreBody"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PlaybackResponse"
+                  "$ref": "#/components/schemas/HumanScoreResponse"
                 }
               }
             },
@@ -14047,9 +15017,9 @@
             "description": "Server error, as an RFC 9457 problem"
           }
         },
-        "summary": "Interview Recordings",
+        "summary": "Put Human Scores",
         "tags": [
-          "interviews"
+          "evaluation"
         ]
       }
     },
@@ -17589,176 +18559,6 @@
         "summary": "Question Versions",
         "tags": [
           "interviews"
-        ]
-      }
-    },
-    "/api/v1/recordings/interviews/{interview_id}/segments": {
-      "get": {
-        "description": "What the server holds, per track, for the desktop's next launch after a crash.",
-        "operationId": "recovery_listing",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "interview_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Interview Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RecoveryResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "4XX": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            },
-            "description": "Client error, as an RFC 9457 problem"
-          },
-          "5XX": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            },
-            "description": "Server error, as an RFC 9457 problem"
-          }
-        },
-        "summary": "Recovery Listing",
-        "tags": [
-          "recordings"
-        ]
-      }
-    },
-    "/api/v1/recordings/segments": {
-      "post": {
-        "description": "A write-only URL for one segment's blob (15 minutes). Asking again for the same\n`(interview, track, seq)` returns the same `segment_id` with a fresh URL.",
-        "operationId": "request_segment_upload",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SegmentBody"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UploadResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "4XX": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            },
-            "description": "Client error, as an RFC 9457 problem"
-          },
-          "5XX": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            },
-            "description": "Server error, as an RFC 9457 problem"
-          }
-        },
-        "summary": "Request Segment Upload",
-        "tags": [
-          "recordings"
-        ]
-      }
-    },
-    "/api/v1/recordings/segments/{segment_id}/ack": {
-      "post": {
-        "description": "Reads the blob and checks its size and SHA-256 against the declaration. Only now may the\ndesktop delete its local copy.",
-        "operationId": "acknowledge_segment",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "segment_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Segment Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AckBody"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AckResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "4XX": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            },
-            "description": "Client error, as an RFC 9457 problem"
-          },
-          "5XX": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            },
-            "description": "Server error, as an RFC 9457 problem"
-          }
-        },
-        "summary": "Acknowledge Segment",
-        "tags": [
-          "recordings"
         ]
       }
     },

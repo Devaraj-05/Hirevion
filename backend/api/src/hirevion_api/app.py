@@ -27,6 +27,7 @@ from hirevion_api.auth.router import router as auth_router
 from hirevion_api.candidate_auth.routes import router as candidate_auth_router
 from hirevion_api.candidates.routes import router as candidates_router
 from hirevion_api.desktop_admin import router as desktop_admin_router
+from hirevion_api.evaluation.routes import router as evaluation_router
 from hirevion_api.idempotency import install_idempotency_handler
 from hirevion_api.interview_session.live import router as interview_live_router
 from hirevion_api.interview_session.recruiter import router as interview_recruiter_router
@@ -190,6 +191,7 @@ def create_app(
     app.include_router(desktop_admin_router)
     app.include_router(interview_session_router)
     app.include_router(interview_recruiter_router)
+    app.include_router(evaluation_router)
     app.include_router(livekit_webhook_router)
     app.include_router(interview_live_router)
     app.include_router(recordings_desktop_router)

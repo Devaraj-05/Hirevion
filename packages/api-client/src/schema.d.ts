@@ -650,6 +650,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/evaluation/calibration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Evaluation Calibration
+         * @description How closely reviewers' own scores agree with the AI's across the organisation: weighted
+         *     kappa, Spearman, the mean gap and the AI's bias, overall and per dimension.
+         */
+        get: operations["evaluation_calibration"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health/live": {
         parameters: {
             query?: never;
@@ -1065,6 +1086,111 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/interviews/{interview_id}/evaluation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Interview Evaluation
+         * @description The final evaluation (PRD §70): the overall and skill scores, communication, strengths,
+         *     knowledge gaps and follow-up performance, each with its verified evidence, and the
+         *     questions' scores. It is `none` until the interview ends, `evaluating` while the evaluator
+         *     runs and `failed` if it gave up.
+         */
+        get: operations["interview_evaluation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/evaluation/questions/{question_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Question Evaluation
+         * @description One question's eight dimensions, each with its score, the cap if it had no verified
+         *     quote, its quotes with their transcript times, and the concepts the answer missed.
+         */
+        get: operations["question_evaluation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/evaluation/rerun": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request Rerun
+         * @description Queues a pinned re-run of a finished evaluation (it reports its difference under
+         *     `/evaluation/reruns`), or, for an interview whose evaluation never finished, a retry.
+         */
+        post: operations["request_rerun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/evaluation/reruns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Evaluation Reruns
+         * @description The pinned re-runs of this interview's evaluation and how far each moved.
+         */
+        get: operations["evaluation_reruns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/human-scores": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Human Scores
+         * @description The signed-in reviewer's own scores for this interview's questions.
+         */
+        get: operations["my_human_scores"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/interviews/{interview_id}/invitation": {
         parameters: {
             query?: never;
@@ -1085,20 +1211,20 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/interviews/{interview_id}/recordings": {
+    "/api/v1/interviews/{interview_id}/questions/{question_id}/human-scores": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
+        get?: never;
         /**
-         * Interview Recordings
-         * @description Each track's assembled file and timeline map (read URLs valid for 5 minutes), or, until
-         *     the media worker has built it, each acknowledged segment.
+         * Put Human Scores
+         * @description Records the signed-in reviewer's own dimension scores for a question (calibration);
+         *     saving again replaces them. Other reviewers' scores are not shown.
          */
-        get: operations["interview_recordings"];
-        put?: never;
+        put: operations["put_human_scores"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1961,68 +2087,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/recordings/interviews/{interview_id}/segments": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Recovery Listing
-         * @description What the server holds, per track, for the desktop's next launch after a crash.
-         */
-        get: operations["recovery_listing"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/recordings/segments": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Request Segment Upload
-         * @description A write-only URL for one segment's blob (15 minutes). Asking again for the same
-         *     `(interview, track, seq)` returns the same `segment_id` with a fresh URL.
-         */
-        post: operations["request_segment_upload"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/recordings/segments/{segment_id}/ack": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Acknowledge Segment
-         * @description Reads the blob and checks its size and SHA-256 against the declaration. Only now may the
-         *     desktop delete its local copy.
-         */
-        post: operations["acknowledge_segment"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/roles": {
         parameters: {
             query?: never;
@@ -2411,19 +2475,6 @@ export interface components {
             /** Requested */
             requested: string[];
         };
-        /** AckBody */
-        AckBody: {
-            /** Sha256 */
-            sha256: string;
-        };
-        /** AckResponse */
-        AckResponse: {
-            /**
-             * Status
-             * @constant
-             */
-            status: "acknowledged";
-        };
         /** ActionRequest */
         ActionRequest: {
             /**
@@ -2663,6 +2714,22 @@ export interface components {
             created: components["schemas"]["InterviewSummary"][];
             /** Skipped */
             skipped: components["schemas"]["SkippedApplication"][];
+        };
+        /** CalibrationResponse */
+        CalibrationResponse: {
+            /** Bias */
+            bias: number | null;
+            /** By Dimension */
+            by_dimension: {
+                [key: string]: components["schemas"]["EvaluationAgreement"];
+            };
+            overall: components["schemas"]["EvaluationAgreement"];
+            /** Pairs */
+            pairs: number;
+            /** Questions */
+            questions: number;
+            /** Reviewers */
+            reviewers: number;
         };
         /** CancelBody */
         CancelBody: {
@@ -2956,6 +3023,16 @@ export interface components {
                 [key: string]: string;
             };
         };
+        /** CommunicationEvaluation */
+        CommunicationEvaluation: {
+            /** Evidence */
+            evidence: components["schemas"]["EvaluationEvidence"][];
+            /** Score */
+            score: number | null;
+            summary: components["schemas"]["EvaluationStatement"];
+            /** Supported */
+            supported: boolean;
+        };
         /** CompleteBody */
         CompleteBody: {
             /**
@@ -3121,12 +3198,173 @@ export interface components {
             /** Token */
             token: string;
         };
+        /** EvaluationAgreement */
+        EvaluationAgreement: {
+            /** Mean Abs Diff */
+            mean_abs_diff: number | null;
+            /** N */
+            n: number;
+            /** Spearman */
+            spearman: number | null;
+            /** Weighted Kappa */
+            weighted_kappa: number | null;
+            /** Within One */
+            within_one: number | null;
+        };
+        /** EvaluationBody */
+        EvaluationBody: {
+            coding: components["schemas"]["EvaluationCoding"];
+            communication: components["schemas"]["CommunicationEvaluation"];
+            /** Completed At */
+            completed_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Flags */
+            flags: string[];
+            follow_up_performance: components["schemas"]["FollowUpPerformance"];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Knowledge Gaps */
+            knowledge_gaps: components["schemas"]["EvaluationFinding"][];
+            /** Overall Score */
+            overall_score: number | null;
+            /** Questions */
+            questions: components["schemas"]["QuestionEvaluationBrief"][];
+            /** Rubric Weights */
+            rubric_weights: {
+                [key: string]: number;
+            };
+            /** Sequence */
+            sequence: number;
+            /** Skills */
+            skills: components["schemas"]["SkillEvaluation"][];
+            /** Strengths */
+            strengths: components["schemas"]["EvaluationFinding"][];
+            versions: components["schemas"]["EvaluationVersions"];
+        };
+        /**
+         * EvaluationCoding
+         * @description Left for the coding evaluation (SP-16, PRD §47).
+         */
+        EvaluationCoding: {
+            /** Score */
+            score: number | null;
+            /** Source */
+            source: string;
+            /** Status */
+            status: string;
+        };
+        /** EvaluationDimension */
+        EvaluationDimension: {
+            /** Dimension */
+            dimension: string;
+            /** Evidence */
+            evidence: components["schemas"]["EvaluationEvidence"][];
+            /** Rationale */
+            rationale: string;
+            /** Raw Score */
+            raw_score: number;
+            /** Score */
+            score: number;
+            /** Supported */
+            supported: boolean;
+            /** Weight */
+            weight: number;
+        };
+        /**
+         * EvaluationEvidence
+         * @description A quote of the candidate's words, checked against the stored transcript.
+         */
+        EvaluationEvidence: {
+            /** End Ms */
+            end_ms: number;
+            /** Question Id */
+            question_id: string | null;
+            /** Quote */
+            quote: string;
+            /** Seq */
+            seq: number;
+            /** Start Ms */
+            start_ms: number;
+        };
+        /** EvaluationFinding */
+        EvaluationFinding: {
+            /** Evidence */
+            evidence: components["schemas"]["EvaluationEvidence"][];
+            /** Skill */
+            skill: string | null;
+            /** Supported */
+            supported: boolean;
+            /** Text */
+            text: string;
+        };
+        /** EvaluationResponse */
+        EvaluationResponse: {
+            evaluation: components["schemas"]["EvaluationBody"] | null;
+            /**
+             * Interview Id
+             * Format: uuid
+             */
+            interview_id: string;
+            /** Interview Status */
+            interview_status: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "none" | "evaluating" | "ready" | "failed";
+        };
+        /** EvaluationStatement */
+        EvaluationStatement: {
+            /** Evidence */
+            evidence: components["schemas"]["EvaluationEvidence"][];
+            /** Summary */
+            summary: string;
+            /** Supported */
+            supported: boolean;
+        };
+        /**
+         * EvaluationVersions
+         * @description The §79 versions this evaluation was made with (and a re-run repeats).
+         */
+        EvaluationVersions: {
+            /** Evaluation */
+            evaluation: string;
+            /** Model */
+            model: string | null;
+            /** Models */
+            models: string[];
+            /** Prompt */
+            prompt: string;
+            /** Rubric */
+            rubric: string;
+            /** Synthesis Prompt */
+            synthesis_prompt: string | null;
+        };
         /** FaqItem */
         FaqItem: {
             /** Answer */
             answer: string;
             /** Question */
             question: string;
+        };
+        /** FollowUpPerformance */
+        FollowUpPerformance: {
+            /** Asked */
+            asked: number;
+            /** Delta */
+            delta: number | null;
+            /** Main Mean */
+            main_mean: number | null;
+            /** Mean */
+            mean: number | null;
+            summary: components["schemas"]["EvaluationStatement"];
         };
         /** FollowUpRule */
         FollowUpRule: {
@@ -3142,22 +3380,6 @@ export interface components {
         ForgotPasswordRequest: {
             /** Email */
             email: string;
-        };
-        /** GapItem */
-        GapItem: {
-            /** From Seq */
-            from_seq: number;
-            /** From Time */
-            from_time: string | null;
-            /**
-             * Reason
-             * @enum {string}
-             */
-            reason: "missing" | "corrupt";
-            /** To Seq */
-            to_seq: number;
-            /** To Time */
-            to_time: string | null;
         };
         /** GenerateRequest */
         GenerateRequest: {
@@ -3215,6 +3437,37 @@ export interface components {
             score: number | null;
             /** To Stage */
             to_stage: string | null;
+        };
+        /** HumanScoreBody */
+        HumanScoreBody: {
+            /** Dimensions */
+            dimensions: {
+                [key: string]: number;
+            };
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** HumanScoreResponse */
+        HumanScoreResponse: {
+            /** Dimensions */
+            dimensions: {
+                [key: string]: number;
+            };
+            /** Note */
+            note: string;
+            /**
+             * Question Id
+             * Format: uuid
+             */
+            question_id: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** InterviewBriefingSettings */
         InterviewBriefingSettings: {
@@ -4293,74 +4546,6 @@ export interface components {
             /** Version */
             version: number;
         };
-        /** PlaybackFile */
-        PlaybackFile: {
-            /** Bytes */
-            bytes: number;
-            /**
-             * Container
-             * @enum {string}
-             */
-            container: "mp4" | "webm";
-            /** Duration Ms */
-            duration_ms: number;
-            /** Sha256 */
-            sha256: string;
-            /** Url */
-            url: string;
-        };
-        /** PlaybackResponse */
-        PlaybackResponse: {
-            /**
-             * Expires At
-             * Format: date-time
-             */
-            expires_at: string;
-            /**
-             * Interview Id
-             * Format: uuid
-             */
-            interview_id: string;
-            /** Tracks */
-            tracks: components["schemas"]["PlaybackTrack"][];
-        };
-        /** PlaybackSegment */
-        PlaybackSegment: {
-            /** Duration Ms */
-            duration_ms: number;
-            /** Seq */
-            seq: number;
-            /**
-             * Started At
-             * Format: date-time
-             */
-            started_at: string;
-            /** Url */
-            url: string;
-        };
-        /** PlaybackTrack */
-        PlaybackTrack: {
-            file: components["schemas"]["PlaybackFile"] | null;
-            /** First Seq */
-            first_seq: number | null;
-            /** Gaps */
-            gaps: components["schemas"]["GapItem"][];
-            /** Last Seq */
-            last_seq: number | null;
-            /** Segments */
-            segments: components["schemas"]["PlaybackSegment"][];
-            /** Stalled */
-            stalled: boolean;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "recording" | "assembly-pending" | "assembling" | "assembled" | "failed";
-            /** Timeline Url */
-            timeline_url: string | null;
-            /** Track */
-            track: string;
-        };
         /**
          * Problem
          * @description An RFC 9457 problem; codes may add extension members (e.g. `errors`, `checks`).
@@ -4467,6 +4652,70 @@ export interface components {
              * @enum {string}
              */
             type: "technical" | "conceptual" | "scenario" | "system_design" | "coding" | "resume_based" | "project_based" | "problem_solving";
+        };
+        /** QuestionEvaluationBrief */
+        QuestionEvaluationBrief: {
+            /** Flags */
+            flags: string[];
+            /** Kind */
+            kind: string;
+            /** Overall Score */
+            overall_score: number;
+            /** Position */
+            position: number;
+            /**
+             * Question Id
+             * Format: uuid
+             */
+            question_id: string;
+            /** Scores */
+            scores: {
+                [key: string]: number;
+            };
+            /** Skill */
+            skill: string | null;
+            /** Text */
+            text: string;
+            /** Unsupported */
+            unsupported: string[];
+            /** Weight */
+            weight: number;
+        };
+        /** QuestionEvaluationDetail */
+        QuestionEvaluationDetail: {
+            /** Dimensions */
+            dimensions: components["schemas"]["EvaluationDimension"][];
+            /** Flags */
+            flags: string[];
+            /** Kind */
+            kind: string;
+            /** Missing Concepts */
+            missing_concepts: string[];
+            /** Model */
+            model: string;
+            /** Note */
+            note: string;
+            /** Overall Score */
+            overall_score: number;
+            /** Position */
+            position: number;
+            /**
+             * Question Id
+             * Format: uuid
+             */
+            question_id: string;
+            /** Scores */
+            scores: {
+                [key: string]: number;
+            };
+            /** Skill */
+            skill: string | null;
+            /** Text */
+            text: string;
+            /** Unsupported */
+            unsupported: string[];
+            /** Weight */
+            weight: number;
         };
         /** QuestionResponse */
         QuestionResponse: {
@@ -4676,13 +4925,6 @@ export interface components {
              */
             screen: boolean;
         };
-        /** RecoveryResponse */
-        RecoveryResponse: {
-            /** Tracks */
-            tracks: {
-                [key: string]: components["schemas"]["TrackProgress"];
-            };
-        };
         /** RefreshBody */
         RefreshBody: {
             /** Refresh Token */
@@ -4818,6 +5060,53 @@ export interface components {
             rollout_percent?: number | null;
             /** Status */
             status?: ("draft" | "published" | "withdrawn") | null;
+        };
+        /** RerunQueued */
+        RerunQueued: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "evaluate" | "rerun";
+        };
+        /** RerunResponse */
+        RerunResponse: {
+            /** Completed At */
+            completed_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Diff */
+            diff: {
+                [key: string]: unknown;
+            } | null;
+            /** Error */
+            error: string | null;
+            /** Evaluation Version */
+            evaluation_version: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Overall Score */
+            overall_score: number | null;
+            /** Prompt Version */
+            prompt_version: string;
+            /** Requested By */
+            requested_by: string | null;
+            /** Rerun Of */
+            rerun_of: string | null;
+            /** Rubric Version */
+            rubric_version: string;
+            /** Sequence */
+            sequence: number;
+            /** Status */
+            status: string;
+            /** Within Tolerance */
+            within_tolerance: boolean | null;
         };
         /** RescheduleBody */
         RescheduleBody: {
@@ -5077,39 +5366,6 @@ export interface components {
             /** Waiting */
             waiting: number;
         };
-        /** SegmentBody */
-        SegmentBody: {
-            /** Bytes */
-            bytes: number;
-            /**
-             * Codec
-             * @enum {string}
-             */
-            codec: "h264" | "vp8" | "opus" | "aac";
-            /**
-             * Container
-             * @enum {string}
-             */
-            container: "mp4" | "webm";
-            /** Duration Ms */
-            duration_ms: number;
-            /**
-             * Interview Id
-             * Format: uuid
-             */
-            interview_id: string;
-            /** Seq */
-            seq: number;
-            /** Sha256 */
-            sha256: string;
-            /**
-             * Started At
-             * Format: date-time
-             */
-            started_at: string;
-            /** Track */
-            track: string;
-        };
         /** ServerTime */
         ServerTime: {
             /**
@@ -5320,6 +5576,27 @@ export interface components {
             min_years?: number | null;
             /** Name */
             name: string;
+        };
+        /** SkillEvaluation */
+        SkillEvaluation: {
+            /** Dimensions */
+            dimensions: {
+                [key: string]: number;
+            };
+            /** Evidence */
+            evidence: components["schemas"]["EvaluationEvidence"][];
+            /** Questions */
+            questions: number;
+            /** Required */
+            required: boolean;
+            /** Score */
+            score: number | null;
+            /** Skill */
+            skill: string;
+            /** Supported */
+            supported: boolean;
+            /** Weight */
+            weight: number;
         };
         /** SkillResponse */
         SkillResponse: {
@@ -5718,13 +5995,6 @@ export interface components {
             /** Token */
             token: string;
         };
-        /** TrackProgress */
-        TrackProgress: {
-            /** Acknowledged Through */
-            acknowledged_through: number | null;
-            /** Missing */
-            missing: number[];
-        };
         /** TranscriptQuestion */
         TranscriptQuestion: {
             /** Answers */
@@ -5811,25 +6081,6 @@ export interface components {
             start_ms: number;
             /** Text */
             text: string;
-        };
-        /** UploadResponse */
-        UploadResponse: {
-            /**
-             * Expires At
-             * Format: date-time
-             */
-            expires_at: string;
-            /** Headers */
-            headers: {
-                [key: string]: string;
-            };
-            /**
-             * Segment Id
-             * Format: uuid
-             */
-            segment_id: string;
-            /** Upload Url */
-            upload_url: string;
         };
         /** UserInvite */
         UserInvite: {
@@ -7292,6 +7543,44 @@ export interface operations {
             };
         };
     };
+    evaluation_calibration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalibrationResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     get_liveness: {
         parameters: {
             query?: never;
@@ -8347,6 +8636,207 @@ export interface operations {
             };
         };
     };
+    interview_evaluation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    question_evaluation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionEvaluationDetail"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    request_rerun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RerunQueued"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    evaluation_reruns: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RerunResponse"][];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    my_human_scores: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HumanScoreResponse"][];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     send_invitation: {
         parameters: {
             query?: never;
@@ -8387,16 +8877,21 @@ export interface operations {
             };
         };
     };
-    interview_recordings: {
+    put_human_scores: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 interview_id: string;
+                question_id: string;
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HumanScoreBody"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -8404,7 +8899,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PlaybackResponse"];
+                    "application/json": components["schemas"]["HumanScoreResponse"];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */
@@ -10695,132 +11190,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QuestionVersionResponse"][];
-                };
-            };
-            /** @description Client error, as an RFC 9457 problem */
-            "4XX": {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description Server error, as an RFC 9457 problem */
-            "5XX": {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    recovery_listing: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                interview_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RecoveryResponse"];
-                };
-            };
-            /** @description Client error, as an RFC 9457 problem */
-            "4XX": {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description Server error, as an RFC 9457 problem */
-            "5XX": {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    request_segment_upload: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SegmentBody"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UploadResponse"];
-                };
-            };
-            /** @description Client error, as an RFC 9457 problem */
-            "4XX": {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description Server error, as an RFC 9457 problem */
-            "5XX": {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    acknowledge_segment: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                segment_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AckBody"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AckResponse"];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */
