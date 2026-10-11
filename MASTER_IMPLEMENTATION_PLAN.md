@@ -1623,8 +1623,8 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 47 | 8 coding-evaluation criteria; 5 stored artifacts | SP-16 |
 | 48 | 8 telemetry events; no unnecessary global keystrokes | SP-16 |
 | 49 | 6 camera uses; 5 microphone uses | SP-09, SP-12, SP-15a, SP-15b |
-| 50 | Native screen capture; segmented; continuous upload | SP-12 |
-| 51 | Encrypted buffer → queue → retry → server acknowledgement; crash/network recovery | SP-12 |
+| 50 | Native screen capture; segmented; continuous upload | SP-12 (device: lane B; server, D2: `hirevion_core.recordings.segments` write-only per-segment upload URLs, `hirevion_core.recordings.assembly` joining each track with ffmpeg and `hirevion_core.recordings.timeline` the timeline map; `test_recordings_api.py`, `test_recording_assembly.py`) |
+| 51 | Encrypted buffer → queue → retry → server acknowledgement; crash/network recovery | SP-12 (device queue: lane B; server, D2: hash-verified acknowledgement and the recovery listing in `hirevion_core.recordings.segments`, continuity events in `hirevion_core.recordings.monitor`; `test_recordings_api.py`, `test_recording_monitor.py`) |
 | 52 | Third-eye flow; 5 token properties | SP-13 |
 | 53 | 7 third-eye signals, as evidence only | SP-15b (plus SP-13 transport) |
 | 54 | 7 sources; 8-stage pipeline | SP-14 |
@@ -1658,19 +1658,19 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 82 | 15 security requirements; SOC 2 / ISO 27001 target | §9, SP-01/02/07/08/12/16/23 (certifications need the cloud and an audit period) |
 | 83 | 10 disclosures; 6 policies | SP-07b (portal notices), SP-08, SP-09 (the itemised notice per policy, consents stored per purpose), SP-22, `docs/policies/` (drafts: H0.7) |
 | 84 | Organisation-configurable retention (6 classes) | SP-22 |
-| 85 | Postgres (8), Redis (5), Blob (9); path layout; short-lived SAS | SP-01, SP-12 |
+| 85 | Postgres (8), Redis (5), Blob (9); path layout; short-lived SAS | SP-01, SP-12 (D2: recordings under `{org}/interviews/{id}/{screen,camera,audio}/` by `hirevion_core.recordings.tracks`; 15-minute write-only and 5-minute read-only SAS; `test_recording_tracks.py`) |
 | 86 | Gateway, Recruitment/Interview/Proctor APIs, orchestrator, workers | SP-01 (Caddy locally; route groups), SP-09 |
 | 87 | api/worker/realtime/coding services; 15 logical modules | SP-00, SP-01 (§6.1) |
 | 88 | Azure production architecture | Cloud plan |
 | 89 | Every core table | §7; each owning SP |
 | 90 | 20 API groups; the screening, interview and proctoring example endpoints | §8; owning SPs (SP-09: `/interviews/{id}/start`, `/answer`, `/complete`, `/transcript`) |
-| 91 | 3 WebSocket channels; 10 events | SP-09 (`/ws/interviews/{id}`; `AI_SPEAKING`, `CANDIDATE_SPEAKING`, `QUESTION_STARTED`, `ANSWER_RECEIVED`, `INTERVIEW_COMPLETED` on `hv:rt:interview:{id}`), SP-12, SP-13, SP-14 (§8; `/ws/proctoring`, `/ws/recruiter` and the other five events), SP-16 |
+| 91 | 3 WebSocket channels; 10 events | SP-09 (`/ws/interviews/{id}`; `AI_SPEAKING`, `CANDIDATE_SPEAKING`, `QUESTION_STARTED`, `ANSWER_RECEIVED`, `INTERVIEW_COMPLETED` on `hv:rt:interview:{id}`), SP-12 (D2: `RECORDING_STATUS` on the same stream from `hirevion_core.recordings.monitor` and `hirevion_core.recordings.assembly`), SP-13, SP-14 (§8; `/ws/proctoring`, `/ws/recruiter` and the other five events), SP-16 |
 | 92 | Third-eye realtime path | SP-13 |
 | 93 | Repository structure | SP-00 (§12) |
 | 94 | Technology stack (local parts) | §2; Azure part in the Cloud plan |
 | 95 | 7 failure modes; 5 mechanisms | SP-08, 09, 11, 12, 13 + chaos drills (§16) |
 | 96 | 14 observability signals | SP-01, SP-23 |
-| 97 | 16 audited actions | SP-01 plus the owning SPs; audit-coverage test in SP-23 |
+| 97 | 16 audited actions | SP-01 plus the owning SPs (SP-12 D2: "recording viewed" audited on every playback listing, `test_recording_playback_api.py`); audit-coverage test in SP-23 |
 | 98 | Unified timeline (8 sources) | SP-17 |
 | 99 | 5 configurable candidate-visible items; internal reports stay confidential | SP-17, SP-07b (portal) |
 | 100 | 10 → 10k growth path; independent scaling; performance targets | Architecture (§5–6), SP-23 local capacity; cloud-scale tests in the Cloud plan |

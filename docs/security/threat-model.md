@@ -273,3 +273,41 @@
 - The deterministic manipulation patterns are English and phrase-based; a paraphrased injection can still reach the analysis model, which only steers the next question. SP-10's evaluator must treat answers as untrusted in the same way.
 - Integrity flags (AI-sounding text, repeated answers) are signals for a reviewer, never proof; a candidate can paraphrase.
 - LiveKit can't restrict which data topics a participant sends on; the agent ignores everything but `hv.control`'s three actions.
+
+## SP-12 Recording pipeline (server side)
+
+**Assets:**
+- the candidate's screen, camera and microphone recordings (the most sensitive data the platform holds);
+- the segments' blobs and the assembled files in storage;
+- the timeline maps and the continuity events that evidence proctoring;
+- the storage account key that signs every URL.
+
+**Trust boundaries:**
+- the desktop app on the candidate's machine (untrusted) → API (segment requests, acknowledgements) and → blob storage (uploads through a signed URL);
+- the API → blob storage (the account key; hash checks);
+- the media worker → ffmpeg, a separate process fed bytes the candidate produced;
+- the reviewer's browser → blob storage (read URLs).
+
+| Threat (STRIDE) | Example | Control |
+|---|---|---|
+| Spoofing | Another candidate or a script uploads segments into an interview, or asks about its segments | Every desktop route needs the interview-session token and a fresh DPoP proof from the device key; the body's interview and the segment's interview are compared with the token's (`403 wrong-interview`; another interview's segment is `404`, so its existence isn't revealed) |
+| Tampering | A segment is corrupted or truncated in transit | The acknowledgement reads the blob and compares size and SHA-256 with the declaration; only then is the segment `acknowledged` and the desktop told it may delete its copy |
+| Tampering | The 15-minute upload URL is used again after the acknowledgement to swap in other bytes, or to write far more than was declared | The assembly downloads every segment again, compares its hash with the acknowledged one, and leaves a changed segment out as a `corrupt` gap; a blob larger than declared is refused before it is read, at acknowledgement and at assembly |
+| Tampering | A URL is used to write another blob, or to read | A URL covers exactly one blob path, create/write only, 15 minutes; the path comes from `interview_blob`, which validates every part, under the interview's own organisation |
+| Tampering | The candidate hides a stretch of the interview by not recording it | Continuity is judged by the server: a track silent for longer than the interview's proctoring level allows (20 to 120 s) raises `recording.gap`, as do skipped segment numbers and a required track that never starts; the proctoring engine turns them into events (SP-14) |
+| Tampering | Crafted media attacks the assembler | ffmpeg runs as a separate process, no shell, with arguments built by us and relative file names (the concat demuxer's default `-safe 1`), in a private temporary directory, with a timeout; a failure ends that track's attempt, never the worker. No re-encoding, so the decoders see the bytes only to copy them |
+| Repudiation | "The recording was altered" or "I never viewed it" | Segment and assembled-file SHA-256 are stored; every playback listing writes `recording.viewed` (who, which interview, how many files and segments) to the audit chain |
+| Information disclosure | A reviewer outside the interview's team plays a recording | `GET /interviews/{id}/recordings` needs `reports.interview.view` and follows the interview resource scope (reviewers: only their interviews); other organisations' rows are invisible through row-level security |
+| Information disclosure | A playback URL is shared or logged | Read-only, one blob, 5 minutes; handed out only by the audited route; blob storage is private with no public listing |
+| Information disclosure | A candidate reads their own or others' uploaded blobs | Upload URLs cannot read; the candidate has no read URL at all |
+| Denial of service | A flood of upload-URL requests or acknowledgements | 600 a minute per interview for each (after the token is checked) and a per-IP ceiling; a segment is at most 50,000,000 bytes and 60 s; `seq` is capped at 10,000 so a recovery listing stays small |
+| Denial of service | A huge blob is written through a URL to exhaust disk or bandwidth in the worker | The size check described above; a segment's declared size is bounded by the contract; assembly works in a temporary directory that is removed afterwards |
+| Denial of service | The worker dies mid-assembly, or ffmpeg is missing | `assembling` is taken over after 30 minutes; a missing ffmpeg leaves tracks `assembly-pending` (one warning, retried every 10 minutes); a failing track backs off and fails after 5 attempts without blocking others |
+| Elevation of privilege | An access token (not a session token) or a recruiter's cookie is used on the desktop routes | `scope` is checked: the routes take only `interview` tokens; recruiter routes take only a session cookie with the permission |
+
+**Residual risks:**
+- A storage URL cannot limit the size it writes; the controls above stop the server from reading such a blob and stop it entering a file, but it occupies storage until it is overwritten. A container-level size alert belongs to the cloud plan.
+- A candidate controls the device that records: a disabled capture is seen as a gap, not prevented. SP-11's integrity checks and SP-14's signals are the backstop.
+- The timeline map uses the declared segment durations; real durations differ by milliseconds, which each segment's own start time re-anchors (the drift target is 100 ms). Probing real durations is a hardening for SP-17.
+- Recordings are not yet encrypted with per-organisation keys beyond the storage service's encryption at rest (SP-23).
+- Egress copies of the conversation audio and the third-eye video, and evidence snapshots, are not part of D2; their access controls arrive with SP-13 and SP-14.

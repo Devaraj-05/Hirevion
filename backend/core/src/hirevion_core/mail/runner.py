@@ -1,5 +1,5 @@
 """The background workers: the outbox relay, the mail, documents, screening and transcript
-consumers, and the interview scheduler.
+consumers, the interview scheduler, and the media worker (recording continuity and assembly).
 
 They run inside the API process (`HV_API_RUN_WORKERS`, on by default) or alone with
 `uv run hv worker`. SP-18's worker takes them over later.

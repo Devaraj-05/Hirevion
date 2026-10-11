@@ -123,6 +123,41 @@ The design is in [ADR-0011](../architecture/adr/0011-storage-ai-metering.md).
 - **Budget.** Calls stop with `AiBudgetExceeded` once an organisation's monthly spend reaches its `ai.cost.usd` quota, or `HV_AI_MONTHLY_BUDGET_USD` when it has none.
 - **Prices** live in `backend/core/src/hirevion_core/ai/prices.yaml`, each with its source and date. Add a model there when you configure it; until then its calls record no cost.
 
+## Recordings (`hirevion_core.recordings`, SP-12 server side)
+
+The contract is [recordings.md](../api/contracts/recordings.md); the plan is `docs/superpowers/plans/2026-10-10-sp-12-server-recording.md`.
+
+- **What runs where:**
+  - The desktop's routes (`/recordings/segments`, `.../ack`, `/recordings/interviews/{id}/segments`) are in `hv api`.
+  - The media worker (assembly and the continuity monitor) runs inside `hv api` (`HV_API_RUN_WORKERS=true`) or alone with `uv run hv worker`.
+  - Reviewers play recordings back at `GET /interviews/{id}/recordings` (`reports.interview.view`; each viewing is audited as `recording.viewed`).
+- **ffmpeg.** The worker runs ffmpeg as a separate process to join a track's segments (concat demuxer, no re-encoding).
+  - Install it: `winget install Gyan.FFmpeg` on Windows, `sudo apt-get install ffmpeg` on Linux and in CI. `HV_FFMPEG_PATH` names a binary that isn't on `PATH`.
+  - Without it nothing crashes: the worker logs one warning and the tracks stay `assembly-pending` with the note `ffmpeg-missing`, retried every 10 minutes. Install it and they are built.
+  - `uv run pytest backend/core/tests/test_ffmpeg_integration.py` runs the real thing when ffmpeg is found, and skips otherwise.
+- **Settings** (`HV_` prefix, all optional): `FFMPEG_PATH`, `FFMPEG_TIMEOUT_SECONDS` (900), `RECORDING_SETTLE_SECONDS` (120: how long a track waits for segments whose URL was asked for but that aren't acknowledged), `RECORDING_ASSEMBLY_ATTEMPTS` (5), `RECORDING_POLL_SECONDS` (15) and `RECORDING_MONITOR_SECONDS` (10).
+- **Where the files go** (PRD §85), under `{org}/interviews/{id}/`:
+  - `screen/screen-1-000017.mp4` is a segment; `screen/screen-1-full.mp4` and `screen/screen-1-timeline.json` are the assembled file and its map;
+  - `camera/` for the camera; the microphone's files are in `audio/` as `mic-…`.
+- **Watching an interview:**
+
+  ```sql
+  SELECT track, status, first_seq, last_seq, stalled_since, note, attempts, duration_ms, gaps
+  FROM recordings WHERE interview_id = '<uuid>' ORDER BY track;
+  SELECT track, seq, state, attempts FROM recording_segments
+  WHERE interview_id = '<uuid>' AND state <> 'acknowledged' ORDER BY track, seq;
+  ```
+
+  - The live `RECORDING_STATUS` events are on the interview's stream: `redis-cli XRANGE hv:rt:interview:<uuid> - +`.
+  - Gaps are the outbox topic `recording.gap` (stream `hv:events:recording.gap`), for the proctoring engine.
+- **Statuses.**
+  - `recording` while the interview runs.
+  - `assembly-pending` once it ends: it waits for in-flight uploads, for ffmpeg, or for a backoff after a failure (`note` says which).
+  - `assembling`; a worker that died leaves it, and another takes it over after 30 minutes.
+  - `assembled`, or `failed` (after 5 attempts, or with nothing acknowledged: `note` says why).
+- **Build a track again** (after fixing ffmpeg, say): `UPDATE recordings SET status = 'assembly-pending', attempts = 0, next_attempt_at = NULL WHERE interview_id = '<uuid>' AND track = '<track>';`. A segment acknowledged after the interview ended does this by itself.
+- **Chaos by hand.** Start an interview on the desktop, then kill it, or drop the network for a few minutes. The server's `missing` list (`GET /recordings/interviews/{id}/segments`) and a `recording.gap` event show the hole; the next launch uploads what the desktop still holds.
+
 ## Voice agent and latency benchmark
 
 The interviewer (`backend/interview_agent`) is a LiveKit Agents worker: Deepgram speech-to-text

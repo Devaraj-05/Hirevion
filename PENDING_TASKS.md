@@ -178,6 +178,7 @@ A box is ticked in the PR that merges the part. Deliverables are in MASTER §14;
 - [ ] **C4 SP-10 Evaluation and AI governance.** Depends on: C3. See MASTER §14 SP-10.
   - Exit: every score has verified evidence; re-runs reproduce; a regressed prompt is blocked.
 - [ ] **C5 SP-14 Proctoring engine and live monitoring.** Depends on: C3, B2, D2. See MASTER §14 SP-14.
+  - Also (moved from D2): evidence snapshots, screen and camera at event time, asked for by SP-14's events.
   - Exit: p95 latency to the dashboard is under 1 s; a reconnect gets the missed alerts; dismissed events are audited.
 - [ ] **C6 SP-16 Coding, server side.** Depends on: C3. See MASTER §14 SP-16.
   - Exit: the sandbox-escape suite holds; all four languages run end to end.
@@ -194,9 +195,10 @@ A box is ticked in the PR that merges the part. Deliverables are in MASTER §14;
   - [x] Threat models for SP-01 to SP-06.
   - [ ] Code review: `/code-review` over the SP-04a to SP-06 code, with the findings fixed.
   - [ ] Dashboard: KPIs from real data (PRD §10) for jobs and candidates.
-- [ ] **D2 SP-12 Server side.** Depends on: SP-01, `recordings.md`. See MASTER §14 SP-12.
-  - Exit: as in MASTER §14 SP-12 (with B2's client).
+- [x] **D2 SP-12 Server side.** Depends on: SP-01, `recordings.md`. See MASTER §14 SP-12. Plan: `docs/superpowers/plans/2026-10-10-sp-12-server-recording.md`.
+  - Exit: as in MASTER §14 SP-12 (with B2's client). Egress moved to D3, evidence snapshots to C5.
 - [ ] **D3 SP-13 Third-eye.** Depends on: C3, D2. See MASTER §14 SP-13.
+  - Also (moved from D2): LiveKit Egress of the conversation audio and the third-eye video.
   - Exit: a reused token is refused; revoking kicks the old device; a locked phone is flagged within 10 s.
 - [ ] **D4 SP-19 Enterprise identity** (includes TOTP MFA, moved from SP-02). Depends on: SP-02. See MASTER §14 SP-19.
   - Exit: Keycloak logins work; SCIM compliance passes; SAML signature wrapping is refused.
