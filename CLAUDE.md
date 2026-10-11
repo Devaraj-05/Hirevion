@@ -23,3 +23,17 @@ Hirevion is an enterprise AI recruitment and interview platform with two separat
 - No PRD feature may be dropped. If scope moves between sub-projects, update Appendix A of the master plan in the same change.
 - Test-driven: write the failing test first; keep CI green.
 - Never commit secrets: API keys live only in the gitignored root `.env`, never in the desktop app or the web bundle. Use synthetic data in development.
+
+## Working rules (token discipline)
+
+- Session start: read CLAUDE.md and docs/STATUS.md only. For the current part, read only its PENDING_TASKS entry, its MASTER §14 SP-xx entry, and the sections/ADRs/contracts they cite. Never read MASTER_IMPLEMENTATION_PLAN.md or the PRD whole: grep for the § number.
+- There are no deadlines. Work by order, dependencies and exit criteria. Never skip tests, /code-review or docs to save time. If a part can't be finished cleanly, stop and report what is missing.
+- One part per session. After the merge: update STATUS.md, tick the box, stop.
+- Use Grep/Glob first; Read with offset/limit. Don't re-read a file after editing it.
+- Run only the tests for files you touched, with quiet output (`pytest -x -q 2>&1 | tail -40`, `cargo test -q`, `pnpm vitest run <file>`). Never re-run a green suite to double-check.
+- Plans are ≤1 page: decisions, task list, files, test list. No code.
+- Same error twice: stop, state a hypothesis, change approach. Three failed attempts: stop and ask me.
+- Subagents: only for independent work, max 2 at once, narrow brief plus file list. Resume a stopped subagent with SendMessage instead of respawning.
+- CI: wait with one blocking command (`gh pr checks <n> --watch`), never repeated polling.
+- Models: strongest for security-critical parts (auth/DPoP, sandbox, recording, proctoring, SSO); Sonnet for CRUD, docs, i18n, CI config.
+- No narration between tool calls; final report ≤5 lines.

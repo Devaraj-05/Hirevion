@@ -4,5 +4,18 @@
     "pr": "",
     "sessionUrl": false
   },
-  "includeCoAuthoredBy": false
+  "includeCoAuthoredBy": false,
+  "permissions": {
+    "deny": [
+      "Read(**/node_modules/**)",
+      "Read(**/target/**)",
+      "Read(**/.next/**)",
+      "Read(**/pnpm-lock.yaml)",
+      "Read(**/uv.lock)",
+      "Read(**/Cargo.lock)",
+      "Read(**/packages/api-client/openapi.json)",
+      "Read(**/schema.d.ts)",
+      "Read(**/.env)"
+    ]
+  }
 }

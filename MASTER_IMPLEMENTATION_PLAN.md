@@ -29,7 +29,7 @@
   - AI vendors: Gemini (your paid key) for LLM, embeddings and vision in development and testing; OpenAI for the same in production; Deepgram for speech-to-text and text-to-speech in both. ElevenLabs/Cartesia stay optional text-to-speech upgrades for later.
   - Customers and data are in India, so the DPDP Act 2023 applies.
   - Launch is full GA with internal security testing, followed by an external pentest.
-- **Git hygiene:** commits and pushes go out only as Devaraj-05, with no Claude attribution anywhere (§17).
+- **Git hygiene:** commits and pushes go out only as Devaraj-05, with no Claude attribution anywhere (§13 and CLAUDE.md).
 - **This file** becomes `MASTER_IMPLEMENTATION_PLAN.md` at the repo root. It's committed and reviewed by you **before any implementation starts** (§17).
 
 ## 1. The two applications and their boundaries (§5, §109)
