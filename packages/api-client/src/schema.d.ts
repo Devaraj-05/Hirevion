@@ -1232,6 +1232,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/interviews/{interview_id}/recordings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Interview Recordings
+         * @description Each track's assembled file and timeline map (read URLs valid for 5 minutes), or, until
+         *     the media worker has built it, each acknowledged segment.
+         */
+        get: operations["interview_recordings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/interviews/{interview_id}/reschedule": {
         parameters: {
             query?: never;
@@ -2087,6 +2108,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/recordings/interviews/{interview_id}/segments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Recovery Listing
+         * @description What the server holds, per track, for the desktop's next launch after a crash.
+         */
+        get: operations["recovery_listing"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recordings/segments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request Segment Upload
+         * @description A write-only URL for one segment's blob (15 minutes). Asking again for the same
+         *     `(interview, track, seq)` returns the same `segment_id` with a fresh URL.
+         */
+        post: operations["request_segment_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recordings/segments/{segment_id}/ack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Acknowledge Segment
+         * @description Reads the blob and checks its size and SHA-256 against the declaration. Only now may the
+         *     desktop delete its local copy.
+         */
+        post: operations["acknowledge_segment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/roles": {
         parameters: {
             query?: never;
@@ -2474,6 +2557,19 @@ export interface components {
             approved: string[];
             /** Requested */
             requested: string[];
+        };
+        /** AckBody */
+        AckBody: {
+            /** Sha256 */
+            sha256: string;
+        };
+        /** AckResponse */
+        AckResponse: {
+            /**
+             * Status
+             * @constant
+             */
+            status: "acknowledged";
         };
         /** ActionRequest */
         ActionRequest: {
@@ -3380,6 +3476,22 @@ export interface components {
         ForgotPasswordRequest: {
             /** Email */
             email: string;
+        };
+        /** GapItem */
+        GapItem: {
+            /** From Seq */
+            from_seq: number;
+            /** From Time */
+            from_time: string | null;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "missing" | "corrupt";
+            /** To Seq */
+            to_seq: number;
+            /** To Time */
+            to_time: string | null;
         };
         /** GenerateRequest */
         GenerateRequest: {
@@ -4546,6 +4658,74 @@ export interface components {
             /** Version */
             version: number;
         };
+        /** PlaybackFile */
+        PlaybackFile: {
+            /** Bytes */
+            bytes: number;
+            /**
+             * Container
+             * @enum {string}
+             */
+            container: "mp4" | "webm";
+            /** Duration Ms */
+            duration_ms: number;
+            /** Sha256 */
+            sha256: string;
+            /** Url */
+            url: string;
+        };
+        /** PlaybackResponse */
+        PlaybackResponse: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Interview Id
+             * Format: uuid
+             */
+            interview_id: string;
+            /** Tracks */
+            tracks: components["schemas"]["PlaybackTrack"][];
+        };
+        /** PlaybackSegment */
+        PlaybackSegment: {
+            /** Duration Ms */
+            duration_ms: number;
+            /** Seq */
+            seq: number;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /** Url */
+            url: string;
+        };
+        /** PlaybackTrack */
+        PlaybackTrack: {
+            file: components["schemas"]["PlaybackFile"] | null;
+            /** First Seq */
+            first_seq: number | null;
+            /** Gaps */
+            gaps: components["schemas"]["GapItem"][];
+            /** Last Seq */
+            last_seq: number | null;
+            /** Segments */
+            segments: components["schemas"]["PlaybackSegment"][];
+            /** Stalled */
+            stalled: boolean;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "recording" | "assembly-pending" | "assembling" | "assembled" | "failed";
+            /** Timeline Url */
+            timeline_url: string | null;
+            /** Track */
+            track: string;
+        };
         /**
          * Problem
          * @description An RFC 9457 problem; codes may add extension members (e.g. `errors`, `checks`).
@@ -4924,6 +5104,13 @@ export interface components {
              * @default true
              */
             screen: boolean;
+        };
+        /** RecoveryResponse */
+        RecoveryResponse: {
+            /** Tracks */
+            tracks: {
+                [key: string]: components["schemas"]["TrackProgress"];
+            };
         };
         /** RefreshBody */
         RefreshBody: {
@@ -5365,6 +5552,39 @@ export interface components {
             };
             /** Waiting */
             waiting: number;
+        };
+        /** SegmentBody */
+        SegmentBody: {
+            /** Bytes */
+            bytes: number;
+            /**
+             * Codec
+             * @enum {string}
+             */
+            codec: "h264" | "vp8" | "opus" | "aac";
+            /**
+             * Container
+             * @enum {string}
+             */
+            container: "mp4" | "webm";
+            /** Duration Ms */
+            duration_ms: number;
+            /**
+             * Interview Id
+             * Format: uuid
+             */
+            interview_id: string;
+            /** Seq */
+            seq: number;
+            /** Sha256 */
+            sha256: string;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /** Track */
+            track: string;
         };
         /** ServerTime */
         ServerTime: {
@@ -5995,6 +6215,13 @@ export interface components {
             /** Token */
             token: string;
         };
+        /** TrackProgress */
+        TrackProgress: {
+            /** Acknowledged Through */
+            acknowledged_through: number | null;
+            /** Missing */
+            missing: number[];
+        };
         /** TranscriptQuestion */
         TranscriptQuestion: {
             /** Answers */
@@ -6081,6 +6308,25 @@ export interface components {
             start_ms: number;
             /** Text */
             text: string;
+        };
+        /** UploadResponse */
+        UploadResponse: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Headers */
+            headers: {
+                [key: string]: string;
+            };
+            /**
+             * Segment Id
+             * Format: uuid
+             */
+            segment_id: string;
+            /** Upload Url */
+            upload_url: string;
         };
         /** UserInvite */
         UserInvite: {
@@ -8922,6 +9168,46 @@ export interface operations {
             };
         };
     };
+    interview_recordings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaybackResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     reschedule_interview: {
         parameters: {
             query?: never;
@@ -11190,6 +11476,132 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QuestionVersionResponse"][];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    recovery_listing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    request_segment_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SegmentBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    acknowledge_segment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                segment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AckBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AckResponse"];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */
