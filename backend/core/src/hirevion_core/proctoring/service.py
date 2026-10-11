@@ -234,6 +234,8 @@ class ProctorEngine:
             proctor = await lock_session(session, session_id, interview_id)
             interview = await session.get_one(Interview, interview_id)
             self._gate(proctor, interview, now, events=True)
+            if len(items) > int(proctor.policy.get("batch_max_events", 100)):
+                raise Invalid("batch-too-large", "The batch holds more events than allowed")
             tracker = SeqTracker(proctor.max_seq, proctor.gaps)
             by_seq = {item.seq: item for item in reversed(items)}
             if any(tracker.too_far(seq) for seq in by_seq):

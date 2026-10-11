@@ -197,3 +197,43 @@ def test_the_state_message_has_the_contracts_shape() -> None:
         "remaining_seconds": 1830,
         "notice": {"kind": "camera_covered"},
     }
+
+
+async def test_a_proctoring_nudge_reaches_the_desktop_as_a_state_notice(
+    app_db: Database,
+    admin_engine: AsyncEngine,
+    valkey: Redis,
+    make_organization: MakeOrganization,
+    make_user: Any,
+) -> None:
+    from hirevion_core.proctoring import nudges
+    from hirevion_interview_agent.bridge import relay_nudges
+
+    org = await make_organization("Acme")
+    recruiter = await make_user(org, roles=["recruiter"])
+    interview_id = await _voice_interview(admin_engine, app_db, valkey, org, recruiter)
+    bridge = InterviewBridge(Conductor(app_db, valkey, llm=None), org, interview_id, job_id="AJ_1")
+    await bridge.begin()
+    # A nudge from before the agent started is already in the state the desktop reads.
+    old = nudges.Nudge("e0", "focus_lost", "WINDOW_MINIMIZED", "WARNING", "2026-10-12T05:00:00Z")
+    await nudges.deliver(valkey, interview_id, old)
+
+    sent: list[dict[str, Any]] = []
+    stop = asyncio.Event()
+
+    async def publish(state: dict[str, Any] | None) -> None:
+        assert state is not None
+        sent.append(state)
+        stop.set()
+
+    relay = asyncio.create_task(relay_nudges(valkey, bridge, publish, stop, block_ms=200))
+    await asyncio.sleep(0.3)
+    fresh = nudges.Nudge(
+        "e1", "camera_covered", "CAMERA_OBSTRUCTED", "CRITICAL", "2026-10-12T05:01Z"
+    )
+    await nudges.deliver(valkey, interview_id, fresh)
+    await asyncio.wait_for(relay, 5)
+    assert len(sent) == 1
+    state = sent[0]
+    assert state["notice"]["kind"] == "camera_covered" and state["notice"]["severity"] == "CRITICAL"
+    assert state["notice"]["text"] and state["question"] is not None and "voice" in state

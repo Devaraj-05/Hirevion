@@ -96,6 +96,10 @@ def candidate_identity(candidate_id: UUID) -> str:
     return f"candidate-{candidate_id}"
 
 
+def observer_identity(user_id: UUID) -> str:
+    return f"observer-{user_id}"
+
+
 @dataclass(frozen=True, slots=True)
 class ParticipantToken:
     url: str
@@ -105,15 +109,33 @@ class ParticipantToken:
     expires_at: datetime
 
 
+MediaKind = Literal[
+    "candidate_left",
+    "candidate_joined",
+    "agent_left",
+    "room_finished",
+    "track_published",
+    "track_unpublished",
+    "third_eye_joined",
+    "third_eye_left",
+    "other",
+]
+THIRD_EYE_PREFIX = "third-eye-"
+TRACK_NAMES = {1: "camera", 2: "microphone", 3: "screen_share"}
+"""LiveKit's `TrackSource` values for what a candidate publishes."""
+
+
 @dataclass(frozen=True, slots=True)
 class MediaEvent:
     """A webhook from the media server, reduced to what the interview needs."""
 
-    kind: Literal["candidate_left", "candidate_joined", "agent_left", "room_finished", "other"]
+    kind: MediaKind
     interview_id: UUID | None
     organization_id: UUID | None
     identity: str | None = None
     at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    track: str | None = None
+    """For a candidate's track: `camera`, `microphone` or `screen_share`."""
 
 
 class MediaError(Exception):
@@ -126,6 +148,10 @@ class MediaControl(Protocol):
 
     def participant_token(
         self, interview_id: UUID, candidate_id: UUID, name: str, expires_at: datetime
+    ) -> ParticipantToken: ...
+
+    def observer_token(
+        self, interview_id: UUID, user_id: UUID, name: str, expires_at: datetime
     ) -> ParticipantToken: ...
 
     async def ensure_room(self, interview_id: UUID, organization_id: UUID) -> str: ...
@@ -183,6 +209,38 @@ class LiveKitMedia:
             can_publish_sources=list(CANDIDATE_SOURCES),
             can_update_own_metadata=False,
             hidden=False,
+        )
+        token = (
+            api.AccessToken(self._settings.livekit_api_key, self._secret())
+            .with_identity(identity)
+            .with_name(name)
+            .with_ttl(ttl)
+            .with_grants(grants)
+            .to_jwt()
+        )
+        return ParticipantToken(self.url, room, identity, token, expires_at)
+
+    def observer_token(
+        self, interview_id: UUID, user_id: UUID, name: str, expires_at: datetime
+    ) -> ParticipantToken:
+        """A recruiter's way to watch: hidden (no one in the room sees them), subscribe-only."""
+        from livekit import api
+
+        room = room_name(interview_id)
+        identity = observer_identity(user_id)
+        ttl = max(timedelta(minutes=1), expires_at - datetime.now(UTC))
+        grants = api.VideoGrants(
+            room_join=True,
+            room=room,
+            room_create=False,
+            room_list=False,
+            room_record=False,
+            room_admin=False,
+            can_publish=False,
+            can_subscribe=True,
+            can_publish_data=False,
+            can_update_own_metadata=False,
+            hidden=True,
         )
         token = (
             api.AccessToken(self._settings.livekit_api_key, self._secret())
@@ -266,9 +324,24 @@ class LiveKitMedia:
             return MediaEvent("other", None, None)
         identity = event.participant.identity or None
         is_agent = event.participant.kind == ParticipantInfo.Kind.AGENT
-        kind: Literal["candidate_left", "candidate_joined", "agent_left", "room_finished", "other"]
+        kind: MediaKind
+        track: str | None = None
         if event.event == "room_finished":
             kind = "room_finished"
+        elif event.event in ("track_published", "track_unpublished") and (
+            identity and identity.startswith("candidate-")
+        ):
+            track = TRACK_NAMES.get(int(event.track.source))
+            if track is None:
+                kind = "other"
+            else:
+                kind = (
+                    "track_published" if event.event == "track_published" else "track_unpublished"
+                )
+        elif event.event in ("participant_joined", "participant_left") and (
+            identity and identity.startswith(THIRD_EYE_PREFIX)
+        ):
+            kind = "third_eye_joined" if event.event == "participant_joined" else "third_eye_left"
         elif event.event == "participant_left" and is_agent:
             kind = "agent_left"
         elif event.event == "participant_left" and identity and identity.startswith("candidate-"):
@@ -280,7 +353,7 @@ class LiveKitMedia:
         at = (
             datetime.fromtimestamp(event.created_at, UTC) if event.created_at else datetime.now(UTC)
         )
-        return MediaEvent(kind, interview_id, organization_id, identity, at)
+        return MediaEvent(kind, interview_id, organization_id, identity, at, track)
 
 
 @dataclass
@@ -304,6 +377,19 @@ class FakeMedia:
             room_name(interview_id),
             candidate_identity(candidate_id),
             f"fake-token-{interview_id}",
+            expires_at,
+        )
+        self.tokens.append(token)
+        return token
+
+    def observer_token(
+        self, interview_id: UUID, user_id: UUID, name: str, expires_at: datetime
+    ) -> ParticipantToken:
+        token = ParticipantToken(
+            self.url,
+            room_name(interview_id),
+            observer_identity(user_id),
+            f"fake-observer-{interview_id}",
             expires_at,
         )
         self.tokens.append(token)
@@ -336,6 +422,7 @@ class FakeMedia:
             UUID(data["organization_id"]),
             data.get("identity"),
             datetime.fromisoformat(data["at"]) if data.get("at") else datetime.now(UTC),
+            data.get("track"),
         )
 
 

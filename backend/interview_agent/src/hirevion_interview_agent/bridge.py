@@ -4,15 +4,20 @@ shows (`interview-session.md`). Nothing here touches the room, so it's tested wi
 
 from __future__ import annotations
 
+import asyncio
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
+from redis.asyncio import Redis
+
 from hirevion_core.access.errors import AccessError
 from hirevion_core.interview_session.conductor import Conductor, SessionView, Speech, TurnResult
 from hirevion_core.interviews.lifecycle import By
+from hirevion_core.proctoring import nudges
 
 log = logging.getLogger(__name__)
 
@@ -144,3 +149,33 @@ class InterviewBridge:
 
     async def candidate_speaking(self, speaking: bool) -> None:
         await self.conductor.candidate_speaking(self.interview_id, speaking)
+
+    async def nudge(self, notice: dict[str, Any]) -> dict[str, Any]:
+        """The `hv.state` message that shows a proctoring nudge at once (SP-14): the interview's
+        state with the notice."""
+        view = await self.conductor.session_state(self.organization_id, self.interview_id)
+        self.last_view = view
+        return {**state_message(view), "notice": notice}
+
+
+async def relay_nudges(
+    redis: Redis,
+    bridge: InterviewBridge,
+    publish: Callable[[dict[str, Any]], Awaitable[None]],
+    stop: asyncio.Event,
+    *,
+    block_ms: int = 2000,
+) -> None:
+    """Publishes each proctoring nudge for this interview as `hv.state` until `stop` is set.
+    Nudges from before the agent started are already in the state the desktop reads."""
+    last = await nudges.last_id(redis, bridge.interview_id)
+    while not stop.is_set():
+        try:
+            for entry_id, notice in await nudges.read(
+                redis, bridge.interview_id, last, block_ms=block_ms
+            ):
+                last = entry_id
+                await publish(await bridge.nudge(notice))
+        except Exception:
+            log.exception("Interview %s: relaying a nudge failed", bridge.interview_id)
+            await asyncio.sleep(1)

@@ -31,7 +31,7 @@ from hirevion_core.settings import CoreSettings, load_core_settings
 
 TEST_DATABASE = os.environ.get("HV_TEST_DATABASE", "hirevion_test")
 # The Valkey logical database the tests own; it is flushed before each test that uses it.
-TEST_VALKEY_DB = 15
+TEST_VALKEY_DB = int(os.environ.get("HV_TEST_VALKEY_DB", "15"))
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:

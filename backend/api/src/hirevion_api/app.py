@@ -43,6 +43,9 @@ from hirevion_api.middleware import (
     UnhandledErrorMiddleware,
 )
 from hirevion_api.problems import install_problem_handlers
+from hirevion_api.proctoring.live import router as proctoring_live_router
+from hirevion_api.proctoring.recruiter import router as proctoring_recruiter_router
+from hirevion_api.proctoring.routes import router as proctoring_router
 from hirevion_api.ratelimit import RateLimitMiddleware
 from hirevion_api.recordings.desktop import router as recordings_desktop_router
 from hirevion_api.recordings.recruiter import router as recordings_recruiter_router
@@ -196,6 +199,9 @@ def create_app(
     app.include_router(interview_live_router)
     app.include_router(recordings_desktop_router)
     app.include_router(recordings_recruiter_router)
+    app.include_router(proctoring_router)
+    app.include_router(proctoring_recruiter_router)
+    app.include_router(proctoring_live_router)
     if telemetry is not None and telemetry.enabled:
         FastAPIInstrumentor.instrument_app(
             app,

@@ -2,6 +2,7 @@
 transcript consumers, the interview scheduler, and the media worker (recording continuity and
 assembly).
 
+The proctoring watcher and the `recording.gap` consumer (SP-14) run with them.
 They run inside the API process (`HV_API_RUN_WORKERS`, on by default) or alone with
 `uv run hv worker`. SP-18's worker takes them over later.
 """
@@ -36,6 +37,8 @@ from hirevion_core.mail.settings import MailSettings, load_mail_settings
 from hirevion_core.outbox import OutboxRelay
 from hirevion_core.recordings.settings import load_recording_settings
 from hirevion_core.recordings.worker import media_workers
+from hirevion_core.proctoring.service import ProctorEngine
+from hirevion_core.proctoring.watcher import GAP_TOPIC, ProctorWatcher, handle_gap
 from hirevion_core.screening.runner import SCREENING_TOPIC, handle_screening_event
 from hirevion_core.settings import CoreSettings
 from hirevion_core.storage.paths import BlobPath
@@ -71,6 +74,14 @@ async def run_workers(
             OutboxRelay(relay_db, redis).run_forever(stop),
             MailConsumer(redis, SmtpSender(mail or load_mail_settings())).run_forever(stop),
             InterviewScheduler(app_db, load_identity_settings()).run_forever(stop),
+            # Server-observed proctoring state, and the recording gaps SP-12 reports (SP-14).
+            ProctorWatcher(ProctorEngine(app_db, redis)).run_forever(stop),
+            StreamConsumer(
+                redis,
+                partial(handle_gap, ProctorEngine(app_db, redis)),
+                topic=GAP_TOPIC,
+                group="proctoring",
+            ).run_forever(stop),
             # Transcript artifacts for each completed or abandoned interview (SP-09).
             *(
                 StreamConsumer(

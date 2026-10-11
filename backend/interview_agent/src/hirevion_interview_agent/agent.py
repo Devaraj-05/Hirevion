@@ -62,6 +62,7 @@ from .bridge import (
     STATE_TOPIC,
     InterviewBridge,
     Spoken,
+    relay_nudges,
     state_message,
 )
 from .latency import LatencyCollector, TurnLatency
@@ -378,8 +379,11 @@ async def entrypoint(ctx: JobContext) -> None:
                 logger.exception("Interview %s: the clock's tick failed", interview_id)
 
     ticking = asyncio.create_task(clock())
+    # Proctoring nudges (SP-14) reach the desktop as `hv.state` notices, from this agent.
+    nudging = asyncio.create_task(relay_nudges(redis, bridge, speaker.publish, speaker.completed))
     await speaker.completed.wait()
     ticking.cancel()
+    nudging.cancel()
     ctx.shutdown(reason="interview complete" if not lock.lost.is_set() else "lock lost")
 
 

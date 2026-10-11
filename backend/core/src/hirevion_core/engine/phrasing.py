@@ -235,5 +235,11 @@ def proctor_reminder(kind: str) -> str:
         "your own.",
         "focus_lost": "Please keep the interview app in focus.",
         "phone_detected": "Please put any phones or other devices away.",
+        "blocked_application": "Please close the other application that is running.",
+        "second_display": "Please use a single display for this interview.",
+        "screen_share_stopped": "Your screen is no longer being shared. Please restore it.",
+        "device_disconnected": "Your camera or microphone seems to be disconnected. Please "
+        "reconnect it.",
+        "third_eye_disconnected": "Your phone camera has disconnected. Please reconnect it.",
     }
     return reminders.get(kind, "Please keep to the interview's rules.")

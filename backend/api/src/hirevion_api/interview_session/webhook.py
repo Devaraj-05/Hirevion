@@ -6,15 +6,18 @@ accepted only with LiveKit's signature over the body."""
 from __future__ import annotations
 
 import logging
+from typing import Literal
 
 from fastapi import Request
 
+from hirevion_api.deps import get_db, get_redis
 from hirevion_api.interview_session.routes import conductor, media
 from hirevion_api.problems import ProblemError
 from hirevion_api.routing import api_router
 from hirevion_core.access.errors import AccessError
-from hirevion_core.interview_session.media import MediaError
+from hirevion_core.interview_session.media import MediaError, MediaEvent
 from hirevion_core.interviews.lifecycle import By
+from hirevion_core.proctoring.service import ProctorEngine
 
 log = logging.getLogger(__name__)
 router = api_router(tags=["interview-session"])
@@ -57,7 +60,38 @@ async def livekit_webhook(request: Request) -> None:
             )
         elif event.kind == "agent_left":
             await runner.redispatch(event.organization_id, event.interview_id)
+        await _proctoring(request, event)
     except AccessError as error:
         # An interview that isn't there or can't change now: nothing to do, and LiveKit needn't
         # retry.
         log.info("LiveKit's %s for interview %s ignored: %s", event.kind, event.interview_id, error)
+
+
+TRACK_CHANNELS = {"camera": "camera", "microphone": "mic", "screen_share": "screen"}
+
+
+async def _proctoring(request: Request, event: MediaEvent) -> None:
+    """What the room shows about the candidate's devices is the proctoring engine's ground truth
+    (SP-14): a track that goes away, the third eye leaving, or the candidate coming and going.
+    Deliveries are idempotent: the engine keeps the newest view of each channel."""
+    if event.interview_id is None or event.organization_id is None:
+        return
+    engine = ProctorEngine(get_db(request), get_redis(request))
+    channel = TRACK_CHANNELS.get(event.track or "")
+    if event.kind in ("track_published", "track_unpublished") and channel is not None:
+        state: Literal["up", "down"] = "up" if event.kind == "track_published" else "down"
+        await engine.observe(
+            event.organization_id,
+            event.interview_id,
+            channel,
+            "livekit",
+            state,
+            event.at,
+        )
+    elif event.kind in ("third_eye_joined", "third_eye_left"):
+        state = "up" if event.kind == "third_eye_joined" else "down"
+        await engine.observe(
+            event.organization_id, event.interview_id, "third_eye", "livekit", state, event.at
+        )
+    elif event.kind in ("candidate_left", "candidate_joined", "room_finished"):
+        await engine.wake(event.organization_id, event.interview_id)
