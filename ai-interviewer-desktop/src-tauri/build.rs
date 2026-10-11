@@ -6,6 +6,17 @@ fn main() {
     if msvc {
         println!("cargo:rustc-link-arg-bins=/DELAYLOAD:mfplat.dll");
         println!("cargo:rustc-link-arg-bins=delayimp.lib");
+        // Integration-test executables that build a Tauri app need the Common Controls v6
+        // manifest too (see test.manifest). The app binary already has one from tauri_build.
+        let manifest =
+            std::path::Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap_or_default())
+                .join("test.manifest");
+        println!("cargo:rustc-link-arg-tests=/MANIFEST:EMBED");
+        println!(
+            "cargo:rustc-link-arg-tests=/MANIFESTINPUT:{}",
+            manifest.display()
+        );
+        println!("cargo:rerun-if-changed=test.manifest");
     }
     tauri_build::build()
 }

@@ -10,6 +10,7 @@ pub mod service_commands;
 mod services;
 pub mod state;
 mod stub;
+pub mod update;
 mod views;
 
 pub use state::AppState;

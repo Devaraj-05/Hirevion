@@ -56,14 +56,33 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": ["nsis"],
     "publisher": "Hirevion",
+    "copyright": "Copyright (c) Hirevion",
+    "category": "Business",
     "shortDescription": "Hirevion AI interview for candidates",
+    "longDescription": "Take your Hirevion AI interview: checks your computer, records the interview for review and uploads it.",
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico"],
     "windows": {
+      "webviewInstallMode": { "type": "downloadBootstrapper", "silent": true },
       "nsis": {
-        "installMode": "currentUser"
+        "installMode": "currentUser",
+        "languages": ["English"],
+        "displayLanguageSelector": false,
+        "compression": "lzma",
+        "startMenuFolder": "Hirevion"
       }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEYzRjcwQUE2QTE0N0I1MzAKUldRd3RVZWhwZ3IzOHp0QkJYc0VVdmV4eWx5NkVrNDRtZEk3T0pENlQrUkoraHR4MDlrRStWaTkK",
+      "endpoints": [
+        "https://api.hirevion.localhost/api/v1/desktop/update-manifest/{{target}}/{{arch}}/{{current_version}}"
+      ],
+      "requireSignedVersion": true,
+      "windows": { "installMode": "passive" }
     }
   }
 }

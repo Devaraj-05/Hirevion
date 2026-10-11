@@ -1,6 +1,10 @@
 //! Hirevion AI Interview desktop app (Tauri 2).
 
 mod app;
+mod crash;
+
+// The updater is public so its integration test (tests/updater.rs) can drive it.
+pub use app::update;
 // Spike support (SP-00d) is compiled into debug builds only.
 #[cfg(debug_assertions)]
 mod perf;
@@ -28,6 +32,9 @@ fn startup_integrity() -> (Vec<String>, bool) {
 
 /// Starts the desktop app. Returns when the last window closes.
 pub fn run() {
+    // One TLS provider for the updater and crash reporting (ring, as the API client uses).
+    let _ = rustls::crypto::ring::default_provider().install_default();
+    let _crash_reporting = crash::init(env!("CARGO_PKG_VERSION"));
     let (integrity_variables, debugger_present) = startup_integrity();
     let builder = tauri::Builder::default()
         // A second launch focuses the running app instead of starting another session.
@@ -37,6 +44,8 @@ pub fn run() {
                 let _ = window.set_focus();
             }
         }))
+        // Signed updates (SP-08c); driven only by the update_install command.
+        .plugin(app::update::plugin())
         .setup(move |app| {
             #[cfg(windows)]
             {
@@ -68,6 +77,8 @@ pub fn run() {
             app::commands::native_checks,
             app::commands::screen_capture_probe,
             app::commands::api_round_trip,
+            app::update::update_install,
+            crash::crash_report,
             app::interview::interview_request,
             app::service_commands::services_start,
             app::service_commands::services_stop,
@@ -92,6 +103,8 @@ pub fn run() {
         app::commands::native_checks,
         app::commands::screen_capture_probe,
         app::commands::api_round_trip,
+        app::update::update_install,
+        crash::crash_report,
         app::interview::interview_request,
         app::service_commands::services_start,
         app::service_commands::services_stop,
@@ -109,10 +122,11 @@ pub fn run() {
             // Closing the app mid-interview: stop the monitor and the screen recorder cleanly.
             // Whatever hasn't reached the server stays encrypted on disk and uploads at the
             // next launch.
-            if matches!(event, tauri::RunEvent::Exit)
-                && let Some(state) = app.try_state::<app::AppState>()
-            {
-                state.services.stop_for_exit();
+            if matches!(event, tauri::RunEvent::Exit) {
+                if let Some(state) = app.try_state::<app::AppState>() {
+                    state.services.stop_for_exit();
+                }
+                crash::flush();
             }
         });
 }

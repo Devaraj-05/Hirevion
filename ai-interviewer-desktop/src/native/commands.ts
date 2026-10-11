@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { Channel, invoke } from "@tauri-apps/api/core";
 import type { SystemCheckPayload } from "../checks/payload";
 import type { CheckResult } from "../checks/types";
 import type { ProctoringEventDraft } from "../vision/types";
@@ -29,6 +29,17 @@ export interface ReleaseState {
   latest_version?: string | null;
   minimum_version?: string | null;
   download_url?: string | null;
+}
+
+/** What the update download reports (`src-tauri/src/app/update.rs`). */
+export type UpdateProgress =
+  | { event: "downloading"; downloaded: number; total: number | null }
+  | { event: "installing" };
+
+export interface UpdateOutcome {
+  /** `installed` is only seen where the installer returns; on Windows the app restarts. */
+  status: "up-to-date" | "installed";
+  version: string | null;
 }
 
 export interface Candidate {
@@ -81,6 +92,18 @@ export function isCommandError(value: unknown): value is CommandError {
 export const commands = {
   appInfo: () => invoke<AppInfo>("app_info"),
   releaseCheck: () => invoke<ReleaseState>("release_check"),
+  /**
+   * Checks for a newer signed release, downloads it (reporting progress), verifies it against
+   * the key built into the app and installs it. Windows restarts the app when it succeeds.
+   */
+  updateInstall: (onProgress: (progress: UpdateProgress) => void) => {
+    const channel = new Channel<UpdateProgress>();
+    channel.onmessage = onProgress;
+    return invoke<UpdateOutcome>("update_install", { onProgress: channel });
+  },
+  /** Sends a webview error to crash reporting (a no-op unless this build has a GlitchTip DSN). */
+  crashReport: (error: { kind: string; message: string; stack: string | null }) =>
+    invoke<null>("crash_report", { error }),
   signIn: (email: string, password: string) => invoke<SignInResult>("sign_in", { email, password }),
   verifyCode: (challengeId: string, code: string) =>
     invoke<SignInResult>("verify_code", { challengeId, code }),

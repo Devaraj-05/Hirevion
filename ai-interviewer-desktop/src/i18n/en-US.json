@@ -14,7 +14,21 @@
     "title": "Update required",
     "body": "This version of the app can no longer be used. Install version {version} or later to take your interview.",
     "bodyNoVersion": "This version of the app can no longer be used. Install the latest version to take your interview.",
-    "download": "Download the latest version"
+    "download": "Download the latest version",
+    "now": "Update now",
+    "retry": "Try the update again",
+    "checking": "Looking for the update…",
+    "downloading": "Downloading the update… {percent}%",
+    "downloadingUnknown": "Downloading the update…",
+    "installing": "Installing. The app restarts by itself when it is done.",
+    "progress": "Update download progress",
+    "upToDate": "No update is available for this computer yet. Use the download link, or try again later.",
+    "errors": {
+      "network": "Can't reach the update service. Check your internet connection and try again.",
+      "signature": "The update couldn't be verified, so it wasn't installed. Download the latest version instead.",
+      "unavailable": "No update is available for this computer yet. Use the download link, or try again later.",
+      "failed": "The update didn't install. Try again, or download the latest version."
+    }
   },
   "signIn": {
     "title": "Sign in to your interview",

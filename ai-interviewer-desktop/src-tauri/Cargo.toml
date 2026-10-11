@@ -89,6 +89,28 @@ hv-security = { path = "crates/security" }
 hv-segment-store = { path = "crates/segment-store" }
 hv-system-check = { path = "crates/system-check" }
 hv-uploader = { path = "crates/uploader" }
+# SP-08c: the signed updater (Tauri's own, minisign-verified) and crash reporting to GlitchTip.
+# The updater is driven from Rust commands only, so the webview gets no updater permissions.
+tauri-plugin-updater = "2.13.3"
+semver = "1.0.28"
+regex = { version = "1.13.1", default-features = false, features = ["std", "unicode-perl"] }
+# Panics and webview errors go to GlitchTip (Sentry-compatible) when HV_GLITCHTIP_DSN was set at
+# build time. No default features: no debug-images, logs, metrics or release-health. The ring
+# provider is installed by hand (rustls-no-provider), as the API client does, so no aws-lc.
+sentry = { version = "0.49.3", default-features = false, features = [
+  "backtrace",
+  "contexts",
+  "panic",
+  "reqwest",
+  "rustls-no-provider",
+] }
+rustls = { version = "0.23.31", default-features = false, features = ["ring", "std"] }
+
+[dev-dependencies]
+base64 = "0.22.1"
+tauri = { version = "2.12.0", features = ["test"] }
+tokio = { version = "1.47.1", features = ["macros", "rt-multi-thread"] }
+wiremock = "0.6.5"
 
 [target.'cfg(windows)'.dependencies]
 # The screen recorder is Media Foundation, so it exists on Windows only.
