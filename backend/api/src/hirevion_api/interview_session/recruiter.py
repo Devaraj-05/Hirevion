@@ -52,10 +52,6 @@ ReadsBriefing = Annotated[
 ManagesOrganization = Annotated[Principal, requires("admin.organization.manage")]
 
 
-def _reviewer_only(principal: Principal) -> UUID | None:
-    return None if "candidates.view" in principal.permissions else principal.user_id
-
-
 def _accommodation(row: Accommodation) -> AccommodationResponse:
     return AccommodationResponse(
         id=row.id,
@@ -103,7 +99,7 @@ async def interview_transcript(
     async with own_tenant(request, principal) as session:
         scope = await resource_scope(session, principal.user_id)
         interview = await assignment.get_interview(
-            session, interview_id, scope, reviewer_only=_reviewer_only(principal)
+            session, interview_id, scope, reviewer_only=principal.reviewer_only
         )
         questions = (
             await session.scalars(
@@ -197,7 +193,7 @@ async def list_accommodations(
     async with own_tenant(request, principal) as session:
         scope = await resource_scope(session, principal.user_id)
         interview = await assignment.get_interview(
-            session, interview_id, scope, reviewer_only=_reviewer_only(principal)
+            session, interview_id, scope, reviewer_only=principal.reviewer_only
         )
         rows = await preparation.list_accommodations(session, interview.id)
         return [_accommodation(row) for row in rows]

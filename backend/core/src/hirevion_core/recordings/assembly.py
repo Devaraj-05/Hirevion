@@ -11,10 +11,18 @@ joined with ffmpeg's concat demuxer without re-encoding, and uploaded with the t
 once and keeps going), when segments are still arriving, and while it backs off after a failure.
 A segment acknowledged after assembly puts the track back to `assembly-pending`
 (`segments.acknowledge`), and the next pass rebuilds it.
+
+Each claim gets a token (`assembly_claim`); only the worker holding it records its result. A
+segment acknowledged during a build clears the token, so that build queues the track again
+instead of recording a file without the segment, and a second build never starts alongside it.
+Each build uploads under its own file names, so a worker whose claim was taken over can never
+overwrite a newer file. Numbers the file doesn't hold are published as `recording.gap` events of
+kind `missing` or `corrupt`, once, when the track is assembled.
 """
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -30,15 +38,23 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from hirevion_core.db.session import Database
+from hirevion_core.ids import uuid7
 from hirevion_core.interview_session import realtime
 from hirevion_core.models import Interview, Recording, RecordingSegment
+from hirevion_core.outbox import publish_event
 from hirevion_core.recordings import tracks
+from hirevion_core.recordings.continuity import gap_payload
 from hirevion_core.recordings.ffmpeg import Concatenator
-from hirevion_core.recordings.segments import ENDED_STATUSES, acknowledged_through, blob_path
+from hirevion_core.recordings.segments import (
+    ENDED_STATUSES,
+    GAP_TOPIC,
+    acknowledged_through,
+    blob_path,
+)
 from hirevion_core.recordings.settings import RecordingSettings
 from hirevion_core.recordings.timeline import SegmentInfo, build_timeline
 from hirevion_core.storage.paths import BlobPath, interview_blob
-from hirevion_core.storage.service import BlobTooLarge
+from hirevion_core.storage.service import BlobChanged, BlobTooLarge
 
 log = logging.getLogger(__name__)
 
@@ -76,6 +92,8 @@ class _Work:
     recording_id: UUID
     track: str
     parts: list[_Part]
+    claim: UUID
+    last_seq: int | None
 
 
 def _sha256_file(path: Path) -> str:
@@ -84,6 +102,21 @@ def _sha256_file(path: Path) -> str:
         while chunk := handle.read(_CHUNK):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+async def _sha256(path: Path) -> str:
+    """Hashes a (possibly multi-gigabyte) file off the event loop."""
+    return await asyncio.to_thread(_sha256_file, path)
+
+
+def _clock(now: datetime | None) -> datetime:
+    """The time to record: the caller's fixed time (tests), else the current time, so a long
+    batch never stamps a result or a backoff with the time it started."""
+    return now or datetime.now(UTC)
+
+
+def _parse(value: str | None) -> datetime | None:
+    return datetime.fromisoformat(value) if value else None
 
 
 class Assembler:
@@ -104,20 +137,17 @@ class Assembler:
 
     async def run_due(self, now: datetime | None = None) -> int:
         """Assembles what is due across organisations; returns how many tracks were built."""
-        moment = now or datetime.now(UTC)
         async with self.db.unscoped() as session:
             rows = (
                 await session.execute(
-                    text("SELECT * FROM recording_due_assembly(:now, :limit)"),
-                    {"now": moment, "limit": BATCH},
+                    text("SELECT * FROM recording_due_assembly(:now, :limit, :ended)"),
+                    {"now": _clock(now), "limit": BATCH, "ended": list(ENDED_STATUSES)},
                 )
             ).all()
         built = 0
         for row in rows:
             try:
-                built += await self.assemble_interview(
-                    row.organization_id, row.interview_id, moment
-                )
+                built += await self.assemble_interview(row.organization_id, row.interview_id, now)
             except Exception:
                 log.exception("Assembling the recordings of interview %s failed", row.interview_id)
         return built
@@ -127,21 +157,19 @@ class Assembler:
     ) -> int:
         """Builds every track of an ended interview that is ready; returns how many it built.
         Idempotent: a track that is assembled, or isn't ready, is left alone."""
-        moment = now or datetime.now(UTC)
         if not self.ffmpeg.available():
-            await self._wait_for_ffmpeg(organization_id, interview_id, moment)
+            await self._wait_for_ffmpeg(organization_id, interview_id, _clock(now))
             return 0
-        claimed = await self._claim(organization_id, interview_id, moment)
+        claimed = await self._claim(organization_id, interview_id, _clock(now))
         built = 0
         for work in claimed:
             try:
-                await self._assemble(organization_id, interview_id, work, moment)
-                built += 1
+                built += await self._assemble(organization_id, interview_id, work, now)
             except Exception as error:
                 log.warning(
                     "Assembling %s of interview %s failed: %s", work.track, interview_id, error
                 )
-                await self._failed(organization_id, work.recording_id, error, moment)
+                await self._failed(organization_id, work, error, _clock(now))
         return built
 
     async def _wait_for_ffmpeg(
@@ -214,22 +242,25 @@ class Assembler:
                     for r in rows
                     if r.state == "acknowledged"
                 ]
+                claim = uuid7()
                 recording.status = "assembling"
+                recording.assembly_claim = claim
                 recording.ready_at = recording.ready_at or now
                 recording.note = None
-                work.append(_Work(recording.id, recording.track, parts))
+                work.append(_Work(recording.id, recording.track, parts, claim, recording.last_seq))
         return work
 
     async def _assemble(
-        self, organization_id: UUID, interview_id: UUID, work: _Work, now: datetime
-    ) -> None:
+        self, organization_id: UUID, interview_id: UUID, work: _Work, now: datetime | None
+    ) -> int:
+        """Builds one track; returns 1 if it recorded an assembled file, else 0."""
         containers = {p.container for p in work.parts}
         if not work.parts:
-            await self._finish_empty(organization_id, work, "no acknowledged segments")
-            return
+            await self._finish_empty(organization_id, work, "no acknowledged segments", now)
+            return 0
         if len(containers) != 1:
-            await self._finish_empty(organization_id, work, "mixed containers in one track")
-            return
+            await self._finish_empty(organization_id, work, "mixed containers in one track", now)
+            return 0
         (container,) = containers
         corrupt: set[int] = set()
         included: list[_Part] = []
@@ -239,11 +270,12 @@ class Assembler:
             for index, part in enumerate(work.parts):
                 name = f"seg-{index:06d}.{container}"
                 # Re-check what was acknowledged: the upload URL could write the blob again,
-                # with other bytes, or with far more of them.
+                # with other bytes, or with far more of them, and a blob can go missing. Each is
+                # a gap in the file, never a reason to fail the whole track.
                 try:
                     await self.store.download_to(part.path, workdir / name, max_bytes=part.size)
-                    changed = _sha256_file(workdir / name) != part.sha256
-                except BlobTooLarge:
+                    changed = await _sha256(workdir / name) != part.sha256
+                except (BlobTooLarge, BlobChanged, FileNotFoundError):
                     changed = True
                 if changed:
                     (workdir / name).unlink(missing_ok=True)
@@ -252,29 +284,33 @@ class Assembler:
                 names.append(name)
                 included.append(part)
             if not included:
-                await self._finish_empty(organization_id, work, "every segment failed its hash")
-                return
+                await self._finish_empty(
+                    organization_id, work, "every segment failed its hash", now
+                )
+                return 0
             output = f"assembled.{container}"
             await self.ffmpeg.concat(workdir, names, output, container)
             produced = workdir / output
-            size, digest = produced.stat().st_size, _sha256_file(produced)
+            size, digest = produced.stat().st_size, await _sha256(produced)
             timeline = build_timeline(
                 work.track,
                 container,
                 [SegmentInfo(p.seq, p.started_at, p.duration_ms) for p in included],
                 corrupt,
+                work.last_seq,
             )
+            build = work.claim.hex[-12:]
             file_path = interview_blob(
                 organization_id,
                 interview_id,
                 tracks.folder(work.track),
-                tracks.assembled_filename(work.track, container),
+                tracks.assembled_filename(work.track, container, build),
             )
             timeline_path = interview_blob(
                 organization_id,
                 interview_id,
                 tracks.folder(work.track),
-                tracks.timeline_filename(work.track),
+                tracks.timeline_filename(work.track, build),
             )
             await self.store.upload_file(
                 file_path, produced, tracks.content_type(work.track, container)
@@ -284,45 +320,80 @@ class Assembler:
                 json.dumps(timeline, separators=(",", ":")).encode("utf-8"),
                 "application/json",
             )
-        status: str | None = None
+        finished = _clock(now)
         async with self.db.tenant(organization_id) as session:
             recording = await session.get_one(Recording, work.recording_id, with_for_update=True)
-            # A segment acknowledged while this ran put the track back to `assembly-pending`;
-            # keep that, and the next pass builds the file again.
-            if recording.status == "assembling":
-                recording.status = "assembled"
-                recording.container = container
-                recording.blob_path = str(file_path)
-                recording.timeline_path = str(timeline_path)
-                recording.assembled_bytes = size
-                recording.assembled_sha256 = digest
-                recording.duration_ms = timeline["duration_ms"]
-                recording.gaps = timeline["gaps"]
-                recording.assembled_at = now
-                recording.attempts = 0
-                recording.next_attempt_at = None
-                recording.note = None
-                status = "assembled"
+            if recording.status != "assembling":
+                return 0
+            if recording.assembly_claim is None:
+                # A segment was acknowledged while this ran: build the track again, with it.
+                _requeue(recording, finished)
+                return 0
+            if recording.assembly_claim != work.claim:
+                return 0  # another worker took the claim over; its result is the one recorded
+            recording.status = "assembled"
+            recording.assembly_claim = None
+            recording.container = container
+            recording.blob_path = str(file_path)
+            recording.timeline_path = str(timeline_path)
+            recording.assembled_bytes = size
+            recording.assembled_sha256 = digest
+            recording.duration_ms = timeline["duration_ms"]
+            recording.gaps = timeline["gaps"]
+            recording.assembled_at = finished
+            recording.attempts = 0
+            recording.next_attempt_at = None
+            recording.note = None
+            for gap in timeline["gaps"]:
+                await publish_event(
+                    session,
+                    organization_id,
+                    GAP_TOPIC,
+                    gap_payload(
+                        interview_id,
+                        work.track,
+                        kind=gap["reason"],
+                        state="closed",
+                        from_seq=gap["from_seq"],
+                        to_seq=gap["to_seq"],
+                        from_time=_parse(gap["from_time"]),
+                        to_time=_parse(gap["to_time"]),
+                    ),
+                    key=str(interview_id),
+                )
             through = await acknowledged_through(session, interview_id, work.track)
             last_seq = recording.last_seq
-        if status is not None:
-            await self._notify(interview_id, work.track, status, last_seq, through)
+        await self._notify(interview_id, work.track, "assembled", last_seq, through)
+        return 1
 
-    async def _finish_empty(self, organization_id: UUID, work: _Work, note: str) -> None:
+    async def _finish_empty(
+        self, organization_id: UUID, work: _Work, note: str, now: datetime | None
+    ) -> None:
         """A track with nothing to join cannot be assembled; say why (a late segment retries)."""
         async with self.db.tenant(organization_id) as session:
             recording = await session.get_one(Recording, work.recording_id, with_for_update=True)
-            if recording.status == "assembling":
+            if recording.status != "assembling":
+                return
+            if recording.assembly_claim is None:
+                _requeue(recording, _clock(now))
+            elif recording.assembly_claim == work.claim:
                 recording.status = "failed"
+                recording.assembly_claim = None
                 recording.note = note
 
     async def _failed(
-        self, organization_id: UUID, recording_id: UUID, error: Exception, now: datetime
+        self, organization_id: UUID, work: _Work, error: Exception, now: datetime
     ) -> None:
         async with self.db.tenant(organization_id) as session:
-            recording = await session.get_one(Recording, recording_id, with_for_update=True)
+            recording = await session.get_one(Recording, work.recording_id, with_for_update=True)
             if recording.status != "assembling":
                 return
+            if recording.assembly_claim is None:
+                _requeue(recording, now)  # a late segment arrived: rebuild, don't back off
+                return
+            if recording.assembly_claim != work.claim:
+                return  # another worker owns the track now
+            recording.assembly_claim = None
             recording.attempts += 1
             recording.note = f"{type(error).__name__}: {error}"[:300]
             if recording.attempts >= self.settings.recording_assembly_attempts:
@@ -347,6 +418,14 @@ class Assembler:
             await realtime.publish(self.redis, interview_id, "RECORDING_STATUS", data)
         except Exception:
             log.warning("Publishing RECORDING_STATUS failed", exc_info=True)
+
+
+def _requeue(recording: Recording, now: datetime) -> None:
+    """Queues a track again because a segment was acknowledged while it was being built."""
+    recording.status = "assembly-pending"
+    recording.ready_at = now
+    recording.next_attempt_at = None
+    recording.note = "late-segment"
 
 
 async def _recordings(

@@ -48,21 +48,32 @@ def _ordered(segments: Sequence[SegmentInfo]) -> list[SegmentInfo]:
     return ordered
 
 
-def find_gaps(segments: Sequence[SegmentInfo], corrupt: Collection[int] = ()) -> list[Gap]:
-    """Every run of segment numbers below the last one that the file doesn't hold. Numbers that
-    were skipped by the desktop and numbers never acknowledged are both `missing`."""
+def find_gaps(
+    segments: Sequence[SegmentInfo], corrupt: Collection[int] = (), last_seq: int | None = None
+) -> list[Gap]:
+    """Every run of segment numbers the file doesn't hold, up to the track's last number: the
+    highest of `last_seq` (what the desktop asked to upload), the corrupt ones and the included
+    ones. Numbers skipped by the desktop and numbers never acknowledged are both `missing`; a gap
+    after the last included segment has no `to_time`."""
     gaps: list[Gap] = []
     expected = 0
     previous_end: datetime | None = None
+
+    def add(stop: int, to_time: datetime | None) -> None:
+        for reason, run in groupby(
+            range(expected, stop), key=lambda n: "corrupt" if n in corrupt else "missing"
+        ):
+            numbers = list(run)
+            gaps.append(Gap(numbers[0], numbers[-1], previous_end, to_time, reason))
+
     for segment in _ordered(segments):
         if segment.seq > expected:
-            for reason, run in groupby(
-                range(expected, segment.seq), key=lambda n: "corrupt" if n in corrupt else "missing"
-            ):
-                numbers = list(run)
-                gaps.append(Gap(numbers[0], numbers[-1], previous_end, segment.started_at, reason))
+            add(segment.seq, segment.started_at)
         previous_end = segment.ended_at
         expected = segment.seq + 1
+    end = max([expected - 1, *corrupt, *([] if last_seq is None else [last_seq])])
+    if end >= expected:
+        add(end + 1, None)
     return gaps
 
 
@@ -71,6 +82,7 @@ def build_timeline(
     container: str,
     segments: Sequence[SegmentInfo],
     corrupt: Collection[int] = (),
+    last_seq: int | None = None,
 ) -> dict[str, Any]:
     """The JSON stored beside the assembled file."""
     ordered = _ordered(segments)
@@ -104,7 +116,7 @@ def build_timeline(
                 "to_time": gap.to_time.isoformat() if gap.to_time else None,
                 "reason": gap.reason,
             }
-            for gap in find_gaps(ordered, corrupt)
+            for gap in find_gaps(ordered, corrupt, last_seq)
         ],
     }
 

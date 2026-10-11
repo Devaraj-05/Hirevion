@@ -112,6 +112,8 @@ class Recording(IdMixin, TenantMixin, TimestampMixin, Base):
     attempts: Mapped[int] = mapped_column(Integer, server_default=sql_text("0"))
     next_attempt_at: Mapped[datetime | None]
     note: Mapped[str | None] = mapped_column(Text)
+    # The claim that owns an `assembling` row; only that worker may record its result.
+    assembly_claim: Mapped[UUID | None]
     container: Mapped[str | None] = mapped_column(Text)
     blob_path: Mapped[str | None] = mapped_column(Text)
     timeline_path: Mapped[str | None] = mapped_column(Text)

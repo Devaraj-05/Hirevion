@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from hirevion_core.db.session import Database
 from hirevion_core.interview_session import realtime
-from hirevion_core.models import Recording
+from hirevion_core.models import OutboxEvent, Recording
 from hirevion_core.recordings import segments as segment_service
 from hirevion_core.recordings import tracks
 from hirevion_core.recordings.assembly import Assembler
@@ -192,8 +192,13 @@ async def test_a_finished_interviews_tracks_become_one_file_each_with_a_timeline
 
     screen = await load(app_db, org, interview, "screen-1")
     assert screen.status == "assembled" and screen.container == "mp4"
-    assert screen.blob_path == f"{org}/interviews/{interview}/screen/screen-1-full.mp4"
-    assert screen.timeline_path == f"{org}/interviews/{interview}/screen/screen-1-timeline.json"
+    # Each build has its own file names, so a stale build can never overwrite a newer one.
+    folder = f"{org}/interviews/{interview}/screen/"
+    assert screen.blob_path is not None and screen.timeline_path is not None
+    assert screen.blob_path.startswith(folder + "screen-1-full-")
+    assert screen.blob_path.endswith(".mp4")
+    assert screen.timeline_path.startswith(folder + "screen-1-timeline-")
+    assert screen.assembly_claim is None
     expected = b"".join(payload("screen-1", n) for n in (0, 1, 3))
     assert store.blobs[screen.blob_path] == expected
     assert (screen.assembled_bytes, screen.assembled_sha256) == (
@@ -213,8 +218,22 @@ async def test_a_finished_interviews_tracks_become_one_file_each_with_a_timeline
     assert timeline["segments"][2]["started_at"] == (T0 + timedelta(seconds=30)).isoformat()
     assert timeline["gaps"][0]["from_time"] == (T0 + timedelta(seconds=20)).isoformat()
 
+    # The gap is published once, now that it is certain.
+    async with app_db.tenant(org) as session:
+        gaps = [
+            e.payload
+            for e in await session.scalars(
+                select(OutboxEvent).where(OutboxEvent.topic == "recording.gap")
+            )
+            if e.payload["interview_id"] == str(interview)
+        ]
+    assert [(g["track"], g["kind"], g["from_seq"], g["to_seq"]) for g in gaps] == [
+        ("screen-1", "missing", 2, 2)
+    ]
+
     mic = await load(app_db, org, interview, "mic")
-    assert mic.blob_path == f"{org}/interviews/{interview}/audio/mic-full.webm"  # §85's audio/
+    assert mic.blob_path is not None
+    assert mic.blob_path.startswith(f"{org}/interviews/{interview}/audio/mic-full-")  # §85
     assert store.types[mic.blob_path] == "audio/webm"
     assert mic.gaps == []
     # ffmpeg got relative names in order, and the container to copy into.
@@ -282,6 +301,116 @@ async def test_a_blob_overwritten_with_far_more_bytes_is_not_even_downloaded(
     row = await load(app_db, org, interview, "screen-1")
     assert [(g["from_seq"], g["reason"]) for g in row.gaps] == [(1, "corrupt")]
     assert ffmpeg.calls[0][0] == ["seg-000000.mp4", "seg-000002.mp4"]  # 1 was left out
+
+
+async def test_a_missing_segment_blob_is_a_gap_not_a_failed_track(
+    app_db: Database,
+    admin_engine: AsyncEngine,
+    make_organization: MakeOrganization,
+    make_hiring: Any,
+) -> None:
+    org = await make_organization("Acme")
+    interview = await completed_interview(admin_engine, org, make_hiring)
+    store = FakeStore()
+    await add_segments(app_db, store, org, interview, "screen-1", [0, 1, 2])
+    del store.blobs[f"{org}/interviews/{interview}/screen/screen-1-000001.mp4"]
+    worker, _ = assembler(app_db, store)
+    assert await worker.assemble_interview(org, interview, NOW) == 1
+    row = await load(app_db, org, interview, "screen-1")
+    assert row.status == "assembled"
+    assert [(g["from_seq"], g["reason"]) for g in row.gaps] == [(1, "corrupt")]
+
+
+class AckDuringConcat(FakeFfmpeg):
+    """Runs `during` while ffmpeg is joining the files, as a concurrent request would."""
+
+    def __init__(self, during: Callable[[], Awaitable[None]]) -> None:
+        super().__init__()
+        self.during: Callable[[], Awaitable[None]] | None = during
+
+    async def concat(
+        self, workdir: Path, names: Sequence[str], output: str, container: str
+    ) -> None:
+        if self.during is not None:
+            during, self.during = self.during, None
+            await during()
+        await super().concat(workdir, names, output, container)
+
+
+async def test_a_segment_acknowledged_during_a_build_queues_the_track_again_without_a_rival(
+    app_db: Database,
+    admin_engine: AsyncEngine,
+    make_organization: MakeOrganization,
+    make_hiring: Any,
+) -> None:
+    org = await make_organization("Acme")
+    interview = await completed_interview(admin_engine, org, make_hiring)
+    store = FakeStore()
+    await add_segments(app_db, store, org, interview, "screen-1", [0, 1])
+    data = payload("screen-1", 2)
+    late_path = f"{org}/interviews/{interview}/screen/screen-1-000002.mp4"
+    store.blobs[late_path] = data
+    async with app_db.tenant(org) as session:
+        late = segment(
+            org,
+            interview,
+            seq=2,
+            started_at=T0 + timedelta(seconds=20),
+            bytes=len(data),
+            sha256=hashlib.sha256(data).hexdigest(),
+            blob_path=late_path,
+            state="requested",
+            requested_at=NOW - timedelta(hours=1),
+        )
+        session.add(late)
+
+    async def acknowledge_late() -> None:
+        await segment_service.acknowledge(
+            app_db, store, org, interview, late.id, hashlib.sha256(data).hexdigest(), now=NOW
+        )
+        # The build is still running: the track stays claimed, so no second build starts.
+        busy = await load(app_db, org, interview, "screen-1")
+        assert busy.status == "assembling" and busy.assembly_claim is None
+
+    worker, ffmpeg = assembler(app_db, store, AckDuringConcat(acknowledge_late))
+    assert await worker.assemble_interview(org, interview, NOW) == 0
+    queued = await load(app_db, org, interview, "screen-1")
+    assert (queued.status, queued.note, queued.blob_path) == (
+        "assembly-pending",
+        "late-segment",
+        None,
+    )
+    assert await worker.assemble_interview(org, interview, NOW) == 1
+    built = await load(app_db, org, interview, "screen-1")
+    assert built.status == "assembled" and built.duration_ms == 30_000
+    assert len(ffmpeg.calls) == 2
+
+
+async def test_a_build_whose_claim_was_taken_over_records_nothing(
+    app_db: Database,
+    admin_engine: AsyncEngine,
+    make_organization: MakeOrganization,
+    make_hiring: Any,
+) -> None:
+    org = await make_organization("Acme")
+    interview = await completed_interview(admin_engine, org, make_hiring)
+    store = FakeStore()
+    await add_segments(app_db, store, org, interview, "screen-1", [0, 1])
+
+    async def take_over() -> None:  # another worker claimed the track after it went stale
+        async with admin_engine.begin() as conn:
+            await conn.execute(
+                text(
+                    "UPDATE recordings SET assembly_claim = gen_random_uuid() "
+                    "WHERE interview_id = :id"
+                ),
+                {"id": interview},
+            )
+
+    worker, _ = assembler(app_db, store, AckDuringConcat(take_over))
+    assert await worker.assemble_interview(org, interview, NOW) == 0
+    row = await load(app_db, org, interview, "screen-1")
+    assert (row.status, row.blob_path) == ("assembling", None)  # the new owner records it
 
 
 async def test_a_worker_that_died_mid_assembly_is_taken_over_once_it_is_stale(

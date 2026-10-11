@@ -10,16 +10,21 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-from collections.abc import Sequence
+from collections.abc import AsyncIterator, Sequence
 from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote
 from uuid import UUID
 
-from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
+from azure.core import MatchConditions
+from azure.core.exceptions import (
+    ResourceExistsError,
+    ResourceModifiedError,
+    ResourceNotFoundError,
+)
 from azure.storage.blob import BlobSasPermissions, ContentSettings, CorsRule, generate_blob_sas
-from azure.storage.blob.aio import BlobServiceClient, ContainerClient
+from azure.storage.blob.aio import BlobServiceClient, ContainerClient, StorageStreamDownloader
 from pydantic import SecretStr, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -40,6 +45,27 @@ _CORS_HEADERS = [
 
 class BlobTooLarge(ValueError):
     """A blob is bigger than its caller allows, so it wasn't read."""
+
+    def __init__(self, message: str, size: int = 0) -> None:
+        super().__init__(message)
+        self.size = size
+
+
+class BlobChanged(ValueError):
+    """A blob was written again between checking its size and reading it."""
+
+
+_FILE_CHUNK = 1024 * 1024
+
+
+async def _file_chunks(source: Path) -> AsyncIterator[bytes]:
+    """A local file's bytes, read off the event loop."""
+    handle = await asyncio.to_thread(source.open, "rb")
+    try:
+        while chunk := await asyncio.to_thread(handle.read, _FILE_CHUNK):
+            yield chunk
+    finally:
+        await asyncio.to_thread(handle.close)
 
 
 class StorageSettings(BaseSettings):
@@ -135,47 +161,68 @@ class StorageService:
     async def exists(self, path: BlobPath) -> bool:
         return bool(await self._container.get_blob_client(str(path)).exists())
 
+    async def _open(self, path: BlobPath, max_bytes: int | None) -> StorageStreamDownloader[bytes]:
+        """Checks the blob's size from its properties before reading a byte, then reads exactly
+        that version of it: FileNotFoundError, BlobTooLarge, or BlobChanged if it was written
+        again in between."""
+        blob = self._container.get_blob_client(str(path))
+        try:
+            properties = await blob.get_blob_properties()
+        except ResourceNotFoundError as error:
+            raise FileNotFoundError(str(path)) from error
+        if max_bytes is not None and properties.size > max_bytes:
+            raise BlobTooLarge(
+                f"{path} is {properties.size} bytes, more than {max_bytes}", properties.size
+            )
+        try:
+            return await blob.download_blob(
+                etag=properties.etag, match_condition=MatchConditions.IfNotModified
+            )
+        except ResourceModifiedError as error:
+            raise BlobChanged(str(path)) from error
+        except ResourceNotFoundError as error:
+            raise FileNotFoundError(str(path)) from error
+
     async def digest(self, path: BlobPath, max_bytes: int | None = None) -> tuple[int, str] | None:
         """The size and SHA-256 (hex) of a blob, read in chunks so a large one never sits in
-        memory; None if there is no such blob. A blob larger than `max_bytes` isn't read: its
-        size comes back with an empty hash, which matches nothing."""
+        memory; None if there is no such blob. A blob larger than `max_bytes`, or written again
+        while it was being checked, isn't read: it comes back with an empty hash, which matches
+        nothing."""
         try:
-            download = await self._container.download_blob(str(path))
-        except ResourceNotFoundError:
+            download = await self._open(path, max_bytes)
+        except FileNotFoundError:
             return None
-        if max_bytes is not None and download.size > max_bytes:
-            return download.size, ""
+        except BlobTooLarge as error:
+            return error.size, ""
+        except BlobChanged:
+            return 0, ""
         sha256 = hashlib.sha256()
         size = 0
         async for chunk in download.chunks():
-            sha256.update(chunk)
+            await asyncio.to_thread(sha256.update, chunk)
             size += len(chunk)
         return size, sha256.hexdigest()
 
     async def download_to(
         self, path: BlobPath, destination: Path, max_bytes: int | None = None
     ) -> None:
-        """Streams a blob into a local file; FileNotFoundError if there is no such blob, and
-        BlobTooLarge (before reading it) if it is larger than `max_bytes`."""
-        try:
-            download = await self._container.download_blob(str(path))
-        except ResourceNotFoundError as error:
-            raise FileNotFoundError(str(path)) from error
-        if max_bytes is not None and download.size > max_bytes:
-            raise BlobTooLarge(f"{path} is {download.size} bytes, more than {max_bytes}")
+        """Streams a blob into a local file; FileNotFoundError if there is no such blob,
+        BlobTooLarge (before reading it) if it is larger than `max_bytes`, and BlobChanged if it
+        was written again while being read."""
+        download = await self._open(path, max_bytes)
         with destination.open("wb") as handle:
             async for chunk in download.chunks():
                 await asyncio.to_thread(handle.write, chunk)
 
     async def upload_file(self, path: BlobPath, source: Path, content_type: str) -> None:
-        """Streams a local file into a blob (replacing it)."""
-        with source.open("rb") as handle:
-            await self._container.upload_blob(
-                str(path),
-                handle,
-                overwrite=True,
-                content_settings=ContentSettings(content_type=content_type),
-            )
+        """Streams a local file into a blob (replacing it), reading the file off the event loop."""
+        await self._container.upload_blob(
+            str(path),
+            _file_chunks(source),
+            length=source.stat().st_size,
+            overwrite=True,
+            content_settings=ContentSettings(content_type=content_type),
+        )
 
     async def delete(self, path: BlobPath) -> None:
         with suppress(ResourceNotFoundError):

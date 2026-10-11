@@ -100,6 +100,13 @@ def test_blob_names_are_safe_paths_under_section_85() -> None:
     assert tracks.segment_filename("screen-1", 17, "mp4") == "screen-1-000017.mp4"
     assert tracks.assembled_filename("mic", "webm") == "mic-full.webm"
     assert tracks.timeline_filename("camera") == "camera-timeline.json"
+
+
+def test_each_build_has_its_own_file_names() -> None:
+    assert tracks.assembled_filename("screen-1", "mp4", "0a1b2c") == "screen-1-full-0a1b2c.mp4"
+    assert tracks.timeline_filename("mic", "0a1b2c") == "mic-timeline-0a1b2c.json"
+    with pytest.raises(ValueError):
+        tracks.assembled_filename("mic", "webm", "../x")
     with pytest.raises(ValueError, match="segment"):
         tracks.segment_filename("screen-1", -1, "mp4")
 

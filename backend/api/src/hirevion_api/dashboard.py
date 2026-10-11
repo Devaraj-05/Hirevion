@@ -42,7 +42,7 @@ async def get_dashboard(
         department_id=department,
         interview_status=interview_status,
     )
-    reviewer_only = None if "candidates.view" in principal.permissions else principal.user_id
+    reviewer_only = principal.reviewer_only
     async with own_tenant(request, principal) as session:
         scope = await resource_scope(session, principal.user_id)
         figures = await interview_figures(session, scope, filters, reviewer_only=reviewer_only)

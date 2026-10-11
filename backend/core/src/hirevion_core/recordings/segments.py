@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from hirevion_core.db.session import Database
 from hirevion_core.ids import uuid7
+from hirevion_core.interviews.lifecycle import STATUS_GROUPS
 from hirevion_core.models import Interview, Recording, RecordingSegment
 from hirevion_core.outbox import publish_event
 from hirevion_core.recordings import tracks
@@ -31,7 +32,8 @@ from hirevion_core.storage.service import UPLOAD_TTL
 
 GAP_TOPIC = "recording.gap"
 # Statuses in which an interview's recording is over: late segments reopen the assembly.
-ENDED_STATUSES = ("completed", "evaluating", "evaluated", "abandoned", "cancelled", "expired")
+# Shared with the interview lifecycle, so "the interview is over" means one thing everywhere.
+ENDED_STATUSES = STATUS_GROUPS["completed"]
 
 
 class Refused(Exception):
@@ -100,8 +102,13 @@ class TrackRecovery:
     missing: list[int]
 
 
+def stored_blob(organization_id: UUID, stored: str) -> BlobPath:
+    """A blob path as stored in a row (`{org}/...`), back as a BlobPath."""
+    return BlobPath(organization_id, stored.split("/", 1)[1])
+
+
 def blob_path(row: RecordingSegment) -> BlobPath:
-    return BlobPath(row.organization_id, row.blob_path.split("/", 1)[1])
+    return stored_blob(row.organization_id, row.blob_path)
 
 
 def check_declaration(interview: Interview, declared: SegmentDeclaration) -> None:
@@ -257,8 +264,9 @@ async def _continuity(
     is_new: bool,
     now: datetime,
 ) -> list[StatusNotice]:
-    """Notes the segment's arrival on its recording and raises what that ends or reveals: a
-    stall closing, or numbers that were skipped."""
+    """Notes the segment's arrival on its recording and closes a stall it ends. Numbers it
+    skips are not reported here: a backlog after a crash, or a burst of concurrent requests, can
+    still bring them, so they are reported as `missing` once the track is assembled."""
     previous_last = recording.last_seq
     expected = 0 if previous_last is None else previous_last + 1
     started = interview.started_at or now
@@ -289,23 +297,6 @@ async def _continuity(
                 "recording",
                 await acknowledged_through(session, interview.id, recording.track),
             )
-        )
-    elif is_new and segment.seq > expected:
-        await publish_event(
-            session,
-            interview.organization_id,
-            GAP_TOPIC,
-            gap_payload(
-                interview.id,
-                recording.track,
-                kind="skipped",
-                state="closed",
-                from_seq=expected,
-                to_seq=segment.seq - 1,
-                from_time=from_time,
-                to_time=segment.started_at,
-            ),
-            key=str(interview.id),
         )
     if previous_last is None:
         notices.append(_status_notice(recording, "recording", None))
@@ -374,12 +365,18 @@ async def _reopen_assembly(session: AsyncSession, segment: RecordingSegment, now
         .where(Recording.interview_id == segment.interview_id, Recording.track == segment.track)
         .with_for_update()
     )
-    if recording is not None and recording.status != "assembly-pending":
-        recording.status = "assembly-pending"
-        recording.ready_at = now
-        recording.attempts = 0
-        recording.next_attempt_at = None
-        recording.note = None
+    if recording is None or recording.status == "assembly-pending":
+        return
+    if recording.status == "assembling":
+        # A worker is building the file without this segment. Taking its claim away makes it
+        # queue the track again when it finishes, so two builds never run at once.
+        recording.assembly_claim = None
+        return
+    recording.status = "assembly-pending"
+    recording.ready_at = now
+    recording.attempts = 0
+    recording.next_attempt_at = None
+    recording.note = None
 
 
 async def recovery(session: AsyncSession, interview: Interview) -> dict[str, TrackRecovery]:

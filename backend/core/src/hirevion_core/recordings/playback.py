@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from hirevion_core.models import Recording, RecordingSegment
 from hirevion_core.recordings import tracks
-from hirevion_core.recordings.segments import blob_path
+from hirevion_core.recordings.segments import blob_path, stored_blob
 from hirevion_core.storage.paths import BlobPath
 from hirevion_core.storage.service import DOWNLOAD_TTL
 
@@ -83,7 +83,7 @@ async def playable_tracks(
         ):
             item.file = PlayableFile(
                 url=signer.download_url(
-                    organization_id, _blob(organization_id, recording.blob_path)
+                    organization_id, stored_blob(organization_id, recording.blob_path)
                 ),
                 container=recording.container,
                 bytes=recording.assembled_bytes or 0,
@@ -91,7 +91,7 @@ async def playable_tracks(
                 duration_ms=recording.duration_ms or 0,
             )
             item.timeline_url = signer.download_url(
-                organization_id, _blob(organization_id, recording.timeline_path)
+                organization_id, stored_blob(organization_id, recording.timeline_path)
             )
         else:
             segments = (
@@ -116,10 +116,6 @@ async def playable_tracks(
             ]
         result.append(item)
     return result
-
-
-def _blob(organization_id: UUID, stored: str) -> BlobPath:
-    return BlobPath(organization_id, stored.split("/", 1)[1])
 
 
 def url_lifetime() -> timedelta:

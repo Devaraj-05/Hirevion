@@ -1278,8 +1278,8 @@ It starts with the interview simulator as its client.
   - The encrypted store and uploader.
   - Acknowledgement with hash verification.
   - Recovery.
-  - Evidence snapshots.
-  - Egress.
+  - Evidence snapshots (built with SP-14, which asks for them at event time).
+  - Egress (built with SP-13, alongside the third-eye publisher).
   - `media-worker`.
   - Audited playback.
   - `RECORDING_STATUS` events.
@@ -1302,6 +1302,7 @@ It starts with the interview simulator as its client.
   - Everything in §6.5.
   - Third-eye in the system check and the live dashboard.
   - Evidence references.
+  - LiveKit Egress of the conversation audio and the third-eye video (moved from SP-12).
 - **Exit criteria:**
   - Pairing takes 60 s or less on iOS Safari and Android Chrome.
   - Locking the phone raises `THIRD_EYE_DISCONNECTED` within 10 s.
@@ -1313,7 +1314,7 @@ It starts with the interview simulator as its client.
   - The schema.
   - The severity table.
   - The rule engine with escalation.
-  - The evidence manager.
+  - The evidence manager, with on-demand screen and camera evidence snapshots (moved from SP-12).
   - Server-observed state from LiveKit webhooks, upload continuity and heartbeats.
   - The realtime service and alerts.
   - Nudges.
@@ -1622,7 +1623,7 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 46 | Never on API servers; queue; 6 limits; destroyed after each run | SP-16 |
 | 47 | 8 coding-evaluation criteria; 5 stored artifacts | SP-16 |
 | 48 | 8 telemetry events; no unnecessary global keystrokes | SP-16 |
-| 49 | 6 camera uses; 5 microphone uses | SP-09, SP-12, SP-15a, SP-15b |
+| 49 | 6 camera uses; 5 microphone uses | SP-09, SP-12, SP-13 (conversation-audio Egress), SP-15a, SP-15b |
 | 50 | Native screen capture; segmented; continuous upload | SP-12 (device: lane B; server, D2: `hirevion_core.recordings.segments` write-only per-segment upload URLs, `hirevion_core.recordings.assembly` joining each track with ffmpeg and `hirevion_core.recordings.timeline` the timeline map; `test_recordings_api.py`, `test_recording_assembly.py`) |
 | 51 | Encrypted buffer → queue → retry → server acknowledgement; crash/network recovery | SP-12 (device queue: lane B; server, D2: hash-verified acknowledgement and the recovery listing in `hirevion_core.recordings.segments`, continuity events in `hirevion_core.recordings.monitor`; `test_recordings_api.py`, `test_recording_monitor.py`) |
 | 52 | Third-eye flow; 5 token properties | SP-13 |
@@ -1640,7 +1641,7 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 64 | INFO/WARNING/CRITICAL; configurable; examples | SP-14, SP-22 |
 | 65 | Realtime path; 8 things the recruiter sees | SP-14 (Streams instead of Pub/Sub, per §3.2) |
 | 66 | Live dashboard layout | SP-14 |
-| 67 | 7 evidence types; JSON schema | SP-12, SP-14 |
+| 67 | 7 evidence types; JSON schema | SP-12, SP-14 (evidence snapshots) |
 | 68 | 14 proctoring-report sections; no single score | SP-17 |
 | 69 | 13 interview-report sections | SP-17 |
 | 70 | Per-skill final evaluation, with evidence | SP-10 |

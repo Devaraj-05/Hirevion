@@ -86,16 +86,26 @@ def segment_filename(track: str, seq: int, container: str) -> str:
     return f"{track}-{seq:06d}.{container}"
 
 
-def assembled_filename(track: str, container: str) -> str:
-    if not is_track(track):
-        raise ValueError("not a recording track")
-    return f"{track}-full.{container}"
+def _build_suffix(build: str | None) -> str:
+    """Each assembly writes its own files (`build` names it), so a stale build can never
+    overwrite a newer one."""
+    if build is None:
+        return ""
+    if not build.isalnum():
+        raise ValueError("not a build name")
+    return f"-{build}"
 
 
-def timeline_filename(track: str) -> str:
+def assembled_filename(track: str, container: str, build: str | None = None) -> str:
     if not is_track(track):
         raise ValueError("not a recording track")
-    return f"{track}-timeline.json"
+    return f"{track}-full{_build_suffix(build)}.{container}"
+
+
+def timeline_filename(track: str, build: str | None = None) -> str:
+    if not is_track(track):
+        raise ValueError("not a recording track")
+    return f"{track}-timeline{_build_suffix(build)}.json"
 
 
 def content_type(track: str, container: str) -> str:

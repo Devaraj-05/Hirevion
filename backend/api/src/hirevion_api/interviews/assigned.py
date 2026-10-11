@@ -54,10 +54,6 @@ def _settings(request: Request) -> IdentitySettings:
     return settings
 
 
-def _reviewer_only(principal: Principal) -> UUID | None:
-    return None if "candidates.view" in principal.permissions else principal.user_id
-
-
 def _assignment(body: AssignBody, application_ids: list[UUID]) -> Assignment:
     return Assignment(
         application_ids=application_ids,
@@ -158,7 +154,7 @@ async def _reloaded(
     await session.flush()
     session.expire_all()
     interview = await assignment.get_interview(
-        session, interview_id, scope, reviewer_only=_reviewer_only(principal)
+        session, interview_id, scope, reviewer_only=principal.reviewer_only
     )
     return _response(await assignment.describe(session, interview))
 
@@ -188,9 +184,7 @@ async def list_interviews(
         upcoming = status_group == "upcoming"
         rows, next_cursor = await paginate(
             session,
-            assignment.interviews_statement(
-                scope, filters, reviewer_only=_reviewer_only(principal)
-            ),
+            assignment.interviews_statement(scope, filters, reviewer_only=principal.reviewer_only),
             [Interview.starts_at if upcoming else Interview.updated_at, Interview.id],
             page,
             descending=not upcoming,

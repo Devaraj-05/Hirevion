@@ -33,10 +33,6 @@ router = api_router(tags=["interviews"])
 Views = Annotated[Principal, requires("reports.interview.view")]
 
 
-def _reviewer_only(principal: Principal) -> UUID | None:
-    return None if "candidates.view" in principal.permissions else principal.user_id
-
-
 @router.get("/interviews/{interview_id}/recordings")
 async def interview_recordings(
     interview_id: UUID, request: Request, principal: Views
@@ -48,7 +44,7 @@ async def interview_recordings(
     async with own_tenant(request, principal) as session:
         scope = await resource_scope(session, principal.user_id)
         interview = await assignment.get_interview(
-            session, interview_id, scope, reviewer_only=_reviewer_only(principal)
+            session, interview_id, scope, reviewer_only=principal.reviewer_only
         )
         found = await playable_tracks(session, signer, principal.organization_id, interview.id)
         await record(

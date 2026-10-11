@@ -39,7 +39,7 @@ TRACK_PATTERN = "^(screen-[1-8]|camera|mic)$"
 # and recordings left `assembling` by a worker that died. The caller handles each in its
 # tenant's transaction and re-checks it there.
 DUE_ASSEMBLY_SQL = """
-CREATE FUNCTION recording_due_assembly(p_now timestamptz, p_limit integer)
+CREATE FUNCTION recording_due_assembly(p_now timestamptz, p_limit integer, p_ended text[])
 RETURNS TABLE (organization_id uuid, interview_id uuid)
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp
 AS $$
@@ -50,7 +50,7 @@ AS $$
     WHERE (r.status = 'assembly-pending'
            AND (r.next_attempt_at IS NULL OR r.next_attempt_at <= p_now))
        OR (r.status = 'recording'
-           AND i.status IN ('completed', 'evaluating', 'evaluated', 'abandoned'))
+           AND i.status = ANY(p_ended))
        OR (r.status = 'assembling' AND r.updated_at <= p_now - interval '30 minutes')
     GROUP BY r.organization_id, r.interview_id
     ORDER BY min(r.ready_at) NULLS FIRST
@@ -84,7 +84,7 @@ $$
 """
 
 RECORDING_FUNCTIONS = (
-    "recording_due_assembly(timestamptz, integer)",
+    "recording_due_assembly(timestamptz, integer, text[])",
     "recording_live_tracks(timestamptz, integer)",
 )
 SCHEDULER_TABLES = ("recordings", "interview_sessions")
@@ -210,6 +210,8 @@ def upgrade() -> None:
         sa.Column("attempts", sa.Integer(), server_default=sa.text("0"), nullable=False),
         _ts("next_attempt_at"),
         sa.Column("note", sa.Text(), nullable=True),
+        # The claim that owns an `assembling` row; only that worker may record its result.
+        sa.Column("assembly_claim", sa.Uuid(), nullable=True),
         sa.Column("container", sa.Text(), nullable=True),
         sa.Column("blob_path", sa.Text(), nullable=True),
         sa.Column("timeline_path", sa.Text(), nullable=True),

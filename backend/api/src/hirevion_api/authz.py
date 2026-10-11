@@ -95,6 +95,12 @@ class Principal:
     def organization_id(self) -> UUID:
         return self.context.organization_id
 
+    @property
+    def reviewer_only(self) -> UUID | None:
+        """Interviews are scoped to this user's own reviews unless they may view candidates:
+        None means every interview in scope, else only those this user reviews."""
+        return None if "candidates.view" in self.permissions else self.user_id
+
     def actor(self, request: Request) -> Actor:
         """The principal as the access domain's acting user, with where the request came from."""
         return Actor(

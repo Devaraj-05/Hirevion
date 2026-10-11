@@ -430,7 +430,7 @@ async def test_recovery_lists_what_is_acknowledged_and_what_is_missing(
     assert tracks["mic"] == {"acknowledged_through": None, "missing": []}
 
 
-async def test_a_later_seq_is_never_refused_and_skipped_numbers_are_gaps(
+async def test_a_later_seq_is_never_refused_and_skipped_numbers_are_listed_not_flagged(
     client: AsyncClient,
     app_db: Database,
     admin_engine: AsyncEngine,
@@ -452,11 +452,33 @@ async def test_a_later_seq_is_never_refused_and_skipped_numbers_are_gaps(
             await session.scalars(select(OutboxEvent).where(OutboxEvent.topic == "recording.gap"))
         ).all()
         recording = await session.scalar(select(Recording).where(Recording.track == "screen-1"))
-    (gap,) = [e.payload for e in events if e.payload["interview_id"] == desktop.interview]
-    assert (gap["track"], gap["kind"], gap["state"]) == ("screen-1", "skipped", "closed")
-    assert (gap["from_seq"], gap["to_seq"]) == (2, 4)
-    assert gap["from_time"] and gap["to_time"]
+    # A backlog may still bring 2..4, so nothing is flagged yet: the assembly reports them as
+    # `missing` once the interview is over (test_recording_assembly.py).
+    assert [e for e in events if e.payload["interview_id"] == desktop.interview] == []
     assert recording is not None and recording.last_seq == 6 and recording.first_seq == 0
+
+
+async def test_segments_asked_for_out_of_order_never_raise_a_gap(
+    client: AsyncClient,
+    app_db: Database,
+    admin_engine: AsyncEngine,
+    make_organization: MakeOrganization,
+    make_user: Any,
+) -> None:
+    desktop = await started_desktop(client, admin_engine, app_db, make_organization, make_user)
+    await desktop.send(seq=0)
+    await desktop.send(seq=4)  # recording went on after a crash; 1..3 are still on the disk
+    for seq in (1, 2, 3):
+        await desktop.send(seq=seq)
+    tracks = (
+        await desktop.call("GET", f"/recordings/interviews/{desktop.interview}/segments")
+    ).json()["tracks"]
+    assert tracks["screen-1"] == {"acknowledged_through": 4, "missing": []}
+    async with app_db.tenant(desktop.seed.organization_id) as session:
+        events = (
+            await session.scalars(select(OutboxEvent).where(OutboxEvent.topic == "recording.gap"))
+        ).all()
+    assert [e for e in events if e.payload["interview_id"] == desktop.interview] == []
 
 
 async def test_the_first_segment_may_start_above_zero(

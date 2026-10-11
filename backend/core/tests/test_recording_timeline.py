@@ -47,6 +47,27 @@ def test_a_segment_that_failed_its_hash_is_a_corrupt_gap_beside_missing_ones() -
     ]
 
 
+def test_a_corrupt_last_segment_is_a_gap_at_the_end_of_the_track() -> None:
+    (gap,) = find_gaps([seg(0, 0), seg(1, 10)], corrupt={2})
+    assert (gap.from_seq, gap.to_seq, gap.reason) == (2, 2, "corrupt")
+    assert gap.from_time == T0 + timedelta(seconds=20)
+    assert gap.to_time is None
+
+
+def test_segments_never_acknowledged_after_the_last_good_one_are_missing() -> None:
+    gaps = find_gaps([seg(0, 0), seg(1, 10)], corrupt={3}, last_seq=5)
+    assert [(g.from_seq, g.to_seq, g.reason, g.to_time) for g in gaps] == [
+        (2, 2, "missing", None),
+        (3, 3, "corrupt", None),
+        (4, 5, "missing", None),
+    ]
+
+
+def test_the_stored_timeline_reports_the_missing_end() -> None:
+    timeline = build_timeline("screen-1", "mp4", [seg(0, 0)], last_seq=2)
+    assert [(g["from_seq"], g["to_seq"], g["to_time"]) for g in timeline["gaps"]] == [(1, 2, None)]
+
+
 def test_segments_are_ordered_by_seq_whatever_the_input_order() -> None:
     assert find_gaps([seg(2, 20), seg(0, 0), seg(1, 10)]) == []
 

@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from hirevion_core.db.session import Database
 from hirevion_core.ids import uuid7
 from hirevion_core.models import Recording, RecordingSegment
+from hirevion_core.recordings.segments import ENDED_STATUSES
 
 from .test_interviews_schema import insert_interview
 
@@ -215,7 +216,8 @@ async def test_the_worker_lists_recordings_due_for_assembly_across_organisations
         session.add(recording(globex, other, status="assembly-pending"))
     async with app_db.unscoped() as session:
         rows = await session.execute(
-            text("SELECT * FROM recording_due_assembly(:now, 10000)"), {"now": NOW}
+            text("SELECT * FROM recording_due_assembly(:now, 10000, :ended)"),
+            {"now": NOW, "ended": list(ENDED_STATUSES)},
         )
         due = {
             (row.organization_id, row.interview_id)

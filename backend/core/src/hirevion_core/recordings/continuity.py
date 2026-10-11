@@ -53,8 +53,9 @@ def gap_payload(
     """The `recording.gap` outbox event (SP-14 turns it into `SCREEN_CAPTURE_STOPPED` or
     `TELEMETRY_GAP`).
 
-    - `kind` is `stalled` (a track went silent for longer than its policy allows) or `skipped`
-      (segment numbers the desktop never produced).
+    - `kind` is `stalled` (a track went silent for longer than its policy allows), or, once the
+      track is assembled, `missing` (numbers never acknowledged) or `corrupt` (numbers whose
+      blob no longer matched its acknowledged hash, or was gone).
     - `state` is `open` while a stall lasts, and `closed` once it ended; `to_seq` and `to_time`
       are null until then. A closed stall's `to_seq` is the last number that didn't arrive in
       time, so `to_seq < from_seq` means the segments came, but late.
