@@ -18,19 +18,19 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 | B1 SP-08a | Desktop sign-in, device keys, system check | #6 / ADR-0018 |
 | B2 | SP-11 monitoring, SP-12 client recording, SP-15a desktop vision | #9 |
 | B3 (part) SP-08b | Briefing, consent, interview path, services, upload drain | #9 |
+| D2 SP-12 server | Segment upload and acknowledgement, assembly, continuity, audited playback | #11 |
 
 ## In progress (unmerged worktree branches)
 
 | Part | Branch | Exact next step |
 |---|---|---|
-| D2 SP-12 server | `worktree-agent-a04dbe9b42d3a4e0e` | Built (6 commits, clean): verify locally, then open the PR |
 | C5 SP-14 | `worktree-agent-a3468242f5d2493f9` | Add the nudge relay test to `test_bridge`, then docs |
 | C4 SP-10 | `worktree-agent-a6e946406d5223c31` | Commit the 2 uncommitted files, then write the runbook section |
 | B3 SP-08c packaging | `sp-08c-packaging` | Commit the 15 uncommitted files; installer release build, then the tauri-driver e2e test and docs |
 
 ## Remaining, in priority order (dependency in brackets)
 
-- **P0:** D1 rest: CI gates, code review, dashboard KPIs [none] · A3 SP-07b portal [A1] · D3 SP-13 third-eye [D2] · A5 SP-17 reports [C4, C5, D2]
+- **P0:** D1 rest: CI gates, code review, dashboard KPIs [none] · A3 SP-07b portal [A1] · D3 SP-13 third-eye, with Egress [D2] · A5 SP-17 reports [C4, C5, D2]
 - **P1:** A4 SP-18 notifications/webhooks [A1] · C6 SP-16 coding server [C3] · C7 vision agent [C5, D3] · B4 desktop coding/third-eye/advanced CV [B3, C6, D3]
 - **P2:** D4 SP-19 enterprise identity [SP-02] · D5 SP-22 admin/governance [A5, C5] · A6 SP-21 analytics [A5] · D6 SP-20 ATS/public API [A4, A5]
 - **P3:** D7 SP-23 automated hardening [all] · B5 Windows golden path and chaos drills [B3, B4]
