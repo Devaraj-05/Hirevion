@@ -15,14 +15,14 @@ import hashlib
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any, Protocol
 from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from hirevion_core.access.errors import Conflict, Invalid, TooLarge
+from hirevion_core.access.errors import Conflict, Invalid, NotFound, TooLarge
 from hirevion_core.models import ProctorEvent, ProctorEvidence, ProctorSession
 from hirevion_core.proctoring.catalogue import EVIDENCE_KINDS, RANK
 from hirevion_core.storage.paths import BlobPath, interview_blob
@@ -30,6 +30,9 @@ from hirevion_core.storage.paths import BlobPath, interview_blob
 UPLOAD_TTL = timedelta(minutes=5)
 MAX_BYTES = 2 * 1024 * 1024
 MAX_SLOTS_PER_SESSION = 500
+SNAPSHOT_TTL = timedelta(seconds=120)
+MAX_SNAPSHOTS = 40
+MAX_PENDING = 5
 CONTENT_TYPES = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
 SLOT_KINDS = ("screen", "camera")
 # What the contract's evidence `type` means in §67's terms.
@@ -68,21 +71,28 @@ async def issue_upload(
     storage: Uploads,
     *,
     kind: str,
-    seq: int,
+    seq: int | None,
+    request_id: UUID | None = None,
     content_type: str,
     size: int,
     sha256: str,
 ) -> UploadSlot:
-    """A write-only slot for one snapshot. Asking again for an unclaimed slot with the same hash
-    gives the same blob a fresh URL, so a retry is safe."""
+    """A write-only slot for one snapshot. With `request_id` it answers a snapshot the server
+    asked for (`seq` isn't needed, and the blob is linked to the request's event at once);
+    otherwise it is one the device chose to take for event `seq`. Asking again for an unclaimed
+    slot with the same hash gives the same blob a fresh URL, so a retry is safe."""
     extension = CONTENT_TYPES.get(content_type)
-    if kind not in SLOT_KINDS or extension is None or seq < 1:
+    if kind not in SLOT_KINDS or extension is None or (request_id is None and (seq or 0) < 1):
         raise Invalid("invalid-evidence", "That snapshot can't be accepted")
     digest = sha256.lower()
     if not _SHA256.fullmatch(digest):
         raise Invalid("invalid-evidence", "The snapshot's SHA-256 isn't valid", field="sha256")
     if not 0 < size <= MAX_BYTES:
         raise TooLarge("evidence-too-large", "Snapshots are at most 2 MB")
+    if request_id is not None:
+        return await _answer_request(
+            session, proctor, storage, request_id, kind, extension, content_type, size, digest
+        )
     path = interview_blob(
         proctor.organization_id, proctor.interview_id, "evidence", f"{seq}-{kind}.{extension}"
     )
@@ -122,6 +132,102 @@ async def issue_upload(
         await session.flush()
     url = storage.upload_url(proctor.organization_id, path, UPLOAD_TTL)
     return UploadSlot(str(path), url, {"x-ms-blob-type": "BlockBlob"})
+
+
+def request_snapshots(
+    session: AsyncSession, proctor: ProctorSession, event: ProctorEvent, now: datetime
+) -> int:
+    """Asks the desktop for a screen snapshot, and a camera one where the camera matters, when a
+    CRITICAL event is raised: evidence taken at the time, not reconstructed later. The requests
+    reach the desktop in the heartbeat's answer and expire after two minutes (an old picture
+    proves nothing). A session has a limit, and the policy can switch them off. Returns how many
+    were asked for. The event must already have its id."""
+    settings = (proctor.policy.get("evidence") or {}).get("snapshots") or {}
+    if event.severity != "CRITICAL" or not settings.get("enabled", True):
+        return 0
+    state = dict(proctor.nudges or {})
+    used = int(state.get("snapshots", 0))
+    kinds = ["screen"]
+    if event.source in ("camera", "third_eye") or "face" in (proctor.policy.get("checks") or []):
+        kinds.append("camera")
+    wanted = kinds[: max(0, int(settings.get("max", MAX_SNAPSHOTS)) - used)]
+    for capture in wanted:
+        session.add(
+            ProctorEvidence(
+                organization_id=proctor.organization_id,
+                proctor_session_id=proctor.id,
+                interview_id=proctor.interview_id,
+                proctor_event_id=event.id,
+                kind="screenshot",
+                origin="server",
+                ref={"capture": capture, "status": "requested", "requested_at": now.isoformat()},
+            )
+        )
+    if wanted:
+        state["snapshots"] = used + len(wanted)
+        proctor.nudges = state
+    return len(wanted)
+
+
+async def pending_requests(
+    session: AsyncSession, proctor: ProctorSession, now: datetime
+) -> list[ProctorEvidence]:
+    """The snapshot requests the desktop should still answer (newest two minutes, oldest first)."""
+    rows = await session.scalars(
+        select(ProctorEvidence)
+        .where(
+            ProctorEvidence.proctor_session_id == proctor.id,
+            ProctorEvidence.origin == "server",
+            ProctorEvidence.blob_path.is_(None),
+            ProctorEvidence.ref["status"].astext == "requested",
+            ProctorEvidence.created_at >= now - SNAPSHOT_TTL,
+        )
+        .order_by(ProctorEvidence.created_at)
+        .limit(MAX_PENDING)
+    )
+    return list(rows.all())
+
+
+async def _answer_request(
+    session: AsyncSession,
+    proctor: ProctorSession,
+    storage: Uploads,
+    request_id: UUID,
+    kind: str,
+    extension: str,
+    content_type: str,
+    size: int,
+    digest: str,
+) -> UploadSlot:
+    row = await session.scalar(
+        select(ProctorEvidence)
+        .where(
+            ProctorEvidence.id == request_id,
+            ProctorEvidence.proctor_session_id == proctor.id,
+            ProctorEvidence.origin == "server",
+            ProctorEvidence.ref["status"].astext.in_(("requested", "issued")),
+        )
+        .with_for_update()
+    )
+    if row is None:
+        raise NotFound("snapshot-request-not-found", "No such snapshot request")
+    if row.ref.get("capture") != kind:
+        raise Invalid("invalid-evidence", "That isn't the kind of snapshot that was asked for")
+    if row.ref["status"] == "issued" and row.sha256 != digest:
+        raise Conflict("evidence-locked", "That snapshot request was already answered")
+    path = interview_blob(
+        proctor.organization_id,
+        proctor.interview_id,
+        "evidence",
+        f"{request_id.hex[:16]}-{kind}.{extension}",
+    )
+    row.blob_path, row.content_type, row.bytes, row.sha256 = str(path), content_type, size, digest
+    row.ref = {**row.ref, "status": "issued", "issued_at": datetime.now(UTC).isoformat()}
+    return UploadSlot(
+        str(path),
+        storage.upload_url(proctor.organization_id, path, UPLOAD_TTL),
+        {"x-ms-blob-type": "BlockBlob"},
+    )
 
 
 async def link(

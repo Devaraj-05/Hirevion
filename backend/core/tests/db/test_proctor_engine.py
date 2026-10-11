@@ -515,16 +515,78 @@ async def test_a_recording_gap_is_an_event_of_its_own_length(
 ) -> None:
     await world.open()
     start = T0 + timedelta(seconds=30)
-    assert await world.engine.record_gap(world.org, world.interview, "screen", start, 45_000)
-    assert not await world.engine.record_gap(world.org, world.interview, "teapot", start, 1)
-    (gap,) = await rows(app_db, world)
+    assert await world.engine.record_gap(world.org, world.interview, "screen-1", start, 45_000)
+    assert await world.engine.record_gap(world.org, world.interview, "camera", start, 2_000)
+    gap, loss = await rows(app_db, world)
     assert gap.event == "SCREEN_CAPTURE_STOPPED" and gap.severity == "CRITICAL"
     assert (
         gap.duration_ms == 45_000 and not gap.ongoing and gap.details["reason"] == "recording_gap"
     )
-    # The same gap reported again changes nothing but its note.
-    await world.engine.record_gap(world.org, world.interview, "screen", start, 45_000)
-    assert len(await rows(app_db, world)) == 1
+    assert loss.event == "TELEMETRY_GAP" and loss.severity == "WARNING"
+    assert loss.details["recording_gap"]["track"] == "camera"
+    # The same screen gap reported again changes nothing but its note.
+    await world.engine.record_gap(world.org, world.interview, "screen-1", start, 45_000)
+    assert len(await rows(app_db, world)) == 2
+
+
+async def test_recording_gap_events_of_the_upload_service_are_read(
+    world: World, app_db: Database
+) -> None:
+    from hirevion_core.proctoring.watcher import handle_gap
+
+    await world.open()
+    await world.beat()
+    start = world.clock.now
+
+    def payload(**fields: Any) -> dict[str, Any]:
+        return {
+            "interview_id": str(world.interview),
+            "track": "screen-1",
+            "kind": "stalled",
+            "state": "open",
+            "from_seq": 4,
+            "to_seq": None,
+            "from_time": start.isoformat(),
+            "to_time": None,
+            **fields,
+        }
+
+    # A stall that lasts is an event that grows; one that ends is closed.
+    await handle_gap(world.engine, world.org, payload())
+    world.clock.advance(40)
+    await world.beat()
+    await world.tick()
+    (stall,) = await rows(app_db, world)
+    assert (
+        stall.event == "SCREEN_CAPTURE_STOPPED" and stall.ongoing and stall.severity == "CRITICAL"
+    )
+    assert stall.details["sources"] == ["upload:screen-1"]
+    end = world.clock.now
+    await handle_gap(
+        world.engine, world.org, payload(state="closed", to_seq=6, to_time=end.isoformat())
+    )
+    world.clock.advance(1)
+    await world.beat()
+    await world.tick()
+    (stall,) = await rows(app_db, world)
+    assert not stall.ongoing and 39_000 <= (stall.duration_ms or 0) <= 42_000
+    # A hole found at assembly is a finished event of the hole's length.
+    hole = payload(
+        track="mic",
+        kind="missing",
+        state="closed",
+        from_seq=9,
+        to_seq=12,
+        from_time=(start + timedelta(seconds=100)).isoformat(),
+        to_time=(start + timedelta(seconds=140)).isoformat(),
+    )
+    await handle_gap(world.engine, world.org, hole)
+    events = await rows(app_db, world)
+    gap = next(r for r in events if r.event == "TELEMETRY_GAP" and r.details.get("reason"))
+    assert gap.duration_ms == 40_000 and gap.details["recording_gap"]["kind"] == "missing"
+    # Kinds this engine doesn't know are left alone.
+    await handle_gap(world.engine, world.org, payload(kind="skipped"))
+    assert len(await rows(app_db, world)) == len(events)
 
 
 async def test_livekit_sightings_are_votes_the_watcher_acts_on(

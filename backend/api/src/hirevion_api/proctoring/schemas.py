@@ -106,15 +106,33 @@ class HeartbeatBody(BaseModel):
     vision_fps: float | None = Field(None, ge=0, le=1000)
 
 
+class SnapshotRequest(BaseModel):
+    """A picture the server wants taken now, for an event (a CRITICAL one). Answer it with
+    `POST /proctoring/evidence-uploads` and this `request_id`, within two minutes."""
+
+    request_id: UUID
+    event_id: UUID
+    kind: Literal["screen", "camera"]
+    requested_at: datetime
+
+
 class HeartbeatAck(BaseModel):
     server_time: datetime
     missing: list[int]
+    snapshot_requests: list[SnapshotRequest] = Field(default_factory=list)
 
 
 class EvidenceUploadBody(BaseModel):
     proctor_session_id: UUID
     kind: Literal["screen", "camera"]
-    seq: int = Field(ge=1)
+    seq: int | None = Field(
+        None,
+        ge=1,
+        description="The event the snapshot is for; not needed when answering a `request_id`.",
+    )
+    request_id: UUID | None = Field(
+        None, description="A `snapshot_requests` entry of a heartbeat answer."
+    )
     content_type: str = Field(max_length=60)
     bytes: int = Field(ge=1)
     sha256: str = Field(min_length=64, max_length=64)

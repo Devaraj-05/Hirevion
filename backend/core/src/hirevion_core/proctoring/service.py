@@ -51,7 +51,7 @@ from hirevion_core.proctoring.store import (
     finish,
     history,
     lock_session,
-    plan_nudge,
+    plan_followups,
     recent_for,
     server_note,
     status_json,
@@ -62,14 +62,14 @@ log = logging.getLogger(__name__)
 DRAIN = timedelta(minutes=10)
 """After an interview ends the desktop may still send the events it had queued."""
 HISTORY = timedelta(minutes=15)
-GAP_EVENTS = {
-    "screen": "SCREEN_CAPTURE_STOPPED",
-    "camera": "CAMERA_DISCONNECTED",
-    "audio": "MIC_DISCONNECTED",
-    "mic": "MIC_DISCONNECTED",
-    "third-eye": "THIRD_EYE_DISCONNECTED",
-    "third_eye": "THIRD_EYE_DISCONNECTED",
-}
+
+
+def gap_event(track: str) -> str:
+    """What a hole in a recorded track is (§64): a screen that stopped being captured, or any
+    other track's loss as a gap in telemetry."""
+    return "SCREEN_CAPTURE_STOPPED" if track.startswith("screen") else "TELEMETRY_GAP"
+
+
 _UP = {"camera": "on", "mic": "on", "screen": "capturing", "third_eye": "connected"}
 _DOWN = {
     "camera": {"off", "error", "blocked", "denied", "disconnected"},
@@ -104,9 +104,24 @@ class Ack:
 
 
 @dataclass(frozen=True, slots=True)
+class SnapshotRequest:
+    """A screen or camera picture the server wants taken now, for an event."""
+
+    request_id: UUID
+    event_id: UUID
+    kind: str
+    requested_at: datetime
+
+
+def _when(ref: dict[str, Any]) -> datetime:
+    return datetime.fromisoformat(str(ref["requested_at"]))
+
+
+@dataclass(frozen=True, slots=True)
 class HeartbeatAck:
     server_time: datetime
     missing: list[int]
+    snapshots: list[SnapshotRequest]
 
 
 def heartbeat_vote(channel: str, reported: str | None) -> observed.State:
@@ -383,7 +398,7 @@ class ProctorEngine:
                 row, policy, interview_started_at=interview_started
             ):
                 session.add(reference)
-        plan_nudge(proctor, change, now)
+        plan_followups(session, proctor, change, now)
         rows[:] = [r for r in rows if r[3] != str(row.id)]
         if row.severity != "INFO":
             rows.append((row.event, row.severity, row.started_at, str(row.id)))
@@ -451,8 +466,13 @@ class ProctorEngine:
                 )
             after = status_json(proctor, interview.status)
             pending.status = _health(before) != _health(after) or proctor.heartbeats % 6 == 0
+            snapshots = [
+                SnapshotRequest(r.id, r.proctor_event_id, str(r.ref["capture"]), _when(r.ref))
+                for r in await evidence.pending_requests(session, proctor, now)
+                if r.proctor_event_id is not None
+            ]
         await finish(self._redis, None, organization_id, interview_id, pending, after)
-        return HeartbeatAck(now, missing)
+        return HeartbeatAck(now, missing, snapshots)
 
     @staticmethod
     def _grace(proctor: ProctorSession) -> int:
@@ -510,16 +530,17 @@ class ProctorEngine:
         self,
         organization_id: UUID,
         interview_id: UUID,
-        kind: str,
+        track: str,
         started_at: datetime,
         duration_ms: int,
         details: dict[str, Any] | None = None,
     ) -> bool:
-        """A gap the upload pipeline found in a recording (`recording.gap`): the screen, camera
-        or microphone was not captured for `duration_ms`. True if it became or changed an event."""
-        event = GAP_EVENTS.get(kind)
-        if event is None:
-            return False
+        """A finished gap in a recorded `track` (`recording.gap` of kind `missing` or
+        `corrupt`): `SCREEN_CAPTURE_STOPPED` for a screen, `TELEMETRY_GAP` for the rest. A gap
+        the server already saw as it happened (a stall) is the same event, lengthened. True if
+        it became or changed an event."""
+        kind = track
+        event = gap_event(track)
         now = self._clock()
         pending = Pending()
         duration = max(0, duration_ms)
@@ -532,18 +553,20 @@ class ProctorEngine:
             if proctor is None or proctor.policy.get("level") == "off":
                 return False
             end = started_at + timedelta(milliseconds=duration)
-            existing = await session.scalar(
-                select(ProctorEvent)
-                .where(
-                    ProctorEvent.proctor_session_id == proctor.id,
-                    ProctorEvent.event == event,
-                    ProctorEvent.started_at <= end + MERGE_WINDOW,
-                    ProctorEvent.started_at >= started_at - MERGE_WINDOW,
+            existing = None
+            if event != "TELEMETRY_GAP":
+                existing = await session.scalar(
+                    select(ProctorEvent)
+                    .where(
+                        ProctorEvent.proctor_session_id == proctor.id,
+                        ProctorEvent.event == event,
+                        ProctorEvent.started_at <= end + MERGE_WINDOW,
+                        ProctorEvent.started_at >= started_at - MERGE_WINDOW,
+                    )
+                    .order_by(ProctorEvent.started_at)
+                    .limit(1)
                 )
-                .order_by(ProctorEvent.started_at)
-                .limit(1)
-            )
-            note = {"recording_gap": {"kind": kind, "duration_ms": duration, **(details or {})}}
+            note = {"recording_gap": {"track": kind, "duration_ms": duration, **(details or {})}}
             if existing is not None:
                 before = existing.severity
                 longest = max(existing.duration_ms or 0, duration)
@@ -554,7 +577,7 @@ class ProctorEngine:
                     existing.severity = verdict.severity
                     existing.details = {**existing.details, "server": server_note(verdict)}
                     change = Change(existing, "updated", severity_before=before)
-                    plan_nudge(proctor, change, now)
+                    plan_followups(session, proctor, change, now)
                     pending.changes.append(change)
                 else:
                     pending.changes.append(Change(existing, "updated", severity_before=before))
@@ -573,6 +596,27 @@ class ProctorEngine:
                 )
         await finish(self._redis, self._conductor, organization_id, interview_id, pending, None)
         return True
+
+    async def observe_stall(
+        self,
+        organization_id: UUID,
+        interview_id: UUID,
+        track: str,
+        stalled: bool,
+        at: datetime,
+    ) -> None:
+        """A track the upload pipeline reports silent (`stalled`, state open) or flowing again
+        (state closed): a vote from `upload:{track}`, so the watcher grows the event as the
+        stall lasts. Screens vote on the screen channel, other tracks on the heartbeat's."""
+        channel = "screen" if track.startswith("screen") else "heartbeat"
+        await self.observe(
+            organization_id,
+            interview_id,
+            channel,
+            f"upload:{track}",
+            "down" if stalled else "up",
+            at,
+        )
 
     # The watcher.
 
@@ -717,7 +761,7 @@ class ProctorEngine:
                 row.details = {**row.details, "server": server_note(verdict)}
             change = Change(row, "updated", severity_before=before)
             if worse:
-                plan_nudge(proctor, change, now)
+                plan_followups(session, proctor, change, now)
             if closing or worse:
                 pending.changes.append(change)
         if closing:
@@ -825,7 +869,8 @@ class ProctorEngine:
         storage: evidence.Uploads,
         *,
         kind: str,
-        seq: int,
+        seq: int | None,
+        request_id: UUID | None = None,
         content_type: str,
         size: int,
         sha256: str,
@@ -841,6 +886,7 @@ class ProctorEngine:
                 storage,
                 kind=kind,
                 seq=seq,
+                request_id=request_id,
                 content_type=content_type,
                 size=size,
                 sha256=sha256,

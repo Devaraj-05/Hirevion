@@ -423,7 +423,7 @@ async def test_evidence_is_listed_with_links_and_viewing_it_is_audited(
     items = (await browser.get(f"/api/v1/proctoring/{desk.interview}/evidence")).json()["items"]
     kinds = {item["kind"] for item in items}
     assert {"screenshot", "process_metadata"} <= kinds
-    shot = next(item for item in items if item["kind"] == "screenshot")
+    shot = next(item for item in items if item["kind"] == "screenshot" and item["url"])
     assert shot["url"] and "sp=r" in shot["url"] and shot["sha256"] == "d" * 64
     metadata = next(item for item in items if item["kind"] == "process_metadata")
     assert metadata["ref"]["name"] == "anydesk.exe" and metadata["url"] is None
@@ -434,6 +434,51 @@ async def test_evidence_is_listed_with_links_and_viewing_it_is_audited(
             )
         ).all()
     assert len(viewed) == 1 and viewed[0].details["items"] == len(items)
+
+
+async def test_a_critical_event_asks_the_desktop_for_snapshots_taken_at_the_time(
+    desk: Desk, signed_in: Any
+) -> None:
+    quiet = await desk.heartbeat()
+    assert quiet.json()["snapshot_requests"] == []
+    await desk.events(event(1, "WINDOW_MINIMIZED", duration_ms=4000))  # a warning asks for none
+    assert (await desk.heartbeat()).json()["snapshot_requests"] == []
+    await desk.events(event(2, "PHONE_DETECTED", source="camera"))
+    requests = (await desk.heartbeat()).json()["snapshot_requests"]
+    assert sorted(r["kind"] for r in requests) == ["camera", "screen"]
+    screen = next(r for r in requests if r["kind"] == "screen")
+
+    def upload(**changes: Any) -> Any:
+        body = {
+            "proctor_session_id": desk.session_id,
+            "kind": "screen",
+            "request_id": screen["request_id"],
+            "content_type": "image/jpeg",
+            "bytes": 5000,
+            "sha256": "e" * 64,
+            **changes,
+        }
+        return desk.call("POST", "/proctoring/evidence-uploads", body)
+
+    wrong = await upload(kind="camera")
+    assert wrong.status_code == 422
+    unknown = await upload(request_id=str(UUID(int=5)))
+    assert unknown.status_code == 404 and unknown.json()["code"] == "snapshot-request-not-found"
+    slot = await upload()
+    assert slot.status_code == 200, slot.text
+    assert slot.json()["headers"] == {"x-ms-blob-type": "BlockBlob"}
+    assert (await upload()).status_code == 200  # a retry gets the same blob
+    assert (await upload(sha256="f" * 64)).status_code == 409
+    left = (await desk.heartbeat()).json()["snapshot_requests"]
+    assert [r["kind"] for r in left] == ["camera"]  # the answered one is not asked again
+
+    browser = await signed_in(desk.seed.organization_id, desk.recruiter)
+    items = (await browser.get(f"/api/v1/proctoring/{desk.interview}/evidence")).json()["items"]
+    shots = [i for i in items if i["kind"] == "screenshot"]
+    answered = next(i for i in shots if i["url"])
+    assert answered["event_id"] and answered["sha256"] == "e" * 64
+    waiting = next(i for i in shots if not i["url"])
+    assert waiting["ref"]["status"] == "requested" and waiting["ref"]["capture"] == "camera"
 
 
 # LiveKit's view.

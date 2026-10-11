@@ -19,7 +19,7 @@ from hirevion_core.access.errors import NotFound
 from hirevion_core.interview_session import realtime
 from hirevion_core.interview_session.conductor import Conductor
 from hirevion_core.models import Interview, ProctorEvent, ProctorSession
-from hirevion_core.proctoring import nudges, observed
+from hirevion_core.proctoring import evidence, nudges, observed
 from hirevion_core.proctoring.catalogue import EVENTS, RANK
 from hirevion_core.proctoring.rules import GAZE, Recent, Verdict, evaluate
 
@@ -209,13 +209,18 @@ async def add_server_event(
     session.add(row)
     await session.flush()
     change = Change(row, "created")
-    plan_nudge(proctor, change, now)
+    plan_followups(session, proctor, change, now)
     pending.changes.append(change)
     return row
 
 
-def plan_nudge(proctor: ProctorSession, change: Change, now: datetime) -> None:
-    """Plans the candidate's nudge for a new or worsened event, recording it on the session."""
+def plan_followups(
+    session: AsyncSession, proctor: ProctorSession, change: Change, now: datetime
+) -> None:
+    """What a new or worsened event brings: snapshot requests for a CRITICAL one, and the
+    candidate's nudge, both recorded on the session."""
+    if change.raised and change.row.severity == "CRITICAL":
+        evidence.request_snapshots(session, proctor, change.row, now)
     if not change.raised or RANK[change.row.severity] < RANK["WARNING"]:
         return
     state = dict(proctor.nudges or {})

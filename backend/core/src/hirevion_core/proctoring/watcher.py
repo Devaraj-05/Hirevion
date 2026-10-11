@@ -1,11 +1,14 @@
 """The proctoring workers (SP-14): the watcher that looks at every open proctor session that is
 due (a missed heartbeat, a channel the server saw go down, an event still growing), and the
-consumer of `recording.gap`, the outbox topic SP-12's upload service raises when a recording has
-a hole in it.
+consumer of `recording.gap`, the outbox topic SP-12's upload service raises when a recorded
+track has a hole in it (`hirevion_core.recordings.continuity.gap_payload`).
 
-`recording.gap`'s payload: `{"interview_id", "kind", "started_at", "duration_ms"}`, with `kind`
-one of `screen`, `camera`, `audio` or `third-eye`. A payload with `from` and `to` (ISO times)
-instead of `started_at` and `duration_ms` is read too.
+- `kind` `stalled`, `state` `open`: the track went silent; `closed`: it flows again (or its
+  late segments arrived). These are votes on the track's channel, so the watcher raises the
+  event when the stall lasts and grows its severity: `SCREEN_CAPTURE_STOPPED` for a screen,
+  `TELEMETRY_GAP` for the camera and microphone (§64).
+- `kind` `missing` or `corrupt` (always closed): a hole found when the track was assembled,
+  stored as an event of the hole's length.
 """
 
 from __future__ import annotations
@@ -13,7 +16,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from contextlib import suppress
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -52,21 +55,33 @@ class ProctorWatcher:
                     await asyncio.wait_for(stop.wait(), self._poll)
 
 
+def _time(value: Any) -> datetime | None:
+    if not value:
+        return None
+    moment = datetime.fromisoformat(str(value))
+    return moment if moment.tzinfo else moment.replace(tzinfo=UTC)
+
+
 async def handle_gap(engine: ProctorEngine, organization_id: UUID, payload: dict[str, Any]) -> None:
     """A `recording.gap` event becomes (or lengthens) the matching proctoring event."""
-    started = payload.get("started_at") or payload.get("from")
-    if started is None:
-        raise ValueError("a recording gap needs started_at")
-    start = datetime.fromisoformat(str(started))
-    duration = payload.get("duration_ms")
-    if duration is None and payload.get("to") is not None:
-        duration = int((datetime.fromisoformat(str(payload["to"])) - start).total_seconds() * 1000)
-    kind = str(payload.get("kind") or payload.get("stream") or "")
-    await engine.record_gap(
-        organization_id,
-        UUID(str(payload["interview_id"])),
-        kind,
-        start,
-        int(duration or 0),
-        {key: payload[key] for key in ("segment", "reason") if key in payload},
-    )
+    interview_id = UUID(str(payload["interview_id"]))
+    track = str(payload["track"])
+    kind = str(payload["kind"])
+    start, end = _time(payload.get("from_time")), _time(payload.get("to_time"))
+    if kind == "stalled":
+        closed = payload.get("state") == "closed"
+        at = (end if closed else start) or _time(payload.get("detected_at")) or datetime.now(UTC)
+        await engine.observe_stall(organization_id, interview_id, track, not closed, at)
+        return
+    if kind in ("missing", "corrupt") and start is not None:
+        length = int(((end or start) - start).total_seconds() * 1000)
+        await engine.record_gap(
+            organization_id,
+            interview_id,
+            track,
+            start,
+            length,
+            {"kind": kind, "from_seq": payload.get("from_seq"), "to_seq": payload.get("to_seq")},
+        )
+        return
+    log.info("Ignoring recording.gap of kind %r for interview %s", kind, interview_id)

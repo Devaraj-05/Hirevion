@@ -5,8 +5,8 @@ evidence and the recruiter's reviews. `proctor_events` is not partitioned: its i
 would break. `scheduler_proctor_sessions_due` lists the sessions the watcher must look at, the way
 `scheduler_due_interviews` lists interviews.
 
-Revision ID: 0016
-Revises: 0015
+Revision ID: 0018
+Revises: 0016
 Create Date: 2026-10-10
 """
 
@@ -22,8 +22,8 @@ from hirevion_core.db.rls import CURRENT_ORG, grant_sql, tenant_policy_sql
 from hirevion_core.ids import uuid7
 from hirevion_core.settings import APP_ROLE, SCHEDULER_ROLE
 
-revision: str = "0016"
-down_revision: str | Sequence[str] | None = "0015"
+revision: str = "0018"
+down_revision: str | Sequence[str] | None = "0016"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

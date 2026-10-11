@@ -20,6 +20,7 @@ from hirevion_api.proctoring.schemas import (
     HeartbeatBody,
     SessionBody,
     SessionResponse,
+    SnapshotRequest,
 )
 from hirevion_api.ratelimit import enforce
 from hirevion_api.routing import api_router
@@ -102,7 +103,19 @@ async def send_proctor_heartbeat(
         body.proctor_session_id,
         body.model_dump(exclude={"proctor_session_id"}),
     )
-    return HeartbeatAck(server_time=ack.server_time, missing=ack.missing)
+    return HeartbeatAck(
+        server_time=ack.server_time,
+        missing=ack.missing,
+        snapshot_requests=[
+            SnapshotRequest(
+                request_id=r.request_id,
+                event_id=r.event_id,
+                kind=r.kind,  # type: ignore[arg-type]
+                requested_at=r.requested_at,
+            )
+            for r in ack.snapshots
+        ],
+    )
 
 
 @router.post("/proctoring/evidence-uploads")
@@ -121,6 +134,7 @@ async def request_evidence_upload(
         _uploads(storage),
         kind=body.kind,
         seq=body.seq,
+        request_id=body.request_id,
         content_type=body.content_type,
         size=body.bytes,
         sha256=body.sha256,

@@ -35,10 +35,10 @@ from hirevion_core.mail.consumer import MailConsumer
 from hirevion_core.mail.sender import SmtpSender
 from hirevion_core.mail.settings import MailSettings, load_mail_settings
 from hirevion_core.outbox import OutboxRelay
-from hirevion_core.recordings.settings import load_recording_settings
-from hirevion_core.recordings.worker import media_workers
 from hirevion_core.proctoring.service import ProctorEngine
 from hirevion_core.proctoring.watcher import GAP_TOPIC, ProctorWatcher, handle_gap
+from hirevion_core.recordings.settings import load_recording_settings
+from hirevion_core.recordings.worker import media_workers
 from hirevion_core.screening.runner import SCREENING_TOPIC, handle_screening_event
 from hirevion_core.settings import CoreSettings
 from hirevion_core.storage.paths import BlobPath
