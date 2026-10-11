@@ -51,7 +51,7 @@ class AppRules(BaseModel):
     allowed: list[AppRule]
 
 
-class SessionResponse(BaseModel):
+class ProctorSessionResponse(BaseModel):
     proctor_session_id: UUID
     policy_version: int
     level: Literal["off", "basic", "standard", "strict"]

@@ -41,6 +41,7 @@ import {
   setInterviewReviewers,
 } from "./assigned-api";
 import { EvaluationCard } from "./evaluation-card";
+import { MonitoringPanel } from "./monitoring-panel";
 import { TranscriptCard } from "./transcript-card";
 
 type Asking = "reschedule" | "cancel" | "reviewers" | null;
@@ -61,20 +62,25 @@ const EVALUATED = new Set(["completed", "evaluating", "evaluated"]);
 /** One interview (PRD §24): its pinned template and policy, its window and status, who reviews
  * it, its history and the emails sent; and, for `canManage`, sending, rescheduling, cancelling
  * and choosing reviewers; with `canReview`, its evaluation and the reviewer's own scores (with
- * `canRerun` the admin's re-run, with `canMeasure` the organisation's agreement with the AI).
- * The API checks every permission again. */
+ * `canRerun` the admin's re-run, with `canMeasure` the organisation's agreement with the AI);
+ * with `canMonitor`, the live monitoring of proctoring (and with `canReviewEvents` the review of
+ * its events). The API checks every permission again. */
 export function InterviewPage({
   id,
   canManage,
   canReview = false,
   canRerun = false,
   canMeasure = false,
+  canMonitor = false,
+  canReviewEvents = false,
 }: {
   id: string;
   canManage: boolean;
   canReview?: boolean;
   canRerun?: boolean;
   canMeasure?: boolean;
+  canMonitor?: boolean;
+  canReviewEvents?: boolean;
 }) {
   const t = useTranslations("interviews.assigned");
   const statuses = useTranslations("interviews.assigned.statuses");
@@ -286,6 +292,13 @@ export function InterviewPage({
           id={id}
           canDecide={canManage && (data.status === "scheduled" || data.status === "invited")}
         />
+        {canMonitor && HAPPENED.has(data.status) ? (
+          <MonitoringPanel
+            id={id}
+            live={data.status === "in_progress" || data.status === "interrupted"}
+            canReview={canReviewEvents}
+          />
+        ) : null}
         {HAPPENED.has(data.status) ? (
           <TranscriptCard
             id={id}

@@ -19,7 +19,7 @@ from hirevion_api.proctoring.schemas import (
     HeartbeatAck,
     HeartbeatBody,
     SessionBody,
-    SessionResponse,
+    ProctorSessionResponse,
     SnapshotRequest,
 )
 from hirevion_api.ratelimit import enforce
@@ -44,7 +44,7 @@ def engine(request: Request) -> ProctorEngine:
 @router.post("/proctoring/session")
 async def open_proctor_session(
     body: SessionBody, request: Request, response: Response, principal: AnyInterviewSession
-) -> SessionResponse:
+) -> ProctorSessionResponse:
     """Opens the interview's proctor session, or returns the one already open, with the policy it
     is pinned to."""
     if body.interview_id != principal.claims.interview_id:
@@ -53,7 +53,7 @@ async def open_proctor_session(
     opened = await engine(request).open_session(
         principal.organization_id, body.interview_id, body.app_version
     )
-    return SessionResponse.model_validate(opened.view())
+    return ProctorSessionResponse.model_validate(opened.view())
 
 
 def _interview(principal: AnyInterviewSession) -> UUID:

@@ -23,6 +23,7 @@ export default async function InterviewDetailPage({ params }: { params: Promise<
     );
   }
   const { id } = await params;
+  const canMonitor = can(session, "reports.proctoring.view") && can(session, "interviews.view");
   return (
     <InterviewPage
       id={id}
@@ -30,6 +31,8 @@ export default async function InterviewDetailPage({ params }: { params: Promise<
       canReview={can(session, "reports.interview.view")}
       canRerun={can(session, "admin.ai.manage")}
       canMeasure={can(session, "reports.analytics.view")}
+      canMonitor={canMonitor}
+      canReviewEvents={canMonitor && can(session, "interviews.manage")}
     />
   );
 }
