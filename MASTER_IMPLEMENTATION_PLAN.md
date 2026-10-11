@@ -1618,7 +1618,7 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 41 | 6 transcript-segment fields | SP-09 (`transcript_segments`, partitioned; `interview_session.transcripts.segment`) |
 | 42 | TTS: low latency, streaming, interruption, state tracking, failure handling | SP-09 (the agent's acknowledgement while analysing, interruptible speech, the pronunciation lexicon in `tts_node`, the `error` state; `hv-voice-bench` measures p95) |
 | 43 | Complete two-sided transcript | SP-09 (both speakers per turn; JSON/VTT/TXT artifacts by the `interview.completed` consumer; the interview page's transcript) |
-| 44 | 8 evaluation dimensions, with evidence | SP-10 |
+| 44 | 8 evaluation dimensions, with evidence | SP-10 (`evaluation.scoring.QuestionEvaluator`, `evaluation.evidence`, `question_evaluations`; `test_question_evaluator.py`, ADR-0031) |
 | 45 | Coding flow; Python, JavaScript, TypeScript, SQL | SP-16 |
 | 46 | Never on API servers; queue; 6 limits; destroyed after each run | SP-16 |
 | 47 | 8 coding-evaluation criteria; 5 stored artifacts | SP-16 |
@@ -1644,7 +1644,7 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 67 | 7 evidence types; JSON schema | SP-12, SP-14 (evidence snapshots) |
 | 68 | 14 proctoring-report sections; no single score | SP-17 |
 | 69 | 13 interview-report sections | SP-17 |
-| 70 | Per-skill final evaluation, with evidence | SP-10 |
+| 70 | Per-skill final evaluation, with evidence | SP-10 (`evaluation.aggregate`, `GET /interviews/{id}/evaluation`; `test_aggregate.py`; the coding slot is SP-16) |
 | 71 | 11 recruiter-review actions | SP-17 |
 | 72 | 9 hiring statuses, audited | SP-17 |
 | 73 | 12 analytics | SP-21 |
@@ -1653,7 +1653,7 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 76 | 8 ATS/integration targets; no provider logic in core | SP-20 |
 | 77 | 9 webhook events; 5 security measures | SP-18 |
 | 78 | AIProvider (5) and 5 services | SP-01 |
-| 79 | 8 governance fields | SP-10 |
+| 79 | 8 governance fields | SP-10 (`ai_invocations` fields set by `evaluation.service`, pinned re-runs `hv eval-rerun`, the gate `hv eval-interviews`; `test_evaluation_service.py`, `test_harness.py`) |
 | 80 | Immutable template versions; interviews pin a version | SP-06 (insert-only version tables for templates and questions), SP-07a (interviews pin `(template_id, template_version)` and a policy snapshot) |
 | 81 | Tenant scoping; server-side authorisation | SP-01, SP-02 |
 | 82 | 15 security requirements; SOC 2 / ISO 27001 target | §9, SP-01/02/07/08/12/16/23 (certifications need the cloud and an audit period) |

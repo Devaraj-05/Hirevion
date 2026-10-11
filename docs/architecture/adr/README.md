@@ -23,5 +23,6 @@
 | [0020](0020-interviews-and-invitations.md) | Interviews and invitations: pinned policy, a lifecycle table, candidate accounts and a cross-tenant scheduler | Accepted |
 | [0021](0021-candidate-desktop-auth.md) | Candidate desktop sign-in: DPoP-bound tokens, refresh families, new-device codes and a release registry | Accepted |
 | [0030](0030-interview-engine.md) | The interview engine: a deterministic policy over a checkpointed state, one conductor for every turn | Accepted |
+| [0031](0031-evaluation-and-governance.md) | Evaluation and AI governance: verified quotes, rubric-weighted scores, pinned versions and a gate | Accepted |
 
 New decisions copy [0000-template.md](0000-template.md) and take the next number.

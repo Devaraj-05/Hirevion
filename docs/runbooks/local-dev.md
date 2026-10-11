@@ -436,6 +436,25 @@ How it works is in [ADR-0030](../architecture/adr/0030-interview-engine.md); the
 - **Transcript files** (JSON, VTT, TXT) are written to blob storage when the interview ends, by the worker in `hv api` (or `hv worker`), and linked from the interview's page.
 - **Tuning prompts:** `backend/core/src/hirevion_core/engine/prompts/` holds the analysis and follow-up prompts; a change gets a new version name (SP-10's eval harness gates it).
 
+### Evaluation and AI governance (SP-10)
+
+How it works is in [ADR-0031](../architecture/adr/0031-evaluation-and-governance.md); the plan is `docs/superpowers/plans/2026-10-10-sp-10-evaluation.md`.
+
+- **What happens when an interview ends:** completing it queues an `evaluation` event in the same transaction. The worker (in `hv api`, or `hv worker`) moves the interview to Evaluating, makes one strong-model call per answered question and one for the summary, then writes the evaluation, moves it to Evaluated and queues the `evaluation.completed` webhook event. The interview's page shows it under Evaluation.
+- **When it doesn't finish:** the run is retried (five attempts, a minute apart). If the model is down or the organisation's AI budget is spent, the interview goes back to Completed and the page says the evaluation couldn't be completed. An organisation admin (`admin.ai.manage`) presses Retry the evaluation once the cause is fixed.
+- **Where the audit trail is:**
+  - `evaluations` holds the pinned versions (prompt, rubric weights, evaluation version, models) and the result; `question_evaluations` holds the eight scores with their quotes.
+  - `ai_invocations` holds every call: model name and version, prompt, rubric and evaluation versions, timestamp, the input references (find a run's calls with `input_refs->>'evaluation' = '<id>'`) and the output.
+  - Each interview's history shows `evaluation_started` and `evaluated`, and the organisation's audit log records re-runs and reviewers' scores.
+- **Repeating an evaluation with its pinned versions:** `uv run hv eval-rerun <interview-id>`, or Repeat with pinned versions on the interview's page (organisation admins). It loads the prompt, rubric weights and skill plan the evaluation recorded, evaluates again and prints how far each score moved; the interview's own evaluation is not changed. Tolerance is 1.0 per dimension and 0.5 per question and overall (`--dimension`, `--overall`). The command exits 1 outside it; the report also says when the transcript or the model differs from the original, because then a difference says nothing about the prompt.
+- **Changing a prompt or the rubric:**
+  1. Add a new file (`evaluation/prompts/evaluation-question-v2.md`, `evaluation/rubrics/dimensions-v2.md`); never edit one in use.
+  2. `uv run hv eval-interviews --prompt-version evaluation-question-v2` runs the labelled set (`evaluation/eval_set/cases.json`, from the simulator's personas) through it and applies the gate: thresholds, no fall from the committed baseline, and the prompt's required clauses. It exits 1 when blocked. Add `--live` to use the configured vendor instead of the mock (needs a working key), `--report docs/evals/2026-10-interviews.md` to write the results.
+  3. When it passes, point `ACTIVE_QUESTION_PROMPT` (or the rubric or synthesis prompt) at the new name in `evaluation/registry.py`, bump `EVALUATION_VERSION` if the arithmetic changed, and run `uv run hv eval-interviews --update-baseline`. CI runs `hv eval-interviews` on every backend change, so an unrecorded change fails there.
+  4. If the personas change, regenerate the set with `hirevion_interview_simulator.eval_set.write` (a test checks it).
+- **Reviewers' calibration:** on a finished interview's page, open a question, score the eight dimensions yourself and save; the AI's scores and their quotes appear beside yours. Organisation admins and recruiters (`reports.analytics.view`) see the organisation's weighted kappa, Spearman, mean gap and the AI's bias under the interview's evaluation.
+- **Database tests while other lanes test:** the test database and Valkey database 15 are shared, so run with your own database (`CREATE DATABASE hirevion_test_c4`, then `HV_TEST_DATABASE=hirevion_test_c4 uv run pytest ...`) to avoid another session rebuilding the schema under you.
+
 ## Desktop app (`ai-interviewer-desktop`)
 
 The candidate app is Tauri 2: a React webview (`src/`) plus Rust (`src-tauri/`), which also
