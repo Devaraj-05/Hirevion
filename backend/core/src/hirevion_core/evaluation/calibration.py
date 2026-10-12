@@ -112,16 +112,25 @@ async def own_scores(
 async def agreement(session: AsyncSession) -> dict[str, Any]:
     """The organisation's agreement between reviewers and the AI (the session's tenant)."""
     humans = (await session.scalars(select(HumanScore))).all()
-    current = {
-        row.question_id: row
-        for row in (
-            await session.scalars(
-                select(QuestionEvaluation)
-                .join(Evaluation, Evaluation.id == QuestionEvaluation.evaluation_id)
-                .where(Evaluation.kind == "initial", Evaluation.status == "ready")
-            )
-        ).all()
-    }
+    scored = {human.question_id for human in humans}
+    if not scored:
+        current: dict[UUID, QuestionEvaluation] = {}
+    else:
+        # Only the evaluations of questions a reviewer scored.
+        current = {
+            row.question_id: row
+            for row in (
+                await session.scalars(
+                    select(QuestionEvaluation)
+                    .join(Evaluation, Evaluation.id == QuestionEvaluation.evaluation_id)
+                    .where(
+                        Evaluation.kind == "initial",
+                        Evaluation.status == "ready",
+                        QuestionEvaluation.question_id.in_(scored),
+                    )
+                )
+            ).all()
+        }
     pairs: list[tuple[float, float]] = []
     by_dimension: dict[str, list[tuple[float, float]]] = defaultdict(list)
     compared: set[tuple[UUID, UUID]] = set()

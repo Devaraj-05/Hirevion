@@ -218,3 +218,29 @@ async def test_an_evaluation_that_never_finished_can_be_retried_and_others_canno
     gone = await make_completed_interview(org, status="abandoned")
     refused = await admin.post(url(gone, "/evaluation/rerun"))
     assert refused.status_code == 409 and refused.json()["code"] == "not-evaluable"
+
+
+async def test_a_rerun_that_cannot_be_reproduced_is_refused_with_its_reason(
+    app_db: Database,
+    admin_engine: AsyncEngine,
+    signed_in: Any,
+    make_organization: Any,
+    make_user: Any,
+    make_completed_interview: Any,
+) -> None:
+    org = await make_organization("Acme")
+    scene = await make_completed_interview(org)
+    await evaluated(app_db, scene)
+    async with admin_engine.begin() as conn:
+        await conn.execute(text("UPDATE evaluations SET evaluation_version = 'evaluation-v0'"))
+        await conn.execute(text("DELETE FROM outbox_events"))
+    admin = await signed_in(org, await make_user(org, roles=["org_admin"]))
+    refused = await admin.post(url(scene, "/evaluation/rerun"))
+    assert refused.status_code == 409
+    assert refused.json()["code"] == "evaluation-not-reproducible"
+    assert "evaluation-v0" in refused.json()["detail"]
+    async with admin_engine.begin() as conn:
+        queued = await conn.scalar(
+            text("SELECT count(*) FROM outbox_events WHERE topic = 'evaluation'")
+        )
+    assert queued == 0

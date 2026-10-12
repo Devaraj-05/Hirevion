@@ -68,10 +68,27 @@ export function draftFrom(saved: Partial<Record<string, number>> | undefined): S
   return draft;
 }
 
-/** Whether the AI's scores for a question are shown beside the reviewer's: only once they have
- * saved their own, so the AI's numbers don't set theirs. */
-export function revealsAi(savedOwn: boolean): boolean {
-  return savedOwn;
+/** Whether the AI's evaluation (overall, skills, strengths, gaps) is shown: once the reviewer has
+ * saved scores for every question, so its numbers don't set theirs; or when they choose to skip
+ * scoring, or there is nothing to score. A question's own AI scores follow the same rule per
+ * question: they appear beside the reviewer's once that question's are saved. */
+export function summaryRevealed(
+  progress: { saved: number; total: number },
+  waived: boolean,
+): boolean {
+  return waived || progress.total === 0 || progress.saved >= progress.total;
+}
+
+/** The scores to send: what is already saved, with this edit over it. The server replaces the
+ * whole set, so a draft that left dimensions blank must not drop them. */
+export function mergeScores(
+  saved: Partial<Record<string, number>> | undefined,
+  edited: Partial<Record<Dimension, number>>,
+): Record<string, number> {
+  return {
+    ...(saved as Record<string, number> | undefined),
+    ...(edited as Record<string, number>),
+  };
 }
 
 /** The AI's score minus the reviewer's, per dimension both scored. */

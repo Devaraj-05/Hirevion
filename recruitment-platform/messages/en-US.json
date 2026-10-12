@@ -1554,6 +1554,8 @@
       "retryEvaluation": "Retry the evaluation",
       "rerunQueued": "Queued. The result is compared with this evaluation when it finishes.",
       "retryQueued": "Queued. This page updates when the evaluation is done.",
+      "hiddenUntilScored": "The AI's evaluation is hidden until you've scored every question below, so it doesn't set your own scores. {saved} of {total} scored.",
+      "showWithoutScoring": "Show the evaluation without scoring",
       "questions": "Questions and your own scores",
       "youScored": "You scored this",
       "yourScores": "Your scores, 0 to 10",

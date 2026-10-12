@@ -19,24 +19,24 @@ interview or the evaluation it checks.
 
 from __future__ import annotations
 
+import asyncio
 import logging
-from collections.abc import Mapping, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from hirevion_core.access.errors import Conflict
-from hirevion_core.ai.types import AiError, AiOutputInvalid, AiRequestError, LLMService
+from hirevion_core.ai.types import AiError, LLMService
 from hirevion_core.audit import AuditEntry, AuditService
 from hirevion_core.db.session import Database
 from hirevion_core.evaluation import registry
 from hirevion_core.evaluation.aggregate import (
-    EMPTY,
     Aggregate,
     SkillPlan,
     Synthesis,
@@ -54,21 +54,31 @@ from hirevion_core.outbox import publish_event
 log = logging.getLogger(__name__)
 
 COMPLETED_TOPIC = "evaluation.completed"
-STALE_AFTER = timedelta(minutes=10)
+# A live run touches its row after every question, so one quiet for this long has stopped.
+STALE_AFTER = timedelta(minutes=3)
+# How many questions are evaluated at once.
+CONCURRENCY = 4
 BY = By("system", "evaluator")
 __all__ = [
     "BY",
     "EvaluationBusy",
+    "EvaluationLost",
     "NothingToRerun",
     "Tolerance",
     "Unreproducible",
+    "check_reproducible",
     "evaluate_interview",
+    "record_failed_rerun",
     "rerun_pinned",
 ]
 
 
 class EvaluationBusy(RuntimeError):
     """Another run of this interview's evaluation is in progress; try again later."""
+
+
+class EvaluationLost(RuntimeError):
+    """This run's row is no longer running (it was taken over or failed); nothing is stored."""
 
 
 class NothingToRerun(Conflict):
@@ -90,7 +100,6 @@ class _Scored:
     scores: list[QuestionScore]
     aggregate: Aggregate
     synthesis: Synthesis
-    flags: list[str]
 
 
 def _now() -> datetime:
@@ -135,7 +144,6 @@ def _pinned(inputs: EvaluationInputs, rubric: Rubric, synthesis_prompt: str) -> 
 
 
 async def _score_all(
-    llm: LLMService,
     organization_id: UUID,
     cases: Sequence[QuestionCase],
     plan: Sequence[SkillPlan],
@@ -143,27 +151,50 @@ async def _score_all(
     evaluator: QuestionEvaluator,
     synthesizer: Synthesizer,
     refs: Mapping[str, str],
+    beat: Callable[[], Awaitable[None]],
 ) -> _Scored:
-    """The model calls. Unavailable models and spent budgets propagate (the run is retried); an
-    unusable reply costs that question its score and is flagged."""
-    scores: list[QuestionScore] = []
-    flags: list[str] = []
-    for case in cases:
-        try:
-            scores.append(await evaluator.evaluate(organization_id, case, rubric, refs=refs))
-        except (AiOutputInvalid, AiRequestError) as error:
-            log.warning("Question %s could not be evaluated: %s", case.question_id, error)
-            flags.append(f"question_not_evaluated:{case.question_id}")
-    result = aggregate(scores, plan, rubric)
+    """The model calls: the questions at most `CONCURRENCY` at a time, then the synthesis. Any
+    failure (an unavailable model, a spent budget, an unusable reply) propagates and fails the
+    run, so it is retried whole; an evaluation is never stored with questions missing. `beat`
+    shows the run is alive after each question."""
+    limit = asyncio.Semaphore(CONCURRENCY)
+
+    async def one(case: QuestionCase) -> QuestionScore:
+        async with limit:
+            score = await evaluator.evaluate(organization_id, case, rubric, refs=refs)
+        await beat()
+        return score
+
+    tasks = [asyncio.create_task(one(case)) for case in cases]
     try:
-        synthesis = await synthesizer.synthesize(
-            organization_id, scores, cases, result, rubric, refs=refs
-        )
-    except (AiOutputInvalid, AiRequestError) as error:
-        log.warning("The synthesis could not be written: %s", error)
-        flags.append("synthesis_failed")
-        synthesis = Synthesis([], [], EMPTY, EMPTY, None)
-    return _Scored(scores, result, synthesis, flags)
+        scores = list(await asyncio.gather(*tasks))
+    except BaseException:
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        raise
+    result = aggregate(scores, plan, rubric)
+    synthesis = await synthesizer.synthesize(
+        organization_id, scores, cases, result, rubric, refs=refs
+    )
+    await beat()
+    return _Scored(scores, result, synthesis)
+
+
+def _heartbeat(
+    db: Database, organization_id: UUID, evaluation_id: UUID
+) -> Callable[[], Awaitable[None]]:
+    async def beat() -> None:
+        async with db.tenant(organization_id) as session:
+            touched = await session.execute(
+                update(Evaluation)
+                .where(Evaluation.id == evaluation_id, Evaluation.status == "running")
+                .values(updated_at=func.now())
+            )
+            if touched.rowcount != 1:  # type: ignore[attr-defined]
+                raise EvaluationLost(f"evaluation {evaluation_id} is no longer running")
+
+    return beat
 
 
 def _summary(scored: _Scored) -> dict[str, Any]:
@@ -180,26 +211,25 @@ def _summary(scored: _Scored) -> dict[str, Any]:
     }
 
 
-def _store(
-    session: AsyncSession,
-    evaluation: Evaluation,
-    scored: _Scored,
-    rubric: Rubric,
-    inputs: EvaluationInputs,
-) -> None:
+def _store(session: AsyncSession, evaluation: Evaluation, scored: _Scored) -> None:
+    """Finishes `evaluation`, which must still be this run's `running` row."""
+    if evaluation.status != "running":
+        raise EvaluationLost(f"evaluation {evaluation.id} is {evaluation.status}")
     result = scored.aggregate
     used = {s.model for s in scored.scores}
+    # The model that scored the questions, so a re-run compares like with like.
+    question_models = sorted(used)
     if scored.synthesis.model:
         used.add(scored.synthesis.model)
     models = sorted(used)
     evaluation.status = "ready"
-    evaluation.model = models[0] if models else None
+    evaluation.model = question_models[0] if question_models else (models[0] if models else None)
     evaluation.pinned = {**evaluation.pinned, "models": models}
     evaluation.overall_score = _decimal(result.overall)
     evaluation.communication_score = _decimal(result.communication.score)
     evaluation.skills = [skill.as_json() for skill in result.skills]
     evaluation.summary = _summary(scored)
-    evaluation.flags = [*result.flags, *scored.flags]
+    evaluation.flags = list(result.flags)
     evaluation.completed_at = _now()
     for score in scored.scores:
         session.add(
@@ -277,7 +307,6 @@ async def evaluate_interview(
     refs = {"interview": str(interview_id), "evaluation": str(evaluation_id)}
     try:
         scored = await _score_all(
-            llm,
             organization_id,
             inputs.cases,
             inputs.plan,
@@ -285,11 +314,12 @@ async def evaluate_interview(
             QuestionEvaluator(llm),
             Synthesizer(llm),
             refs,
+            _heartbeat(db, organization_id, evaluation_id),
         )
         async with db.tenant(organization_id) as session:
             interview = await session.get_one(Interview, interview_id, with_for_update=True)
             evaluation = await session.get_one(Evaluation, evaluation_id)
-            _store(session, evaluation, scored, rubric, inputs)
+            _store(session, evaluation, scored)
             await session.flush()
             await transition(
                 session,
@@ -330,6 +360,57 @@ def _snapshots(rows: Sequence[QuestionEvaluation]) -> dict[str, Snapshot]:
     }
 
 
+def check_reproducible(base: Evaluation) -> None:
+    """Raises `Unreproducible` unless `base` can be repeated with this software: a supported
+    evaluation version, prompt and rubric files that still exist, and the weights and skill plan
+    it pinned."""
+    if base.evaluation_version not in registry.SUPPORTED_EVALUATION_VERSIONS:
+        raise Unreproducible(f"it used {base.evaluation_version}")
+    try:
+        pinned = base.pinned
+        registry.load_prompt(base.prompt_version)
+        registry.load_rubric(registry.rubric_base(base.rubric_version))
+        registry.load_prompt(str(pinned["synthesis_prompt_version"]))
+        if not isinstance(pinned["rubric"]["weights"], dict) or not isinstance(
+            pinned["skills"], list
+        ):
+            raise TypeError("the pinned weights or skills are malformed")
+    except (registry.UnknownVersion, KeyError, TypeError) as error:
+        raise Unreproducible(str(error)) from error
+
+
+async def record_failed_rerun(
+    db: Database,
+    organization_id: UUID,
+    interview_id: UUID,
+    requested_by: UUID | None,
+    error: Conflict,
+) -> None:
+    """A re-run that can never work (nothing to repeat, or no way to reproduce it) is stored as a
+    failed run with the reason, so it is neither retried nor lost."""
+    async with db.tenant(organization_id) as session:
+        interview = await session.get(Interview, interview_id, with_for_update=True)
+        if interview is None:
+            return
+        base = await _latest(session, interview_id, kind="initial", status="ready")
+        session.add(
+            Evaluation(
+                organization_id=organization_id,
+                interview_id=interview_id,
+                sequence=await _next_sequence(session, interview_id),
+                kind="rerun",
+                rerun_of=base.id if base else None,
+                status="failed",
+                prompt_version=base.prompt_version if base else "unknown",
+                rubric_version=base.rubric_version if base else "unknown",
+                evaluation_version=base.evaluation_version if base else "unknown",
+                error=error.code,
+                created_by=requested_by,
+                completed_at=_now(),
+            )
+        )
+
+
 async def rerun_pinned(
     db: Database,
     llm: LLMService,
@@ -350,8 +431,7 @@ async def rerun_pinned(
         )
         if interview is None or base is None:
             raise NothingToRerun
-        if base.evaluation_version not in registry.SUPPORTED_EVALUATION_VERSIONS:
-            raise Unreproducible(f"it used {base.evaluation_version}")
+        check_reproducible(base)
         pinned = base.pinned
         try:
             rubric = rubric_from_weights(
@@ -372,7 +452,7 @@ async def rerun_pinned(
                 prompt_version=str(pinned["synthesis_prompt_version"]),
                 evaluation_version=base.evaluation_version,
             )
-        except (registry.UnknownVersion, KeyError) as error:
+        except (registry.UnknownVersion, KeyError, TypeError) as error:
             raise Unreproducible(str(error)) from error
         base_rows = (
             await session.scalars(
@@ -406,7 +486,14 @@ async def rerun_pinned(
     }
     try:
         scored = await _score_all(
-            llm, organization_id, inputs.cases, plan, rubric, evaluator, synthesizer, refs
+            organization_id,
+            inputs.cases,
+            plan,
+            rubric,
+            evaluator,
+            synthesizer,
+            refs,
+            _heartbeat(db, organization_id, evaluation_id),
         )
         rerun_overall = scored.aggregate.overall
         models = sorted({s.model for s in scored.scores})
@@ -426,7 +513,7 @@ async def rerun_pinned(
         )
         async with db.tenant(organization_id) as session:
             evaluation = await session.get_one(Evaluation, evaluation_id)
-            _store(session, evaluation, scored, rubric, inputs)
+            _store(session, evaluation, scored)
             evaluation.diff = diff
             await session.flush()
             await AuditService().append(

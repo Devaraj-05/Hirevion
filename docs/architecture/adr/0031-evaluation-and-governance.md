@@ -35,8 +35,8 @@
 - **Lifecycle and delivery.**
   - Completing an interview queues an `evaluation` event in the same transaction (`lifecycle.transition`). `interview.completed` cannot be shared: stream consumers delete what they finish, so a second group would lose it.
   - Three steps with no transaction open during a model call: (1) `completed → evaluating` and a `running` evaluation row with the versions in force; (2) the calls; (3) the scores, `evaluating → evaluated` and `evaluation.completed` (ids, status, overall score and versions; no personal details) in one transaction.
-  - A failure marks the evaluation failed and leaves the interview Evaluating; the stream retries (five attempts); the last attempt's give-up returns the interview to Completed. An unusable reply for one question leaves it unscored and flagged; the unavailable model and the spent budget retry the whole run.
-  - A partial unique index allows one running or ready initial evaluation per interview, and a stale `running` row (ten minutes) can be replaced.
+  - A failure marks the evaluation failed and leaves the interview Evaluating; the stream retries (five attempts); the last attempt's give-up returns the interview to Completed. Any failed call, including an unusable reply, fails the run so it is redone whole; an evaluation is never stored with questions missing.
+  - A partial unique index allows one running or ready initial evaluation per interview, and a `running` row that has not been touched for three minutes (a live run touches it after every question) can be replaced; the questions run at most four at once, and any unusable reply fails the whole run so it is redone.
 - **Governance (§79).**
   - Every call goes through the provider layer's `Recorder`, so `ai_invocations` already holds the eight fields; no column was added. The context carries the prompt, rubric and evaluation versions, and `input_refs` names the interview, the evaluation, the question and the SHA-256 of the request.
   - `evaluations` pins what a re-run needs: the prompt names, the rubric's base and weights, the skill plan, the models and the input digests.

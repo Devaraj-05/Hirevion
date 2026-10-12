@@ -37,8 +37,9 @@ import {
   draftFrom,
   formatScore,
   gaps,
-  revealsAi,
+  mergeScores,
   type ScoreDraft,
+  summaryRevealed,
   validateScores,
 } from "./evaluation-model";
 
@@ -273,7 +274,7 @@ function QuestionPanel({
       saveMyScores(
         interviewId,
         question.question_id,
-        checked.scores as Record<string, number>,
+        mergeScores(saved?.dimensions, checked.scores),
         note,
       ),
     onSuccess: () => {
@@ -293,7 +294,7 @@ function QuestionPanel({
       <div className="mt-3 grid gap-4">
         <fieldset className="grid gap-2">
           <legend className="mb-1 text-sm">{t("yourScores")}</legend>
-          {!revealsAi(saved !== undefined) ? (
+          {saved === undefined ? (
             <p className="text-muted-foreground text-xs">{t("blindFirst")}</p>
           ) : null}
           <div className="grid gap-2 sm:grid-cols-2">
@@ -412,13 +413,20 @@ export function EvaluationCard({
   const evaluation = useQuery({
     queryKey: evaluationKeys.detail(id),
     queryFn: () => getEvaluation(id),
-    refetchInterval: (query) => (query.state.data?.state === "evaluating" ? POLL_MS : false),
+    // Just after an interview ends there is no evaluation yet ("none"); it appears within moments.
+    refetchInterval: (query) =>
+      query.state.data?.state === "evaluating" || query.state.data?.state === "none"
+        ? POLL_MS
+        : false,
   });
+  const [queued, setQueued] = useState(false);
+  const [waived, setWaived] = useState(false);
   const mine = useQuery({ queryKey: evaluationKeys.mine(id), queryFn: () => listMyScores(id) });
   const rerun = useMutation({
     mutationFn: () => queueRerun(id),
-    onSuccess: (queued) => {
-      toast.success(t(queued.action === "rerun" ? "rerunQueued" : "retryQueued"), {});
+    onSuccess: (result) => {
+      setQueued(true);
+      toast.success(t(result.action === "rerun" ? "rerunQueued" : "retryQueued"), {});
       void queryClient.invalidateQueries({ queryKey: evaluationKeys.detail(id) });
     },
     onError: problems.show,
@@ -447,6 +455,11 @@ export function EvaluationCard({
     ]),
   );
   const canAct = canRerun && (state === "ready" || state === "failed" || state === "none");
+  const progress = {
+    saved: body ? body.questions.filter((q) => savedBy.has(q.question_id)).length : 0,
+    total: body ? body.questions.length : 0,
+  };
+  const revealed = mine.isSuccess && summaryRevealed(progress, waived);
 
   return (
     <>
@@ -457,7 +470,7 @@ export function EvaluationCard({
             <Button
               size="sm"
               variant="secondary"
-              disabled={rerun.isPending}
+              disabled={rerun.isPending || queued}
               onClick={() => rerun.mutate()}
             >
               {state === "ready" ? t("rerun") : t("retryEvaluation")}
@@ -465,19 +478,33 @@ export function EvaluationCard({
           ) : null}
         </CardHeader>
         <CardContent>
-          {state === "ready" && body ? (
+          {state === "ready" && body && revealed ? (
             <Summary evaluation={body} />
+          ) : state === "ready" && body ? (
+            <div className="grid justify-items-start gap-2">
+              <p className="text-muted-foreground text-sm">
+                {mine.isError
+                  ? t("loadFailed")
+                  : t("hiddenUntilScored", { saved: progress.saved, total: progress.total })}
+              </p>
+              {mine.isSuccess ? (
+                <Button size="sm" variant="secondary" onClick={() => setWaived(true)}>
+                  {t("showWithoutScoring")}
+                </Button>
+              ) : null}
+            </div>
           ) : (
             <p className="text-muted-foreground text-sm">{t(`states.${state}`)}</p>
           )}
         </CardContent>
       </Card>
-      {state === "ready" && body ? (
+      {state === "ready" && body && mine.isSuccess ? (
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>{t("questions")}</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-2">
+            {/* Mounted once the reviewer's saved scores are known, so the form starts from them. */}
             {body.questions.map((question) => (
               <QuestionPanel
                 key={question.question_id}

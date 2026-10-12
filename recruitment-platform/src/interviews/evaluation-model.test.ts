@@ -6,8 +6,9 @@ import {
   draftFrom,
   formatScore,
   gaps,
+  mergeScores,
   parseScore,
-  revealsAi,
+  summaryRevealed,
   validateScores,
 } from "./evaluation-model";
 
@@ -69,10 +70,27 @@ describe("draftFrom and gaps", () => {
   });
 });
 
-describe("revealsAi", () => {
-  it("shows the AI's numbers only after the reviewer has saved their own", () => {
-    expect(revealsAi(false)).toBe(false);
-    expect(revealsAi(true)).toBe(true);
+describe("summaryRevealed", () => {
+  it("keeps the AI's numbers back until every question has the reviewer's scores", () => {
+    expect(summaryRevealed({ saved: 0, total: 3 }, false)).toBe(false);
+    expect(summaryRevealed({ saved: 2, total: 3 }, false)).toBe(false);
+    expect(summaryRevealed({ saved: 3, total: 3 }, false)).toBe(true);
+  });
+
+  it("shows them when the reviewer chose to skip scoring, or there is nothing to score", () => {
+    expect(summaryRevealed({ saved: 0, total: 3 }, true)).toBe(true);
+    expect(summaryRevealed({ saved: 0, total: 0 }, false)).toBe(true);
+  });
+});
+
+describe("mergeScores", () => {
+  it("keeps the saved dimensions the reviewer didn't touch", () => {
+    expect(mergeScores({ correctness: 8, clarity: 6 }, { clarity: 7, evidence: 5 })).toEqual({
+      correctness: 8,
+      clarity: 7,
+      evidence: 5,
+    });
+    expect(mergeScores(undefined, { clarity: 7 })).toEqual({ clarity: 7 });
   });
 });
 

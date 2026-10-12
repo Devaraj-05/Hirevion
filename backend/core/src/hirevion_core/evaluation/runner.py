@@ -10,6 +10,7 @@ with the strong model; after its last attempt `give_up_evaluation` returns the i
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -19,7 +20,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from hirevion_core.ai import AiServices
 from hirevion_core.db.session import Database
 from hirevion_core.evaluation.compare import Tolerance
-from hirevion_core.evaluation.service import BY, evaluate_interview, rerun_pinned
+from hirevion_core.evaluation.service import (
+    BY,
+    STALE_AFTER,
+    NothingToRerun,
+    Unreproducible,
+    evaluate_interview,
+    record_failed_rerun,
+    rerun_pinned,
+)
 from hirevion_core.interviews.lifecycle import EVALUATION_TOPIC, transition
 from hirevion_core.models import Evaluation, Interview
 from hirevion_core.outbox import publish_event
@@ -57,22 +66,22 @@ async def handle_evaluation_event(
     if action == "evaluate":
         await evaluate_interview(db, ai.llm, organization_id, interview_id)
     elif action == "rerun":
-        requested = payload.get("requested_by")
-        await rerun_pinned(
-            db,
-            ai.llm,
-            organization_id,
-            interview_id,
-            UUID(str(requested)) if requested else None,
-            Tolerance(),
-        )
+        requested = UUID(str(payload["requested_by"])) if payload.get("requested_by") else None
+        try:
+            await rerun_pinned(db, ai.llm, organization_id, interview_id, requested, Tolerance())
+        except (NothingToRerun, Unreproducible) as error:
+            # Retrying cannot help: keep the reason on a failed run and acknowledge the event.
+            log.warning("Re-run of %s refused: %s", interview_id, error.code)
+            await record_failed_rerun(db, organization_id, interview_id, requested, error)
     else:
         log.warning("Ignoring an evaluation event with action %r", action)
 
 
 async def give_up_evaluation(db: Database, organization_id: UUID, payload: dict[str, Any]) -> None:
-    """Called after the last attempt: whatever is still running is failed, and an interview
-    that was being evaluated goes back to `completed`."""
+    """Called after the last attempt. A run that has stopped (its row untouched for
+    `STALE_AFTER`) is failed, and an interview being evaluated with no live run goes back to
+    `completed`. A run that is still alive is not this event's: a duplicate that only met
+    `EvaluationBusy` leaves it alone."""
     interview_id = UUID(str(payload["interview_id"]))
     async with db.tenant(organization_id) as session:
         interview = await session.get(Interview, interview_id, with_for_update=True)
@@ -85,8 +94,14 @@ async def give_up_evaluation(db: Database, organization_id: UUID, payload: dict[
                 )
             )
         ).all()
+        live = False
         for evaluation in running:
-            evaluation.status, evaluation.error = "failed", "gave_up"
+            if datetime.now(UTC) - evaluation.updated_at < STALE_AFTER:
+                live = True
+            else:
+                evaluation.status, evaluation.error = "failed", "gave_up"
+        if live:
+            return
         if payload.get("action") == "evaluate" and interview.status == "evaluating":
             await transition(
                 session,

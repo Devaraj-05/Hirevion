@@ -132,6 +132,15 @@ describe("EvaluationCard", () => {
   it("shows the scores with their verified quotes, and flags what has none", async () => {
     vi.mocked(api.getEvaluation).mockResolvedValue(READY);
     renderAdmin(<EvaluationCard id="iv-1" canRerun={false} canMeasure={false} />);
+    // The AI's numbers stay back until the reviewer has scored, or chooses not to.
+    expect(
+      await screen.findByText(/hidden until you've scored every question/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/0 of 1 scored/)).toBeInTheDocument();
+    expect(screen.queryByText("7.4")).toBeNull();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Show the evaluation without scoring" }),
+    );
     expect(await screen.findByText("7.4")).toBeInTheDocument();
     expect(screen.getByText("Python")).toBeInTheDocument();
     expect(screen.getByText("8.2")).toBeInTheDocument();
@@ -228,6 +237,70 @@ describe("EvaluationCard", () => {
       await screen.findByRole("button", { name: "Repeat with pinned versions" }),
     );
     await waitFor(() => expect(api.queueRerun).toHaveBeenCalledWith("iv-1"));
+    // Queued: a second press would only queue it again.
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Repeat with pinned versions" })).toBeDisabled(),
+    );
+  });
+
+  it("starts from the scores already saved and keeps the ones it doesn't change", async () => {
+    vi.mocked(api.getEvaluation).mockResolvedValue(READY);
+    vi.mocked(api.getQuestionEvaluation).mockResolvedValue(DETAIL);
+    vi.mocked(api.listMyScores).mockResolvedValue([
+      {
+        question_id: "q-1",
+        dimensions: { correctness: 7, clarity: 6, evidence: 9 },
+        note: "earlier",
+        updated_at: "2026-10-12T06:00:00Z",
+      },
+    ]);
+    vi.mocked(api.saveMyScores).mockResolvedValue({
+      question_id: "q-1",
+      dimensions: { correctness: 7, clarity: 8, evidence: 9 },
+      note: "earlier",
+      updated_at: "2026-10-12T06:05:00Z",
+    });
+    renderAdmin(<EvaluationCard id="iv-1" canRerun={false} canMeasure={false} />);
+    await userEvent.click(await screen.findByText("How do you find out why a query is slow?"));
+    expect(screen.getByLabelText("Correctness")).toHaveValue("7");
+    expect(screen.getByLabelText("Note")).toHaveValue("earlier");
+    await userEvent.clear(screen.getByLabelText("Clarity"));
+    await userEvent.type(screen.getByLabelText("Clarity"), "8");
+    // Clearing a dimension must not drop it from what is saved either.
+    await userEvent.clear(screen.getByLabelText("Evidence"));
+    await userEvent.click(screen.getByRole("button", { name: "Save my scores" }));
+    await waitFor(() =>
+      expect(api.saveMyScores).toHaveBeenCalledWith(
+        "iv-1",
+        "q-1",
+        { correctness: 7, clarity: 8, evidence: 9 },
+        "earlier",
+      ),
+    );
+  });
+
+  it("keeps checking for an evaluation that hasn't appeared yet", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      vi.mocked(api.getEvaluation)
+        .mockResolvedValueOnce({
+          interview_id: "iv-1",
+          interview_status: "completed",
+          state: "none",
+          evaluation: null,
+        })
+        .mockResolvedValue(READY);
+      renderAdmin(<EvaluationCard id="iv-1" canRerun={false} canMeasure={false} />);
+      expect(
+        await screen.findByText("The interview hasn't been evaluated yet."),
+      ).toBeInTheDocument();
+      await vi.advanceTimersByTimeAsync(5500);
+      expect(
+        await screen.findByText(/hidden until you've scored every question/),
+      ).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("offers a retry for an evaluation that gave up", async () => {

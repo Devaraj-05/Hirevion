@@ -150,7 +150,6 @@ def aggregate(
     by_skill: dict[str, list[QuestionScore]] = defaultdict(list)
     for score in scores:
         by_skill[score.skill or GENERAL].append(score)
-    planned = {item.name.casefold(): item for item in plan}
     folded = {name.casefold(): name for name in by_skill}
     skills = [
         _skill_score(
@@ -160,7 +159,7 @@ def aggregate(
     ]
     planned_names = {item.name.casefold() for item in plan}
     skills += [
-        _skill_score(name, planned.get(name.casefold()), by_skill[name], rubric)
+        _skill_score(name, None, by_skill[name], rubric)
         for name in by_skill
         if name.casefold() not in planned_names
     ]

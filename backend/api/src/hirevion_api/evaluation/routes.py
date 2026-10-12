@@ -44,7 +44,7 @@ from hirevion_core.access.scope import resource_scope
 from hirevion_core.evaluation import calibration
 from hirevion_core.evaluation.registry import DIMENSIONS
 from hirevion_core.evaluation.runner import request_evaluation
-from hirevion_core.evaluation.service import STALE_AFTER
+from hirevion_core.evaluation.service import STALE_AFTER, check_reproducible
 from hirevion_core.interviews import assignment
 from hirevion_core.models import Evaluation, Interview, InterviewQuestion, QuestionEvaluation
 
@@ -372,6 +372,7 @@ async def request_rerun(
         )
         ready = await _latest(session, interview.id, "ready")
         if ready is not None:
+            check_reproducible(ready)  # a refusal now, with its reason, not a silent drop later
             action = "rerun"
         elif interview.status in ("completed", "evaluating"):
             running = await _latest(session, interview.id, "running")

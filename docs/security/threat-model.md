@@ -337,7 +337,7 @@
 | Information disclosure | The candidate's name or contact details reach the model | The request carries the question, skill, expected concepts and the answer only; the `evaluation.completed` event carries ids, status and the overall score |
 | Information disclosure | Reviewers anchor on the AI's numbers | The panel reveals a question's AI scores after the reviewer saves their own; other reviewers' scores are not exposed. The overall and skill scores are visible earlier (residual) |
 | Denial of service | A very long answer or many questions burn the budget | Answers are cut (4,000 characters a turn, 12,000 a question); one call per scored question; the organisation's monthly AI budget stops calls (`AiBudgetExceeded`) and the run is retried, then abandoned back to Completed |
-| Denial of service | A crashed worker leaves an interview Evaluating forever | A `running` evaluation older than ten minutes is replaced on the next attempt; the consumer retries five times then returns the interview to Completed; an admin can retry |
+| Denial of service | A crashed worker leaves an interview Evaluating forever | A `running` evaluation untouched for three minutes (a live run touches it after every question) is replaced on the next attempt; the consumer retries five times then returns the interview to Completed; an admin can retry |
 | Elevation of privilege | A reviewer triggers re-runs or reads organisation statistics | Re-runs need `admin.ai.manage`, agreement figures `reports.analytics.view` |
 
 **Residual risks:**
