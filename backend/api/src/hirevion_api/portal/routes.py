@@ -286,7 +286,7 @@ async def get_portal_notices() -> NoticesResponse:
         disclosures=list(notices.DISCLOSURES),
         policies=[
             PolicyItem(key=policy.key, title=policy.title, body=policy.body)
-            for policy in notices.load_policies(notices.policies_dir())
+            for policy in notices.current_policies()
         ],
     )
 

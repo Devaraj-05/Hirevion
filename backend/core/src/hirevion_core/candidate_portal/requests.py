@@ -18,12 +18,12 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Select, select
+from sqlalchemy import Select, and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from hirevion_core.access.actor import Actor
 from hirevion_core.access.errors import Conflict, Invalid, NotFound
-from hirevion_core.access.scope import ResourceScope
+from hirevion_core.access.scope import ResourceScope, scope_clause
 from hirevion_core.audit import AuditEntry, AuditService
 from hirevion_core.candidates.candidates import CandidateFilters, candidates_statement
 from hirevion_core.identity.settings import IdentitySettings
@@ -101,13 +101,13 @@ def _text(value: Any) -> str:
 
 
 def _choices(value: Any, allowed: tuple[str, ...], name: str) -> list[str]:
-    chosen = list(dict.fromkeys(value)) if isinstance(value, list) else []
-    if not chosen:
+    items = value if isinstance(value, list) else []
+    if not items:
         raise Invalid(f"{name}-required", f"Choose at least one of the {name}", field=name)
-    unknown = [item for item in chosen if item not in allowed]
+    unknown = [item for item in items if not isinstance(item, str) or item not in allowed]
     if unknown:
         raise Invalid(f"unknown-{name}", f"Unknown choice: {str(unknown[0])[:40]}", field=name)
-    return chosen
+    return list(dict.fromkeys(items))
 
 
 def _details(new: NewRequest) -> dict[str, Any]:
@@ -134,7 +134,12 @@ async def _own_interview(
     session: AsyncSession, account: CandidateAccount, interview_id: UUID
 ) -> Interview:
     interview = await session.get(Interview, interview_id)
-    if interview is None or interview.candidate_id != account.candidate_id:
+    # An interview not yet sent to the candidate isn't theirs to see (the portal hides it too).
+    if (
+        interview is None
+        or interview.candidate_id != account.candidate_id
+        or interview.status == "scheduled"
+    ):
         raise NotFound("interview-not-found", "No such interview")
     return interview
 
@@ -252,9 +257,22 @@ async def list_own(session: AsyncSession, account_id: UUID) -> list[CandidateReq
 
 
 def recruiter_statement(scope: ResourceScope, filters: RequestFilters) -> Select[CandidateRequest]:
-    """Requests of the candidates `scope` reaches that match `filters`; the caller orders them."""
+    """Requests `scope` reaches that match `filters`; the caller orders them. One about an
+    interview follows the interview's own scope (its job's team and recruiter); the others
+    follow the candidate's."""
     reachable = candidates_statement(scope, CandidateFilters()).with_only_columns(Candidate.id)
-    statement = select(CandidateRequest).where(CandidateRequest.candidate_id.in_(reachable))
+    in_scope = select(Interview.id).where(
+        scope_clause(scope, team_column=Interview.team_id, owner_column=Interview.recruiter_id)
+    )
+    statement = select(CandidateRequest).where(
+        or_(
+            and_(
+                CandidateRequest.interview_id.is_(None),
+                CandidateRequest.candidate_id.in_(reachable),
+            ),
+            CandidateRequest.interview_id.in_(in_scope),
+        )
+    )
     if filters.status is not None:
         statement = statement.where(CandidateRequest.status == filters.status)
     if filters.kind is not None:
@@ -276,8 +294,11 @@ async def update_request(
     response: str | None,
 ) -> CandidateRequest:
     """Moves a request on (open → in progress → resolved or declined), with a reply."""
+    # Locked, so two recruiters acting at once can't both close it.
     row = await session.scalar(
-        recruiter_statement(scope, RequestFilters()).where(CandidateRequest.id == request_id)
+        recruiter_statement(scope, RequestFilters())
+        .where(CandidateRequest.id == request_id)
+        .with_for_update()
     )
     if row is None:
         raise NotFound("request-not-found", "No such request")

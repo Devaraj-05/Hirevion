@@ -42,6 +42,12 @@ class CandidateTokenRef:
     account_id: UUID
 
 
+def candidate_lockout_key(email: str) -> str:
+    """The sign-in lockout's key for a candidate's email: one budget for the desktop app and
+    the portal (ADR-0021, ADR-0022), kept apart from recruiters'."""
+    return f"candidate:{email.strip()}"
+
+
 async def ensure_account(
     session: AsyncSession, candidate: Candidate, *, locale: str
 ) -> CandidateAccount:

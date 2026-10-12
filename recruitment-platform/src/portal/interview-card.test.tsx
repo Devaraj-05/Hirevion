@@ -56,6 +56,18 @@ describe("InterviewCard", () => {
     expect(screen.getByText("The window has closed.")).toBeVisible();
   });
 
+  it("lets an interrupted interview finish its duration after the window ends", () => {
+    const interrupted = interview({
+      status: "interrupted",
+      starts_at: "2026-10-12T03:00:00Z",
+      expires_at: "2026-10-12T04:00:00Z",
+      can_take: true,
+    });
+    renderWithIntl(<InterviewCard interview={interrupted} serverNow={NOW} />);
+    expect(screen.getByText("Closes in 15 minutes")).toBeVisible();
+    expect(screen.getByText("Open now: start it in the Hirevion interview app.")).toBeVisible();
+  });
+
   it("offers no reschedule for an interview that has run", () => {
     renderWithIntl(
       <InterviewCard interview={interview({ status: "completed" })} serverNow={NOW} />,

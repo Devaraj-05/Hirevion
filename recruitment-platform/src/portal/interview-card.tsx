@@ -65,11 +65,12 @@ export function InterviewCard({
   const units = useTranslations("portal.countdown");
   const now = useServerNow(serverNow);
   const window = useWindowText(interview);
-  const { phase, ms } = windowPhase(
-    now,
-    Date.parse(interview.starts_at),
-    Date.parse(interview.expires_at),
-  );
+  // As the API's `window_end`: one already started may finish its full duration after the
+  // window's end.
+  const started = interview.status === "in_progress" || interview.status === "interrupted";
+  const closesAt =
+    Date.parse(interview.expires_at) + (started ? interview.duration_minutes * 60_000 : 0);
+  const { phase, ms } = windowPhase(now, Date.parse(interview.starts_at), closesAt);
   const time = countdownParts(ms)
     .map(([unit, n]) => units(unit, { n }))
     .join(" ");

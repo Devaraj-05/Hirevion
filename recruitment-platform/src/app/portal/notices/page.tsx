@@ -1,26 +1,10 @@
 import { getTranslations } from "next-intl/server";
+import { isDisclosure } from "@/portal/disclosures";
 import { Markdown } from "@/portal/markdown";
 import { PortalHeading, portalMetadata } from "@/portal/portal-page";
 import { getNotices, getPortalSession } from "@/portal/server";
 
 export const generateMetadata = portalMetadata("notices");
-
-const DISCLOSURES = [
-  "camera",
-  "microphone",
-  "screen",
-  "audio",
-  "video",
-  "third_eye",
-  "transcript",
-  "coding_activity",
-  "system_telemetry",
-  "proctoring_events",
-] as const;
-
-function isDisclosure(value: string): value is (typeof DISCLOSURES)[number] {
-  return DISCLOSURES.some((item) => item === value);
-}
 
 /** PRD §83: the ten kinds of data an interview may collect, and the six policies. Public, as the
  * invitation links here before the candidate has a password. */

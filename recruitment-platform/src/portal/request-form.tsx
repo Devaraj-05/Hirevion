@@ -3,7 +3,9 @@
 import { Button, Checkbox, Input, Label, NativeSelect, Textarea } from "@hirevion/ui";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useId, useState } from "react";
+import { ACCOMMODATION_KINDS } from "@/interviews/session-api";
 import { createPortalRequest, type PortalRequestCreate, type RequestKind } from "./api";
+import { DISCLOSURES } from "./disclosures";
 
 /** The portal's request form (master plan §6.3): what each kind needs mirrors the API's rules. */
 
@@ -20,26 +22,8 @@ export const REQUEST_KINDS = [
   "consent_withdrawal",
 ] as const satisfies readonly RequestKind[];
 
-const ACCOMMODATIONS = [
-  "extended_time",
-  "text_answers",
-  "breaks",
-  "assistive_technology",
-  "relaxed_gaze",
-  "third_eye_waiver",
-] as const;
-const PURPOSES = [
-  "camera",
-  "microphone",
-  "screen",
-  "audio",
-  "video",
-  "third_eye",
-  "transcript",
-  "coding_activity",
-  "system_telemetry",
-  "proctoring_events",
-] as const;
+const ACCOMMODATIONS = ACCOMMODATION_KINDS;
+const PURPOSES = DISCLOSURES;
 const NEEDS_INTERVIEW = new Set<RequestKind>(["reschedule", "accommodation"]);
 const NEEDS_MESSAGE = new Set<RequestKind>([
   "reschedule",

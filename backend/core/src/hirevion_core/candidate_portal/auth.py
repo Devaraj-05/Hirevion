@@ -24,6 +24,7 @@ from hirevion_core.audit import AuditEntry, AuditService
 from hirevion_core.candidate_access.accounts import (
     AccountRow,
     CandidateTokenPurpose,
+    candidate_lockout_key,
     claim_candidate_token,
     find_accounts,
     issue_candidate_token,
@@ -74,11 +75,6 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
-def lockout_key(email: str) -> str:
-    """The desktop's lockout key (ADR-0021), so both doors count the same failures."""
-    return f"candidate:{email.strip()}"
-
-
 class PortalAuthService:
     def __init__(
         self,
@@ -100,7 +96,7 @@ class PortalAuthService:
         self, email: str, password: str, *, ip: str | None, user_agent: str | None
     ) -> PortalLoginOk | LoginRefused:
         email = email.strip()
-        key = lockout_key(email)
+        key = candidate_lockout_key(email)
         locked = await self._lockout.retry_after(key)
         if locked is not None:
             return LoginRefused(locked)
@@ -285,7 +281,7 @@ class PortalAuthService:
             await _record_account(
                 session, account.organization_id, account.id, action, ip, user_agent
             )
-        await self._lockout.reset(lockout_key(email))
+        await self._lockout.reset(candidate_lockout_key(email))
         return None
 
     async def _link(
@@ -332,4 +328,4 @@ async def _record_account(
     )
 
 
-__all__ = ["PortalAuthService", "PortalLoginOk", "PortalView", "lockout_key"]
+__all__ = ["PortalAuthService", "PortalLoginOk", "PortalView"]

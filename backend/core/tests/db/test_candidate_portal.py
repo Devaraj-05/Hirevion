@@ -470,6 +470,74 @@ async def test_a_team_scoped_recruiter_sees_only_requests_of_candidates_they_rea
             )
 
 
+async def test_a_request_about_an_interview_follows_the_interviews_scope(
+    app_db: Database,
+    valkey: Redis,
+    admin_engine: AsyncEngine,
+    make_organization,
+    make_hiring,
+    make_user,
+) -> None:
+    org = await make_organization("Acme")
+    hiring, interview_id, _ = await _activated(app_db, valkey, admin_engine, make_hiring, org)
+    account = await _account(app_db, org, hiring.candidate_id)
+    # This recruiter reaches the candidate (they added them) but not the interview's job.
+    outsider = await make_user(org, roles=["recruiter"])
+    async with admin_engine.begin() as conn:
+        await conn.execute(
+            text("UPDATE candidates SET created_by = :u WHERE id = :c"),
+            {"u": outsider, "c": hiring.candidate_id},
+        )
+    async with app_db.tenant(org) as session:
+        about_interview = await requests.create_request(
+            session,
+            account,
+            NewRequest(kind="reschedule", message="please", interview_id=interview_id),
+            ip=None,
+            user_agent=None,
+        )
+        general = await requests.create_request(
+            session, account, NewRequest(kind="data_access", message=""), ip=None, user_agent=None
+        )
+    narrow = ResourceScope(outsider, organization_wide=False, team_ids=frozenset())
+    async with app_db.tenant(org) as session:
+        seen = (
+            await session.scalars(requests.recruiter_statement(narrow, requests.RequestFilters()))
+        ).all()
+    assert [row.id for row in seen] == [general.id]
+    assert about_interview.id not in [row.id for row in seen]
+
+
+async def test_odd_choices_and_unsent_interviews_are_refused(
+    app_db: Database, valkey: Redis, admin_engine: AsyncEngine, make_organization, make_hiring
+) -> None:
+    org = await make_organization("Acme")
+    hiring, interview_id, _ = await _activated(app_db, valkey, admin_engine, make_hiring, org)
+    account = await _account(app_db, org, hiring.candidate_id)
+    async with app_db.tenant(org) as session:
+        with pytest.raises(Invalid):
+            await requests.create_request(
+                session,
+                account,
+                NewRequest(kind="consent_withdrawal", message="", details={"purposes": [{}]}),
+                ip=None,
+                user_agent=None,
+            )
+    async with admin_engine.begin() as conn:
+        await conn.execute(
+            text("UPDATE interviews SET status = 'scheduled' WHERE id = :i"), {"i": interview_id}
+        )
+    async with app_db.tenant(org) as session:
+        with pytest.raises(NotFound):
+            await requests.create_request(
+                session,
+                account,
+                NewRequest(kind="reschedule", message="please", interview_id=interview_id),
+                ip=None,
+                user_agent=None,
+            )
+
+
 # Notices
 
 

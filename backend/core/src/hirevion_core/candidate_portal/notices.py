@@ -6,11 +6,15 @@ default, the repository's own copy. Organisations' own texts arrive with SP-22.
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
+from functools import cache
 from pathlib import Path
 
 from hirevion_core.interview_session.briefing import CONSENT_PURPOSES
+
+log = logging.getLogger(__name__)
 
 # §83's collection list, in its order: the same purposes the interview notice itemises.
 DISCLOSURES: tuple[str, ...] = CONSENT_PURPOSES
@@ -51,6 +55,22 @@ def _parse(key: str, text: str) -> Policy:
         title = lines[0][2:].strip()
         lines = lines[1:]
     return Policy(key=key, title=title, body="\n".join(lines).strip())
+
+
+@cache
+def current_policies() -> tuple[Policy, ...]:
+    """The policies this process serves: read once, as they only change with a deployment. A
+    missing folder is logged, since §83 then goes unmet."""
+    directory = policies_dir()
+    policies = tuple(load_policies(directory))
+    if len(policies) < len(POLICY_KEYS):
+        log.error(
+            "The candidate portal serves %d of %d policies from %s; set HV_POLICIES_DIR",
+            len(policies),
+            len(POLICY_KEYS),
+            directory,
+        )
+    return policies
 
 
 def load_policies(directory: Path | None) -> list[Policy]:

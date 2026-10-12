@@ -127,6 +127,7 @@ test("a recruiter invites a shortlisted candidate to an interview", async ({ pag
     expect(text).toContain(expected);
   }
   // A new account gets the set-password link; once the portal test has activated Meera's
-  // account (SP-07b), the invitation tells her to sign in instead.
+  // account (SP-07b), the invitation tells her to sign in instead. The set-password link for a
+  // new account is held exactly by test_interview_assignment.py and portal.spec.ts.
   expect(text).toMatch(/\/invitation\/|\/forgot-password/);
 });

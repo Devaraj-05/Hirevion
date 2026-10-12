@@ -28,7 +28,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from hirevion_core.audit import AuditEntry, AuditService
-from hirevion_core.candidate_access.accounts import AccountRow, find_accounts
+from hirevion_core.candidate_access.accounts import (
+    AccountRow,
+    candidate_lockout_key,
+    find_accounts,
+)
 from hirevion_core.candidate_access.dpop import Proof
 from hirevion_core.candidate_access.tokens import (
     CandidateAuthSettings,
@@ -283,7 +287,7 @@ class CandidateAuthService:
     ) -> SignedIn | OtpRequired:
         await self._require_current(app.version, app.channel)
         email = email.strip()
-        lockout_key = f"candidate:{email}"
+        lockout_key = candidate_lockout_key(email)
         locked = await self._lockout.retry_after(lockout_key)
         if locked is not None:
             raise _account_locked(locked)
