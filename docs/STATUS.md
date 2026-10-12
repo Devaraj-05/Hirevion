@@ -21,7 +21,7 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 | D2 SP-12 server | Segment upload and acknowledgement, assembly, continuity, audited playback | #11 |
 | C4 SP-10 | Evaluation on eight dimensions with evidence, pinned re-runs, eval gate, reviewer calibration | #12 / ADR-0031 |
 | C5 SP-14 | Proctoring pipeline, severity rules, evidence and snapshots, server-observed state, live dashboard, event review | #13 / ADR-0032 |
-| A3 SP-07b | Candidate portal: own cookies and CSRF, invitation link, sign-in and resets, interviews with countdowns, download, §83 notices, report placeholder, requests acted on at `/candidates/requests` | pending / ADR-0022 |
+| A3 SP-07b | Candidate portal: own cookies and CSRF, invitation link, sign-in and resets, interviews with countdowns, download, §83 notices, report placeholder, requests acted on at `/candidates/requests` | #15 / ADR-0022 |
 
 ## In progress (unmerged worktree branches)
 
