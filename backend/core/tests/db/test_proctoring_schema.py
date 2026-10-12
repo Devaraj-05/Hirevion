@@ -219,6 +219,7 @@ async def test_the_watcher_lists_open_sessions_that_are_due(
     await session_row(admin_engine, org, idle)
     async with app_db.unscoped() as session:
         rows = await session.execute(
-            text("SELECT * FROM scheduler_proctor_sessions_due(:now, 10)"), {"now": NOW}
+            text("SELECT * FROM scheduler_proctor_sessions_due(:now, 100000)"), {"now": NOW}
         )
-        assert [(r.organization_id, r.proctor_session_id) for r in rows] == [(org, due_id)]
+        # Other tests leave sessions behind; this organisation has exactly the one that is due.
+        assert [r.proctor_session_id for r in rows if r.organization_id == org] == [due_id]
