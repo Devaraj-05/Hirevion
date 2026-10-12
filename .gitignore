@@ -52,3 +52,6 @@ ai-interviewer-desktop/public/mediapipe/
 
 # Local CI logs (scripts/ci-local.sh)
 .ci-local/
+
+# Desktop end-to-end failure screenshots
+ai-interviewer-desktop/e2e/output/

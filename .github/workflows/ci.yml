@@ -417,6 +417,43 @@ jobs:
         working-directory: ai-interviewer-desktop/src-tauri
         run: cargo test --workspace --locked
 
+  # The real app on its stub backend, driven through WebDriver (SP-08c): sign in → interviews →
+  # briefing → system check → consent → ready. Runs when the desktop job does.
+  desktop-e2e:
+    needs: changes
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.desktop == 'true'
+    runs-on: windows-2025
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install the pinned Rust toolchain
+        working-directory: ai-interviewer-desktop/src-tauri
+        run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ai-interviewer-desktop/src-tauri
+          cache-bin: true
+      - name: Install tauri-driver
+        run: command -v tauri-driver || cargo install tauri-driver --version 2.1.0 --locked
+      - name: End-to-end test (builds the debug app, fetches the matching msedgedriver)
+        run: pnpm --filter @hirevion/ai-interviewer-desktop e2e
+      - name: Keep the screenshot when it fails
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-e2e-failure
+          path: ai-interviewer-desktop/e2e/output/
+          if-no-files-found: ignore
+
   rust-licenses:
     needs: changes
     if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.rust == 'true'

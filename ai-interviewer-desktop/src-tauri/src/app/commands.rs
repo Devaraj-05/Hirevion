@@ -116,14 +116,24 @@ pub async fn profile(state: State<'_, AppState>) -> CommandResult<ProfileView> {
 }
 
 #[tauri::command]
-pub async fn native_checks() -> CommandResult<Vec<CheckResult>> {
+pub async fn native_checks(state: State<'_, AppState>) -> CommandResult<Vec<CheckResult>> {
+    if let Backend::Stub(stub) = &state.backend
+        && let Some(canned) = stub.native_checks()
+    {
+        return Ok(canned);
+    }
     tauri::async_runtime::spawn_blocking(hv_system_check::native_checks)
         .await
         .map_err(|error| CommandError::new("check-failed", error.to_string()))
 }
 
 #[tauri::command]
-pub async fn screen_capture_probe() -> CommandResult<CheckResult> {
+pub async fn screen_capture_probe(state: State<'_, AppState>) -> CommandResult<CheckResult> {
+    if let Backend::Stub(stub) = &state.backend
+        && let Some(canned) = stub.screen_capture()
+    {
+        return Ok(canned);
+    }
     tauri::async_runtime::spawn_blocking(hv_system_check::screen_capture_probe)
         .await
         .map_err(|error| CommandError::new("check-failed", error.to_string()))

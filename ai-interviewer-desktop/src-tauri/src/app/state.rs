@@ -94,7 +94,7 @@ impl AppState {
             && std::env::var("HV_DESKTOP_STUB").is_ok_and(|value| value == "1");
         let session_tokens = Arc::new(SessionTokens::default());
         let (backend, services) = if stub {
-            (Backend::Stub(Stub::default()), Services::disabled())
+            (Backend::Stub(Stub::from_env()), Services::disabled())
         } else {
             // The User-Agent wants the build ("26200.9457"), the last word of the description.
             let build = os.rsplit(' ').next().unwrap_or("unknown");

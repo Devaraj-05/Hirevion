@@ -6,6 +6,7 @@ use std::sync::Mutex;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use hv_api_client::auth::{Candidate, Interview, Organization};
+use hv_system_check::{CheckResult, NATIVE_CHECKS, Status, names};
 
 use serde_json::{Value, json};
 
@@ -21,6 +22,9 @@ const CHALLENGE: &str = "stub-challenge";
 pub struct Stub {
     email: Mutex<Option<String>>,
     answered: Mutex<usize>,
+    /// `HV_DESKTOP_STUB_NATIVE=1`: the native system checks answer "pass" without touching the
+    /// machine, so the end-to-end test runs the same on any runner.
+    canned_native: bool,
 }
 
 const QUESTIONS: [&str; 3] = [
@@ -113,6 +117,29 @@ fn profile(email: &str) -> ProfileView {
 }
 
 impl Stub {
+    pub fn from_env() -> Self {
+        Self {
+            canned_native: std::env::var("HV_DESKTOP_STUB_NATIVE").is_ok_and(|value| value == "1"),
+            ..Self::default()
+        }
+    }
+
+    /// The native checks (CPU, memory, …) as passes, or `None` to run the real ones.
+    pub fn native_checks(&self) -> Option<Vec<CheckResult>> {
+        self.canned_native.then(|| {
+            NATIVE_CHECKS
+                .iter()
+                .map(|check| CheckResult::new(check, Status::Pass).with_value("stub"))
+                .collect()
+        })
+    }
+
+    /// The screen-capture probe as a pass, or `None` to run the real one.
+    pub fn screen_capture(&self) -> Option<CheckResult> {
+        self.canned_native
+            .then(|| CheckResult::new(names::SCREEN_CAPTURE, Status::Pass).with_value("stub"))
+    }
+
     pub fn sign_in(&self, email: &str, password: &str) -> CommandResult<SignInView> {
         if password != PASSWORD {
             return Err(CommandError::new("invalid-credentials", None));
@@ -282,6 +309,30 @@ mod tests {
         ));
         stub.sign_out();
         assert_eq!(stub.profile().unwrap_err().code, "signed-out");
+    }
+
+    #[test]
+    fn canned_native_checks_are_opt_in_and_cover_the_mandatory_ones() {
+        assert!(Stub::default().native_checks().is_none());
+        assert!(Stub::default().screen_capture().is_none());
+        let stub = Stub {
+            canned_native: true,
+            ..Stub::default()
+        };
+        let native = stub.native_checks().expect("canned checks");
+        assert_eq!(native.len(), NATIVE_CHECKS.len());
+        assert!(native.iter().all(|result| result.status == Status::Pass));
+        let mut all: Vec<_> = native
+            .iter()
+            .map(|result| serde_json::json!({ "check": result.check, "status": "pass" }))
+            .collect();
+        all.extend(
+            ["camera", "microphone"]
+                .map(|name| serde_json::json!({ "check": name, "status": "pass" })),
+        );
+        all.push(serde_json::json!({ "check": "screen_capture", "status": "pass" }));
+        assert!(stub.screen_capture().is_some());
+        assert!(stub.submit(&serde_json::json!({ "results": all })).passed);
     }
 
     #[test]
