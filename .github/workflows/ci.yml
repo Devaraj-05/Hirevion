@@ -446,6 +446,9 @@ jobs:
         run: command -v tauri-driver || cargo install tauri-driver --version 2.1.0 --locked
       - name: End-to-end test (builds the debug app, fetches the matching msedgedriver)
         run: pnpm --filter @hirevion/ai-interviewer-desktop e2e
+      - name: Diagnose why the app did not come up
+        if: failure()
+        run: node ai-interviewer-desktop/e2e/diagnose.mjs
       - name: Keep the screenshot when it fails
         if: failure()
         uses: actions/upload-artifact@v7
