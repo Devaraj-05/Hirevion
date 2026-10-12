@@ -42,6 +42,8 @@ from hirevion_api.middleware import (
     SecurityHeadersMiddleware,
     UnhandledErrorMiddleware,
 )
+from hirevion_api.portal.recruiter import router as candidate_requests_router
+from hirevion_api.portal.routes import router as portal_router
 from hirevion_api.problems import install_problem_handlers
 from hirevion_api.proctoring.live import router as proctoring_live_router
 from hirevion_api.proctoring.recruiter import router as proctoring_recruiter_router
@@ -77,6 +79,9 @@ from hirevion_core.storage.service import load_optional_storage
 from hirevion_core.telemetry import Telemetry, instrument_engine
 
 log = logging.getLogger(__name__)
+
+# Candidates have a second factor in the desktop's device key and new-device code (ADR-0020).
+CANDIDATE_PASSWORD_MIN = 12
 
 # Routes that take file uploads, and so a larger body: a description, or a resume or ZIP of them.
 DESCRIPTION_UPLOAD = re.compile(rf"{API_PREFIX}/jobs/[^/]+/jd")
@@ -148,6 +153,9 @@ def create_app(
                     local_passwords, HibpChecker(aiohttp_range_fetcher(session))
                 )
                 app.state.password_policy = PasswordPolicy(breaches)
+                app.state.candidate_password_policy = PasswordPolicy(
+                    breaches, min_length=CANDIDATE_PASSWORD_MIN
+                )
             yield
 
     docs = settings.docs_enabled
@@ -171,6 +179,9 @@ def create_app(
     app.state.candidate_signer = TokenSigner.from_settings(app.state.candidate_auth)
     # The bundled list always applies; the lifespan adds Have I Been Pwned when enabled.
     app.state.password_policy = PasswordPolicy(CompositeChecker(local_passwords))
+    app.state.candidate_password_policy = PasswordPolicy(
+        CompositeChecker(local_passwords), min_length=CANDIDATE_PASSWORD_MIN
+    )
     app.openapi = lambda: build_openapi(app)  # type: ignore[method-assign]
 
     install_problem_handlers(app)
@@ -202,6 +213,8 @@ def create_app(
     app.include_router(proctoring_router)
     app.include_router(proctoring_recruiter_router)
     app.include_router(proctoring_live_router)
+    app.include_router(portal_router)
+    app.include_router(candidate_requests_router)
     if telemetry is not None and telemetry.enabled:
         FastAPIInstrumentor.instrument_app(
             app,
@@ -215,7 +228,9 @@ def create_app(
     # Starlette runs the last-added middleware first: proxy headers, the host check, the
     # per-IP rate limit, the body limit, security headers, the catch-all for errors, then CSRF.
     ip_rule = RateRule("ip", settings.ip_rate_limit, settings.ip_rate_window_seconds)
-    app.add_middleware(CsrfMiddleware, allowed_origins=settings.origins)
+    app.add_middleware(
+        CsrfMiddleware, allowed_origins=settings.origins, portal_origins=settings.portal
+    )
     app.add_middleware(UnhandledErrorMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(

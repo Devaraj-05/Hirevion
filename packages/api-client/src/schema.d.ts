@@ -427,6 +427,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/candidate-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Candidate Requests
+         * @description Requests of the candidates the reader reaches, newest first.
+         */
+        get: operations["list_candidate_requests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/candidate-requests/{request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Candidate Request
+         * @description Moves a request on (in progress, resolved or declined), with a reply the candidate
+         *     reads in the portal. A closed request stays closed (409).
+         */
+        patch: operations["update_candidate_request"];
+        trace?: never;
+    };
     "/api/v1/candidates": {
         parameters: {
             query?: never;
@@ -1964,6 +2005,215 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portal/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Portal Login
+         * @description Signs a candidate in to the portal: sets the candidate's session and CSRF cookies.
+         */
+        post: operations["portal_login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Portal Logout
+         * @description Signs out of the portal. Answers 204 even without a session, and clears the cookies.
+         */
+        post: operations["portal_logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/auth/password/forgot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Portal Forgot Password
+         * @description Emails a reset link (or, before the first password, a fresh invitation link) if the
+         *     account exists. The answer is the same either way.
+         */
+        post: operations["portal_forgot_password"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/auth/password/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Portal Reset Password
+         * @description Sets a new password from an emailed link; every portal session and desktop sign-in
+         *     ends.
+         */
+        post: operations["portal_reset_password"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/auth/password/set": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Portal Set Password
+         * @description The invitation's link: sets the first password, activates the account and confirms the
+         *     email address.
+         */
+        post: operations["portal_set_password"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/auth/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Portal Session
+         * @description Who is signed in to the portal (401 when nobody is).
+         */
+        get: operations["get_portal_session"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/downloads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Portal Downloads
+         * @description The desktop app's download (SP-07c's registry): the stable channel's page, its newest
+         *     fully rolled-out release per architecture, and the system requirements.
+         */
+        get: operations["get_portal_downloads"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/interviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Portal Interviews
+         * @description The interviews the candidate was invited to, soonest window first.
+         */
+        get: operations["list_portal_interviews"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/notices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Portal Notices
+         * @description PRD §83: the ten kinds of data an interview may collect, and the six policies.
+         */
+        get: operations["get_portal_notices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Portal Requests
+         * @description The candidate's own requests, newest first, with the organisation's replies.
+         */
+        get: operations["list_portal_requests"];
+        put?: never;
+        /**
+         * Create Portal Request
+         * @description Asks the organisation for something (master plan §6.3): it's stored, audited, mailed
+         *     back as an acknowledgement and listed for its recruiters.
+         */
+        post: operations["create_portal_request"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/proctoring/events": {
         parameters: {
             query?: never;
@@ -3192,6 +3442,74 @@ export interface components {
             /** Name */
             name: string;
         };
+        /**
+         * CandidateRequestItem
+         * @description A candidate's request, as recruiters see it.
+         */
+        CandidateRequestItem: {
+            /** Candidate Email */
+            candidate_email: string | null;
+            /**
+             * Candidate Id
+             * Format: uuid
+             */
+            candidate_id: string;
+            /** Candidate Name */
+            candidate_name: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Details */
+            details: {
+                [key: string]: unknown;
+            };
+            /** Handled At */
+            handled_at: string | null;
+            /** Handled By */
+            handled_by: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Interview Id */
+            interview_id: string | null;
+            /** Interview Reference */
+            interview_reference: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "reschedule" | "support" | "accommodation" | "alternative_process" | "data_access" | "data_correction" | "data_erasure" | "grievance" | "nomination" | "consent_withdrawal";
+            /** Message */
+            message: string;
+            /** Reference */
+            reference: string;
+            /** Response */
+            response: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "in_progress" | "resolved" | "declined";
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** CandidateRequestUpdate */
+        CandidateRequestUpdate: {
+            /** Response */
+            response?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "in_progress" | "resolved" | "declined";
+        };
         /** CandidateResponse */
         CandidateResponse: {
             /** Applications */
@@ -3546,6 +3864,31 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /** DownloadRelease */
+        DownloadRelease: {
+            /** Arch */
+            arch: string;
+            /** Notes */
+            notes: string;
+            /** Published At */
+            published_at: string | null;
+            /** Version */
+            version: string;
+        };
+        /** DownloadsResponse */
+        DownloadsResponse: {
+            /**
+             * Download Url
+             * @description The stable channel's download page; empty until set.
+             */
+            download_url: string;
+            /** Minimum Version */
+            minimum_version: string;
+            /** Releases */
+            releases: components["schemas"]["DownloadRelease"][];
+            /** System Requirements */
+            system_requirements: string[];
         };
         /** EmailChangeRequest */
         EmailChangeRequest: {
@@ -4848,6 +5191,16 @@ export interface components {
             text: string;
         };
         /**
+         * NoticesResponse
+         * @description PRD §83: what an interview may collect, and the six policies.
+         */
+        NoticesResponse: {
+            /** Disclosures */
+            disclosures: string[];
+            /** Policies */
+            policies: components["schemas"]["PolicyItem"][];
+        };
+        /**
          * ObserveResponse
          * @description A hidden, subscribe-only LiveKit token to watch the candidate's camera, screen and
          *     third eye.
@@ -5026,6 +5379,16 @@ export interface components {
              */
             next_cursor: string | null;
         };
+        /** Page[CandidateRequestItem] */
+        Page_CandidateRequestItem_: {
+            /** Items */
+            items: components["schemas"]["CandidateRequestItem"][];
+            /**
+             * Next Cursor
+             * @description Pass as `cursor` to get the next page; null on the last page.
+             */
+            next_cursor: string | null;
+        };
         /** Page[CandidateSummary] */
         Page_CandidateSummary_: {
             /** Items */
@@ -5134,7 +5497,7 @@ export interface components {
              * Name
              * @enum {string}
              */
-            name: "dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view";
+            name: "dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "candidates.requests.view" | "candidates.requests.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view";
         };
         /** PersonRef */
         PersonRef: {
@@ -5223,6 +5586,177 @@ export interface components {
             timeline_url: string | null;
             /** Track */
             track: string;
+        };
+        /** PolicyItem */
+        PolicyItem: {
+            /**
+             * Body
+             * @description Markdown, without the title.
+             */
+            body: string;
+            /** Key */
+            key: string;
+            /** Title */
+            title: string;
+        };
+        /** PortalAccount */
+        PortalAccount: {
+            /** Email */
+            email: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Locale */
+            locale: string;
+            /** Name */
+            name: string;
+        };
+        /** PortalInterviewItem */
+        PortalInterviewItem: {
+            /**
+             * Can Take
+             * @description Its window is open and it can be started in the app now.
+             */
+            can_take: boolean;
+            /** Duration Minutes */
+            duration_minutes: number;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Job Title */
+            job_title: string;
+            /**
+             * Recorded
+             * @description What the interview records, in words.
+             */
+            recorded: string;
+            /**
+             * Reference
+             * @description IV-0042.
+             */
+            reference: string;
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+            /** Status */
+            status: string;
+            /** Third Eye */
+            third_eye: string;
+            /**
+             * Timezone
+             * @description The interview's IANA time zone.
+             */
+            timezone: string;
+        };
+        /** PortalInterviewList */
+        PortalInterviewList: {
+            /** Interviews */
+            interviews: components["schemas"]["PortalInterviewItem"][];
+            /**
+             * Now
+             * Format: date-time
+             * @description The server's clock, for countdowns.
+             */
+            now: string;
+        };
+        /** PortalOrganization */
+        PortalOrganization: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Support Email
+             * @description Where the candidate writes for help (PRD §25).
+             */
+            support_email: string;
+        };
+        /** PortalRequestCreate */
+        PortalRequestCreate: {
+            /**
+             * Details
+             * @description Per kind: reschedule `preferred`; accommodation `kinds`; consent withdrawal `purposes`; nomination `nominee_name`, `nominee_email`, `relationship`; correction `field`.
+             */
+            details?: {
+                [key: string]: unknown;
+            };
+            /** Interview Id */
+            interview_id?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "reschedule" | "support" | "accommodation" | "alternative_process" | "data_access" | "data_correction" | "data_erasure" | "grievance" | "nomination" | "consent_withdrawal";
+            /**
+             * Message
+             * @default
+             */
+            message: string;
+        };
+        /** PortalRequestItem */
+        PortalRequestItem: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Details */
+            details: {
+                [key: string]: unknown;
+            };
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Interview Id */
+            interview_id: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "reschedule" | "support" | "accommodation" | "alternative_process" | "data_access" | "data_correction" | "data_erasure" | "grievance" | "nomination" | "consent_withdrawal";
+            /** Message */
+            message: string;
+            /**
+             * Reference
+             * @description RQ-1A2B3C4D.
+             */
+            reference: string;
+            /** Response */
+            response: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "in_progress" | "resolved" | "declined";
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * PortalSessionResponse
+         * @description Who is signed in to the portal.
+         */
+        PortalSessionResponse: {
+            account: components["schemas"]["PortalAccount"];
+            organization: components["schemas"]["PortalOrganization"];
         };
         /**
          * Problem
@@ -6031,7 +6565,7 @@ export interface components {
             /** Name */
             name: string;
             /** Permissions */
-            permissions: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[];
+            permissions: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "candidates.requests.view" | "candidates.requests.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[];
         };
         /** RoleRef */
         RoleRef: {
@@ -6070,7 +6604,7 @@ export interface components {
              * Permissions
              * @description What it grants, in catalogue order.
              */
-            permissions: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[];
+            permissions: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "candidates.requests.view" | "candidates.requests.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[];
             /**
              * System
              * @description Built in: can't be changed or deleted.
@@ -6084,7 +6618,7 @@ export interface components {
             /** Name */
             name?: string | null;
             /** Permissions */
-            permissions?: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[] | null;
+            permissions?: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "candidates.requests.view" | "candidates.requests.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[] | null;
         };
         /** RubricCriterion */
         RubricCriterion: {
@@ -6354,7 +6888,7 @@ export interface components {
             custom_roles?: string[];
             organization: components["schemas"]["SessionOrganization"] | null;
             /** Permissions */
-            permissions: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[];
+            permissions: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "candidates.requests.view" | "candidates.requests.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[];
             /**
              * Roles
              * @description The user's system roles, by key.
@@ -8008,6 +8542,97 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RefreshedResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_candidate_requests: {
+        parameters: {
+            query?: {
+                status?: ("open" | "in_progress" | "resolved" | "declined") | null;
+                kind?: ("reschedule" | "support" | "accommodation" | "alternative_process" | "data_access" | "data_correction" | "data_erasure" | "grievance" | "nomination" | "consent_withdrawal") | null;
+                interview_id?: string | null;
+                candidate_id?: string | null;
+                /** @description How many items to return. */
+                limit?: number;
+                /** @description `next_cursor` from the previous page. */
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_CandidateRequestItem_"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_candidate_request: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CandidateRequestUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateRequestItem"];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */
@@ -11860,6 +12485,437 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrganizationListingResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    portal_login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    portal_logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    portal_forgot_password: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ForgotPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    portal_reset_password: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TokenPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    portal_set_password: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TokenPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_portal_session: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalSessionResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_portal_downloads: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DownloadsResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_portal_interviews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalInterviewList"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_portal_notices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoticesResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_portal_requests: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalRequestItem"][];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_portal_request: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required. A unique value (a UUID is ideal) per logical create; send the same value when retrying it. */
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortalRequestCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalRequestItem"];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */

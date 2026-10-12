@@ -13,7 +13,8 @@ class ApiSettings(BaseSettings):
     # Host names the API answers to (without port); anything else gets 400 host-not-allowed.
     # `host.docker.internal` is how LiveKit's container delivers its webhooks locally.
     allowed_hosts: str = (
-        "api.hirevion.localhost,app.hirevion.localhost,localhost,127.0.0.1,host.docker.internal"
+        "api.hirevion.localhost,app.hirevion.localhost,candidate.hirevion.localhost,localhost,"
+        "127.0.0.1,host.docker.internal"
     )
     # Proxies whose X-Forwarded-For is believed (Caddy reaches `hv api` from loopback).
     trusted_proxies: str = "127.0.0.1"
@@ -32,6 +33,12 @@ class ApiSettings(BaseSettings):
         "https://app.hirevion.localhost,http://localhost:3000,http://127.0.0.1:3000,"
         "http://app.hirevion.localhost:3100"
     )
+    # The candidate portal's origins (ADR-0022): only they may use the candidate's cookies, and
+    # they may never use the recruiter's. Caddy, `next dev` and the end-to-end server.
+    portal_origins: str = (
+        "https://candidate.hirevion.localhost,http://candidate.hirevion.localhost:3000,"
+        "http://candidate.hirevion.localhost:3100"
+    )
     # Run the outbox relay and the mail consumer in this process (else `hv worker` runs them).
     run_workers: bool = True
 
@@ -47,6 +54,10 @@ class ApiSettings(BaseSettings):
     def origins(self) -> frozenset[str]:
         # Origins keep their case-insensitive scheme and host, and drop a trailing slash.
         return frozenset(origin.rstrip("/") for origin in _split(self.allowed_origins))
+
+    @property
+    def portal(self) -> frozenset[str]:
+        return frozenset(origin.rstrip("/") for origin in _split(self.portal_origins))
 
 
 def _split(value: str) -> list[str]:

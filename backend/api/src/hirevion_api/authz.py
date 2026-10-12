@@ -36,6 +36,8 @@ from hirevion_core.identity.settings import IdentitySettings
 # "device" ones need a DPoP proof of the device key (ADR-0021), "candidate" ones a candidate's
 # DPoP-bound access token, "interview" ones an interview-session token for the path's interview.
 # "webhook" ones are called by another service and verify its signature over the body.
+# "portal" ones need a candidate's portal session (its own cookie, ADR-0022) and act only on
+# that candidate's own account, interviews and requests.
 # Everything else must use `requires(...)`.
 UNGUARDED: dict[str, str] = {
     "GET /api/v1/health/live": "public",
@@ -80,6 +82,17 @@ UNGUARDED: dict[str, str] = {
     "POST /api/v1/livekit/webhook": "webhook",
     "GET /api/v1/desktop/releases/check": "public",
     "GET /api/v1/desktop/update-manifest/{target}/{arch}/{current_version}": "public",
+    "POST /api/v1/portal/auth/login": "public",
+    "POST /api/v1/portal/auth/password/set": "public",
+    "POST /api/v1/portal/auth/password/forgot": "public",
+    "POST /api/v1/portal/auth/password/reset": "public",
+    "GET /api/v1/portal/notices": "public",
+    "GET /api/v1/portal/downloads": "public",
+    "POST /api/v1/portal/auth/logout": "portal",
+    "GET /api/v1/portal/auth/session": "portal",
+    "GET /api/v1/portal/interviews": "portal",
+    "GET /api/v1/portal/requests": "portal",
+    "POST /api/v1/portal/requests": "portal",
 }
 
 

@@ -12,15 +12,27 @@ from httpx import AsyncClient
 
 from hirevion_api.auth.cookies import CSRF_COOKIE, SESSION_COOKIE
 from hirevion_api.auth.csrf import CsrfMiddleware
+from hirevion_api.portal.cookies import PORTAL_CSRF_COOKIE, PORTAL_SESSION_COOKIE
 from hirevion_api.problems import install_problem_handlers
 
 ORIGIN = "https://app.hirevion.localhost"
+PORTAL = "https://candidate.hirevion.localhost"
 
 
 def build() -> FastAPI:
     app = FastAPI()
     install_problem_handlers(app)
-    app.add_middleware(CsrfMiddleware, allowed_origins=frozenset({ORIGIN}))
+    app.add_middleware(
+        CsrfMiddleware, allowed_origins=frozenset({ORIGIN}), portal_origins=frozenset({PORTAL})
+    )
+
+    @app.post("/api/v1/portal/requests")
+    async def make_request() -> dict[str, bool]:
+        return {"ok": True}
+
+    @app.post("/api/v1/portal/auth/login")
+    async def portal_login() -> dict[str, bool]:
+        return {"ok": True}
 
     @app.get("/api/v1/things")
     async def read_things() -> dict[str, bool]:
@@ -107,3 +119,56 @@ async def test_requests_without_the_cookie_are_left_to_their_own_auth(
 ) -> None:
     response = await client_for(build()).post("/api/v1/things")
     assert response.status_code == 200
+
+
+# The candidate portal (ADR-0022): its own cookies, its own origins.
+
+
+def portal_signed_in(client: AsyncClient) -> AsyncClient:
+    client.cookies.set(PORTAL_SESSION_COOKIE, "portal-session")
+    client.cookies.set(PORTAL_CSRF_COOKIE, "portal-csrf")
+    return client
+
+
+async def test_portal_routes_take_the_candidate_cookies_from_the_portal(
+    client_for: Callable[[FastAPI], AsyncClient],
+) -> None:
+    client = portal_signed_in(client_for(build()))
+    ok = await client.post(
+        "/api/v1/portal/requests", headers={"Origin": PORTAL, "X-CSRF-Token": "portal-csrf"}
+    )
+    from_the_app = await client.post(
+        "/api/v1/portal/requests", headers={"Origin": ORIGIN, "X-CSRF-Token": "portal-csrf"}
+    )
+    no_token = await client.post("/api/v1/portal/requests", headers={"Origin": PORTAL})
+    assert (ok.status_code, from_the_app.status_code, no_token.status_code) == (200, 403, 403)
+
+
+async def test_the_recruiter_cookie_is_refused_from_the_portal(
+    client_for: Callable[[FastAPI], AsyncClient],
+) -> None:
+    client = signed_in(client_for(build()))
+    response = await client.post(
+        "/api/v1/things", headers={"Origin": PORTAL, "X-CSRF-Token": "csrf-token"}
+    )
+    assert response.status_code == 403
+
+
+async def test_the_recruiter_token_doesnt_unlock_portal_routes(
+    client_for: Callable[[FastAPI], AsyncClient],
+) -> None:
+    client = portal_signed_in(signed_in(client_for(build())))
+    response = await client.post(
+        "/api/v1/portal/requests", headers={"Origin": PORTAL, "X-CSRF-Token": "csrf-token"}
+    )
+    assert response.status_code == 403
+
+
+async def test_portal_sign_in_needs_the_portals_origin(
+    client_for: Callable[[FastAPI], AsyncClient],
+) -> None:
+    client = client_for(build())
+    allowed = await client.post("/api/v1/portal/auth/login", headers={"Origin": PORTAL})
+    app = await client.post("/api/v1/portal/auth/login", headers={"Origin": ORIGIN})
+    absent = await client.post("/api/v1/portal/auth/login")
+    assert (allowed.status_code, app.status_code, absent.status_code) == (200, 403, 403)

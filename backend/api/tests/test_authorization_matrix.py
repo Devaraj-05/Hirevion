@@ -204,6 +204,8 @@ EXPECTED: dict[str, tuple[tuple[str, ...], bool]] = {
     "GET /api/v1/evaluation/calibration": (("reports.analytics.view",), False),
     "GET /api/v1/interviews/{interview_id}/evaluation/reruns": (("admin.ai.manage",), False),
     "POST /api/v1/interviews/{interview_id}/evaluation/rerun": (("admin.ai.manage",), False),
+    "GET /api/v1/candidate-requests": (("candidates.requests.view",), False),
+    "PATCH /api/v1/candidate-requests/{request_id}": (("candidates.requests.manage",), False),
 }
 
 
