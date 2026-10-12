@@ -1185,7 +1185,7 @@ Each SP gets its own detailed TDD plan before work starts. "CP" is the checkpoin
   - The candidate portal (§6.3).
   - The candidate-auth API: OTP, device registration, DPoP, access/refresh/interview-session tokens, session expiry.
   - The desktop release registry and update manifest.
-- **Status, 2026-10-09:** SP-07a built (ADR-0020): interviews, assignment, invitations, reminders and the job's template field. SP-07c built (ADR-0021): desktop sign-in, DPoP-bound tokens, new-device codes and the release registry.
+- **Status, 2026-10-09:** SP-07a built (ADR-0020): interviews, assignment, invitations, reminders and the job's template field. SP-07c built (ADR-0021): desktop sign-in, DPoP-bound tokens, new-device codes and the release registry. SP-07b built (ADR-0022): the candidate portal with its own cookies, the invitation's link, interviews and countdowns, download, notices and requests acted on at `/candidates/requests`.
 - **Exit criteria:**
   - An invitation reaches Mailpit and the candidate can set a password.
   - Replay and stolen-token tests fail as they should.
@@ -1599,7 +1599,7 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 22 | 10 question fields; 8 question types | SP-06 (versioned library, §7 categories, approval; time limits and follow-up rules honoured in SP-09) |
 | 23 | AI question generation from 6 inputs; review before reuse | SP-06 (`interviews.generation`: drafts approved by a recruiter; candidate work history only, never contact details) |
 | 24 | Assignment: 3 inputs → 9 system fields | SP-07a (ADR-0020: `hirevion_core.interviews.assignment`, the policy snapshot, `test_interview_assignment.py`) |
-| 25 | 8 invitation contents | SP-07a (`interviews.invitations`, en-IN/en-US templates, the Mailpit test and `e2e/auth/interviews.spec.ts`), SP-07b (portal pages it links to) |
+| 25 | 8 invitation contents | SP-07a (`interviews.invitations`, en-IN/en-US templates, the Mailpit test and `e2e/auth/interviews.spec.ts`), SP-07b (ADR-0022: the pages it links to: `/invitation/`, download, notices, requests, forgot password; `e2e/auth/portal.spec.ts`) |
 | 26 | 9 startup steps (`AI-Interview.exe`) | SP-08 (the version check's server side, the release registry and update manifest: SP-07c) |
 | 27 | Tauri, React, TypeScript, Rust, Monaco | SP-08, SP-16 |
 | 28 | 6 login verifications; short-lived credentials | SP-07c (`candidate_access.service`, the six checks in order with their codes), SP-08 |
@@ -1657,7 +1657,7 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 80 | Immutable template versions; interviews pin a version | SP-06 (insert-only version tables for templates and questions), SP-07a (interviews pin `(template_id, template_version)` and a policy snapshot) |
 | 81 | Tenant scoping; server-side authorisation | SP-01, SP-02 |
 | 82 | 15 security requirements; SOC 2 / ISO 27001 target | §9, SP-01/02/07/08/12/16/23 (certifications need the cloud and an audit period) |
-| 83 | 10 disclosures; 6 policies | SP-07b (portal notices), SP-08, SP-09 (the itemised notice per policy, consents stored per purpose), SP-22, `docs/policies/` (drafts: H0.7) |
+| 83 | 10 disclosures; 6 policies | SP-07b (ADR-0022: `candidate_portal.notices` serves the ten disclosures and six policies, `markdown.tsx`, `test_portal_api.py`), SP-08, SP-09 (the itemised notice per policy, consents stored per purpose), SP-22, `docs/policies/` (drafts: H0.7) |
 | 84 | Organisation-configurable retention (6 classes) | SP-22 |
 | 85 | Postgres (8), Redis (5), Blob (9); path layout; short-lived SAS | SP-01, SP-12 (D2: recordings under `{org}/interviews/{id}/{screen,camera,audio}/` by `hirevion_core.recordings.tracks`; 15-minute write-only and 5-minute read-only SAS; `test_recording_tracks.py`) |
 | 86 | Gateway, Recruitment/Interview/Proctor APIs, orchestrator, workers | SP-01 (Caddy locally; route groups), SP-09 |
@@ -1673,7 +1673,7 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 96 | 14 observability signals | SP-01, SP-23 |
 | 97 | 16 audited actions | SP-01 plus the owning SPs (SP-12 D2: "recording viewed" audited on every playback listing, `test_recording_playback_api.py`); audit-coverage test in SP-23 |
 | 98 | Unified timeline (8 sources) | SP-17 |
-| 99 | 5 configurable candidate-visible items; internal reports stay confidential | SP-17, SP-07b (portal) |
+| 99 | 5 configurable candidate-visible items; internal reports stay confidential | SP-17, SP-07b (the portal's report page lists the five items until SP-17 fills it; internal reports never reach `/api/v1/portal/`) |
 | 100 | 10 → 10k growth path; independent scaling; performance targets | Architecture (§5–6), SP-23 local capacity; cloud-scale tests in the Cloud plan |
 | 101 | Web: 4 accessibility items; desktop: 4; proctoring adjustments for accommodations | SP-03, SP-08, SP-22, SP-23 |
 | 102 | 4 kinds of externalised text; English first | SP-03, SP-22 |

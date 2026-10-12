@@ -21,6 +21,7 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 | D2 SP-12 server | Segment upload and acknowledgement, assembly, continuity, audited playback | #11 |
 | C4 SP-10 | Evaluation on eight dimensions with evidence, pinned re-runs, eval gate, reviewer calibration | #12 / ADR-0031 |
 | C5 SP-14 | Proctoring pipeline, severity rules, evidence and snapshots, server-observed state, live dashboard, event review | #13 / ADR-0032 |
+| A3 SP-07b | Candidate portal: own cookies and CSRF, invitation link, sign-in and resets, interviews with countdowns, download, §83 notices, report placeholder, requests acted on at `/candidates/requests` | pending / ADR-0022 |
 
 ## In progress (unmerged worktree branches)
 
@@ -30,7 +31,7 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 
 ## Remaining, in priority order (dependency in brackets)
 
-- **P0:** D1 rest: CI gates, code review, dashboard KPIs [none] · A3 SP-07b portal [A1] · D3 SP-13 third-eye, with Egress [D2] · A5 SP-17 reports [ready: C4, C5, D2 merged]
+- **P0:** D1 rest: CI gates, code review, dashboard KPIs [none] · D3 SP-13 third-eye, with Egress [D2] · A5 SP-17 reports [ready: C4, C5, D2 merged]
 - **P1:** A4 SP-18 notifications/webhooks [A1] · C6 SP-16 coding server [C3] · C7 vision agent [C5, D3] · B4 desktop coding/third-eye/advanced CV [B3, C6, D3]
 - **P2:** D4 SP-19 enterprise identity [SP-02] · D5 SP-22 admin/governance [A5, C5] · A6 SP-21 analytics [A5] · D6 SP-20 ATS/public API [A4, A5]
 - **P3:** D7 SP-23 automated hardening [all] · B5 Windows golden path and chaos drills [B3, B4]

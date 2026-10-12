@@ -146,7 +146,7 @@ A box is ticked in the PR that merges the part. Deliverables are in MASTER §14;
   - Exit: the invitation reaches Mailpit with all eight contents; editing the template afterwards leaves the interview on its pinned version; bulk assignment reports what it skipped.
 - [x] **A2 SP-07c Desktop candidate auth and releases.** Depends on: A1. See MASTER §14 SP-07.
   - Exit: a replayed proof, a stolen token without the key, and an outdated version are each refused.
-- [ ] **A3 SP-07b Candidate portal.** Depends on: A1, D1 policy drafts. See MASTER §14 SP-07 (§6.3).
+- [x] **A3 SP-07b Candidate portal.** Depends on: A1, D1 policy drafts. See MASTER §14 SP-07 (§6.3).
   - Exit (Playwright): invitation email → set password → the interview is listed; a reschedule request reaches the recruiter.
 - [ ] **A4 SP-18 Notifications and webhooks.** Depends on: SP-01, A1 (takes over A1's scheduler loop). See MASTER §14 SP-18.
   - Exit: the reference receiver verifies signatures; retry and dead-letter work; a replayed delivery is refused.

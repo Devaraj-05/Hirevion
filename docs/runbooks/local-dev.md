@@ -414,6 +414,17 @@ How it works is in [ADR-0021](../architecture/adr/0021-candidate-desktop-auth.md
 - **Trying the API by hand:** every request needs a DPoP proof signed by a P-256 key (see `backend/api/tests/test_candidate_auth_api.py`'s `Desktop` class for a complete client).
 - **Stuck candidate:** `uv run hv reset-limits` clears lockouts; a reused refresh token revokes the device's sign-in (they sign in again).
 
+### Candidate portal
+
+How it works is in [ADR-0022](../architecture/adr/0022-candidate-portal.md).
+
+- **Where:** https://candidate.hirevion.localhost through Caddy (only `/api/v1/portal/*` reaches the API from that host), or http://candidate.hirevion.localhost:3000 under `next dev`. The API accepts the portal's cookies only from `HV_API_PORTAL_ORIGINS` (default: those two and the end-to-end server's `:3100`).
+- **Accepting an invitation:** open the `/invitation/<token>` link from the invitation in Mailpit, choose a password of 12 or more characters, then sign in. The same password works in the desktop app. "Forgot your password?" sends a reset link to an active account and a fresh invitation link to one that never set a password.
+- **Pages:** Interviews (windows in the interview's time zone, a countdown on the server's clock), Download (the stable channel's download address and newest release from `/platform/desktop-releases`, with system requirements and install help), Notices (§83's disclosures and `docs/policies/`, or `HV_POLICIES_DIR`), Report (a placeholder until SP-17) and Requests.
+- **Requests:** each is acknowledged by email (`RQ-` reference) and listed for recruiters at Candidates → Requests (`/candidates/requests`), where `candidates.requests.manage` holders set in progress, resolved or declined with a reply the candidate sees. Adjustments asked for before the interview also appear on the interview's Accommodations card, where they're decided.
+- **End to end:** `e2e/auth/portal.spec.ts` runs with the sign-in suite, against the same API (it opens the emailed links' paths on the portal's `:3100` host). On a busy PC, give that API its own database (`POSTGRES_DB=<name> uv run hv migrate`, then `hv seed-identity` and `hv api` with the same variable).
+- **Stuck candidate:** `uv run hv reset-limits` clears the shared portal and desktop lockout.
+
 ### The interview (engine, agent and simulator)
 
 How it works is in [ADR-0030](../architecture/adr/0030-interview-engine.md); the desktop's wire format is `docs/api/contracts/interview-session.md`.

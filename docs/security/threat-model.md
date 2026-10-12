@@ -232,6 +232,30 @@
 - A device without a TPM keeps its key in the software store; malware with the user's privileges can use it while it runs. SP-11's integrity checks and SP-14's server-side signals are the backstop.
 - Rotating the signing key signs everyone out; the cloud plan adds overlapping keys.
 
+## SP-07b Candidate portal
+
+**Assets:** candidate passwords and portal sessions; the invitation's set-password and reset links; the candidate's interviews; their requests (which may hold personal and health details for adjustments); the policies they are shown.
+
+**Trust boundaries:** the candidate's browser on `candidate.` → Caddy → API (`/api/v1/portal/*` only); email (links, acknowledgements); recruiters' browsers → API (`/api/v1/candidate-requests`).
+
+| Threat (STRIDE) | Example | Control |
+|---|---|---|
+| Spoofing | A recruiter's cookie, or a candidate's, used on the other side | Separate `__Host-` cookie names; only portal routes read the candidate's; CSRF pairs and allowed origins chosen by path; the candidate host's gateway reaches only `/api/v1/portal/*` |
+| Spoofing | Password guessing or stuffing on the portal | argon2id; identical refusals for unknown emails after the same work; the desktop's lockout key, so both doors share one budget; per-IP and per-email limits that fail closed |
+| Spoofing | Someone else follows a forwarded invitation link | Single-use, hashed, expiring links; a newer email revokes older links; setting the password only proves control of the inbox, which the invitation already assumes |
+| Tampering | Cross-site requests from another site using the candidate's cookie | Double-submit CSRF token that must belong to the session, plus the portal Origin; SameSite=Lax |
+| Tampering | A request about another candidate's interview | The interview must belong to the signed-in candidate (404 otherwise); details are filtered to what each kind takes |
+| Repudiation | "I never asked to delete my data" / "nobody answered" | Audit entries for sign-in, failures, lockout, password set and reset, requests created and every status change with who made it; the emailed acknowledgement |
+| Information disclosure | The portal reveals which emails are candidates | Identical sign-in refusals; `password/forgot` always 202 |
+| Information disclosure | A recruiter outside the candidate's teams reads their requests | `candidates.requests.view` plus the resource scope (ADR-0014) on list and update |
+| Information disclosure | A policy text injects markup or a `javascript:` link | The renderer builds React elements only; unsafe link schemes render as text |
+| Denial of service | Flooding recruiters and the candidate's inbox with requests | 20 requests an hour per account (fail closed), idempotent creation, per-IP limits |
+| Elevation of privilege | A candidate session calls recruiter routes | Recruiter routes read only the recruiter's cookie; the authorisation matrix lists every portal route as `portal` or `public` |
+
+**Residual risks:**
+- Data-rights requests are acted on by people; the erasure and export tooling (SP-22) isn't automated yet, so the 30-day promise depends on recruiters watching the list.
+- Accommodation requests can contain health information; they're visible to anyone holding `candidates.requests.view` in scope. A narrower permission may be needed once SP-22's privacy roles exist.
+
 ## SP-09 The interview engine
 
 **Assets:**
