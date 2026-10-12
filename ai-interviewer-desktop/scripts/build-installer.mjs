@@ -24,6 +24,7 @@ import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadDotEnv } from "./dotenv.mjs";
+import { authenticodeStatus } from "./powershell.mjs";
 
 const appRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const tauriDir = join(appRoot, "src-tauri");
@@ -70,26 +71,13 @@ function devCertificateThumbprint() {
   return thumbprint;
 }
 
-function authenticode(file) {
-  const result = spawnSync(
-    "powershell.exe",
-    [
-      "-NoProfile",
-      "-Command",
-      `$s = Get-AuthenticodeSignature -LiteralPath '${file}'; "$($s.Status) $($s.SignerCertificate.Subject) $($s.SignerCertificate.Thumbprint)"`,
-    ],
-    { encoding: "utf8" },
-  );
-  return (result.stdout ?? "").trim();
-}
-
 function describeInstaller(file) {
   const bytes = readFileSync(file);
   const mib = (statSync(file).size / 1024 / 1024).toFixed(1);
   console.log(`\n  ${file}`);
   console.log(`    size    ${mib} MiB`);
   console.log(`    sha256  ${createHash("sha256").update(bytes).digest("hex")}`);
-  console.log(`    signed  ${authenticode(file)}`);
+  console.log(`    signed  ${authenticodeStatus(file)}`);
   const signature = `${file}.sig`;
   if (existsSync(signature)) {
     const text = Buffer.from(readFileSync(signature, "utf8").trim(), "base64").toString("utf8");

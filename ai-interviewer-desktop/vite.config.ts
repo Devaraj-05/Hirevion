@@ -16,6 +16,6 @@ export default defineConfig({
     sourcemap: Boolean(process.env.TAURI_ENV_DEBUG),
   },
   test: {
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "e2e/**/*.test.mjs", "scripts/**/*.test.mjs"],
   },
 });

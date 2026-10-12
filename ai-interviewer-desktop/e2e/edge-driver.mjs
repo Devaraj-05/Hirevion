@@ -5,6 +5,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { expandArchive } from "../scripts/powershell.mjs";
 
 const WEBVIEW2_RUNTIME = "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}";
 const KEYS = [
@@ -44,18 +45,12 @@ export async function ensureEdgeDriver() {
   mkdirSync(folder, { recursive: true });
   const zip = join(folder, archive);
   writeFileSync(zip, Buffer.from(await response.arrayBuffer()));
-  const expanded = spawnSync(
-    "powershell.exe",
-    [
-      "-NoProfile",
-      "-Command",
-      `Expand-Archive -LiteralPath '${zip}' -DestinationPath '${folder}' -Force`,
-    ],
-    { stdio: "inherit" },
-  );
-  rmSync(zip, { force: true });
-  if (expanded.status !== 0 || !existsSync(exe)) {
-    throw new Error(`couldn't unpack msedgedriver.exe into ${folder}`);
+  try {
+    expandArchive(zip, folder);
+  } finally {
+    rmSync(zip, { force: true });
   }
+  if (!existsSync(exe))
+    throw new Error(`${archive} has no msedgedriver.exe (unpacked into ${folder})`);
   return exe;
 }
