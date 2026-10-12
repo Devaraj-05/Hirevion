@@ -529,7 +529,10 @@ How it works is in [ADR-0019](../architecture/adr/0019-desktop-packaging-and-upd
   - `HV_API_URL`: the API root compiled into the app (`https://…/api/v1`).
   - `HV_GLITCHTIP_DSN`: crash reporting; leave it out and reporting is off.
   - `--no-updater` skips the update artifacts, so no updater key is needed.
-- **Install without admin rights:** run the `-setup.exe`; it installs for the current user only. For a silent install use `/S`, and uninstall with the `uninstall.exe` in the install folder.
+- **Install without admin rights:** run the `-setup.exe`; it installs for the current user only. The default folder is `%LOCALAPPDATA%\Hirevion AI Interview`.
+  - Checked with a non-elevated silent install (`/S /D=<folder>`): it wrote only that folder and `HKCU`, and `uninstall.exe /S` removed everything. The x64 installer is about 8 MiB.
+  - Uninstall with the `uninstall.exe` in the install folder.
+- **ARM64 in CI:** run the "Desktop installers" workflow by hand. It builds x64 and ARM64 without signing and keeps the installers as artifacts. It hasn't run on a runner yet; building ARM64 locally needs the Visual Studio ARM64 build tools.
 
 **Sign**
 
@@ -540,6 +543,11 @@ How it works is in [ADR-0019](../architecture/adr/0019-desktop-packaging-and-upd
   - put the password in the root `.env` as `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`;
   - paste the printed public key into `plugins.updater.pubkey` in `src-tauri/tauri.conf.json` (the committed key matches the author's development key, so a new one means a new key pair and an app rebuilt with it).
 - The bundle script uses `%USERPROFILE%\.hirevion\updater-dev.key` unless `TAURI_SIGNING_PRIVATE_KEY` says otherwise.
+- **Where the private material lives (never in the repo):**
+  - the updater key is `%USERPROFILE%\.hirevion\updater-dev.key`, and its password is `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in the root `.env`;
+  - the Authenticode certificate is in your Windows certificate store (`Cert:\CurrentUser\My`, subject "Hirevion Dev Code Signing") and is never exported;
+  - the downloaded `msedgedriver` is under `%USERPROFILE%\.hirevion\msedgedriver`.
+  - Lose the development key and you make a new pair, paste its public key into `tauri.conf.json` and rebuild; installs made with the old key can no longer update.
 
 **Publish a development release**
 
@@ -559,7 +567,7 @@ How it works is in [ADR-0019](../architecture/adr/0019-desktop-packaging-and-upd
 
 **End-to-end test**
 
-- `pnpm --filter @hirevion/ai-interviewer-desktop e2e` builds the debug app (first time, or with `-- --build`), starts `tauri-driver` and walks launch → sign in → interviews → briefing → system check → consent → ready on the stub backend with fake camera and microphone. It opens the app window for a minute.
+- `pnpm --filter @hirevion/ai-interviewer-desktop e2e` builds the debug app (`-- --skip-build` reuses it), starts `tauri-driver` and walks launch → sign in → interviews → briefing → system check → consent → ready on the stub backend with fake camera and microphone. It opens the app window for a minute.
 - One-time setup: `cargo install tauri-driver --version 2.1.0 --locked`. The matching `msedgedriver` is downloaded to `%USERPROFILE%\.hirevion\msedgedriver\<version>` on first use (or set `MSEDGEDRIVER`).
 - If it fails, `ai-interviewer-desktop/e2e/output/failure.png` shows where it stopped. CI runs the same thing as the `desktop-e2e` job.
 

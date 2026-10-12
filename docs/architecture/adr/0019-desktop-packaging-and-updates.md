@@ -59,5 +59,6 @@
 - **Cost:** two signing steps at release time (Authenticode, then minisign) and one more secret to keep (the updater key). Losing the production updater key means shipping a new installer by hand to everyone.
 - **Not covered yet:**
   - native crashes outside Rust's panic path;
-  - an ARM64 installer built in CI (the script supports it and needs the Visual Studio ARM64 build tools);
+  - an ARM64 installer built on a runner (the script and the manual "Desktop installers" workflow support it; it needs the Visual Studio ARM64 build tools and hasn't run yet);
+  - answering the server's `snapshot_requests` (SP-14);
   - the production Authenticode certificate.

@@ -1191,9 +1191,10 @@ Each SP gets its own detailed TDD plan before work starts. "CP" is the checkpoin
   - Replay and stolen-token tests fail as they should.
   - An outdated app version is rejected at login.
 
-**SP-08 Desktop foundation** (CP2; depends on SP-07c for real sign-in only). Built in two parts:
+**SP-08 Desktop foundation** (CP2; depends on SP-07c for real sign-in only). Built in three parts:
 - SP-08a: the app, the security and api-client crates, the update gate and system checks. It starts against a stub sign-in, without waiting for SP-07.
-- SP-08b: consent, the interview UI shell, installers, signing and crash reporting.
+- SP-08b: consent, the interview UI shell and the interview path.
+- SP-08c: installers, signing, the signed updater, crash reporting and the end-to-end test (ADR-0019).
 - **Deliverables:** the §6.4 flow from launch to "Ready", plus completion and exit:
   - The Tauri app with branding.
   - The `security` and `api-client` crates.
@@ -1600,8 +1601,8 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 23 | AI question generation from 6 inputs; review before reuse | SP-06 (`interviews.generation`: drafts approved by a recruiter; candidate work history only, never contact details) |
 | 24 | Assignment: 3 inputs → 9 system fields | SP-07a (ADR-0020: `hirevion_core.interviews.assignment`, the policy snapshot, `test_interview_assignment.py`) |
 | 25 | 8 invitation contents | SP-07a (`interviews.invitations`, en-IN/en-US templates, the Mailpit test and `e2e/auth/interviews.spec.ts`), SP-07b (ADR-0022: the pages it links to: `/invitation/`, download, notices, requests, forgot password; `e2e/auth/portal.spec.ts`) |
-| 26 | 9 startup steps (`AI-Interview.exe`) | SP-08 (the version check's server side, the release registry and update manifest: SP-07c) |
-| 27 | Tauri, React, TypeScript, Rust, Monaco | SP-08, SP-16 |
+| 26 | 9 startup steps (`AI-Interview.exe`) | SP-08 (the update gate with Update now, the signed updater and downgrade refusal: SP-08c, ADR-0019, `tests/updater.rs`; the version check's server side, the release registry and update manifest: SP-07c) |
+| 27 | Tauri, React, TypeScript, Rust, Monaco | SP-08 (the per-user NSIS installers, development signing and GlitchTip crash reports: SP-08c, ADR-0019; the tauri-driver test `e2e/desktop.e2e.mjs`), SP-16 |
 | 28 | 6 login verifications; short-lived credentials | SP-07c (`candidate_access.service`, the six checks in order with their codes), SP-08 |
 | 29 | 11 system checks; policy-driven mandatory checks | SP-08 (the checks on the device), SP-09 (`interview_session.preparation.record_system_check`, mandatory checks from the policy and accommodations: `test_conductor.py`) |
 | 30 | 6 instructions (configurable); 10 consent items | SP-08, SP-09 (the briefing: `interview_session.briefing`, the organisation's instructions in Administration → Organisation, itemised consents against `NOTICE_VERSION`), SP-22 |

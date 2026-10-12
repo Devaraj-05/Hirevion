@@ -163,10 +163,17 @@ A box is ticked in the PR that merges the part. Deliverables are in MASTER §14;
   - Exit SP-11: a capture-excluded window, a blocked or renamed process, and a second monitor each raise their event within 2 s; no keystroke content is logged.
   - Exit SP-12 client: the chaos tests lose no acknowledged segment; drift stays under 100 ms.
   - Exit SP-15a desktop: CPU stays within budget.
-- [ ] **B3 SP-08b/08c Desktop foundation, part 2.** Depends on: B2, C1. See MASTER §14 SP-08.
-  - Interview path and services are merged. Still open (SP-08c): packaging, the workspace host for code and whiteboard (with C6), and the third-eye status in heartbeats (`not_required` until D3).
-  - Exit: the tauri-driver test (login → checks → consent → ready) passes; installs without admin rights; updates are verified and a downgrade is refused.
-- [ ] **B4 Desktop parts of SP-16, SP-13 and SP-15b.** Depends on: B3, C6, D3. See MASTER §14 SP-16, SP-13, SP-15b.
+- [x] **B3 SP-08b/08c Desktop foundation, part 2.** Depends on: B2, C1. See MASTER §14 SP-08. Done 2026-10-12 (SP-08c: ADR-0019, branch `sp-08c-packaging`).
+  - SP-08b merged: the interview path and services.
+  - SP-08c: NSIS per-user installer (x64 built and tried: 7.9 MiB, installs and uninstalls without admin), development signing, the signed updater with Update now (HTTPS, minisign signature, `requireSignedVersion`, strictly-newer only), GlitchTip behind a scrubber, and the tauri-driver test with its `desktop-e2e` CI job.
+  - Exit met: the tauri-driver test (sign-in → checks → consent → ready) passes; installs without admin rights; an update is signature-verified and a downgrade is refused (`cargo test -p hirevion-desktop --test updater`).
+  - Open, moved on:
+    - the workspace host for code and whiteboard → B4 (with C6);
+    - the third-eye status in heartbeats (`not_required` until D3);
+    - answering the server's `snapshot_requests` (SP-14): heartbeat answers carry them and the desktop ignores them today; it needs a screen/camera JPEG and the `request_id` upload;
+    - the ARM64 installer: the script and the manual `Desktop installers` workflow build it; it needs the Visual Studio ARM64 build tools and hasn't run on a runner yet;
+    - the production Authenticode certificate and updater key (owner), and a11y beyond the SP-08b screens.
+- [ ] **B4 Desktop parts of SP-16, SP-13 and SP-15b.** Depends on: B3, C6, D3. See MASTER §14 SP-16, SP-13, SP-15b. Includes the workspace host for code and whiteboard (moved from B3).
   - Exit: as in those §14 entries, for the desktop side.
 - [ ] **B5 Windows golden path and chaos drills.** Depends on: B3, B4. See MASTER §16 (chaos drills).
   - Exit: kill the app, drop the network, unplug a device, fail an upload — each ends with complete recordings, the right events and the interview resumed; the installer checks pass.

@@ -27,7 +27,7 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 
 | Part | Branch | Exact next step |
 |---|---|---|
-| B3 SP-08c packaging | `sp-08c-packaging` | Commit the 15 uncommitted files; installer release build, then the tauri-driver e2e test and docs |
+| B3 SP-08c packaging | `sp-08c-packaging` | Built, tested and documented; review and merge. Open: ARM64 installer on a runner, snapshot requests, production certificate and updater key |
 
 ## Remaining, in priority order (dependency in brackets)
 
