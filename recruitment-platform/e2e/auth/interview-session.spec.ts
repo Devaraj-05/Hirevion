@@ -46,12 +46,16 @@ test("a recruiter reads a simulated interview's transcript and coverage", async 
   await expect(page.getByText("Not covered")).toHaveCount(0);
 
   await expect(page.getByRole("heading", { name: "Transcript", exact: true })).toBeVisible();
-  await expect(page.getByText(/^Hello Sim, I'm the AI interviewer/)).toBeVisible();
-  await expect(page.getByText("When will I hear back about the result?")).toBeVisible();
+  // The full transcript, not the live monitor's latest lines, which repeat the last turns.
+  const transcript = page.getByRole("region", { name: "Transcript", exact: true });
+  await expect(transcript.getByText(/^Hello Sim, I'm the AI interviewer/)).toBeVisible();
+  await expect(transcript.getByText("When will I hear back about the result?")).toBeVisible();
   // The final question was answered from the organisation's FAQ, and only from it.
-  await expect(page.getByText(/usually replies within five working days/)).toBeVisible();
-  await expect(page.getByText(/^From the resume, page 1: “Moved reporting queries/)).toBeVisible();
-  await expect(page.getByText("From the question library").first()).toBeVisible();
+  await expect(transcript.getByText(/usually replies within five working days/)).toBeVisible();
+  await expect(
+    transcript.getByText(/^From the resume, page 1: “Moved reporting queries/),
+  ).toBeVisible();
+  await expect(transcript.getByText("From the question library").first()).toBeVisible();
   await noAxeViolations(page);
 });
 

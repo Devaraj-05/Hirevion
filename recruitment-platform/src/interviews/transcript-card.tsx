@@ -169,7 +169,7 @@ export function TranscriptCard({ id, live }: { id: string; live: boolean }) {
           )}
         </CardContent>
       </Card>
-      <Card className="lg:col-span-2">
+      <Card className="lg:col-span-2" aria-label={t("transcript")}>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>{t("transcript")}</CardTitle>
           {live ? (
