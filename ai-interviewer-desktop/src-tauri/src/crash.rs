@@ -9,6 +9,7 @@
 //! redacts emails, tokens, user-profile paths and addresses from every string.
 
 use std::collections::BTreeMap;
+use std::net::Ipv6Addr;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, LazyLock};
 
@@ -50,9 +51,10 @@ static PATTERNS: LazyLock<Vec<(Regex, &'static str)>> = LazyLock::new(|| {
             r"(?i)[a-z0-9._%+\-]+@[a-z0-9\-]+(?:\.[a-z0-9\-]+)+",
             "[email]",
         ),
-        // C:\Users\<name>\…, /Users/<name>/…, /home/<name>/…
+        // C:\Users\<name>\…, /Users/<name>/…, /home/<name>/…: the whole folder name, which may
+        // hold spaces ("Asha Rao"), up to the next separator.
         (
-            r"(?i)([a-z]:[\\/]+users[\\/]+|/users/|/home/)[^\\/\s:*?<>|]+",
+            r#"(?i)([a-z]:[\\/]+users[\\/]+|/users/|/home/)[^\\/:*?<>|"'\r\n]+"#,
             "${1}[user]",
         ),
         (r"\b\d{1,3}(?:\.\d{1,3}){3}\b", "[ip]"),
@@ -65,11 +67,50 @@ static PATTERNS: LazyLock<Vec<(Regex, &'static str)>> = LazyLock::new(|| {
         .collect()
 });
 
+/// Candidates for IPv6 addresses: runs of hex digits, colons and dots.
+static IPV6_CANDIDATE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"[0-9A-Fa-f:.]{2,}").expect("a valid pattern"));
+
+fn word_char(c: char) -> bool {
+    c.is_ascii_alphanumeric() || c == '_'
+}
+
+/// Replaces IPv6 addresses (plain, bracketed, `::ffff:1.2.3.4` mapped, with a zone id after)
+/// with `[ip]`. A candidate counts only if the standard parser accepts it as an address and
+/// it stands alone, so times (`05:01:02`), MAC addresses and Rust paths (`std::io`) stay.
+fn redact_ipv6(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut copied = 0;
+    for found in IPV6_CANDIDATE.find_iter(text) {
+        let before = text[..found.start()].chars().next_back();
+        let after = text[found.end()..].chars().next();
+        if before.is_some_and(word_char) || after.is_some_and(word_char) {
+            continue;
+        }
+        let token = found.as_str();
+        // "from 2001:db8::1." — a closing dot or colon belongs to the sentence.
+        let address = if token.parse::<Ipv6Addr>().is_ok() {
+            token
+        } else {
+            token.trim_end_matches(['.', ':'])
+        };
+        if !address.contains(':') || address.parse::<Ipv6Addr>().is_err() {
+            continue;
+        }
+        out.push_str(&text[copied..found.start()]);
+        out.push_str("[ip]");
+        copied = found.start() + address.len();
+    }
+    out.push_str(&text[copied..]);
+    out
+}
+
 /// `text` with emails, tokens, profile paths, addresses and other opaque strings redacted.
 pub fn scrub_text(text: &str) -> String {
+    // IPv6 first, so a mapped `::ffff:1.2.3.4` goes whole before the IPv4 rule sees its tail.
     PATTERNS
         .iter()
-        .fold(text.to_owned(), |text, (pattern, replacement)| {
+        .fold(redact_ipv6(text), |text, (pattern, replacement)| {
             pattern.replace_all(&text, *replacement).into_owned()
         })
 }
@@ -325,6 +366,58 @@ mod tests {
         }
         assert!(clean.contains("C:\\Users\\[user]\\AppData"), "{clean}");
         assert!(clean.contains("failed for [email]"), "{clean}");
+    }
+
+    #[test]
+    fn redacts_a_whole_profile_folder_even_with_spaces() {
+        for text in [
+            r"failed at C:\Users\Asha Rao\AppData\Local\app.dll",
+            "failed at c:/users/Asha Rao/AppData/x",
+            r"failed at \\?\C:\Users\Asha Rao\x",
+            "failed at /home/asha rao/x",
+        ] {
+            let clean = scrub_text(text);
+            assert!(!clean.contains("Rao") && !clean.contains("rao"), "{clean}");
+            assert!(
+                !clean.contains("Asha") && !clean.contains("asha"),
+                "{clean}"
+            );
+            assert!(clean.contains("[user]"), "{clean}");
+        }
+        // Only the profile folder goes; the rest of the path is diagnostics.
+        assert_eq!(
+            scrub_text(r"C:\Users\Asha Rao\AppData\x"),
+            r"C:\Users\[user]\AppData\x"
+        );
+    }
+
+    #[test]
+    fn redacts_ipv6_addresses_in_every_common_form() {
+        for address in [
+            "2001:db8::1",
+            "[2001:db8:85a3::8a2e:370:7334]:8080",
+            "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
+            "::ffff:203.0.113.7",
+            "[::ffff:203.0.113.7]:443",
+            "fe80::1%12",
+            "::1",
+        ] {
+            let clean = scrub_text(&format!("connection from {address} was reset"));
+            assert!(clean.contains("[ip]"), "{address} survived in {clean}");
+            for part in ["2001", "db8", "ffff", "203.0", "fe80", "::1"] {
+                assert!(!clean.contains(part), "{part} survived in {clean}");
+            }
+            assert!(clean.starts_with("connection from ") && clean.ends_with(" was reset"));
+        }
+        // The text around an address is kept.
+        assert_eq!(scrub_text("peer 2001:db8::1."), "peer [ip].");
+    }
+
+    #[test]
+    fn ipv6_redaction_leaves_times_and_rust_paths_alone() {
+        let text = "at 05:01:02.120Z in std::io::Error and hirevion_desktop::update::tests, \
+                    mac aa:bb:cc:dd:ee:ff, ratio 3:2, build 26200.9457";
+        assert_eq!(scrub_text(text), text);
     }
 
     #[test]

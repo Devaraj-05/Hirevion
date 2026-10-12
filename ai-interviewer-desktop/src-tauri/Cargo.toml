@@ -93,7 +93,7 @@ hv-uploader = { path = "crates/uploader" }
 # The updater is driven from Rust commands only, so the webview gets no updater permissions.
 tauri-plugin-updater = "2.13.3"
 semver = "1.0.28"
-regex = { version = "1.13.1", default-features = false, features = ["std", "unicode-perl"] }
+regex = { version = "1.13.1", default-features = false, features = ["std", "unicode-case", "unicode-perl"] }
 # Panics and webview errors go to GlitchTip (Sentry-compatible) when HV_GLITCHTIP_DSN was set at
 # build time. No default features: no debug-images, logs, metrics or release-health. The ring
 # provider is installed by hand (rustls-no-provider), as the API client does, so no aws-lc.
