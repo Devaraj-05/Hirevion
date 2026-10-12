@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient, Request
 from redis.asyncio import Redis
 
+from hirevion_api import ratelimit
 from hirevion_api.app import create_app
 from hirevion_api.auth.cookies import CSRF_COOKIE, SESSION_COOKIE
 from hirevion_api.settings import ApiSettings
@@ -24,6 +25,14 @@ BASE_URL = "http://api.hirevion.localhost"
 # The recruiter app's origin: session cookies are Secure, and state changes need this Origin.
 ORIGIN = "https://app.hirevion.localhost"
 IDENTITY = IdentitySettings(hibp_enabled=False, web_origin=ORIGIN)
+
+
+@pytest.fixture(autouse=True)
+def generous_rate_limit_budget(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A loaded CI runner can take longer than production's 250 ms to answer from Valkey, which
+    turns a fail-closed limit into a 503 for tests that aren't about rate limits. The
+    unavailable-Valkey tests use a refused connection, so they don't depend on the budget."""
+    monkeypatch.setattr(ratelimit, "BUDGET_SECONDS", 5.0)
 
 
 @pytest.fixture
