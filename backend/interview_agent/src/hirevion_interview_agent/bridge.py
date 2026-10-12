@@ -20,6 +20,7 @@ from hirevion_core.interviews.lifecycle import By
 from hirevion_core.proctoring import nudges
 
 log = logging.getLogger(__name__)
+MAX_BACKOFF_SECONDS = 30.0
 
 STATE_TOPIC = "hv.state"
 CONTROL_TOPIC = "hv.control"
@@ -169,6 +170,7 @@ async def relay_nudges(
     """Publishes each proctoring nudge for this interview as `hv.state` until `stop` is set.
     Nudges from before the agent started are already in the state the desktop reads."""
     last = await nudges.last_id(redis, bridge.interview_id)
+    delay = 1.0
     while not stop.is_set():
         try:
             for entry_id, notice in await nudges.read(
@@ -176,6 +178,9 @@ async def relay_nudges(
             ):
                 last = entry_id
                 await publish(await bridge.nudge(notice))
+            delay = 1.0
         except Exception:
+            # Valkey or the database is down: wait longer each time, up to half a minute.
             log.exception("Interview %s: relaying a nudge failed", bridge.interview_id)
-            await asyncio.sleep(1)
+            await asyncio.sleep(delay)
+            delay = min(delay * 2, MAX_BACKOFF_SECONDS)

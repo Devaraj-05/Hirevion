@@ -19,22 +19,11 @@ from uuid import UUID
 
 from redis.asyncio import Redis
 
+from hirevion_core.engine import phrasing
 from hirevion_core.interview_session.conductor import HOT_TTL_SECONDS, hot_key
 from hirevion_core.proctoring.catalogue import RANK
 
 STREAM_MAX = 50
-TEXTS = {
-    "face_missing": "I can't see you on camera. Please stay in view of the camera.",
-    "multiple_faces": "Someone else may be with you. Please continue on your own.",
-    "camera_covered": "Your camera appears to be covered. Please make sure your face is visible.",
-    "phone_detected": "Please put any phones or other devices away.",
-    "focus_lost": "Please keep the interview app in focus.",
-    "blocked_application": "Please close the other application that is running.",
-    "second_display": "Please use a single display for this interview.",
-    "screen_share_stopped": "Your screen is no longer being captured. Please restore it.",
-    "device_disconnected": "Your camera or microphone seems disconnected. Please reconnect it.",
-    "third_eye_disconnected": "Your phone camera has disconnected. Please reconnect it.",
-}
 
 
 def stream_key(interview_id: UUID) -> str:
@@ -56,7 +45,7 @@ class Nudge:
             "kind": self.kind,
             "event": self.event,
             "severity": self.severity,
-            "text": TEXTS.get(self.kind, "Please keep to the interview's rules."),
+            "text": phrasing.proctor_reminder(self.kind),
             "at": self.at,
         }
 

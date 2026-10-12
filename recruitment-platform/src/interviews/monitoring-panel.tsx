@@ -1,5 +1,6 @@
 "use client";
 
+import { isApiProblem } from "@hirevion/api-client";
 import {
   Badge,
   type BadgeTone,
@@ -34,6 +35,8 @@ import {
 } from "./proctoring-state";
 
 const RECONNECT_MS = 3000;
+// Answers that asking again won't change.
+const PERMANENT = new Set([401, 403, 404]);
 const REVIEWS: ReviewOutcome[] = ["confirmed", "false_positive", "not_relevant"];
 
 /** Loads an interview's monitoring snapshot and, while `live`, follows it: the snapshot first,
@@ -52,6 +55,7 @@ export function useLiveMonitor(
     let stopped = false;
     let socket: WebSocket | null = null;
     let retry: number | undefined;
+    const unavailable = () => dispatch({ type: "link", link: "unavailable" });
     const later = () => {
       dispatch({ type: "link", link: "reconnecting" });
       if (!stopped) retry = window.setTimeout(connect, RECONNECT_MS);
@@ -70,9 +74,15 @@ export function useLiveMonitor(
           if (body.type === "ping") return;
           dispatch({ type: "stream", message: body });
         };
-        socket.onclose = later;
-      } catch {
-        later();
+        socket.onclose = (closed) => {
+          // 4401 and 4403 are the server saying no: asking again would only repeat it.
+          if (closed.code === 4401 || closed.code === 4403) unavailable();
+          else later();
+        };
+      } catch (error) {
+        if (isApiProblem(error) && PERMANENT.has(error.status)) unavailable();
+        else if (live) later();
+        else unavailable();
       }
     };
     void connect();
@@ -282,6 +292,17 @@ export function MonitoringPanel({
   const t = useTranslations("interviews.proctoring");
   const [state, dispatch] = useLiveMonitor(id, live);
   if (!state.ready) {
+    if (state.link === "unavailable") {
+      return (
+        <Card className="lg:col-span-2">
+          <CardContent className="pt-6">
+            <p className="text-muted-foreground text-sm" role="status">
+              {t("unavailable")}
+            </p>
+          </CardContent>
+        </Card>
+      );
+    }
     return <Skeleton className="h-48 w-full lg:col-span-2" />;
   }
   const reviewed = (event: ProctorEvent) => dispatch({ type: "event", event });

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Literal
 
 from hirevion_core.proctoring.catalogue import PHASE_RANK
@@ -27,11 +28,19 @@ class Offer:
 
 
 class SeqTracker:
-    """The highest sequence number received and the ranges below it still missing."""
+    """The highest sequence number received and the ranges below it still missing, each with
+    when it was first seen missing and whether the server reported it (a gap that fills in within
+    the grace period is never reported)."""
 
-    def __init__(self, max_seq: int = 0, gaps: list[list[int]] | None = None) -> None:
+    def __init__(self, max_seq: int = 0, gaps: list[list[Any]] | None = None) -> None:
         self.max_seq = max_seq
-        self.gaps: list[tuple[int, int]] = [(int(lo), int(hi)) for lo, hi in gaps or []]
+        self.gaps: list[tuple[int, int]] = []
+        self._since: list[float] = []
+        self._reported: list[bool] = []
+        for gap in gaps or []:
+            self.gaps.append((int(gap[0]), int(gap[1])))
+            self._since.append(float(gap[2]) if len(gap) > 2 else 0.0)
+            self._reported.append(bool(gap[3]) if len(gap) > 3 else False)
 
     @property
     def acked_through(self) -> int:
@@ -41,11 +50,14 @@ class SeqTracker:
     def too_far(self, seq: int) -> bool:
         return seq < 1 or seq > self.max_seq + MAX_JUMP
 
-    def offer(self, seq: int) -> Offer:
+    def offer(self, seq: int, now: float = 0.0) -> Offer:
+        """Takes sequence number `seq`, received at `now` (seconds since the epoch)."""
         if seq > self.max_seq:
             gap = (self.max_seq + 1, seq - 1) if seq > self.max_seq + 1 else None
             if gap is not None:
                 self.gaps.append(gap)
+                self._since.append(now)
+                self._reported.append(False)
             self.max_seq = seq
             return Offer("new", gap)
         for index, (low, high) in enumerate(self.gaps):
@@ -55,9 +67,30 @@ class SeqTracker:
                     pieces.append((low, seq - 1))
                 if seq < high:
                     pieces.append((seq + 1, high))
+                since, reported = self._since[index], self._reported[index]
                 self.gaps[index : index + 1] = pieces
+                self._since[index : index + 1] = [since] * len(pieces)
+                self._reported[index : index + 1] = [reported] * len(pieces)
                 return Offer("fill")
         return Offer("duplicate")
+
+    def overdue(self, now: float, grace: float) -> list[tuple[int, int]]:
+        """The ranges still missing after `grace` seconds that haven't been reported yet."""
+        return [
+            gap
+            for gap, since, reported in zip(self.gaps, self._since, self._reported, strict=True)
+            if not reported and now - since > grace
+        ]
+
+    def mark_reported(self, ranges: list[tuple[int, int]]) -> None:
+        for index, gap in enumerate(self.gaps):
+            if gap in ranges:
+                self._reported[index] = True
+
+    def next_report(self, grace: float) -> float | None:
+        """When the earliest unreported range becomes overdue."""
+        times = [s + grace for s, r in zip(self._since, self._reported, strict=True) if not r]
+        return min(times) if times else None
 
     def missing(self, high: int | None = None, limit: int = MISSING_LIMIT) -> list[int]:
         """The numbers still missing, lowest first; with `high` (a heartbeat's `seq_high`) also
@@ -72,8 +105,33 @@ class SeqTracker:
                 break
         return numbers[:limit]
 
-    def to_json(self) -> list[list[int]]:
-        return [[low, high] for low, high in self.gaps]
+    def to_json(self) -> list[list[Any]]:
+        return [
+            [low, high, since, reported]
+            for (low, high), since, reported in zip(
+                self.gaps, self._since, self._reported, strict=True
+            )
+        ]
+
+
+def subtract_windows(
+    start: datetime, end: datetime, windows: list[tuple[datetime, datetime]]
+) -> list[tuple[datetime, datetime]]:
+    """The parts of `start`..`end` that lie outside every window, in order. An instant (start
+    equals end) is kept unless a window covers it."""
+    pieces = [(start, end)]
+    for low, high in sorted(windows):
+        kept: list[tuple[datetime, datetime]] = []
+        for a, b in pieces:
+            if b < low or a > high or (a == b and not low <= a <= high):
+                kept.append((a, b))
+                continue
+            if a < low:
+                kept.append((a, low))
+            if b > high:
+                kept.append((high, b))
+        pieces = kept
+    return pieces
 
 
 def merge_episode(current: Mapping[str, Any], incoming: Normalised) -> dict[str, Any]:

@@ -17,8 +17,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from hirevion_core.access.errors import NotFound
 from hirevion_core.interview_session import realtime
-from hirevion_core.interview_session.conductor import Conductor
-from hirevion_core.models import Interview, ProctorEvent, ProctorSession
+from hirevion_core.models import Interview, InterviewSession, ProctorEvent, ProctorSession
+from hirevion_core.outbox import publish_event
 from hirevion_core.proctoring import evidence, nudges, observed
 from hirevion_core.proctoring.catalogue import EVENTS, RANK
 from hirevion_core.proctoring.rules import GAZE, Recent, Verdict, evaluate
@@ -27,6 +27,7 @@ log = logging.getLogger(__name__)
 
 ENDED = ("completed", "evaluating", "evaluated", "abandoned", "cancelled", "expired")
 OPEN = ("in_progress", "interrupted")
+NOTED_TOPIC = "proctor.noted"
 MERGE_WINDOW = timedelta(seconds=15)
 """A device's report of a disconnection and the server's own sighting of it are one event when
 they start this close together."""
@@ -209,20 +210,35 @@ async def add_server_event(
     session.add(row)
     await session.flush()
     change = Change(row, "created")
-    plan_followups(session, proctor, change, now)
+    await plan_followups(session, proctor, change, now)
     pending.changes.append(change)
     return row
 
 
-def plan_followups(
+async def plan_followups(
     session: AsyncSession, proctor: ProctorSession, change: Change, now: datetime
 ) -> None:
-    """What a new or worsened event brings: snapshot requests for a CRITICAL one, and the
-    candidate's nudge, both recorded on the session."""
-    if change.raised and change.row.severity == "CRITICAL":
-        evidence.request_snapshots(session, proctor, change.row, now)
-    if not change.raised or RANK[change.row.severity] < RANK["WARNING"]:
+    """What a new or worsened event brings, all written in the event's transaction: snapshot
+    requests for a CRITICAL one, the server's references (process, transcript, recording
+    window) for the first time it reaches WARNING, the candidate's nudge, and a note for the
+    interview's proctor summary, handed to the outbox so the turn lock never holds up a request
+    and a refusal is retried."""
+    if not change.raised:
         return
+    if change.row.severity == "CRITICAL":
+        evidence.request_snapshots(session, proctor, change.row, now)
+    if RANK[change.row.severity] < RANK["WARNING"]:
+        return
+    if change.kind == "created" or change.severity_before == "INFO":
+        started = await session.scalar(
+            select(InterviewSession.started_at).where(
+                InterviewSession.interview_id == change.row.interview_id
+            )
+        )
+        for reference in evidence.server_references(
+            change.row, proctor.policy, interview_started_at=started
+        ):
+            session.add(reference)
     state = dict(proctor.nudges or {})
     notice = nudges.plan(
         proctor.policy,
@@ -235,6 +251,18 @@ def plan_followups(
     if notice is not None:
         proctor.nudges = state
         change.notice = notice
+    await publish_event(
+        session,
+        proctor.organization_id,
+        NOTED_TOPIC,
+        {
+            "interview_id": str(proctor.interview_id),
+            "event_id": str(change.row.id),
+            "kind": (notice.kind if notice else None) or change.row.event.lower(),
+            "severity": change.row.severity.lower(),
+        },
+        key=str(proctor.interview_id),
+    )
 
 
 def interview_gone(interview: Interview) -> bool:
@@ -243,7 +271,6 @@ def interview_gone(interview: Interview) -> bool:
 
 async def finish(
     redis: Redis,
-    conductor: Conductor | None,
     organization_id: UUID,
     interview_id: UUID,
     pending: Pending,
@@ -257,7 +284,11 @@ async def finish(
                 redis,
                 interview_id,
                 "PROCTOR_EVENT",
-                {**event_json(change.row), "change": change.kind},
+                {
+                    **event_json(change.row),
+                    "change": change.kind,
+                    "previous_severity": change.severity_before,
+                },
             )
         except Exception:
             log.exception("Couldn't publish proctor event %s", change.row.id)
@@ -272,11 +303,3 @@ async def finish(
                 await nudges.deliver(redis, interview_id, change.notice)
             except Exception:
                 log.exception("Couldn't deliver a nudge for interview %s", interview_id)
-        if conductor is not None and change.raised and RANK[change.row.severity] >= RANK["WARNING"]:
-            kind = (change.notice.kind if change.notice else None) or change.row.event.lower()
-            try:
-                await conductor.note_proctor_event(
-                    organization_id, interview_id, kind, change.row.severity.lower()
-                )
-            except Exception:
-                log.exception("Couldn't note proctor event %s in the interview", change.row.id)

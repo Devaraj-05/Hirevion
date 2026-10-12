@@ -199,6 +199,35 @@ def test_the_state_message_has_the_contracts_shape() -> None:
     }
 
 
+async def test_the_nudge_relay_backs_off_while_valkey_is_down(
+    valkey: Redis, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from hirevion_core.proctoring import nudges
+    from hirevion_interview_agent import bridge as bridge_module
+    from hirevion_interview_agent.bridge import MAX_BACKOFF_SECONDS, relay_nudges
+
+    delays: list[float] = []
+    stop = asyncio.Event()
+
+    async def read(*_: Any, **__: Any) -> Any:
+        raise ConnectionError("Valkey is down")
+
+    async def publish(_: Any) -> None:
+        return None
+
+    async def no_sleep(seconds: float) -> None:
+        delays.append(seconds)
+        if len(delays) >= 9:
+            stop.set()
+
+    monkeypatch.setattr(nudges, "read", read)
+    monkeypatch.setattr(bridge_module.asyncio, "sleep", no_sleep)
+    fake: Any = type("Bridge", (), {"interview_id": UUID(int=3)})()
+    await relay_nudges(valkey, fake, publish, stop)  # type: ignore[arg-type]
+    assert delays[:4] == [1.0, 2.0, 4.0, 8.0]
+    assert max(delays) == MAX_BACKOFF_SECONDS and delays[-1] == MAX_BACKOFF_SECONDS
+
+
 async def test_a_proctoring_nudge_reaches_the_desktop_as_a_state_notice(
     app_db: Database,
     admin_engine: AsyncEngine,

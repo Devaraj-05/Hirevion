@@ -457,7 +457,7 @@ How it works is in [ADR-0031](../architecture/adr/0031-evaluation-and-governance
 
 ### Proctoring (engine and live view)
 
-How it works is in [ADR-0031](../architecture/adr/0031-proctoring-engine.md); the desktop's wire format is `docs/api/contracts/proctoring.md`.
+How it works is in [ADR-0032](../architecture/adr/0032-proctoring-engine.md); the desktop's wire format is `docs/api/contracts/proctoring.md`.
 
 - **Run it:** the proctoring watcher and the `recording.gap` consumer run with the other workers (`hv api`, or `hv worker`). Without them events are still stored and alerted, but missed heartbeats, a camera LiveKit saw go down and recording gaps are not turned into events.
 - **Feed it without the desktop:** the interview simulator's `DesktopClient` signs in like the app; after `start`, `POST /proctoring/session` and then `/events` and `/heartbeat` with its session token (see `backend/api/tests/test_proctoring_api.py` for every call).

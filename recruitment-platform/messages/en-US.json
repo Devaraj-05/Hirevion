@@ -1256,6 +1256,7 @@
   "interviews": {
     "proctoring": {
       "title": "Live monitoring",
+      "unavailable": "Live monitoring isn't available for this interview.",
       "health": "Devices and connection",
       "recent": "Recent events",
       "noEvents": "Nothing has been flagged.",
@@ -1281,6 +1282,7 @@
         "connecting": "Connecting",
         "live": "Live",
         "reconnecting": "Reconnecting",
+        "unavailable": "Unavailable",
         "ended": "Interview over"
       },
       "device": { "up": "On", "down": "Off", "unknown": "Unknown" },

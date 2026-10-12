@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 Severity = Literal["INFO", "WARNING", "CRITICAL"]
 ReviewStatus = Literal["pending", "confirmed", "false_positive", "not_relevant"]
@@ -77,7 +77,7 @@ class EventBody(BaseModel):
     seq: int = Field(ge=1)
     event: str = Field(max_length=60)
     source: str = Field(max_length=30)
-    started_at: datetime
+    started_at: AwareDatetime
     duration_ms: int | None = None
     confidence: float | None = 1.0
     evidence: list[EvidenceRef] = Field(default_factory=list, max_length=20)

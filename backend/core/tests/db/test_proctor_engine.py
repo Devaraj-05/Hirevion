@@ -205,9 +205,7 @@ async def test_batches_are_idempotent_and_track_gaps(world: World, app_db: Datab
     assert (retry.acked_through, retry.missing) == (2, [3, 4])
     stored = await rows(app_db, world)
     assert sorted(r.seq or 0 for r in stored if r.origin == "client") == [1, 2, 5]
-    gaps = [r for r in stored if r.event == "TELEMETRY_GAP"]
-    assert len(gaps) == 1 and gaps[0].details["from_seq"] == 3 and gaps[0].details["to_seq"] == 4
-    assert gaps[0].severity == "WARNING" and gaps[0].origin == "server"
+    assert [r for r in stored if r.event == "TELEMETRY_GAP"] == []  # not until it has lasted
     filled = await world.send(item(4, at=3), item(3, at=3))
     assert (filled.acked_through, filled.missing) == (5, [])
 

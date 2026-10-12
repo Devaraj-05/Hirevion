@@ -6,7 +6,7 @@ would break. `scheduler_proctor_sessions_due` lists the sessions the watcher mus
 `scheduler_due_interviews` lists interviews.
 
 Revision ID: 0018
-Revises: 0016
+Revises: 0017
 Create Date: 2026-10-10
 """
 
@@ -23,7 +23,7 @@ from hirevion_core.ids import uuid7
 from hirevion_core.settings import APP_ROLE, SCHEDULER_ROLE
 
 revision: str = "0018"
-down_revision: str | Sequence[str] | None = "0016"
+down_revision: str | Sequence[str] | None = "0017"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

@@ -23,7 +23,7 @@ export interface MonitorState {
   transcript: TailLine[];
   /** The id of the last stream message applied: where a reconnect resumes. */
   cursor: string | null;
-  link: "connecting" | "live" | "reconnecting";
+  link: "connecting" | "live" | "reconnecting" | "unavailable";
 }
 
 export interface StreamMessage {
@@ -100,9 +100,16 @@ function byTime(a: ProctorEvent, b: ProctorEvent): number {
   return a.started_at < b.started_at ? 1 : a.started_at > b.started_at ? -1 : a.id < b.id ? 1 : -1;
 }
 
-function upsert(state: MonitorState, event: ProctorEvent): MonitorState {
-  const before = state.events.find((e) => e.id === event.id);
-  const merged = { ...before, ...event, review: event.review ?? before?.review ?? null };
+function upsert(
+  state: MonitorState,
+  event: ProctorEvent,
+  previousSeverity?: ProctorEvent["severity"] | null,
+): MonitorState {
+  // An event the list no longer holds (older than the snapshot or the cap) is still the same
+  // event: the server says what severity it had, so the counts move instead of growing.
+  const known = state.events.find((e) => e.id === event.id);
+  const before = known ?? (previousSeverity ? { ...event, severity: previousSeverity } : undefined);
+  const merged = { ...known, ...event, review: event.review ?? known?.review ?? null };
   const rest = state.events.filter((e) => e.id !== event.id);
   return {
     ...state,
@@ -127,13 +134,22 @@ function stream(state: MonitorState, message: StreamMessage): MonitorState {
   const { data } = message;
   switch (message.type) {
     case "PROCTOR_EVENT":
-      return upsert(base, data as unknown as ProctorEvent);
+      return upsert(
+        base,
+        data as unknown as ProctorEvent,
+        data.previous_severity as ProctorEvent["severity"] | null | undefined,
+      );
     case "PROCTOR_STATUS":
       return { ...base, status: data as unknown as ProctoringStatus };
     case "PROCTOR_REVIEW": {
       const target = base.events.find((e) => e.id === data.event_id);
-      if (!target) return base;
       const outcome = data.review_status as ProctorEvent["review_status"];
+      if (!target) {
+        // Not listed any more: the server says what it was, so the counts still move.
+        const stub = (status: unknown) =>
+          ({ severity: data.severity, review_status: status }) as ProctorEvent;
+        return { ...base, counts: recount(base.counts, stub(data.previous_status), stub(outcome)) };
+      }
       return upsert(base, {
         ...target,
         review_status: outcome,

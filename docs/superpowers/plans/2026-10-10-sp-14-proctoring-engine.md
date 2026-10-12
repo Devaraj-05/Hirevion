@@ -22,7 +22,7 @@
 - **Consumers:** `recording.gap` (SP-12's outbox topic) and `interview.completed` and `interview.abandoned` (which close the proctor session).
 - **Web:** a live monitoring panel on the interview page. A pure reducer keeps the state (devices, connection health, recent events, transcript tail) and merges the snapshot with the websocket's events by id. The socket reconnects from the last event id and refetches the snapshot.
 
-**Decisions** (the ADR is 0031): no new permission (reviewing needs `interviews.manage` as well as `reports.proctoring.view`); `proctor_events` is not partitioned (the idempotency key `(session, seq)` and in-place episode updates need unique indexes a partition key would break); the server decides severity and keeps the device's `severity_hint` only as a note.
+**Decisions** (the ADR is 0032): no new permission (reviewing needs `interviews.manage` as well as `reports.proctoring.view`); `proctor_events` is not partitioned (the idempotency key `(session, seq)` and in-place episode updates need unique indexes a partition key would break); the server decides severity and keeps the device's `severity_hint` only as a note.
 
 ## Tasks
 

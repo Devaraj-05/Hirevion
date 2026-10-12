@@ -20,6 +20,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+from hirevion_core.interview_session.conductor import Conductor
 from hirevion_core.proctoring.service import ProctorEngine
 
 log = logging.getLogger(__name__)
@@ -53,6 +54,20 @@ class ProctorWatcher:
             if looked < BATCH:
                 with suppress(TimeoutError):
                     await asyncio.wait_for(stop.wait(), self._poll)
+
+
+async def handle_noted(
+    conductor: Conductor, organization_id: UUID, payload: dict[str, Any]
+) -> None:
+    """A `proctor.noted` event (written with the proctoring event it describes) fills the
+    interview's proctor summary and, for a CRITICAL one, the reminder at the next turn. A busy
+    turn lock raises `Conflict`, and the consumer tries again."""
+    await conductor.note_proctor_event(
+        organization_id,
+        UUID(str(payload["interview_id"])),
+        str(payload["kind"]),
+        str(payload["severity"]),
+    )
 
 
 def _time(value: Any) -> datetime | None:

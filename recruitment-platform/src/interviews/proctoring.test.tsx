@@ -1,3 +1,4 @@
+import { ApiProblem } from "@hirevion/api-client";
 import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -127,6 +128,48 @@ describe("monitorReducer", () => {
     expect(state.counts.total).toBe(2);
   });
 
+  it("counts an update to an event it no longer lists by what the server says it was", () => {
+    const state = monitorReducer(loaded(), {
+      type: "stream",
+      message: message("101-0", "PROCTOR_EVENT", {
+        ...event({ id: "old-one", severity: "CRITICAL", event: "FACE_ABSENT" }),
+        change: "updated",
+        previous_severity: "WARNING",
+      }),
+    });
+    // Not a new event: one warning became critical, and the total is unchanged.
+    expect(state.counts.total).toBe(1);
+    expect(state.counts.by_severity).toEqual({ INFO: 0, WARNING: 0, CRITICAL: 2 });
+    expect(state.events.map((e) => e.id)).toContain("old-one");
+    const again = monitorReducer(state, {
+      type: "stream",
+      message: message("102-0", "PROCTOR_EVENT", {
+        ...event({ id: "old-one", severity: "CRITICAL", event: "FACE_ABSENT" }),
+        change: "updated",
+        previous_severity: "CRITICAL",
+      }),
+    });
+    expect(again.counts.by_severity.CRITICAL).toBe(2);
+  });
+
+  it("counts the review of an event it no longer lists", () => {
+    const state = monitorReducer(loaded(), {
+      type: "stream",
+      message: message("101-0", "PROCTOR_REVIEW", {
+        event_id: "not-listed",
+        severity: "CRITICAL",
+        previous_status: "pending",
+        review_status: "false_positive",
+        reviewer_id: "u-1",
+        reason: "A poster",
+      }),
+    });
+    expect(state.counts.by_review.pending).toBe(0);
+    expect(state.counts.by_review.false_positive).toBe(1);
+    expect(state.counts.dismissed).toBe(1);
+    expect(state.counts.open_alerts).toBe(0);
+  });
+
   it("marks a dismissed event without removing it", () => {
     const state = monitorReducer(loaded(), {
       type: "stream",
@@ -199,12 +242,12 @@ class FakeSocket {
   static all: FakeSocket[] = [];
   onopen: (() => void) | null = null;
   onmessage: ((m: { data: string }) => void) | null = null;
-  onclose: (() => void) | null = null;
+  onclose: ((event: { code: number }) => void) | null = null;
   constructor(readonly url: string) {
     FakeSocket.all.push(this);
   }
   close() {
-    this.onclose?.();
+    this.onclose?.({ code: 1006 });
   }
   send(body: Record<string, unknown>) {
     this.onmessage?.({ data: JSON.stringify(body) });
@@ -293,6 +336,30 @@ describe("MonitoringPanel", () => {
     expect(await screen.findByText("Reviewed: A poster on the wall")).toBeInTheDocument();
     expect(screen.getByText("Phone detected")).toBeInTheDocument();
     expect(FakeSocket.all).toHaveLength(0); // the interview is over: no socket
+  });
+
+  it("stops asking when the API says no, and when the interview is over", async () => {
+    const refused = new ApiProblem({
+      type: "urn:hirevion:problem:forbidden",
+      title: "Forbidden",
+      status: 403,
+      code: "forbidden",
+    });
+    vi.mocked(api.getLiveSnapshot).mockRejectedValue(refused);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      renderAdmin(<MonitoringPanel id="iv-1" live canReview={false} />);
+      expect(
+        await screen.findByText("Live monitoring isn't available for this interview."),
+      ).toBeInTheDocument();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000);
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(api.getLiveSnapshot).toHaveBeenCalledTimes(1);
+    expect(FakeSocket.all).toHaveLength(0);
   });
 
   it("offers no review to someone who can't decide", async () => {

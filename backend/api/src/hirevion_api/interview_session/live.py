@@ -72,6 +72,11 @@ async def _allowed(
     return context, permissions
 
 
+def _restricted(permissions: frozenset[str]) -> frozenset[str]:
+    """The event types this reader may not see."""
+    return frozenset() if "reports.proctoring.view" in permissions else realtime.PROCTORING_TYPES
+
+
 async def follow(
     websocket: WebSocket,
     interview_id: UUID,
@@ -95,9 +100,7 @@ async def follow(
         await websocket.close(code=allowed)
         return
     context, permissions = allowed
-    restricted = (
-        frozenset() if "reports.proctoring.view" in permissions else realtime.PROCTORING_TYPES
-    )
+    restricted = _restricted(permissions)
     await websocket.accept()
     if opened is not None:
         await opened(context, permissions)
@@ -106,6 +109,7 @@ async def follow(
     start = await realtime.last_id(redis, interview_id) if after == "$" else after
 
     async def pump() -> None:
+        nonlocal restricted
         last, checked = start, asyncio.get_running_loop().time()
         while True:
             events = await realtime.read(redis, interview_id, last, block_ms=BLOCK_MS)
@@ -125,6 +129,8 @@ async def follow(
                 if isinstance(again, int):
                     await websocket.close(code=again)
                     return
+                # A role that lost `reports.proctoring.view` stops receiving proctoring events.
+                restricted = _restricted(again[1])
 
     async def watch() -> None:
         # The client sends nothing; reading only notices that it has gone.

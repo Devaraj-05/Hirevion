@@ -27,10 +27,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from hirevion_core.access.errors import Conflict, Invalid, NotFound
 from hirevion_core.db.session import Database
-from hirevion_core.interview_session.conductor import Conductor
-from hirevion_core.models import Interview, InterviewSession, ProctorEvent, ProctorSession
+from hirevion_core.models import Interview, ProctorEvent, ProctorSession
 from hirevion_core.proctoring import evidence, observed
-from hirevion_core.proctoring.aggregator import SeqTracker, merge_episode
+from hirevion_core.proctoring.aggregator import SeqTracker, merge_episode, subtract_windows
 from hirevion_core.proctoring.catalogue import RANK
 from hirevion_core.proctoring.normaliser import (
     Incoming,
@@ -62,6 +61,9 @@ log = logging.getLogger(__name__)
 DRAIN = timedelta(minutes=10)
 """After an interview ends the desktop may still send the events it had queued."""
 HISTORY = timedelta(minutes=15)
+GAP_GRACE = 30
+"""Numbers still missing after this many seconds are a gap in telemetry; retries and batches that
+arrive out of order fill them sooner."""
 
 
 def gap_event(track: str) -> str:
@@ -139,12 +141,10 @@ class ProctorEngine:
         db: Database,
         redis: Redis,
         *,
-        conductor: Conductor | None = None,
         clock: Callable[[], datetime] = _utcnow,
     ) -> None:
         self._db = db
         self._redis = redis
-        self._conductor = conductor or Conductor(db, redis, llm=None, origin="proctoring")
         self._clock = clock
 
     # The session.
@@ -259,42 +259,26 @@ class ProctorEngine:
             if policy.get("level") == "off":
                 # Proctoring wasn't agreed to: acknowledge, store nothing.
                 for seq in sorted(by_seq):
-                    tracker.offer(seq)
+                    tracker.offer(seq, now.timestamp())
             else:
+                # The times the rules and the history work with are the normalised ones: naive
+                # times are taken as UTC, and a clock far ahead is clamped.
+                events = {seq: normalise(by_seq[seq], policy, now=now) for seq in by_seq}
                 window = int((policy.get("escalation") or {}).get("window_seconds", 600))
-                since = min(item.started_at for item in items) - timedelta(seconds=window)
+                since = min(n.started_at for n in events.values()) - timedelta(seconds=window)
                 rows = await history(session, proctor, since)
-                started = await session.scalar(
-                    select(InterviewSession.started_at).where(
-                        InterviewSession.interview_id == interview_id
-                    )
-                )
                 for seq in sorted(by_seq):
-                    offer = tracker.offer(seq)
-                    if offer.status == "duplicate":
+                    if tracker.offer(seq, now.timestamp()).status == "duplicate":
                         continue
-                    if offer.opened_gap is not None:
-                        low, high = offer.opened_gap
-                        await add_server_event(
-                            session,
-                            proctor,
-                            pending,
-                            event="TELEMETRY_GAP",
-                            started_at=now,
-                            duration_ms=0,
-                            details={"reason": "sequence_gap", "from_seq": low, "to_seq": high},
-                            rows=rows,
-                            now=now,
-                        )
-                    normalised = normalise(by_seq[seq], policy, now=now)
-                    change = await self._store(session, proctor, normalised, rows, started, now)
+                    change = await self._store(session, proctor, events[seq], rows, now)
                     if change is not None:
                         pending.changes.append(change)
             proctor.max_seq = tracker.max_seq
             proctor.gaps = tracker.to_json()
             proctor.acked_through = tracker.acked_through
+            self._watch_gaps(proctor, tracker)
             ack = Ack(tracker.acked_through, tracker.missing())
-        await finish(self._redis, self._conductor, organization_id, interview_id, pending, None)
+        await finish(self._redis, organization_id, interview_id, pending, None)
         return ack
 
     async def _store(
@@ -303,12 +287,12 @@ class ProctorEngine:
         proctor: ProctorSession,
         n: Normalised,
         rows: list[tuple[str, str, datetime, str]],
-        interview_started: datetime | None,
         now: datetime,
     ) -> Change | None:
         policy = proctor.policy
         target = await self._target(session, proctor, n)
         recent = recent_for(policy, rows, n.event, n.started_at, str(target.id) if target else None)
+        unchanged = False
         if target is None:
             verdict = evaluate(
                 policy, n.event, duration_ms=n.duration_ms, category=n.category, recent=recent
@@ -350,8 +334,8 @@ class ProctorEngine:
                 },
                 n,
             )
-            if row.origin == "server":
-                # The server's own sighting keeps its clock; the device only adds to it.
+            if row.origin == "server" or row.details.get("server_confirmed"):
+                # What the server saw itself keeps its clock; the device only adds to it.
                 merged["duration_ms"] = max(row.duration_ms or 0, n.duration_ms or 0)
                 merged["ongoing"] = row.ongoing
                 merged["details"]["client_reported"] = True
@@ -379,26 +363,25 @@ class ProctorEngine:
                 **merged["details"],
                 "server": server_note(verdict, hint=n.hint, category=n.category),
             }
-            if snapshot == (row.phase, row.duration_ms, row.ongoing, row.severity, row.last_seq):
-                return None
             await session.flush()
             change = Change(row, "updated", severity_before=before)
+            unchanged = snapshot == (
+                row.phase,
+                row.duration_ms,
+                row.ongoing,
+                row.severity,
+                row.last_seq,
+            )
+        # Evidence is attached whatever else a repeated report changed.
         refused = await evidence.link(session, proctor, row, n.evidence)
         if refused:
             row.details = {
                 **row.details,
                 "server": {**row.details.get("server", {}), "rejected_evidence": refused},
             }
-        if (
-            change.raised
-            and RANK[row.severity] >= RANK["WARNING"]
-            and (change.kind == "created" or change.severity_before == "INFO")
-        ):
-            for reference in evidence.server_references(
-                row, policy, interview_started_at=interview_started
-            ):
-                session.add(reference)
-        plan_followups(session, proctor, change, now)
+        if target is not None and unchanged:
+            return None
+        await plan_followups(session, proctor, change, now)
         rows[:] = [r for r in rows if r[3] != str(row.id)]
         if row.severity != "INFO":
             rows.append((row.event, row.severity, row.started_at, str(row.id)))
@@ -471,7 +454,7 @@ class ProctorEngine:
                 for r in await evidence.pending_requests(session, proctor, now)
                 if r.proctor_event_id is not None
             ]
-        await finish(self._redis, None, organization_id, interview_id, pending, after)
+        await finish(self._redis, organization_id, interview_id, pending, after)
         return HeartbeatAck(now, missing, snapshots)
 
     @staticmethod
@@ -552,50 +535,104 @@ class ProctorEngine:
             )
             if proctor is None or proctor.policy.get("level") == "off":
                 return False
+            # A hole while the candidate was away (an interruption the resume policy excuses) is
+            # no violation: only the parts outside the interruptions count.
+            windows = await self._interruptions(session, proctor, now)
             end = started_at + timedelta(milliseconds=duration)
-            existing = None
-            if event != "TELEMETRY_GAP":
-                existing = await session.scalar(
-                    select(ProctorEvent)
-                    .where(
-                        ProctorEvent.proctor_session_id == proctor.id,
-                        ProctorEvent.event == event,
-                        ProctorEvent.started_at <= end + MERGE_WINDOW,
-                        ProctorEvent.started_at >= started_at - MERGE_WINDOW,
-                    )
-                    .order_by(ProctorEvent.started_at)
-                    .limit(1)
+            pieces = subtract_windows(started_at, end, windows)
+            for piece_start, piece_end in pieces:
+                length = int((piece_end - piece_start).total_seconds() * 1000)
+                note = {"recording_gap": {"track": kind, "duration_ms": length, **(details or {})}}
+                existing = await self._same_hole(
+                    session, proctor, event, kind, piece_start, piece_end
                 )
-            note = {"recording_gap": {"track": kind, "duration_ms": duration, **(details or {})}}
-            if existing is not None:
-                before = existing.severity
-                longest = max(existing.duration_ms or 0, duration)
-                verdict = evaluate(proctor.policy, event, duration_ms=longest)
-                existing.duration_ms = longest
-                existing.details = {**existing.details, **note}
-                if RANK[verdict.severity] > RANK[before]:
-                    existing.severity = verdict.severity
-                    existing.details = {**existing.details, "server": server_note(verdict)}
+                if existing is not None:
+                    before = existing.severity
+                    longest = max(existing.duration_ms or 0, length)
+                    verdict = evaluate(proctor.policy, event, duration_ms=longest)
+                    existing.duration_ms = longest
+                    existing.details = {**existing.details, **note}
                     change = Change(existing, "updated", severity_before=before)
-                    plan_followups(session, proctor, change, now)
+                    if RANK[verdict.severity] > RANK[before]:
+                        existing.severity = verdict.severity
+                        existing.details = {**existing.details, "server": server_note(verdict)}
+                        await plan_followups(session, proctor, change, now)
                     pending.changes.append(change)
                 else:
-                    pending.changes.append(Change(existing, "updated", severity_before=before))
-            else:
-                rows = await history(session, proctor, started_at - HISTORY)
-                await add_server_event(
-                    session,
-                    proctor,
-                    pending,
-                    event=event,
-                    started_at=started_at,
-                    duration_ms=duration,
-                    details={"reason": "recording_gap", **note},
-                    rows=rows,
-                    now=now,
-                )
-        await finish(self._redis, self._conductor, organization_id, interview_id, pending, None)
+                    rows = await history(session, proctor, piece_start - HISTORY)
+                    await add_server_event(
+                        session,
+                        proctor,
+                        pending,
+                        event=event,
+                        started_at=piece_start,
+                        duration_ms=length,
+                        details={"reason": "recording_gap", **note},
+                        rows=rows,
+                        now=now,
+                    )
+            if not pieces:
+                return False
+        await finish(self._redis, organization_id, interview_id, pending, None)
         return True
+
+    @staticmethod
+    async def _same_hole(
+        session: AsyncSession,
+        proctor: ProctorSession,
+        event: str,
+        track: str,
+        start: datetime,
+        end: datetime,
+    ) -> ProctorEvent | None:
+        """The event that already stands for this hole: a screen's stop around the same time, or
+        the telemetry gap raised for the same track by a stall the server saw as it happened."""
+        candidates = await session.scalars(
+            select(ProctorEvent)
+            .where(
+                ProctorEvent.proctor_session_id == proctor.id,
+                ProctorEvent.event == event,
+                ProctorEvent.started_at <= end + MERGE_WINDOW,
+                ProctorEvent.started_at >= start - MERGE_WINDOW,
+            )
+            .order_by(ProctorEvent.started_at)
+        )
+        for row in candidates:
+            if event != "TELEMETRY_GAP":
+                return row
+            # Telemetry gaps are many kinds; this one must be about the same track.
+            hole = row.details.get("recording_gap") or {}
+            if hole.get("track") == track or f"upload:{track}" in (
+                row.details.get("sources") or []
+            ):
+                return row
+        return None
+
+    @staticmethod
+    async def _interruptions(
+        session: AsyncSession, proctor: ProctorSession, now: datetime
+    ) -> list[tuple[datetime, datetime]]:
+        """When the candidate was away: from each SESSION_INTERRUPTED to the next
+        SESSION_RESUMED, or to now while the session is still paused."""
+        marks = await session.execute(
+            select(ProctorEvent.event, ProctorEvent.started_at)
+            .where(
+                ProctorEvent.proctor_session_id == proctor.id,
+                ProctorEvent.event.in_(("SESSION_INTERRUPTED", "SESSION_RESUMED")),
+            )
+            .order_by(ProctorEvent.started_at)
+        )
+        windows: list[tuple[datetime, datetime]] = []
+        opened: datetime | None = None
+        for name, at in marks:
+            if name == "SESSION_INTERRUPTED" and opened is None:
+                opened = at
+            elif name == "SESSION_RESUMED" and opened is not None:
+                windows.append((opened, at))
+                opened = None
+        if opened is not None:
+            windows.append((opened, now))
+        return windows
 
     async def observe_stall(
         self,
@@ -652,19 +689,32 @@ class ProctorEngine:
             proctor.observed = state
             pending.status = pending.status or bool(pending.changes)
             body = status_json(proctor, interview.status)
-        await finish(
-            self._redis, self._conductor, organization_id, proctor.interview_id, pending, body
-        )
+        await finish(self._redis, organization_id, proctor.interview_id, pending, body)
+
+    @staticmethod
+    def _watch_gaps(proctor: ProctorSession, tracker: SeqTracker) -> None:
+        """Makes sure the watcher looks when the earliest missing range becomes overdue."""
+        due = tracker.next_report(GAP_GRACE)
+        if due is not None:
+            at = datetime.fromtimestamp(due, UTC)
+            if proctor.watch_at is None or at < proctor.watch_at:
+                proctor.watch_at = at
 
     def _next_look(self, proctor: ProctorSession, state: dict[str, Any], now: datetime) -> datetime:
-        if self._pending(state):
-            return now + timedelta(seconds=1)
+        soon = now + timedelta(seconds=1)
         deadline = (proctor.last_heartbeat_at or proctor.opened_at) + timedelta(
             seconds=self._grace(proctor)
         )
-        if any(observed.event_id(state, name) for name in observed.CHANNELS):
-            return min(now + timedelta(seconds=5), max(deadline, now + timedelta(seconds=1)))
-        return max(deadline, now + timedelta(seconds=1))
+        if self._pending(state):
+            look = soon
+        elif any(observed.event_id(state, name) for name in observed.CHANNELS):
+            look = min(now + timedelta(seconds=5), max(deadline, soon))
+        else:
+            look = max(deadline, soon)
+        due = SeqTracker(proctor.max_seq, proctor.gaps).next_report(GAP_GRACE)
+        if due is not None:
+            look = min(look, max(datetime.fromtimestamp(due, UTC), soon))
+        return look
 
     async def _evaluate(
         self,
@@ -676,6 +726,24 @@ class ProctorEngine:
         now: datetime,
     ) -> None:
         policy = proctor.policy
+        tracker = SeqTracker(proctor.max_seq, proctor.gaps)
+        overdue = tracker.overdue(now.timestamp(), GAP_GRACE)
+        for low, high in overdue:
+            # Numbers that are still missing after the grace period: reported once.
+            await add_server_event(
+                session,
+                proctor,
+                pending,
+                event="TELEMETRY_GAP",
+                started_at=now,
+                duration_ms=0,
+                details={"reason": "sequence_gap", "from_seq": low, "to_seq": high},
+                rows=rows,
+                now=now,
+            )
+        if overdue:
+            tracker.mark_reported(overdue)
+            proctor.gaps = tracker.to_json()
         last = proctor.last_heartbeat_at or proctor.opened_at
         if (now - last).total_seconds() > int(policy.get("heartbeat_grace_seconds", 20)):
             observed.vote(state, "heartbeat", "beat", "down", last)
@@ -761,7 +829,7 @@ class ProctorEngine:
                 row.details = {**row.details, "server": server_note(verdict)}
             change = Change(row, "updated", severity_before=before)
             if worse:
-                plan_followups(session, proctor, change, now)
+                await plan_followups(session, proctor, change, now)
             if closing or worse:
                 pending.changes.append(change)
         if closing:

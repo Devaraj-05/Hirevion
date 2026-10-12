@@ -640,6 +640,52 @@ async def test_the_interview_stream_hides_proctoring_from_those_who_may_not_see_
     assert recruiter_view.alerts()[0]["data"]["event"] == "PHONE_DETECTED"
 
 
+async def test_losing_the_permission_stops_the_proctoring_events_at_the_next_check(
+    api: FastAPI,
+    desk: Desk,
+    app_db: Database,
+    make_user: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from dataclasses import replace
+
+    from hirevion_api.interview_session import live as live_module
+
+    org = desk.seed.organization_id
+    manager = await make_user(org, roles=["hiring_manager"])
+    headers = {"origin": ORIGIN, "cookie": await cookie(app_db, org, manager)}
+    original = live_module.load_grants
+    stripped = {"on": False}
+
+    async def grants(session: Any, user_id: UUID) -> Any:
+        found = await original(session, user_id)
+        if not stripped["on"]:
+            return found
+        return replace(
+            found, permissions=[p for p in found.permissions if p != "reports.proctoring.view"]
+        )
+
+    monkeypatch.setattr(live_module, "load_grants", grants)
+    monkeypatch.setattr(live_module, "RECHECK_SECONDS", 0)
+    monkeypatch.setattr(live_module, "BLOCK_MS", 200)
+    path = f"/api/v1/ws/interviews/{desk.interview}"
+    async with Live(api, path, headers) as view:
+        await desk.events(event(1, "PHONE_DETECTED", source="camera"))
+        await view.until(lambda: len(view.alerts()) >= 1)
+        stripped["on"] = True
+        await asyncio.sleep(0.6)  # past the next check
+        await desk.events(event(2, "MULTIPLE_FACES", source="camera", duration_ms=4000))
+        await asyncio.sleep(0.8)
+    assert [a["data"]["seq"] for a in view.alerts()] == [1]
+
+
+async def test_a_timestamp_without_a_zone_is_refused(desk: Desk) -> None:
+    naive = event(1)
+    naive["started_at"] = "2026-10-12T05:00:00"
+    answer = await desk.events(naive)
+    assert answer.status_code == 422
+
+
 async def test_a_reconnecting_dashboard_receives_the_alerts_it_missed(
     api: FastAPI, desk: Desk, app_db: Database
 ) -> None:

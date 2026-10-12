@@ -90,6 +90,8 @@ async def publish_review(redis: Redis, interview_id: UUID, done: Reviewed) -> No
         {
             "event_id": str(done.event.id),
             "review_status": done.event.review_status,
+            "previous_status": done.review.previous,
+            "severity": done.event.severity,
             "reviewer_id": str(done.review.reviewer_id),
             "reason": done.review.reason,
         },

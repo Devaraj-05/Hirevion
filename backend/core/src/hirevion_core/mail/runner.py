@@ -28,6 +28,7 @@ from hirevion_core.evaluation.runner import (
     handle_evaluation_event,
 )
 from hirevion_core.identity.settings import load_identity_settings
+from hirevion_core.interview_session.conductor import Conductor
 from hirevion_core.interview_session.transcripts import ABANDONED_TOPIC, handle_completed
 from hirevion_core.interview_session.transcripts import TOPIC as COMPLETED_TOPIC
 from hirevion_core.interviews.scheduler import InterviewScheduler
@@ -36,7 +37,8 @@ from hirevion_core.mail.sender import SmtpSender
 from hirevion_core.mail.settings import MailSettings, load_mail_settings
 from hirevion_core.outbox import OutboxRelay
 from hirevion_core.proctoring.service import ProctorEngine
-from hirevion_core.proctoring.watcher import GAP_TOPIC, ProctorWatcher, handle_gap
+from hirevion_core.proctoring.store import NOTED_TOPIC
+from hirevion_core.proctoring.watcher import GAP_TOPIC, ProctorWatcher, handle_gap, handle_noted
 from hirevion_core.recordings.settings import load_recording_settings
 from hirevion_core.recordings.worker import media_workers
 from hirevion_core.screening.runner import SCREENING_TOPIC, handle_screening_event
@@ -80,6 +82,14 @@ async def run_workers(
                 redis,
                 partial(handle_gap, ProctorEngine(app_db, redis)),
                 topic=GAP_TOPIC,
+                group="proctoring",
+            ).run_forever(stop),
+            # The interview's proctor summary and CRITICAL-event reminder: retried when the
+            # interview's turn lock is busy.
+            StreamConsumer(
+                redis,
+                partial(handle_noted, Conductor(app_db, redis, llm=None, origin="proctoring")),
+                topic=NOTED_TOPIC,
                 group="proctoring",
             ).run_forever(stop),
             # Transcript artifacts for each completed or abandoned interview (SP-09).

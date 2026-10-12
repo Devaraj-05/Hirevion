@@ -51,7 +51,7 @@ from hirevion_core.models import (
 )
 from hirevion_core.proctoring import live
 from hirevion_core.proctoring.review import publish_review, review_event
-from hirevion_core.proctoring.store import ENDED, event_json, status_json
+from hirevion_core.proctoring.store import event_json, status_json
 from hirevion_core.storage.paths import BlobPath
 
 log = logging.getLogger(__name__)
@@ -61,7 +61,6 @@ Views = Annotated[Principal, requires("reports.proctoring.view")]
 Reviews = Annotated[Principal, requires("interviews.manage")]
 AUDIT_QUIET = 300
 OBSERVER_TTL = timedelta(hours=2)
-DOWNLOAD_PREFIX = "interviews/"
 
 
 def _reviewer_only(principal: Principal) -> UUID | None:
@@ -334,7 +333,7 @@ async def observe_interview(
         raise ProblemError(503, "media-unavailable", "The interview service isn't available")
     async with own_tenant(request, principal) as session:
         interview = await _interview(session, principal, interview_id)
-        if interview.status in ENDED or interview.status not in ("in_progress", "interrupted"):
+        if interview.status not in ("in_progress", "interrupted"):
             raise ProblemError(409, "interview-not-live", "The interview isn't running")
         await _record(request, session, principal, "proctoring.observed", interview.id, quiet=False)
         name = f"observer-{principal.user_id}"
