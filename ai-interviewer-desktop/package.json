@@ -8,7 +8,9 @@
     "build": "node scripts/copy-mediapipe.mjs && vite build",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.node.json",
     "test": "vitest run",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "bundle": "node scripts/build-installer.mjs",
+    "e2e": "node e2e/run.mjs"
   },
   "dependencies": {
     "@hirevion/rtc-stats": "workspace:*",
