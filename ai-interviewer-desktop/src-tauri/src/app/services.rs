@@ -1107,7 +1107,13 @@ impl Services {
     /// When the app exits: stop everything quickly; what's pending uploads at the next launch.
     pub fn stop_for_exit(&self) {
         self.cancel_background();
-        tauri::async_runtime::block_on(self.stop(StopMode::Exit));
+        // `block_on` panics on a thread that already drives a runtime, and this is also called
+        // from one (the updater's before-exit hook), so wait for the stop on a thread of its own.
+        std::thread::scope(|scope| {
+            let _ = scope
+                .spawn(|| tauri::async_runtime::block_on(self.stop(StopMode::Exit)))
+                .join();
+        });
     }
 }
 
@@ -1378,6 +1384,12 @@ mod tests {
                 .code,
             "segment-conflict"
         );
+    }
+
+    #[tokio::test]
+    async fn stopping_for_exit_is_safe_inside_a_runtime() {
+        // The updater's before-exit hook runs on an async worker; block_on there must not panic.
+        Services::disabled().stop_for_exit();
     }
 
     #[tokio::test]

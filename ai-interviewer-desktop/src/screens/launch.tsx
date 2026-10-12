@@ -1,8 +1,15 @@
 import { Button, Skeleton } from "@hirevion/ui";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "use-intl";
 import { commands, isCommandError, type ReleaseState, type StartResult } from "../native/commands";
-import { applyProgress, failureReason, progressPercent, type UpdateState } from "./update";
+import {
+  applyProgress,
+  failureReason,
+  isBusy,
+  outcomeState,
+  progressPercent,
+  type UpdateState,
+} from "./update";
 
 /** Launch → version check (PRD §26): an outdated app stops here (contract candidate-auth). */
 export function LaunchScreen({ onChecked }: { onChecked: (release: ReleaseState) => void }) {
@@ -53,17 +60,21 @@ export function UpdateRequiredScreen({
 }) {
   const t = useTranslations("update");
   const [state, setState] = useState<UpdateState>({ step: "idle" });
-  const busy =
-    state.step === "checking" || state.step === "downloading" || state.step === "installing";
+  const busy = isBusy(state);
+  // Each attempt has a number, so progress from an earlier attempt can't touch a later one.
+  const attempt = useRef(0);
 
   async function update() {
+    const mine = ++attempt.current;
+    const current = () => attempt.current === mine;
     setState({ step: "checking" });
     try {
-      const outcome = await commands.updateInstall((progress) => setState(applyProgress(progress)));
-      // On Windows the installer ends the app first; reaching here means nothing newer applies.
-      setState({ step: outcome.status === "up-to-date" ? "up-to-date" : "installing" });
+      const outcome = await commands.updateInstall((progress) => {
+        if (current()) setState((previous) => applyProgress(previous, progress));
+      });
+      if (current()) setState(outcomeState(outcome.status));
     } catch (error) {
-      setState({ step: "failed", reason: failureReason(error) });
+      if (current()) setState({ step: "failed", reason: failureReason(error) });
     }
   }
 
@@ -92,13 +103,14 @@ export function UpdateRequiredScreen({
         </div>
       ) : null}
       {state.step === "up-to-date" ? <p role="alert">{t("upToDate")}</p> : null}
+      {state.step === "restart" ? <p role="alert">{t("restart")}</p> : null}
       {state.step === "failed" ? (
         <p role="alert" className="text-danger text-sm">
           {t(`errors.${state.reason}`)}
         </p>
       ) : null}
       <div className="flex flex-wrap items-center gap-4">
-        <Button disabled={busy} onClick={() => void update()}>
+        <Button disabled={busy || state.step === "restart"} onClick={() => void update()}>
           {t(state.step === "failed" ? "retry" : "now")}
         </Button>
         {downloadUrl ? (

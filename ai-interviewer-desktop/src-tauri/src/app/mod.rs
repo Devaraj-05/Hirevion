@@ -2,7 +2,7 @@
 //! SP-08b adds the interview services: monitoring, proctoring events and recordings.
 
 pub mod commands;
-mod error;
+pub mod error;
 pub mod interview;
 mod proctoring;
 mod progress;
