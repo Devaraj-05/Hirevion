@@ -6,12 +6,12 @@
 // manifest problems, missing DLLs).
 import { spawn } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { homedir, release } from "node:os";
+import { homedir, release, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { powershell } from "../scripts/powershell.mjs";
 import { stopProcessTree } from "./driver.mjs";
-import { webview2Version } from "./edge-driver.mjs";
+import { ensureEdgeDriver, webview2Version } from "./edge-driver.mjs";
 
 const appRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const application = join(appRoot, "src-tauri", "target", "debug", "AI-Interview.exe");
@@ -98,9 +98,57 @@ await group("Starting the app directly for 20 s (stub backend, DevTools on)", as
   }
   console.log(ended ?? "the app is still running");
   console.log(pages);
+  // What the app started, and whether it has a window (a hang before the webview shows here).
+  const processes = powershell(
+    "Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'AI-Interview.exe' -or $_.CommandLine -match 'webview-exe-name=AI-Interview' } | ForEach-Object { '' + $_.ProcessId + ' <- ' + $_.ParentProcessId + ' ' + $_.Name + ' ' + ($_.CommandLine -replace '\\s+', ' ').Substring(0, [Math]::Min(260, $_.CommandLine.Length)) }; Get-Process AI-Interview -ErrorAction SilentlyContinue | ForEach-Object { 'AI-Interview window=' + $_.MainWindowHandle + ' title=' + $_.MainWindowTitle + ' responding=' + $_.Responding + ' threads=' + $_.Threads.Count }",
+  );
+  console.log(`--- processes ---\n${processes.stdout || processes.stderr}`);
   stopProcessTree(child);
   console.log("--- app output (last 80 lines) ---");
   console.log(tail(output, 80) || "(none)");
+});
+
+await group("msedgedriver, verbose: how it launches the app", async () => {
+  const log = join(tmpdir(), "msedgedriver-verbose.log");
+  const driver = spawn(
+    await ensureEdgeDriver(),
+    ["--port=9516", "--verbose", `--log-path=${log}`],
+    {
+      stdio: "ignore",
+    },
+  );
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const response = await fetch("http://127.0.0.1:9516/session", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        capabilities: {
+          alwaysMatch: {
+            browserName: "webview2",
+            "ms:edgeOptions": { binary: application, webviewOptions: {} },
+          },
+        },
+      }),
+      signal: AbortSignal.timeout(45_000),
+    }).catch((error) => ({ text: async () => `no answer: ${error.message}` }));
+    console.log(`session answer: ${(await response.text()).slice(0, 500)}`);
+  } finally {
+    stopProcessTree(driver);
+  }
+  if (existsSync(log)) {
+    const lines = readFileSync(log, "utf8").split(/\r?\n/);
+    const interesting = lines.filter((line) =>
+      /WEBVIEW2|DevTools|launch|user-data|binary|args|command|port|Starting|error|fail/i.test(line),
+    );
+    console.log("--- msedgedriver log (relevant lines, last 60) ---");
+    console.log(
+      interesting
+        .slice(-60)
+        .map((line) => line.slice(0, 600))
+        .join("\n"),
+    );
+  }
 });
 
 await group("The app's data folder", async () => {
