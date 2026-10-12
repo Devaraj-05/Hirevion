@@ -1,0 +1,47 @@
+name: Desktop installers
+
+# Builds the per-user NSIS installers for x64 and ARM64 (SP-08c, ADR-0019) on a Windows runner.
+# Run it by hand (Actions → Desktop installers). It signs nothing: development builds skip both
+# signatures. A release build uses the owner's Authenticode certificate and updater key, set up
+# as protected secrets later (docs/runbooks/local-dev.md, "Installers, updates and crash reports").
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  installer:
+    runs-on: windows-2025
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, arm64]
+    defaults:
+      run:
+        shell: bash
+    env:
+      HV_SIGN: "0"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install the pinned Rust toolchain
+        working-directory: ai-interviewer-desktop/src-tauri
+        run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ai-interviewer-desktop/src-tauri
+          key: installer-${{ matrix.arch }}
+      - name: Build the installer
+        run: pnpm --filter @hirevion/ai-interviewer-desktop bundle -- --target ${{ matrix.arch }} --no-updater
+      - uses: actions/upload-artifact@v7
+        with:
+          name: installer-${{ matrix.arch }}
+          path: ai-interviewer-desktop/src-tauri/target/*/release/bundle/nsis/*-setup.exe
+          if-no-files-found: error

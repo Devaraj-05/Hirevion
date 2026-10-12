@@ -476,3 +476,19 @@ fn backoff(config: &UploaderConfig, attempt: u32, retry_after: Option<u64>) -> D
         None => delay,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::HeartbeatAck;
+
+    #[test]
+    fn a_heartbeat_answer_with_snapshot_requests_still_reads() {
+        // The server (SP-14) may ask for evidence pictures in the heartbeat answer; answering
+        // them is still open (PENDING_TASKS B3), but the new field must not break the reader.
+        let answer = r#"{ "acked_through": 41, "missing": [42, 44],
+            "snapshot_requests": [{ "request_id": "r1", "event_id": "e1", "kind": "screen",
+                                    "requested_at": "2026-10-12T05:01:02.120Z" }] }"#;
+        let ack: HeartbeatAck = serde_json::from_str(answer).expect("an answer");
+        assert_eq!(ack.missing, [42, 44]);
+    }
+}

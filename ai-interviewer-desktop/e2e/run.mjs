@@ -1,7 +1,8 @@
-// `pnpm --filter @hirevion/ai-interviewer-desktop e2e [--build]`
+// `pnpm --filter @hirevion/ai-interviewer-desktop e2e [-- --skip-build]`
 //
 // Runs the end-to-end test against the DEBUG build of the app on its stub backend:
-//   1. builds the debug app if it isn't there (or with --build);
+//   1. builds the debug app with the webview embedded (skip with --skip-build; a plain
+//      `cargo build` exe loads the dev server instead, so it is never reused);
 //   2. finds msedgedriver for the installed WebView2 runtime, downloading it once;
 //   3. starts `tauri-driver` (install once: `cargo install tauri-driver --locked`);
 //   4. runs e2e/desktop.e2e.mjs, then stops the driver.
@@ -17,7 +18,7 @@ import { fileURLToPath } from "node:url";
 import { ensureEdgeDriver } from "./edge-driver.mjs";
 
 const appRoot = dirname(dirname(fileURLToPath(import.meta.url)));
-const application = join(appRoot, "src-tauri", "target", "debug", "hirevion-desktop.exe");
+const application = join(appRoot, "src-tauri", "target", "debug", "AI-Interview.exe");
 const PORT = process.env.HV_E2E_PORT ?? "4444";
 
 function fail(message) {
@@ -33,7 +34,7 @@ function findTauriDriver() {
 
 if (process.platform !== "win32") fail("the desktop app runs on Windows only.");
 
-if (process.argv.includes("--build") || !existsSync(application)) {
+if (!process.argv.includes("--skip-build") || !existsSync(application)) {
   console.log("Building the debug app (the webview is embedded; no installer)…");
   const cli = createRequire(import.meta.url).resolve("@tauri-apps/cli/tauri.js");
   const built = spawnSync(process.execPath, [cli, "build", "--debug", "--no-bundle"], {

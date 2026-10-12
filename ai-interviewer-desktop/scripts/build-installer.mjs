@@ -37,6 +37,7 @@ function fail(message) {
 function parseArgs(argv) {
   const options = { target: "x64", updater: true };
   for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === "--") continue; // pnpm passes the separator through
     if (argv[i] === "--target") options.target = argv[++i];
     else if (argv[i] === "--no-updater") options.updater = false;
     else fail(`unknown option ${argv[i]}`);
