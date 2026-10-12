@@ -50,6 +50,15 @@ CONTEXTS.update(
         "interview_rescheduled": {**INTERVIEW, "link": INTERVIEW["account_link"]},
         "interview_cancelled": {**INTERVIEW, "forgot_link": INTERVIEW["support_email"]},
         "candidate_code": {"name": "Asha", "code": "042137", "minutes": "10", "link": "042137"},
+        "candidate_request_received": {
+            "name": "Asha",
+            "organization": "Acme Talent",
+            "kind": "Reschedule an interview",
+            "reference": "RQ-1A2B3C4D",
+            "requests_link": INTERVIEW["requests_link"],
+            "support_email": INTERVIEW["support_email"],
+            "link": INTERVIEW["requests_link"],
+        },
     }
 )
 

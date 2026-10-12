@@ -1,0 +1,7 @@
+{% extends "_layout.html.j2" %}
+{% block body %}
+<p>Hello {{ name }},</p>
+<p>We've received your request ({{ kind }}, reference {{ reference }}) and passed it to {{ organization }}. They will reply within 3 business days, and you can follow it in the candidate portal:</p>
+<p><a href="{{ requests_link }}" style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:6px">See your requests</a></p>
+<p>If you have questions, write to {{ support_email }} and quote the reference.</p>
+{% endblock %}

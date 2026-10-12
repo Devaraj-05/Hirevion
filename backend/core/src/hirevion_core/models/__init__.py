@@ -10,6 +10,7 @@ from hirevion_core.models.candidate_device import (
     CandidateOtp,
     CandidateRefreshToken,
 )
+from hirevion_core.models.candidate_portal import CandidateRequest, CandidateWebSession
 from hirevion_core.models.department import Department
 from hirevion_core.models.desktop_release import DesktopChannel, DesktopRelease
 from hirevion_core.models.document import Document
@@ -75,8 +76,10 @@ __all__ = [
     "CandidateDevice",
     "CandidateOtp",
     "CandidateRefreshToken",
+    "CandidateRequest",
     "CandidateSkill",
     "CandidateToken",
+    "CandidateWebSession",
     "Consent",
     "Department",
     "DesktopChannel",

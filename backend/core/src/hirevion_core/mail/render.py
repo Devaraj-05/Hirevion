@@ -19,6 +19,7 @@ MailTemplate = Literal[
     "interview_rescheduled",
     "interview_cancelled",
     "candidate_code",
+    "candidate_request_received",
 ]
 MAIL_TEMPLATES: tuple[MailTemplate, ...] = (
     "reset_password",
@@ -31,6 +32,7 @@ MAIL_TEMPLATES: tuple[MailTemplate, ...] = (
     "interview_rescheduled",
     "interview_cancelled",
     "candidate_code",
+    "candidate_request_received",
 )
 
 LOCALES = ("en-IN", "en-US")
