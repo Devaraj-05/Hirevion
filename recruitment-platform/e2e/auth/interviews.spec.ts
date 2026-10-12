@@ -123,8 +123,10 @@ test("a recruiter invites a shortlisted candidate to an interview", async ({ pag
     "System requirements",
     "Privacy and recording",
     "Support",
-    "/invitation/",
   ]) {
     expect(text).toContain(expected);
   }
+  // A new account gets the set-password link; once the portal test has activated Meera's
+  // account (SP-07b), the invitation tells her to sign in instead.
+  expect(text).toMatch(/\/invitation\/|\/forgot-password/);
 });

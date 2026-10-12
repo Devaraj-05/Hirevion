@@ -16,8 +16,17 @@ app.hirevion.localhost {
 	}
 }
 
+# The candidate portal (ADR-0022) reaches only the portal's own API routes.
 candidate.hirevion.localhost {
-	reverse_proxy host.docker.internal:3000
+	handle /api/v1/portal/* {
+		reverse_proxy host.docker.internal:8000
+	}
+	handle /api/* {
+		respond 404
+	}
+	handle {
+		reverse_proxy host.docker.internal:3000
+	}
 }
 
 api.hirevion.localhost {

@@ -9,6 +9,13 @@ const api = { host: apiUrl.hostname, port: Number(apiUrl.port || 80) };
 
 http
   .createServer((request, response) => {
+    // As Caddy does, the candidate portal's host reaches only the portal's API routes.
+    const portal = (request.headers.host ?? "").startsWith("candidate.");
+    if (portal && request.url?.startsWith("/api/") && !request.url.startsWith("/api/v1/portal/")) {
+      response.writeHead(404);
+      response.end();
+      return;
+    }
     const target = request.url?.startsWith("/api/") ? api : web;
     const upstream = http.request(
       { ...target, method: request.method, path: request.url, headers: request.headers },
