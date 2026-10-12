@@ -1964,6 +1964,196 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/proctoring/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Proctor Events
+         * @description A batch of events, sequenced by the device. Stored once per `seq`; the answer says how
+         *     far everything has arrived and which numbers are still missing.
+         */
+        post: operations["send_proctor_events"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/proctoring/evidence-uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request Evidence Upload
+         * @description A write-only URL (five minutes) for one snapshot; the event then names its `blob_path`.
+         */
+        post: operations["request_evidence_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/proctoring/heartbeat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Proctor Heartbeat
+         * @description The device's state every few seconds. The server keeps its own view too: missing
+         *     heartbeats are a gap in telemetry, whatever the device says.
+         */
+        post: operations["send_proctor_heartbeat"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/proctoring/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open Proctor Session
+         * @description Opens the interview's proctor session, or returns the one already open, with the policy it
+         *     is pinned to.
+         */
+        post: operations["open_proctor_session"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/proctoring/{interview_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Proctoring Report
+         * @description Every proctoring event of the interview in order, dismissed ones included and marked,
+         *     with the session's summary and the counts PRD §68's report is built from.
+         */
+        get: operations["get_proctoring_report"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/proctoring/{interview_id}/events/{event_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Review Proctor Event
+         * @description Confirms an event, or marks it a false positive or not relevant, with the reason. The
+         *     event stays in the report; the decision is audited and shown to everyone watching.
+         */
+        post: operations["review_proctor_event"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/proctoring/{interview_id}/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Proctoring Evidence
+         * @description The interview's evidence (PRD §67) with five-minute download links for stored snapshots;
+         *     segments and transcript or process references carry their window or details. Viewing is
+         *     audited.
+         */
+        get: operations["list_proctoring_evidence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/proctoring/{interview_id}/live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Proctoring Live
+         * @description The live dashboard's starting point: devices, connection health, the AI's state, the
+         *     transcript's tail, recent events and the stream position to follow from. Opening it is
+         *     audited.
+         */
+        get: operations["get_proctoring_live"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/proctoring/{interview_id}/observe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Observe Interview
+         * @description A hidden, subscribe-only LiveKit token for the interview's room: nobody in it sees the
+         *     recruiter, and the token can't publish. Asking for one is audited.
+         */
+        post: operations["observe_interview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -2644,6 +2834,31 @@ export interface components {
             /** Version */
             version: string;
         };
+        /**
+         * AppRule
+         * @description One application rule. A blocking `name` rule always carries `with`; a name alone never
+         *     blocks (PRD §61).
+         */
+        AppRule: {
+            /** Category */
+            category?: string | null;
+            /**
+             * Match
+             * @enum {string}
+             */
+            match: "name" | "path" | "publisher" | "signature" | "hash" | "window_title";
+            /** Value */
+            value: string;
+            /** With */
+            with?: components["schemas"]["RuleCondition"][];
+        };
+        /** AppRules */
+        AppRules: {
+            /** Allowed */
+            allowed: components["schemas"]["AppRule"][];
+            /** Blocked */
+            blocked: components["schemas"]["AppRule"][];
+        };
         /** ApplicationResponse */
         ApplicationResponse: {
             candidate: components["schemas"]["CandidateSummary"];
@@ -3142,6 +3357,16 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** Connection */
+        Connection: {
+            /** Last Heartbeat At */
+            last_heartbeat_at: string | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "ok" | "gap" | "interrupted" | "closed";
+        };
         /** ConsentBody */
         ConsentBody: {
             /** Items */
@@ -3167,6 +3392,23 @@ export interface components {
             id: string;
             /** Missing */
             missing: string[];
+        };
+        /** Counts */
+        Counts: {
+            /** By Review */
+            by_review: {
+                [key: string]: number;
+            };
+            /** By Severity */
+            by_severity: {
+                [key: string]: number;
+            };
+            /** Dismissed */
+            dismissed: number;
+            /** Open Alerts */
+            open_alerts: number;
+            /** Total */
+            total: number;
         };
         /** CoverageItem */
         CoverageItem: {
@@ -3248,6 +3490,29 @@ export interface components {
              * @default
              */
             name: string;
+        };
+        /** Devices */
+        Devices: {
+            /**
+             * Camera
+             * @enum {string}
+             */
+            camera: "up" | "down" | "unknown";
+            /**
+             * Mic
+             * @enum {string}
+             */
+            mic: "up" | "down" | "unknown";
+            /**
+             * Screen
+             * @enum {string}
+             */
+            screen: "up" | "down" | "unknown";
+            /**
+             * Third Eye
+             * @enum {string}
+             */
+            third_eye: "up" | "down" | "unknown";
         };
         /** DocumentResponse */
         DocumentResponse: {
@@ -3443,6 +3708,143 @@ export interface components {
             /** Synthesis Prompt */
             synthesis_prompt: string | null;
         };
+        /** EventBody */
+        EventBody: {
+            /**
+             * Confidence
+             * @default 1
+             */
+            confidence: number | null;
+            /** Details */
+            details?: {
+                [key: string]: unknown;
+            };
+            /** Duration Ms */
+            duration_ms?: number | null;
+            /** Event */
+            event: string;
+            /** Evidence */
+            evidence?: components["schemas"]["EvidenceRef"][];
+            /** Seq */
+            seq: number;
+            /** Source */
+            source: string;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+        };
+        /** EventsAck */
+        EventsAck: {
+            /** Acked Through */
+            acked_through: number;
+            /** Missing */
+            missing: number[];
+        };
+        /** EventsBody */
+        EventsBody: {
+            /** Events */
+            events: components["schemas"]["EventBody"][];
+            /**
+             * Proctor Session Id
+             * Format: uuid
+             */
+            proctor_session_id: string;
+        };
+        /** EvidenceItem */
+        EvidenceItem: {
+            /** Bytes */
+            bytes: number | null;
+            /** Content Type */
+            content_type: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Event Id */
+            event_id: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /**
+             * Origin
+             * @enum {string}
+             */
+            origin: "client" | "server";
+            /** Ref */
+            ref: {
+                [key: string]: unknown;
+            };
+            /** Sha256 */
+            sha256: string | null;
+            /**
+             * Url
+             * @description A five-minute download link; empty for references.
+             */
+            url: string | null;
+            /** Window End */
+            window_end: string | null;
+            /** Window Start */
+            window_start: string | null;
+        };
+        /** EvidenceList */
+        EvidenceList: {
+            /** Items */
+            items: components["schemas"]["EvidenceItem"][];
+        };
+        /** EvidenceRef */
+        EvidenceRef: {
+            /** Blob Path */
+            blob_path: string;
+            /** Type */
+            type: string;
+        };
+        /** EvidenceUploadBody */
+        EvidenceUploadBody: {
+            /** Bytes */
+            bytes: number;
+            /** Content Type */
+            content_type: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "screen" | "camera";
+            /**
+             * Proctor Session Id
+             * Format: uuid
+             */
+            proctor_session_id: string;
+            /**
+             * Request Id
+             * @description A `snapshot_requests` entry of a heartbeat answer.
+             */
+            request_id?: string | null;
+            /**
+             * Seq
+             * @description The event the snapshot is for; not needed when answering a `request_id`.
+             */
+            seq?: number | null;
+            /** Sha256 */
+            sha256: string;
+        };
+        /** EvidenceUploadResponse */
+        EvidenceUploadResponse: {
+            /** Blob Path */
+            blob_path: string;
+            /** Headers */
+            headers: {
+                [key: string]: string;
+            };
+            /** Upload Url */
+            upload_url: string;
+        };
         /** FaqItem */
         FaqItem: {
             /** Answer */
@@ -3525,6 +3927,48 @@ export interface components {
             model: string;
             /** Skipped */
             skipped: number;
+        };
+        /** HeartbeatAck */
+        HeartbeatAck: {
+            /** Missing */
+            missing: number[];
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+            /** Snapshot Requests */
+            snapshot_requests?: components["schemas"]["SnapshotRequest"][];
+        };
+        /** HeartbeatBody */
+        HeartbeatBody: {
+            /** Camera */
+            camera: string;
+            /** Cpu Percent */
+            cpu_percent?: number | null;
+            /**
+             * Displays
+             * @default 1
+             */
+            displays: number;
+            /** Mic */
+            mic: string;
+            /**
+             * Proctor Session Id
+             * Format: uuid
+             */
+            proctor_session_id: string;
+            /** Screen */
+            screen: string;
+            /** Seq High */
+            seq_high: number;
+            /**
+             * Third Eye
+             * @default not_required
+             */
+            third_eye: string;
+            /** Vision Fps */
+            vision_fps?: number | null;
         };
         /** HistoryEntry */
         HistoryEntry: {
@@ -4276,6 +4720,40 @@ export interface components {
             /** Version */
             version: number;
         };
+        /** LiveAi */
+        LiveAi: {
+            /** Agent Connected */
+            agent_connected: boolean;
+            /** Voice */
+            voice: string | null;
+        };
+        /** LiveInterview */
+        LiveInterview: {
+            /** Deadline At */
+            deadline_at: string | null;
+            /** Duration Minutes */
+            duration_minutes: number;
+            /** Started At */
+            started_at: string | null;
+            /** Status */
+            status: string;
+        };
+        /**
+         * LiveSnapshot
+         * @description The dashboard's starting point (PRD §66); follow `/ws/proctoring/{id}?after=cursor`.
+         */
+        LiveSnapshot: {
+            ai: components["schemas"]["LiveAi"];
+            counts: components["schemas"]["Counts"];
+            /** Cursor */
+            cursor: string;
+            /** Events */
+            events: components["schemas"]["ProctorEventItem"][];
+            interview: components["schemas"]["LiveInterview"];
+            proctoring: components["schemas"]["ProctoringStatus"] | null;
+            /** Transcript */
+            transcript: components["schemas"]["TranscriptTailItem"][];
+        };
         /** Liveness */
         Liveness: {
             /**
@@ -4368,6 +4846,26 @@ export interface components {
             required: boolean;
             /** Text */
             text: string;
+        };
+        /**
+         * ObserveResponse
+         * @description A hidden, subscribe-only LiveKit token to watch the candidate's camera, screen and
+         *     third eye.
+         */
+        ObserveResponse: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Identity */
+            identity: string;
+            /** Livekit Url */
+            livekit_url: string;
+            /** Room */
+            room: string;
+            /** Token */
+            token: string;
         };
         /** OrganizationAdminInvite */
         OrganizationAdminInvite: {
@@ -4756,6 +5254,139 @@ export interface components {
             type: string;
         } & {
             [key: string]: unknown;
+        };
+        /**
+         * ProctorEventItem
+         * @description An event as PRD §67 describes it, with the server's severity and the review.
+         */
+        ProctorEventItem: {
+            /** Confidence */
+            confidence: number | null;
+            /** Details */
+            details: {
+                [key: string]: unknown;
+            };
+            /** Duration Ms */
+            duration_ms: number | null;
+            /** Event */
+            event: string;
+            /**
+             * Evidence Count
+             * @default 0
+             */
+            evidence_count: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Ongoing */
+            ongoing: boolean;
+            /**
+             * Origin
+             * @enum {string}
+             */
+            origin: "client" | "server";
+            /** Phase */
+            phase: ("started" | "escalated" | "ended") | null;
+            /** Policy Version */
+            policy_version: number;
+            review?: components["schemas"]["ReviewInfo"] | null;
+            /**
+             * Review Status
+             * @enum {string}
+             */
+            review_status: "pending" | "confirmed" | "false_positive" | "not_relevant";
+            /** Seq */
+            seq: number | null;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "INFO" | "WARNING" | "CRITICAL";
+            /** Source */
+            source: string;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+        };
+        /** ProctorSessionResponse */
+        ProctorSessionResponse: {
+            /** Accommodations */
+            accommodations: string[];
+            /**
+             * Acked Through
+             * @description The highest sequence number below which everything has arrived; a client that lost its queue continues after it.
+             */
+            acked_through: number;
+            app_rules: components["schemas"]["AppRules"];
+            /** Batch Max Events */
+            batch_max_events: number;
+            /** Checks */
+            checks: string[];
+            /** Heartbeat Seconds */
+            heartbeat_seconds: number;
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "off" | "basic" | "standard" | "strict";
+            /** Policy Version */
+            policy_version: number;
+            /**
+             * Proctor Session Id
+             * Format: uuid
+             */
+            proctor_session_id: string;
+            /** Single Display */
+            single_display: boolean;
+            /** Thresholds */
+            thresholds: {
+                [key: string]: components["schemas"]["Threshold"];
+            };
+        };
+        /**
+         * ProctoringReport
+         * @description What PRD §68's proctoring report is built from: every event, dismissed ones included.
+         */
+        ProctoringReport: {
+            counts: components["schemas"]["Counts"];
+            /** Events */
+            events: components["schemas"]["ProctorEventItem"][];
+            /**
+             * Interview Id
+             * Format: uuid
+             */
+            interview_id: string;
+            /** Next Cursor */
+            next_cursor: string | null;
+            session: components["schemas"]["SessionSummary"] | null;
+            status: components["schemas"]["ProctoringStatus"] | null;
+        };
+        /**
+         * ProctoringStatus
+         * @description The devices and the connection, as the server sees them.
+         */
+        ProctoringStatus: {
+            connection: components["schemas"]["Connection"];
+            /** Cpu Percent */
+            cpu_percent: number | null;
+            devices: components["schemas"]["Devices"];
+            /** Displays */
+            displays: number | null;
+            /** Reported */
+            reported: {
+                [key: string]: string | null;
+            };
+            /**
+             * Session
+             * @enum {string}
+             */
+            session: "open" | "closed";
+            /** Vision Fps */
+            vision_fps: number | null;
         };
         /** ProfileResponse */
         ProfileResponse: {
@@ -5358,6 +5989,36 @@ export interface components {
              */
             updated_at: string;
         };
+        /** ReviewBody */
+        ReviewBody: {
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "confirmed" | "false_positive" | "not_relevant";
+            /** Reason */
+            reason: string;
+        };
+        /** ReviewInfo */
+        ReviewInfo: {
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "confirmed" | "false_positive" | "not_relevant";
+            /** Reason */
+            reason: string;
+            /**
+             * Reviewed At
+             * Format: date-time
+             */
+            reviewed_at: string;
+            /**
+             * Reviewer Id
+             * Format: uuid
+             */
+            reviewer_id: string;
+        };
         /** ReviewersBody */
         ReviewersBody: {
             /** Reviewer Ids */
@@ -5443,6 +6104,16 @@ export interface components {
             dimension: string;
             /** Weight */
             weight: number;
+        };
+        /** RuleCondition */
+        RuleCondition: {
+            /**
+             * Match
+             * @enum {string}
+             */
+            match: "name" | "path" | "publisher" | "signature" | "hash" | "window_title";
+            /** Value */
+            value: string;
         };
         /** ScreenAccepted */
         ScreenAccepted: {
@@ -5599,6 +6270,16 @@ export interface components {
              */
             sent_at_ms: number;
         };
+        /** SessionBody */
+        SessionBody: {
+            /** App Version */
+            app_version: string;
+            /**
+             * Interview Id
+             * Format: uuid
+             */
+            interview_id: string;
+        };
         /** SessionInterview */
         SessionInterview: {
             /** Duration Minutes */
@@ -5727,6 +6408,42 @@ export interface components {
              * @enum {string}
              */
             workspace: "none" | "code" | "whiteboard";
+        };
+        /** SessionSummary */
+        SessionSummary: {
+            /** Accommodations */
+            accommodations: string[];
+            /** Acked Through */
+            acked_through: number;
+            /** App Version */
+            app_version: string;
+            /** Checks */
+            checks: string[];
+            /** Closed At */
+            closed_at: string | null;
+            /** Heartbeats */
+            heartbeats: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Last Heartbeat At */
+            last_heartbeat_at: string | null;
+            /** Level */
+            level: string;
+            /**
+             * Opened At
+             * Format: date-time
+             */
+            opened_at: string;
+            /** Policy Version */
+            policy_version: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "closed";
         };
         /** SessionTokenResponse */
         SessionTokenResponse: {
@@ -5862,6 +6579,33 @@ export interface components {
             code: string;
             /** Reason */
             reason: string;
+        };
+        /**
+         * SnapshotRequest
+         * @description A picture the server wants taken now, for an event (a CRITICAL one). Answer it with
+         *     `POST /proctoring/evidence-uploads` and this `request_id`, within two minutes.
+         */
+        SnapshotRequest: {
+            /**
+             * Event Id
+             * Format: uuid
+             */
+            event_id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "screen" | "camera";
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /**
+             * Requested At
+             * Format: date-time
+             */
+            requested_at: string;
         };
         /** StartBody */
         StartBody: {
@@ -6208,6 +6952,13 @@ export interface components {
             /** Version */
             version: number;
         };
+        /** Threshold */
+        Threshold: {
+            /** Critical After Ms */
+            critical_after_ms?: number | null;
+            /** Warn After Ms */
+            warn_after_ms?: number | null;
+        };
         /** TokenPasswordRequest */
         TokenPasswordRequest: {
             /** Password */
@@ -6297,6 +7048,20 @@ export interface components {
             end_ms: number;
             /** Question Id */
             question_id: string | null;
+            /** Seq */
+            seq: number;
+            /**
+             * Speaker
+             * @enum {string}
+             */
+            speaker: "ai" | "candidate";
+            /** Start Ms */
+            start_ms: number;
+            /** Text */
+            text: string;
+        };
+        /** TranscriptTailItem */
+        TranscriptTailItem: {
             /** Seq */
             seq: number;
             /**
@@ -11095,6 +11860,391 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrganizationListingResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    send_proctor_events: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EventsBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventsAck"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    request_evidence_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvidenceUploadBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidenceUploadResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    send_proctor_heartbeat: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HeartbeatBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HeartbeatAck"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    open_proctor_session: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SessionBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProctorSessionResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_proctoring_report: {
+        parameters: {
+            query?: {
+                /** @description Only this severity. */
+                severity?: ("INFO" | "WARNING" | "CRITICAL") | null;
+                /** @description Only this review. */
+                review_status?: ("pending" | "confirmed" | "false_positive" | "not_relevant") | null;
+                /** @description How many items to return. */
+                limit?: number;
+                /** @description `next_cursor` from the previous page. */
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProctoringReport"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    review_proctor_event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProctorEventItem"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_proctoring_evidence: {
+        parameters: {
+            query?: {
+                /** @description Only this event's evidence. */
+                event_id?: string | null;
+            };
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidenceList"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_proctoring_live: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveSnapshot"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    observe_interview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObserveResponse"];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */

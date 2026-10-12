@@ -399,6 +399,75 @@
         "title": "AppBody",
         "type": "object"
       },
+      "AppRule": {
+        "description": "One application rule. A blocking `name` rule always carries `with`; a name alone never\nblocks (PRD §61).",
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "match": {
+            "enum": [
+              "name",
+              "path",
+              "publisher",
+              "signature",
+              "hash",
+              "window_title"
+            ],
+            "title": "Match",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          },
+          "with": {
+            "items": {
+              "$ref": "#/components/schemas/RuleCondition"
+            },
+            "title": "With",
+            "type": "array"
+          }
+        },
+        "required": [
+          "match",
+          "value"
+        ],
+        "title": "AppRule",
+        "type": "object"
+      },
+      "AppRules": {
+        "properties": {
+          "allowed": {
+            "items": {
+              "$ref": "#/components/schemas/AppRule"
+            },
+            "title": "Allowed",
+            "type": "array"
+          },
+          "blocked": {
+            "items": {
+              "$ref": "#/components/schemas/AppRule"
+            },
+            "title": "Blocked",
+            "type": "array"
+          }
+        },
+        "required": [
+          "blocked",
+          "allowed"
+        ],
+        "title": "AppRules",
+        "type": "object"
+      },
       "ApplicationResponse": {
         "properties": {
           "candidate": {
@@ -1685,6 +1754,38 @@
         "title": "CompleteResponse",
         "type": "object"
       },
+      "Connection": {
+        "properties": {
+          "last_heartbeat_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Heartbeat At"
+          },
+          "state": {
+            "enum": [
+              "ok",
+              "gap",
+              "interrupted",
+              "closed"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "last_heartbeat_at"
+        ],
+        "title": "Connection",
+        "type": "object"
+      },
       "ConsentBody": {
         "properties": {
           "items": {
@@ -1752,6 +1853,45 @@
           "missing"
         ],
         "title": "ConsentResponse",
+        "type": "object"
+      },
+      "Counts": {
+        "properties": {
+          "by_review": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "By Review",
+            "type": "object"
+          },
+          "by_severity": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "By Severity",
+            "type": "object"
+          },
+          "dismissed": {
+            "title": "Dismissed",
+            "type": "integer"
+          },
+          "open_alerts": {
+            "title": "Open Alerts",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "by_severity",
+          "by_review",
+          "dismissed",
+          "open_alerts"
+        ],
+        "title": "Counts",
         "type": "object"
       },
       "CoverageItem": {
@@ -1974,6 +2114,54 @@
           }
         },
         "title": "DeviceBody",
+        "type": "object"
+      },
+      "Devices": {
+        "properties": {
+          "camera": {
+            "enum": [
+              "up",
+              "down",
+              "unknown"
+            ],
+            "title": "Camera",
+            "type": "string"
+          },
+          "mic": {
+            "enum": [
+              "up",
+              "down",
+              "unknown"
+            ],
+            "title": "Mic",
+            "type": "string"
+          },
+          "screen": {
+            "enum": [
+              "up",
+              "down",
+              "unknown"
+            ],
+            "title": "Screen",
+            "type": "string"
+          },
+          "third_eye": {
+            "enum": [
+              "up",
+              "down",
+              "unknown"
+            ],
+            "title": "Third Eye",
+            "type": "string"
+          }
+        },
+        "required": [
+          "camera",
+          "mic",
+          "screen",
+          "third_eye"
+        ],
+        "title": "Devices",
         "type": "object"
       },
       "DocumentResponse": {
@@ -2555,6 +2743,377 @@
         "title": "EvaluationVersions",
         "type": "object"
       },
+      "EventBody": {
+        "properties": {
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 1.0,
+            "title": "Confidence"
+          },
+          "details": {
+            "additionalProperties": true,
+            "title": "Details",
+            "type": "object"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "event": {
+            "maxLength": 60,
+            "title": "Event",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceRef"
+            },
+            "maxItems": 20,
+            "title": "Evidence",
+            "type": "array"
+          },
+          "seq": {
+            "minimum": 1.0,
+            "title": "Seq",
+            "type": "integer"
+          },
+          "source": {
+            "maxLength": 30,
+            "title": "Source",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "seq",
+          "event",
+          "source",
+          "started_at"
+        ],
+        "title": "EventBody",
+        "type": "object"
+      },
+      "EventsAck": {
+        "properties": {
+          "acked_through": {
+            "title": "Acked Through",
+            "type": "integer"
+          },
+          "missing": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Missing",
+            "type": "array"
+          }
+        },
+        "required": [
+          "acked_through",
+          "missing"
+        ],
+        "title": "EventsAck",
+        "type": "object"
+      },
+      "EventsBody": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/EventBody"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Events",
+            "type": "array"
+          },
+          "proctor_session_id": {
+            "format": "uuid",
+            "title": "Proctor Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "proctor_session_id",
+          "events"
+        ],
+        "title": "EventsBody",
+        "type": "object"
+      },
+      "EvidenceItem": {
+        "properties": {
+          "bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bytes"
+          },
+          "content_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Type"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "event_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "origin": {
+            "enum": [
+              "client",
+              "server"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "ref": {
+            "additionalProperties": true,
+            "title": "Ref",
+            "type": "object"
+          },
+          "sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sha256"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A five-minute download link; empty for references.",
+            "title": "Url"
+          },
+          "window_end": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window End"
+          },
+          "window_start": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Start"
+          }
+        },
+        "required": [
+          "id",
+          "event_id",
+          "kind",
+          "origin",
+          "url",
+          "content_type",
+          "bytes",
+          "sha256",
+          "window_start",
+          "window_end",
+          "ref",
+          "created_at"
+        ],
+        "title": "EvidenceItem",
+        "type": "object"
+      },
+      "EvidenceList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "EvidenceList",
+        "type": "object"
+      },
+      "EvidenceRef": {
+        "properties": {
+          "blob_path": {
+            "maxLength": 400,
+            "title": "Blob Path",
+            "type": "string"
+          },
+          "type": {
+            "maxLength": 40,
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "blob_path"
+        ],
+        "title": "EvidenceRef",
+        "type": "object"
+      },
+      "EvidenceUploadBody": {
+        "properties": {
+          "bytes": {
+            "minimum": 1.0,
+            "title": "Bytes",
+            "type": "integer"
+          },
+          "content_type": {
+            "maxLength": 60,
+            "title": "Content Type",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "screen",
+              "camera"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "proctor_session_id": {
+            "format": "uuid",
+            "title": "Proctor Session Id",
+            "type": "string"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A `snapshot_requests` entry of a heartbeat answer.",
+            "title": "Request Id"
+          },
+          "seq": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The event the snapshot is for; not needed when answering a `request_id`.",
+            "title": "Seq"
+          },
+          "sha256": {
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "proctor_session_id",
+          "kind",
+          "content_type",
+          "bytes",
+          "sha256"
+        ],
+        "title": "EvidenceUploadBody",
+        "type": "object"
+      },
+      "EvidenceUploadResponse": {
+        "properties": {
+          "blob_path": {
+            "title": "Blob Path",
+            "type": "string"
+          },
+          "headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Headers",
+            "type": "object"
+          },
+          "upload_url": {
+            "title": "Upload Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "upload_url",
+          "blob_path",
+          "headers"
+        ],
+        "title": "EvidenceUploadResponse",
+        "type": "object"
+      },
       "FaqItem": {
         "properties": {
           "answer": {
@@ -2838,6 +3397,112 @@
           "model"
         ],
         "title": "GenerateResponse",
+        "type": "object"
+      },
+      "HeartbeatAck": {
+        "properties": {
+          "missing": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          },
+          "snapshot_requests": {
+            "items": {
+              "$ref": "#/components/schemas/SnapshotRequest"
+            },
+            "title": "Snapshot Requests",
+            "type": "array"
+          }
+        },
+        "required": [
+          "server_time",
+          "missing"
+        ],
+        "title": "HeartbeatAck",
+        "type": "object"
+      },
+      "HeartbeatBody": {
+        "properties": {
+          "camera": {
+            "maxLength": 20,
+            "title": "Camera",
+            "type": "string"
+          },
+          "cpu_percent": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cpu Percent"
+          },
+          "displays": {
+            "default": 1,
+            "maximum": 64.0,
+            "minimum": 0.0,
+            "title": "Displays",
+            "type": "integer"
+          },
+          "mic": {
+            "maxLength": 20,
+            "title": "Mic",
+            "type": "string"
+          },
+          "proctor_session_id": {
+            "format": "uuid",
+            "title": "Proctor Session Id",
+            "type": "string"
+          },
+          "screen": {
+            "maxLength": 20,
+            "title": "Screen",
+            "type": "string"
+          },
+          "seq_high": {
+            "minimum": 0.0,
+            "title": "Seq High",
+            "type": "integer"
+          },
+          "third_eye": {
+            "default": "not_required",
+            "maxLength": 20,
+            "title": "Third Eye",
+            "type": "string"
+          },
+          "vision_fps": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vision Fps"
+          }
+        },
+        "required": [
+          "proctor_session_id",
+          "seq_high",
+          "camera",
+          "mic",
+          "screen"
+        ],
+        "title": "HeartbeatBody",
         "type": "object"
       },
       "HistoryEntry": {
@@ -5382,6 +6047,128 @@
         "title": "JobVersionResponse",
         "type": "object"
       },
+      "LiveAi": {
+        "properties": {
+          "agent_connected": {
+            "title": "Agent Connected",
+            "type": "boolean"
+          },
+          "voice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice"
+          }
+        },
+        "required": [
+          "voice",
+          "agent_connected"
+        ],
+        "title": "LiveAi",
+        "type": "object"
+      },
+      "LiveInterview": {
+        "properties": {
+          "deadline_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadline At"
+          },
+          "duration_minutes": {
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "started_at",
+          "deadline_at",
+          "duration_minutes"
+        ],
+        "title": "LiveInterview",
+        "type": "object"
+      },
+      "LiveSnapshot": {
+        "description": "The dashboard's starting point (PRD §66); follow `/ws/proctoring/{id}?after=cursor`.",
+        "properties": {
+          "ai": {
+            "$ref": "#/components/schemas/LiveAi"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/Counts"
+          },
+          "cursor": {
+            "title": "Cursor",
+            "type": "string"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/ProctorEventItem"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "interview": {
+            "$ref": "#/components/schemas/LiveInterview"
+          },
+          "proctoring": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProctoringStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "transcript": {
+            "items": {
+              "$ref": "#/components/schemas/TranscriptTailItem"
+            },
+            "title": "Transcript",
+            "type": "array"
+          }
+        },
+        "required": [
+          "interview",
+          "proctoring",
+          "ai",
+          "counts",
+          "events",
+          "transcript",
+          "cursor"
+        ],
+        "title": "LiveSnapshot",
+        "type": "object"
+      },
       "Liveness": {
         "properties": {
           "status": {
@@ -5610,6 +6397,41 @@
           "required"
         ],
         "title": "NoticeItem",
+        "type": "object"
+      },
+      "ObserveResponse": {
+        "description": "A hidden, subscribe-only LiveKit token to watch the candidate's camera, screen and\nthird eye.",
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "identity": {
+            "title": "Identity",
+            "type": "string"
+          },
+          "livekit_url": {
+            "title": "Livekit Url",
+            "type": "string"
+          },
+          "room": {
+            "title": "Room",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "livekit_url",
+          "room",
+          "identity",
+          "token",
+          "expires_at"
+        ],
+        "title": "ObserveResponse",
         "type": "object"
       },
       "OrganizationAdminInvite": {
@@ -6654,6 +7476,368 @@
           "code"
         ],
         "title": "Problem",
+        "type": "object"
+      },
+      "ProctorEventItem": {
+        "description": "An event as PRD §67 describes it, with the server's severity and the review.",
+        "properties": {
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "details": {
+            "additionalProperties": true,
+            "title": "Details",
+            "type": "object"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "event": {
+            "title": "Event",
+            "type": "string"
+          },
+          "evidence_count": {
+            "default": 0,
+            "title": "Evidence Count",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ongoing": {
+            "title": "Ongoing",
+            "type": "boolean"
+          },
+          "origin": {
+            "enum": [
+              "client",
+              "server"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "enum": [
+                  "started",
+                  "escalated",
+                  "ended"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase"
+          },
+          "policy_version": {
+            "title": "Policy Version",
+            "type": "integer"
+          },
+          "review": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "review_status": {
+            "enum": [
+              "pending",
+              "confirmed",
+              "false_positive",
+              "not_relevant"
+            ],
+            "title": "Review Status",
+            "type": "string"
+          },
+          "seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seq"
+          },
+          "severity": {
+            "enum": [
+              "INFO",
+              "WARNING",
+              "CRITICAL"
+            ],
+            "title": "Severity",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "seq",
+          "event",
+          "source",
+          "origin",
+          "severity",
+          "started_at",
+          "duration_ms",
+          "ongoing",
+          "phase",
+          "confidence",
+          "details",
+          "review_status",
+          "policy_version"
+        ],
+        "title": "ProctorEventItem",
+        "type": "object"
+      },
+      "ProctorSessionResponse": {
+        "properties": {
+          "accommodations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Accommodations",
+            "type": "array"
+          },
+          "acked_through": {
+            "description": "The highest sequence number below which everything has arrived; a client that lost its queue continues after it.",
+            "title": "Acked Through",
+            "type": "integer"
+          },
+          "app_rules": {
+            "$ref": "#/components/schemas/AppRules"
+          },
+          "batch_max_events": {
+            "title": "Batch Max Events",
+            "type": "integer"
+          },
+          "checks": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "heartbeat_seconds": {
+            "title": "Heartbeat Seconds",
+            "type": "integer"
+          },
+          "level": {
+            "enum": [
+              "off",
+              "basic",
+              "standard",
+              "strict"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "policy_version": {
+            "title": "Policy Version",
+            "type": "integer"
+          },
+          "proctor_session_id": {
+            "format": "uuid",
+            "title": "Proctor Session Id",
+            "type": "string"
+          },
+          "single_display": {
+            "title": "Single Display",
+            "type": "boolean"
+          },
+          "thresholds": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Threshold"
+            },
+            "title": "Thresholds",
+            "type": "object"
+          }
+        },
+        "required": [
+          "proctor_session_id",
+          "policy_version",
+          "level",
+          "checks",
+          "thresholds",
+          "app_rules",
+          "single_display",
+          "heartbeat_seconds",
+          "batch_max_events",
+          "accommodations",
+          "acked_through"
+        ],
+        "title": "ProctorSessionResponse",
+        "type": "object"
+      },
+      "ProctoringReport": {
+        "description": "What PRD §68's proctoring report is built from: every event, dismissed ones included.",
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/Counts"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/ProctorEventItem"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "interview_id": {
+            "format": "uuid",
+            "title": "Interview Id",
+            "type": "string"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "session": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProctoringStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "interview_id",
+          "session",
+          "status",
+          "counts",
+          "events",
+          "next_cursor"
+        ],
+        "title": "ProctoringReport",
+        "type": "object"
+      },
+      "ProctoringStatus": {
+        "description": "The devices and the connection, as the server sees them.",
+        "properties": {
+          "connection": {
+            "$ref": "#/components/schemas/Connection"
+          },
+          "cpu_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cpu Percent"
+          },
+          "devices": {
+            "$ref": "#/components/schemas/Devices"
+          },
+          "displays": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Displays"
+          },
+          "reported": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Reported",
+            "type": "object"
+          },
+          "session": {
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "title": "Session",
+            "type": "string"
+          },
+          "vision_fps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vision Fps"
+          }
+        },
+        "required": [
+          "session",
+          "devices",
+          "connection",
+          "displays",
+          "cpu_percent",
+          "vision_fps",
+          "reported"
+        ],
+        "title": "ProctoringStatus",
         "type": "object"
       },
       "ProfileResponse": {
@@ -8339,6 +9523,66 @@
         "title": "ResumeDocumentResponse",
         "type": "object"
       },
+      "ReviewBody": {
+        "properties": {
+          "outcome": {
+            "enum": [
+              "confirmed",
+              "false_positive",
+              "not_relevant"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "outcome",
+          "reason"
+        ],
+        "title": "ReviewBody",
+        "type": "object"
+      },
+      "ReviewInfo": {
+        "properties": {
+          "outcome": {
+            "enum": [
+              "confirmed",
+              "false_positive",
+              "not_relevant"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "reviewed_at": {
+            "format": "date-time",
+            "title": "Reviewed At",
+            "type": "string"
+          },
+          "reviewer_id": {
+            "format": "uuid",
+            "title": "Reviewer Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "outcome",
+          "reason",
+          "reviewer_id",
+          "reviewed_at"
+        ],
+        "title": "ReviewInfo",
+        "type": "object"
+      },
       "ReviewersBody": {
         "additionalProperties": false,
         "properties": {
@@ -8716,6 +9960,32 @@
         "title": "RubricWeight",
         "type": "object"
       },
+      "RuleCondition": {
+        "properties": {
+          "match": {
+            "enum": [
+              "name",
+              "path",
+              "publisher",
+              "signature",
+              "hash",
+              "window_title"
+            ],
+            "title": "Match",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "match",
+          "value"
+        ],
+        "title": "RuleCondition",
+        "type": "object"
+      },
       "ScreenAccepted": {
         "properties": {
           "queued": {
@@ -9077,6 +10347,26 @@
         "title": "ServerTime",
         "type": "object"
       },
+      "SessionBody": {
+        "properties": {
+          "app_version": {
+            "maxLength": 40,
+            "title": "App Version",
+            "type": "string"
+          },
+          "interview_id": {
+            "format": "uuid",
+            "title": "Interview Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "interview_id",
+          "app_version"
+        ],
+        "title": "SessionBody",
+        "type": "object"
+      },
       "SessionInterview": {
         "properties": {
           "duration_minutes": {
@@ -9414,6 +10704,102 @@
         "title": "SessionState",
         "type": "object"
       },
+      "SessionSummary": {
+        "properties": {
+          "accommodations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Accommodations",
+            "type": "array"
+          },
+          "acked_through": {
+            "title": "Acked Through",
+            "type": "integer"
+          },
+          "app_version": {
+            "title": "App Version",
+            "type": "string"
+          },
+          "checks": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "heartbeats": {
+            "title": "Heartbeats",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_heartbeat_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Heartbeat At"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "opened_at": {
+            "format": "date-time",
+            "title": "Opened At",
+            "type": "string"
+          },
+          "policy_version": {
+            "title": "Policy Version",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "level",
+          "policy_version",
+          "opened_at",
+          "closed_at",
+          "acked_through",
+          "heartbeats",
+          "last_heartbeat_at",
+          "checks",
+          "accommodations",
+          "app_version"
+        ],
+        "title": "SessionSummary",
+        "type": "object"
+      },
       "SessionTokenResponse": {
         "properties": {
           "expires_at": {
@@ -9739,6 +11125,42 @@
           "reason"
         ],
         "title": "SkippedApplication",
+        "type": "object"
+      },
+      "SnapshotRequest": {
+        "description": "A picture the server wants taken now, for an event (a CRITICAL one). Answer it with\n`POST /proctoring/evidence-uploads` and this `request_id`, within two minutes.",
+        "properties": {
+          "event_id": {
+            "format": "uuid",
+            "title": "Event Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "screen",
+              "camera"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "request_id": {
+            "format": "uuid",
+            "title": "Request Id",
+            "type": "string"
+          },
+          "requested_at": {
+            "format": "date-time",
+            "title": "Requested At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "event_id",
+          "kind",
+          "requested_at"
+        ],
+        "title": "SnapshotRequest",
         "type": "object"
       },
       "StartBody": {
@@ -10867,6 +12289,34 @@
         "title": "TemplateVersionResponse",
         "type": "object"
       },
+      "Threshold": {
+        "properties": {
+          "critical_after_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Critical After Ms"
+          },
+          "warn_after_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warn After Ms"
+          }
+        },
+        "title": "Threshold",
+        "type": "object"
+      },
       "TokenPasswordRequest": {
         "properties": {
           "password": {
@@ -11165,6 +12615,38 @@
           "confidence"
         ],
         "title": "TranscriptSegmentResponse",
+        "type": "object"
+      },
+      "TranscriptTailItem": {
+        "properties": {
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "speaker": {
+            "enum": [
+              "ai",
+              "candidate"
+            ],
+            "title": "Speaker",
+            "type": "string"
+          },
+          "start_ms": {
+            "title": "Start Ms",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "seq",
+          "speaker",
+          "text",
+          "start_ms"
+        ],
+        "title": "TranscriptTailItem",
         "type": "object"
       },
       "UploadResponse": {
@@ -18369,6 +19851,603 @@
         "summary": "Suspend Organization",
         "tags": [
           "platform"
+        ]
+      }
+    },
+    "/api/v1/proctoring/events": {
+      "post": {
+        "description": "A batch of events, sequenced by the device. Stored once per `seq`; the answer says how\nfar everything has arrived and which numbers are still missing.",
+        "operationId": "send_proctor_events",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventsAck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Send Proctor Events",
+        "tags": [
+          "proctoring"
+        ]
+      }
+    },
+    "/api/v1/proctoring/evidence-uploads": {
+      "post": {
+        "description": "A write-only URL (five minutes) for one snapshot; the event then names its `blob_path`.",
+        "operationId": "request_evidence_upload",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvidenceUploadBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenceUploadResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Request Evidence Upload",
+        "tags": [
+          "proctoring"
+        ]
+      }
+    },
+    "/api/v1/proctoring/heartbeat": {
+      "post": {
+        "description": "The device's state every few seconds. The server keeps its own view too: missing\nheartbeats are a gap in telemetry, whatever the device says.",
+        "operationId": "send_proctor_heartbeat",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeartbeatBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeartbeatAck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Send Proctor Heartbeat",
+        "tags": [
+          "proctoring"
+        ]
+      }
+    },
+    "/api/v1/proctoring/session": {
+      "post": {
+        "description": "Opens the interview's proctor session, or returns the one already open, with the policy it\nis pinned to.",
+        "operationId": "open_proctor_session",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProctorSessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Open Proctor Session",
+        "tags": [
+          "proctoring"
+        ]
+      }
+    },
+    "/api/v1/proctoring/{interview_id}": {
+      "get": {
+        "description": "Every proctoring event of the interview in order, dismissed ones included and marked,\nwith the session's summary and the counts PRD §68's report is built from.",
+        "operationId": "get_proctoring_report",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only this severity.",
+            "in": "query",
+            "name": "severity",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "INFO",
+                    "WARNING",
+                    "CRITICAL"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only this severity.",
+              "title": "Severity"
+            }
+          },
+          {
+            "description": "Only this review.",
+            "in": "query",
+            "name": "review_status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "pending",
+                    "confirmed",
+                    "false_positive",
+                    "not_relevant"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only this review.",
+              "title": "Review Status"
+            }
+          },
+          {
+            "description": "How many items to return.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "description": "How many items to return.",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "`next_cursor` from the previous page.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`next_cursor` from the previous page.",
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProctoringReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Get Proctoring Report",
+        "tags": [
+          "proctoring"
+        ]
+      }
+    },
+    "/api/v1/proctoring/{interview_id}/events/{event_id}/review": {
+      "post": {
+        "description": "Confirms an event, or marks it a false positive or not relevant, with the reason. The\nevent stays in the report; the decision is audited and shown to everyone watching.",
+        "operationId": "review_proctor_event",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Event Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProctorEventItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Review Proctor Event",
+        "tags": [
+          "proctoring"
+        ]
+      }
+    },
+    "/api/v1/proctoring/{interview_id}/evidence": {
+      "get": {
+        "description": "The interview's evidence (PRD §67) with five-minute download links for stored snapshots;\nsegments and transcript or process references carry their window or details. Viewing is\naudited.",
+        "operationId": "list_proctoring_evidence",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only this event's evidence.",
+            "in": "query",
+            "name": "event_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only this event's evidence.",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenceList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "List Proctoring Evidence",
+        "tags": [
+          "proctoring"
+        ]
+      }
+    },
+    "/api/v1/proctoring/{interview_id}/live": {
+      "get": {
+        "description": "The live dashboard's starting point: devices, connection health, the AI's state, the\ntranscript's tail, recent events and the stream position to follow from. Opening it is\naudited.",
+        "operationId": "get_proctoring_live",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveSnapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Get Proctoring Live",
+        "tags": [
+          "proctoring"
+        ]
+      }
+    },
+    "/api/v1/proctoring/{interview_id}/observe": {
+      "post": {
+        "description": "A hidden, subscribe-only LiveKit token for the interview's room: nobody in it sees the\nrecruiter, and the token can't publish. Asking for one is audited.",
+        "operationId": "observe_interview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObserveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Observe Interview",
+        "tags": [
+          "proctoring"
         ]
       }
     },
