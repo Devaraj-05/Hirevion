@@ -256,6 +256,32 @@
 - Data-rights requests are acted on by people; the erasure and export tooling (SP-22) isn't automated yet, so the 30-day promise depends on recruiters watching the list.
 - Accommodation requests can contain health information; they're visible to anyone holding `candidates.requests.view` in scope. A narrower permission may be needed once SP-22's privacy roles exist.
 
+## SP-08c Desktop packaging, updates and crash reports
+
+**Assets:** the installer and the app a candidate runs; the updater's signing key; the Authenticode certificate; crash reports (they can carry what the candidate typed or their identity if unscrubbed).
+
+**Trust boundaries:** the build machine → the host that serves bundles → the candidate's machine; the manifest endpoint (the API) → the updater; the app → GlitchTip.
+
+| Threat (STRIDE) | Example | Control |
+|---|---|---|
+| Spoofing | A fake update server or a network attacker serves its own bundle | The manifest and bundle are fetched over HTTPS only (release builds refuse http); the bundle must verify against the minisign public key compiled into the app (`plugins.updater.pubkey`); a bundle signed by any other key is refused |
+| Tampering | A genuine but old, vulnerable bundle is offered under a newer version number | `requireSignedVersion`: the signature's trusted comment carries the version it was made for, and a mismatch is refused |
+| Tampering | The server offers a lower or equal version (a downgrade) | The app installs only a strictly newer version (`is_upgrade`, tested against a fake server in `tests/updater.rs`); the server also never offers one (ADR-0021) |
+| Tampering | The webview, if compromised, installs something or points the updater elsewhere | No `updater:*` or `process:*` permission is granted; the only way in is the `update_install` command, which takes no arguments except a progress channel; the endpoint is the compiled-in API root |
+| Tampering | A tampered installer on a download page | The installer is Authenticode-signed (SmartScreen and Windows show the publisher); the in-app update path doesn't depend on that and checks the minisign signature |
+| Tampering | The release key leaks | Releases can be withdrawn in the registry (super admin, step-up, audited); the production key is generated on a trusted machine and kept in a secrets store, never in the repo or the app; rotating it needs a release signed by the old key that carries the new public key |
+| Repudiation | "Who published that release?" | Registry changes are in the platform's audit chain (ADR-0021) |
+| Information disclosure | A crash report carries the candidate's email, tokens, name, computer name or home folder | Reports go through one scrubber (`crash.rs`): no user, request, hostname, source lines or variables; emails, tokens, profile paths, addresses and long opaque strings are redacted; tested, including a whole event. Webview errors go through Rust, so the webview never talks to GlitchTip and its CSP stays shut |
+| Information disclosure | The update request identifies the device | It carries a DPoP proof (so staged rollouts work), which names only the public key thumbprint; the bundle download carries no headers |
+| Denial of service | A render loop floods GlitchTip | At most 25 webview reports per run; the Rust side truncates messages and stacks |
+| Denial of service | A bad update bricks every candidate | Staged rollout (`rollout_percent`) and withdrawal in the registry; the installer is per-user and can be re-run over the top |
+| Elevation of privilege | The installer needs admin rights, or the updater runs elevated | The NSIS installer is per-user (`installMode: currentUser`); nothing in the app asks for elevation |
+
+**Residual risks:**
+- Native crashes (an access violation outside Rust's panic path) aren't captured: there's no minidump handler, because none has been checked against the licence policy yet.
+- A self-signed development certificate proves only that signing works; the production OV certificate is a later step (SmartScreen reputation builds over time and EV no longer bypasses it).
+- A compromised build machine can sign a malicious update with the real key; the cloud plan moves signing to a CI environment with protected secrets and manual approval.
+
 ## SP-09 The interview engine
 
 **Assets:**

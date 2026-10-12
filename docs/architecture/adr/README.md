@@ -20,6 +20,7 @@
 | [0016](0016-screening-and-ranking.md) | Screening and ranking: weighted factors, verified evidence, blind by default | Accepted |
 | [0017](0017-interview-configuration.md) | Interview configuration: versioned questions and templates, AI drafts for review | Accepted |
 | [0018](0018-desktop-device-keys-and-tokens.md) | Desktop sign-in: device-bound keys, DPoP, and tokens kept out of the webview | Accepted |
+| [0019](0019-desktop-packaging-and-updates.md) | Desktop packaging: per-user installers, a signed updater, development signing and crash reports | Accepted |
 | [0020](0020-interviews-and-invitations.md) | Interviews and invitations: pinned policy, a lifecycle table, candidate accounts and a cross-tenant scheduler | Accepted |
 | [0021](0021-candidate-desktop-auth.md) | Candidate desktop sign-in: DPoP-bound tokens, refresh families, new-device codes and a release registry | Accepted |
 | [0022](0022-candidate-portal.md) | The candidate portal: its own cookies and origins, the invitation's link, §83's notices and candidate requests | Accepted |

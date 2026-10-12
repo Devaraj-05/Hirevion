@@ -509,11 +509,59 @@ How it works is in [ADR-0018](../architecture/adr/0018-desktop-device-keys-and-t
 - **Where calls go:** the app calls the API from Rust, never from the webview, at `HV_API_URL` (default `https://api.hirevion.localhost/api/v1`, through Caddy). Debug builds read `HV_API_URL` at run time, so `HV_API_URL=http://127.0.0.1:8000/api/v1 pnpm tauri dev` talks to `uv run hv api` directly.
 - **Before the candidate sign-in API exists (SP-07c),** `HV_DESKTOP_STUB=1` makes a debug build answer from canned data:
   - any email works with the password `stub`;
-  - an email starting `new` asks for the code `123456`.
+  - an email starting `new` asks for the code `123456`;
+  - `HV_DESKTOP_STUB_NATIVE=1` also makes the native system checks (CPU, memory, disk, displays, privacy, Media Foundation, screen capture) pass without touching the machine; the end-to-end test sets it.
 - **The device key** lives in the TPM when there's one (`Hirevion Device Key v1`). `cargo test -p hv-security -- --ignored` checks it on real hardware.
 - **The refresh token** is DPAPI-encrypted in `%LOCALAPPDATA%\com.hirevion.interview\vault`. Signing out deletes it.
 - **Integrity in release builds:** the app removes the `WEBVIEW2_*` variables that change the browser before it starts, and reports them.
 - **Integrity in debug builds:** the app keeps them, so the fake-device spike runs below still work, and only reports them.
+
+### Installers, updates and crash reports (SP-08c)
+
+How it works is in [ADR-0019](../architecture/adr/0019-desktop-packaging-and-updates.md); the manifest's wire format is `docs/api/contracts/candidate-auth.md`, "Desktop releases".
+
+**Build the installers**
+
+- `pnpm --filter @hirevion/ai-interviewer-desktop bundle` makes the x64 installer; add `-- --target arm64` or `-- --target all` for ARM64. It prints each installer's size, SHA-256, Authenticode status and updater signature.
+- The output is `ai-interviewer-desktop/src-tauri/target/<triple>/release/bundle/nsis/*-setup.exe`, with a `.sig` beside it.
+- **ARM64** needs the Visual Studio Installer component "MSVC v143 – VS 2022 C++ ARM64 build tools"; the script adds the Rust target itself.
+- **Build-time settings** (real environment, or the root `.env`):
+  - `HV_API_URL`: the API root compiled into the app (`https://…/api/v1`).
+  - `HV_GLITCHTIP_DSN`: crash reporting; leave it out and reporting is off.
+  - `--no-updater` skips the update artifacts, so no updater key is needed.
+- **Install without admin rights:** run the `-setup.exe`; it installs for the current user only. For a silent install use `/S`, and uninstall with the `uninstall.exe` in the install folder.
+
+**Sign**
+
+- **Authenticode (development):** the script creates a self-signed certificate on demand in `Cert:\CurrentUser\My` ("Hirevion Dev Code Signing") and signs the app and installer with it. Windows doesn't trust it; it only proves the step works. It is never exported or committed. `HV_SIGN=0` skips signing.
+- **Authenticode (production, later):** buy an OV code-signing certificate, then set `HV_SIGN_THUMBPRINT` to its thumbprint (it must be in your certificate store) and `HV_SIGN_TIMESTAMP_URL` to the CA's RFC 3161 timestamp server. SmartScreen reputation builds with downloads; an EV certificate no longer skips it.
+- **Updates (development key):** the key pair lives outside the repo. To make one:
+  - `pnpm --filter @hirevion/ai-interviewer-desktop exec tauri signer generate -w %USERPROFILE%\.hirevion\updater-dev.key`;
+  - put the password in the root `.env` as `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`;
+  - paste the printed public key into `plugins.updater.pubkey` in `src-tauri/tauri.conf.json` (the committed key matches the author's development key, so a new one means a new key pair and an app rebuilt with it).
+- The bundle script uses `%USERPROFILE%\.hirevion\updater-dev.key` unless `TAURI_SIGNING_PRIVATE_KEY` says otherwise.
+
+**Publish a development release**
+
+1. Raise the version in **both** `src-tauri/tauri.conf.json` and the workspace `version` in `src-tauri/Cargo.toml` (a test checks they match), then run `bundle`.
+2. Put the `-setup.exe` on an `https://` address the candidate's PC trusts. The server only accepts https URLs, and release builds refuse anything else.
+3. As a super admin (with a recent password, because registry changes need step-up), call the registry:
+   - `POST /api/v1/platform/desktop-releases` with `{"version": "0.2.0", "channel": "stable", "arch": "x64", "url": "https://…/…-setup.exe", "signature": "<the whole text of the .sig file>", "notes": "…", "rollout_percent": 100}` registers a draft;
+   - `PATCH /api/v1/platform/desktop-releases/{id}` with `{"status": "published"}` offers it. A lower `rollout_percent` offers it to that share of devices.
+   - `backend/api/tests/test_candidate_auth_api.py` shows complete requests.
+4. To force the update gate, raise the channel's `minimum_version` above the installed version (`PUT /api/v1/platform/desktop-channels/stable`). The installed app then stops at "Update required"; **Update now** downloads, verifies and installs the published release, and the new version starts by itself.
+5. A downgrade is refused by the app even if the server offers one (`cargo test -p hirevion-desktop --test updater`).
+
+**Crash reports**
+
+- Build with `HV_GLITCHTIP_DSN=https://<key>@<glitchtip host>/<project>` and Rust panics and webview errors arrive in GlitchTip. Nothing identifying is sent: emails, tokens, profile paths, addresses and the computer's name are removed first (`cargo test -p hirevion-desktop crash::`).
+- Without the setting the build reports nothing.
+
+**End-to-end test**
+
+- `pnpm --filter @hirevion/ai-interviewer-desktop e2e` builds the debug app (first time, or with `-- --build`), starts `tauri-driver` and walks launch → sign in → interviews → briefing → system check → consent → ready on the stub backend with fake camera and microphone. It opens the app window for a minute.
+- One-time setup: `cargo install tauri-driver --version 2.1.0 --locked`. The matching `msedgedriver` is downloaded to `%USERPROFILE%\.hirevion\msedgedriver\<version>` on first use (or set `MSEDGEDRIVER`).
+- If it fails, `ai-interviewer-desktop/e2e/output/failure.png` shows where it stopped. CI runs the same thing as the `desktop-e2e` job.
 
 ### Unattended spike runs
 
