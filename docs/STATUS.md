@@ -19,13 +19,13 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 | B2 | SP-11 monitoring, SP-12 client recording, SP-15a desktop vision | #9 |
 | B3 (part) SP-08b | Briefing, consent, interview path, services, upload drain | #9 |
 | D2 SP-12 server | Segment upload and acknowledgement, assembly, continuity, audited playback | #11 |
+| C4 SP-10 | Evaluation on eight dimensions with evidence, pinned re-runs, eval gate, reviewer calibration | #12 / ADR-0031 |
 
 ## In progress (unmerged worktree branches)
 
 | Part | Branch | Exact next step |
 |---|---|---|
 | C5 SP-14 | `worktree-agent-a3468242f5d2493f9` | Add the nudge relay test to `test_bridge`, then docs |
-| C4 SP-10 | `worktree-agent-a6e946406d5223c31` | Commit the 2 uncommitted files, then write the runbook section |
 | B3 SP-08c packaging | `sp-08c-packaging` | Commit the 15 uncommitted files; installer release build, then the tauri-driver e2e test and docs |
 
 ## Remaining, in priority order (dependency in brackets)
