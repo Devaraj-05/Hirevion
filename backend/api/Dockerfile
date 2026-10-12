@@ -27,8 +27,11 @@ FROM python:3.12-slim-bookworm@sha256:392307d22300de8b5986851a12d9176dfc0fc073e6
 RUN useradd --uid 10001 --no-create-home --shell /usr/sbin/nologin hirevion
 COPY --from=build /app/.venv /app/.venv
 COPY backend/migrations /app/migrations
+# The candidate portal's notices (PRD §83) are the policy documents (SP-07b).
+COPY docs/policies /app/policies
 ENV PATH="/app/.venv/bin:$PATH" \
     HV_MIGRATIONS_DIR=/app/migrations \
+    HV_POLICIES_DIR=/app/policies \
     PYTHONUNBUFFERED=1
 USER 10001
 EXPOSE 8000

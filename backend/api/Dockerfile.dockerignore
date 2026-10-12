@@ -11,4 +11,5 @@
 !backend/api/pyproject.toml
 !backend/api/src/
 !backend/migrations/
+!docs/policies/
 **/__pycache__
