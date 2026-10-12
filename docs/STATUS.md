@@ -22,12 +22,12 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 | C4 SP-10 | Evaluation on eight dimensions with evidence, pinned re-runs, eval gate, reviewer calibration | #12 / ADR-0031 |
 | C5 SP-14 | Proctoring pipeline, severity rules, evidence and snapshots, server-observed state, live dashboard, event review | #13 / ADR-0032 |
 | A3 SP-07b | Candidate portal: own cookies and CSRF, invitation link, sign-in and resets, interviews with countdowns, download, §83 notices, report placeholder, requests acted on at `/candidates/requests` | #15 / ADR-0022 |
+| B3 SP-08c | Per-user installer (x64), signed updater, crash reports, desktop e2e; open items moved to B4/B5 | #14 / ADR-0019 |
 
 ## In progress (unmerged worktree branches)
 
 | Part | Branch | Exact next step |
 |---|---|---|
-| B3 SP-08c packaging | `sp-08c-packaging` | Built, tested and documented; review and merge. Open: ARM64 installer on a runner, snapshot requests, production certificate and updater key |
 
 ## Remaining, in priority order (dependency in brackets)
 
