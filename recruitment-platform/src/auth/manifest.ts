@@ -88,6 +88,13 @@ export const ROUTES = [
     detail: true,
   }),
   route({
+    path: "/candidates/requests",
+    permission: "candidates.requests.view",
+    section: "candidates",
+    titleKey: "candidatesRequests",
+    owner: "SP-07",
+  }),
+  route({
     path: "/interviews",
     permission: "interviews.view",
     section: "interviews",

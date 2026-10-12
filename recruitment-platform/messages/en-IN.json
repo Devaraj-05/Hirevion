@@ -5,13 +5,182 @@
   "portal": {
     "notices": "Privacy and recording notices",
     "pages": {
-      "status": "Your interview",
+      "status": "Your interviews",
+      "login": "Sign in to the candidate portal",
+      "forgotPassword": "Reset your password",
+      "resetPassword": "Choose a new password",
       "invitation": "Accept your invitation",
-      "setPassword": "Set your password",
       "download": "Download the interview app",
       "notices": "Privacy and recording notices",
       "report": "Your report",
       "requests": "Requests and data rights"
+    },
+    "nav": {
+      "label": "Candidate portal",
+      "interviews": "Interviews",
+      "download": "Download",
+      "notices": "Notices",
+      "requests": "Requests",
+      "report": "Report",
+      "signOut": "Sign out",
+      "signIn": "Sign in"
+    },
+    "login": {
+      "intro": "Sign in to see your interviews, download the app and make requests.",
+      "noPassword": "No password yet? Use the link in your invitation email, or ask for a new one.",
+      "setDone": "Your password is set. Sign in to continue.",
+      "resetDone": "Your password is changed. Sign in with the new one."
+    },
+    "forgot": {
+      "intro": "Enter the email address your invitation was sent to, and we'll email you a link to choose a password.",
+      "sent": "If an account exists for {email}, we've emailed it a link. Check your inbox."
+    },
+    "password": {
+      "setIntro": "Choose the password you'll use for the candidate portal and the Hirevion interview app.",
+      "resetIntro": "Choose a new password for the candidate portal and the interview app.",
+      "hint": "At least 12 characters. A few unrelated words work well; there are no other rules.",
+      "tooShort": "Use at least 12 characters."
+    },
+    "interviews": {
+      "intro": "Your interviews and their windows. You take each one in the Hirevion interview app.",
+      "empty": "No interviews yet",
+      "emptyHint": "When an organisation invites you, the interview appears here.",
+      "loadFailed": "Your interviews couldn't be loaded. Try again in a moment.",
+      "window": "Window",
+      "duration": "{minutes, plural, one {# minute} other {# minutes}}",
+      "durationLabel": "Duration",
+      "records": "Records {what}.",
+      "opensIn": "Opens in {time}",
+      "closesIn": "Closes in {time}",
+      "closed": "The window has closed.",
+      "ready": "Open now: start it in the Hirevion interview app.",
+      "getApp": "Download the app",
+      "reschedule": "Ask to reschedule",
+      "status": {
+        "invited": "Invited",
+        "in_progress": "In progress",
+        "interrupted": "Interrupted",
+        "completed": "Completed",
+        "evaluating": "Being reviewed",
+        "evaluated": "Reviewed",
+        "expired": "Expired",
+        "cancelled": "Cancelled",
+        "abandoned": "Not finished",
+        "scheduled": "Scheduled"
+      }
+    },
+    "countdown": {
+      "days": "{n, plural, one {# day} other {# days}}",
+      "hours": "{n, plural, one {# hour} other {# hours}}",
+      "minutes": "{n, plural, one {# minute} other {# minutes}}",
+      "seconds": "{n, plural, one {# second} other {# seconds}}"
+    },
+    "download": {
+      "intro": "Hirevion interviews run in a desktop app for Windows. Install it before your interview and run its system check.",
+      "button": "Download for Windows",
+      "notPublished": "The download link isn't published yet. Check back here, or follow the link in your invitation email.",
+      "latest": "Latest version {version} ({arch})",
+      "minimum": "Versions before {version} can't sign in; the app updates itself.",
+      "requirementsTitle": "System requirements",
+      "installTitle": "Installing",
+      "install": {
+        "step1": "Download the installer and open it. It installs for you alone and doesn't need administrator rights.",
+        "step2": "If Windows SmartScreen warns you, choose More info, then Run anyway.",
+        "step3": "Open Hirevion Interview from the Start menu and sign in with your portal email and password.",
+        "step4": "The first time on a computer, enter the code we email you.",
+        "step5": "Run the system check well before your window opens."
+      },
+      "helpTitle": "Need help?",
+      "help": "If the app won't install or start, make a support request and include what you saw.",
+      "loadFailed": "The download details aren't available right now. Try again in a moment."
+    },
+    "noticesPage": {
+      "intro": "Before each interview the app shows exactly what that interview collects, and asks for your consent to each item.",
+      "collectedTitle": "What an interview may collect",
+      "disclosures": {
+        "camera": "Camera: video of you while you answer",
+        "microphone": "Microphone: your voice",
+        "screen": "Screen: what your screen shows",
+        "audio": "Audio: the conversation's sound",
+        "video": "Video: the recording of the interview",
+        "third_eye": "Third eye: a phone camera showing your workspace, if the interview uses one",
+        "transcript": "Transcript: the text of both sides of the conversation",
+        "coding_activity": "Coding activity: code you write, run and submit",
+        "system_telemetry": "System telemetry: window focus, displays and apps that aren't allowed (never keystrokes)",
+        "proctoring_events": "Proctoring events: integrity signals, such as your face not being visible"
+      },
+      "policiesTitle": "Policies",
+      "contents": "Contents",
+      "support": "Questions about your data? Write to {email}, or make a request.",
+      "loadFailed": "The policies aren't available right now. Try again in a moment."
+    },
+    "reportPage": {
+      "intro": "After your interview, the organisation decides what it shares with you. Its internal reports stay confidential.",
+      "mayShare": "It may share:",
+      "items": {
+        "completion": "That your interview is complete",
+        "general": "General feedback",
+        "technical": "Technical feedback",
+        "coding": "Coding feedback",
+        "nextStep": "Your next step"
+      },
+      "notYet": "Nothing has been shared with you yet."
+    },
+    "requests": {
+      "intro": "Ask the organisation to reschedule, for help, for adjustments, or to exercise your data rights. We acknowledge each request by email.",
+      "newTitle": "Make a request",
+      "kind": "What do you need?",
+      "kinds": {
+        "reschedule": "Reschedule an interview",
+        "support": "Help or support",
+        "accommodation": "Adjustments for an interview",
+        "alternative_process": "An alternative to the AI interview",
+        "data_access": "A copy of my data",
+        "data_correction": "Correct my data",
+        "data_erasure": "Delete my data",
+        "grievance": "Raise a grievance",
+        "nomination": "Nominate someone to act for me",
+        "consent_withdrawal": "Withdraw my consent"
+      },
+      "interview": "Interview",
+      "chooseInterview": "Choose an interview",
+      "noInterviews": "You have no interview to choose.",
+      "message": "Details",
+      "preferred": "When would suit you?",
+      "adjustments": "Adjustments",
+      "accommodationKinds": {
+        "extended_time": "Extended time",
+        "text_answers": "Typed answers instead of speaking",
+        "breaks": "Breaks",
+        "assistive_technology": "Assistive technology (a screen reader, magnifier or similar)",
+        "relaxed_gaze": "Relaxed gaze checks",
+        "third_eye_waiver": "No phone camera"
+      },
+      "purposes": "What to stop collecting or using",
+      "nomineeName": "Nominee's name",
+      "nomineeEmail": "Nominee's email",
+      "relationship": "Their relationship to you",
+      "field": "Which detail is wrong?",
+      "submit": "Send the request",
+      "sent": "Request sent. We've emailed you its reference.",
+      "failed": "Check the form: {problem}",
+      "unavailable": "We couldn't send the request right now. Try again in a moment.",
+      "limited": "Too many requests. Try again later.",
+      "mine": "Your requests",
+      "empty": "You haven't made any requests.",
+      "loadFailed": "Your requests couldn't be loaded. Try again in a moment.",
+      "status": {
+        "open": "Received",
+        "in_progress": "In progress",
+        "resolved": "Resolved",
+        "declined": "Declined"
+      },
+      "reply": "Reply",
+      "sentOn": "Sent {date}",
+      "messageRequired": "Say what you need.",
+      "interviewRequired": "Choose the interview.",
+      "choiceRequired": "Choose at least one.",
+      "nomineeRequired": "Give the nominee's name and email address."
     }
   },
   "routes": {
@@ -57,7 +226,8 @@
     "platformAudit": "Platform audit",
     "platformHealth": "Platform health",
     "account": "Account",
-    "interviewsDetail": "Interview"
+    "interviewsDetail": "Interview",
+    "candidatesRequests": "Candidate requests"
   },
   "roles": {
     "super_admin": "Super admin",
@@ -190,7 +360,8 @@
       "shortlisted": "Shortlisted",
       "interview": "Interview",
       "completed": "Completed",
-      "decision": "Final decision"
+      "decision": "Final decision",
+      "requests": "Requests"
     },
     "interviews": {
       "upcoming": "Upcoming",
@@ -644,7 +815,9 @@
     "platform_app_catalog_manage": "Manage the app catalogue",
     "platform_desktop_releases_manage": "Manage desktop releases",
     "platform_audit_view": "View the platform audit log",
-    "platform_health_view": "View platform health"
+    "platform_health_view": "View platform health",
+    "candidates_requests_view": "View candidates' requests",
+    "candidates_requests_manage": "Act on candidates' requests"
   },
   "admin": {
     "common": {
@@ -1761,5 +1934,44 @@
         "declined": "Request declined"
       }
     }
+  },
+  "candidateRequests": {
+    "intro": "Requests candidates make in the portal. Each was acknowledged by email; reply here.",
+    "caption": "Candidate requests",
+    "allStatuses": "All statuses",
+    "statusFilter": "Status",
+    "columns": {
+      "reference": "Reference",
+      "candidate": "Candidate",
+      "kind": "Request",
+      "interview": "Interview",
+      "received": "Received",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "empty": "No requests",
+    "emptyHint": "Requests candidates make in the portal appear here.",
+    "loadFailed": "The requests couldn't be loaded.",
+    "more": "Show more",
+    "update": "Update {reference}",
+    "updateShort": "Update",
+    "dialogTitle": "Update the request",
+    "message": "Their message",
+    "details": {
+      "preferred": "Preferred time",
+      "kinds": "Adjustments",
+      "purposes": "Consent to withdraw",
+      "nominee_name": "Nominee",
+      "nominee_email": "Nominee's email",
+      "relationship": "Relationship",
+      "field": "Detail"
+    },
+    "adjustmentsOnInterview": "Decide on the adjustments on the interview's page.",
+    "newStatus": "New status",
+    "response": "Reply to the candidate",
+    "responseHint": "The candidate sees this in the portal.",
+    "save": "Save",
+    "saved": "Request updated.",
+    "closed": "This request is closed."
   }
 }

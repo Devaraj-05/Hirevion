@@ -1,8 +1,10 @@
-/** The candidate portal's pages (master plan §6.3); SP-07 fills them. */
+/** The candidate portal's pages (master plan §6.3; SP-07b). */
 export const PORTAL_PAGES = [
   { key: "status", path: "/" },
+  { key: "login", path: "/login" },
+  { key: "forgotPassword", path: "/forgot-password" },
+  { key: "resetPassword", path: "/reset-password/[token]" },
   { key: "invitation", path: "/invitation/[token]" },
-  { key: "setPassword", path: "/set-password" },
   { key: "download", path: "/download" },
   { key: "notices", path: "/notices" },
   { key: "report", path: "/report" },
@@ -10,5 +12,3 @@ export const PORTAL_PAGES = [
 ] as const;
 
 export type PortalPageKey = (typeof PORTAL_PAGES)[number]["key"];
-
-export const PORTAL_OWNER = "SP-07";

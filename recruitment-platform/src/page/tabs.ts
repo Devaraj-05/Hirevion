@@ -45,15 +45,18 @@ const TAB_SETS: readonly TabSet[] = [
   },
   {
     section: "candidates",
-    pages: ["/candidates"],
-    tabs: filterTabs("/candidates", "stage", [
-      ["all", null],
-      ["screening", "screening"],
-      ["shortlisted", "shortlisted"],
-      ["interview", "interview"],
-      ["completed", "completed"],
-      ["decision", "decision"],
-    ]),
+    pages: ["/candidates", "/candidates/requests"],
+    tabs: [
+      ...filterTabs("/candidates", "stage", [
+        ["all", null],
+        ["screening", "screening"],
+        ["shortlisted", "shortlisted"],
+        ["interview", "interview"],
+        ["completed", "completed"],
+        ["decision", "decision"],
+      ]),
+      { key: "requests", path: "/candidates/requests" },
+    ],
   },
   {
     section: "interviews",
