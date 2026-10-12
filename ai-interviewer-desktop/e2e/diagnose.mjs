@@ -4,7 +4,7 @@
 // started directly for about 20 s (output, exit code, whether WebView2 serves a DevTools page),
 // the app's data folder, and recent Windows application-error events (crashes, side-by-side
 // manifest problems, missing DLLs).
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { homedir, release, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -103,10 +103,37 @@ await group("Starting the app directly for 20 s (stub backend, DevTools on)", as
     "Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'AI-Interview.exe' -or $_.CommandLine -match 'webview-exe-name=AI-Interview' } | ForEach-Object { '' + $_.ProcessId + ' <- ' + $_.ParentProcessId + ' ' + $_.Name + ' ' + ($_.CommandLine -replace '\\s+', ' ').Substring(0, [Math]::Min(260, $_.CommandLine.Length)) }; Get-Process AI-Interview -ErrorAction SilentlyContinue | ForEach-Object { 'AI-Interview window=' + $_.MainWindowHandle + ' title=' + $_.MainWindowTitle + ' responding=' + $_.Responding + ' threads=' + $_.Threads.Count }",
   );
   console.log(`--- processes ---\n${processes.stdout || processes.stderr}`);
+  // Did the remote-debugging switch reach the browser process, and is anything listening?
+  const detail = powershell(
+    [
+      "$ids = @(Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'AI-Interview.exe' -or $_.CommandLine -match 'webview-exe-name=AI-Interview' } | ForEach-Object { $_.ProcessId })",
+      "'--- the browser process, one switch per line ---'",
+      "Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'msedgewebview2.exe' -and $_.CommandLine -match 'embedded-browser-webview=1' -and $_.CommandLine -match 'webview-exe-name=AI-Interview' } | ForEach-Object { ($_.CommandLine -split ' --') -join [Environment]::NewLine }",
+      "'--- listening TCP ports of the app processes ---'",
+      "Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $ids -contains $_.OwningProcess } | ForEach-Object { '' + $_.LocalAddress + ':' + $_.LocalPort + ' pid ' + $_.OwningProcess }",
+    ].join("; "),
+  );
+  console.log(detail.stdout || detail.stderr);
   stopProcessTree(child);
   console.log("--- app output (last 80 lines) ---");
   console.log(tail(output, 80) || "(none)");
 });
+
+await group(
+  "Edge, WebView2 and Chrome policies (a policy can switch remote debugging off)",
+  async () => {
+    const keys = [
+      "HKLM\\SOFTWARE\\Policies\\Microsoft\\Edge",
+      "HKCU\\SOFTWARE\\Policies\\Microsoft\\Edge",
+      "HKLM\\SOFTWARE\\Policies\\Microsoft\\Edge\\WebView2",
+      "HKLM\\SOFTWARE\\Policies\\Google\\Chrome",
+    ];
+    for (const key of keys) {
+      const result = spawnSync("reg", ["query", key, "/s"], { encoding: "utf8" });
+      console.log(`--- ${key} ---\n${result.status === 0 ? result.stdout.trim() : "(not set)"}`);
+    }
+  },
+);
 
 await group("msedgedriver, verbose: how it launches the app", async () => {
   const log = join(tmpdir(), "msedgedriver-verbose.log");
