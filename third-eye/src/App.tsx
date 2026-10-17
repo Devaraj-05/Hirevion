@@ -1,192 +1,238 @@
 import { kbps, summarizeConnection, type VideoSample, videoSample } from "@hirevion/rtc-stats";
-import { LocalVideoTrack, Room, RoomEvent, Track } from "livekit-client";
-import { useEffect, useRef, useState } from "react";
-import { readToken, wantsAutoStart } from "./token";
+import type { LocalVideoTrack } from "livekit-client";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { type JoinResponse, PairingError, redeem, rejoin, roomUrl } from "./api";
+import { cameraHelp, detectBrowser } from "./guidance";
+import { browserDeps } from "./livekit";
+import { EyeSession, type EyeState } from "./session";
+import { readToken, recallDevice, rememberDevice, wantsAutoStart } from "./token";
 
-type Phase = "ready" | "starting" | "live" | "failed";
-
-interface Timings {
-  cameraMs: number;
-  connectMs: number;
-  publishMs: number;
-}
-
-interface LiveStats {
-  network: string;
-  video: string;
-}
+type Phase = "pairing" | "ready" | "camera" | "streaming" | "denied" | "error";
 
 const STATS_INTERVAL_MS = 2_000;
+const STATE_TEXT: Record<EyeState, string> = {
+  idle: "Not started",
+  starting: "Starting the camera…",
+  live: "Live: the interview can see this camera",
+  paused: "Paused: keep this page open and the screen on",
+  reconnecting: "Reconnecting…",
+  failed: "Stopped",
+  ended: "Ended: this pairing was cancelled",
+};
+
+// Read once, before the fragment is removed from the address bar (and the history).
+const hash = window.location.hash;
+const pairingToken = readToken(hash);
+const autoStart = wantsAutoStart(hash);
+const pageOpened = performance.now();
+if (hash) {
+  window.history.replaceState(null, "", window.location.pathname + window.location.search);
+}
+
+function storage(): Storage | undefined {
+  try {
+    return window.sessionStorage;
+  } catch {
+    return undefined;
+  }
+}
 
 export function App() {
-  const token = readToken(window.location.hash);
+  const browser = detectBrowser(navigator.userAgent);
   const preview = useRef<HTMLVideoElement>(null);
-  const room = useRef<Room | null>(null);
-  const statsTimer = useRef<number | undefined>(undefined);
-  const autoStarted = useRef(false);
-  const [phase, setPhase] = useState<Phase>("ready");
-  const [connection, setConnection] = useState("not connected");
-  const [timings, setTimings] = useState<Timings | null>(null);
-  const [live, setLive] = useState<LiveStats | null>(null);
+  const session = useRef<EyeSession | null>(null);
+  const camera = useRef<LocalVideoTrack | null>(null);
+  const started = useRef(false);
+  const [phase, setPhase] = useState<Phase>("pairing");
+  const [joined, setJoined] = useState<JoinResponse | null>(null);
+  const [state, setState] = useState<EyeState>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [pairedIn, setPairedIn] = useState<number | null>(null);
+  const [video, setVideo] = useState<string | null>(null);
 
-  useEffect(
-    () => () => {
-      window.clearInterval(statsTimer.current);
-      void room.current?.disconnect();
-    },
-    [],
-  );
+  // Spend the token at once: it lives two minutes. A reload rejoins with the device secret.
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    const device = recallDevice(storage());
+    const join = pairingToken
+      ? redeem(pairingToken, navigator.userAgent)
+      : device
+        ? rejoin(device)
+        : Promise.reject(
+            new PairingError(
+              "no-token",
+              "This link has no pairing code. Scan the QR code on the interview computer.",
+              true,
+            ),
+          );
+    join
+      .then((answer) => {
+        rememberDevice(storage(), answer.device_token);
+        setJoined(answer);
+        setPhase("ready");
+      })
+      .catch((caught: unknown) => {
+        setError(caught instanceof Error ? caught.message : String(caught));
+        setPhase("error");
+      });
+  }, []);
 
-  if (!token) {
-    return (
-      <main className="eye">
-        <h1>Third Eye</h1>
-        <p>This link has no pairing code. Scan the QR code on the interview computer again.</p>
-      </main>
+  const start = useCallback(async () => {
+    if (!joined) return;
+    setPhase("camera");
+    setError(null);
+    const credentials = async () => {
+      const device = recallDevice(storage());
+      if (!device) {
+        throw new PairingError("no-device", "Scan the QR code again.", true);
+      }
+      const answer = await rejoin(device);
+      return {
+        url: roomUrl(answer.livekit_url, window.location.host),
+        token: answer.participant_token,
+      };
+    };
+    const deps = browserDeps(credentials, (track) => {
+      camera.current = track;
+      if (preview.current) track.attach(preview.current);
+    });
+    const next = new EyeSession(
+      deps,
+      { url: roomUrl(joined.livekit_url, window.location.host), token: joined.participant_token },
+      setState,
     );
-  }
-
-  const watchStats = (track: LocalVideoTrack) => {
-    let previous: VideoSample | null = null;
-    window.clearInterval(statsTimer.current);
-    statsTimer.current = window.setInterval(async () => {
-      const report = await track.getRTCStatsReport();
-      if (!report) {
+    session.current = next;
+    try {
+      await next.start();
+      setPairedIn((performance.now() - pageOpened) / 1000);
+      setPhase("streaming");
+    } catch (caught) {
+      if (caught instanceof DOMException && caught.name === "NotAllowedError") {
+        setPhase("denied");
         return;
       }
+      setError(caught instanceof Error ? caught.message : String(caught));
+      setPhase("error");
+    }
+  }, [joined]);
+
+  useEffect(() => {
+    if (phase === "ready" && autoStart) void start();
+  }, [phase, start]);
+
+  // A locked phone or another app: unpublish now (the server notices within seconds).
+  useEffect(() => {
+    const changed = () => {
+      const current = session.current;
+      if (!current) return;
+      void (document.visibilityState === "hidden" ? current.hidden() : current.visible());
+    };
+    const leaving = () => void session.current?.hidden();
+    document.addEventListener("visibilitychange", changed);
+    window.addEventListener("pagehide", leaving);
+    return () => {
+      document.removeEventListener("visibilitychange", changed);
+      window.removeEventListener("pagehide", leaving);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (phase !== "streaming") return;
+    let previous: VideoSample | null = null;
+    const timer = window.setInterval(async () => {
+      const report = await camera.current?.getRTCStatsReport();
+      if (!report) return;
       const pair = summarizeConnection(report);
       const sample = videoSample(report);
       const rate = previous && sample ? kbps(previous, sample) : null;
       previous = sample;
-      setLive({
-        network: pair
-          ? `${pair.protocol.toUpperCase()}, ${pair.localType} to ${pair.remoteType}, RTT ${pair.rttMs ?? "?"} ms`
-          : "negotiating",
-        video: sample
-          ? `${sample.width ?? "?"}x${sample.height ?? "?"} at ${sample.fps ?? "?"} fps, ${rate ?? "?"} kbps`
-          : "no video yet",
-      });
+      setVideo(
+        sample
+          ? `${sample.width ?? "?"}×${sample.height ?? "?"}, ${sample.fps ?? "?"} fps, ${rate ?? "?"} kbps${pair ? `, ${pair.protocol.toUpperCase()}` : ""}`
+          : null,
+      );
     }, STATS_INTERVAL_MS);
-  };
-
-  const start = async () => {
-    setPhase("starting");
-    setError(null);
-    await room.current?.disconnect();
-    try {
-      const began = performance.now();
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 15, max: 15 },
-        },
-      });
-      const camera = stream.getVideoTracks()[0];
-      if (!camera) {
-        throw new Error("The camera returned no video.");
-      }
-      if (preview.current) {
-        preview.current.srcObject = stream;
-      }
-      const cameraReady = performance.now();
-
-      const next = new Room({ adaptiveStream: false, dynacast: false });
-      room.current = next;
-      next.on(RoomEvent.ConnectionStateChanged, (state) => setConnection(state));
-      next.on(RoomEvent.Reconnecting, () => setConnection("reconnecting"));
-      next.on(RoomEvent.Reconnected, () => setConnection("reconnected"));
-      // Caddy routes /rtc on this same origin to LiveKit, so no other host is involved.
-      await next.connect(`wss://${window.location.host}`, token);
-      const connected = performance.now();
-
-      const track = new LocalVideoTrack(camera);
-      await next.localParticipant.publishTrack(track, {
-        source: Track.Source.Camera,
-        simulcast: false,
-        videoEncoding: { maxBitrate: 1_200_000, maxFramerate: 15 },
-      });
-      const published = performance.now();
-
-      setTimings({
-        cameraMs: cameraReady - began,
-        connectMs: connected - cameraReady,
-        publishMs: published - connected,
-      });
-      setPhase("live");
-      void holdWakeLock();
-      watchStats(track);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught));
-      setPhase("failed");
-    }
-  };
-
-  if (!autoStarted.current && wantsAutoStart(window.location.hash)) {
-    autoStarted.current = true;
-    queueMicrotask(() => void start());
-  }
+    return () => window.clearInterval(timer);
+  }, [phase]);
 
   return (
     <main className="eye">
       <h1>Third Eye</h1>
-      <p>
-        Place this phone about 1.5 m behind and to the side of you, so it sees you, your desk and
-        your screen. Keep it plugged in and leave this page open.
-      </p>
-      <video ref={preview} autoPlay muted playsInline />
-      {phase === "ready" && (
-        <button type="button" onClick={() => void start()}>
-          Start camera
-        </button>
+      {joined && (
+        <p className="context">
+          {joined.interview.company} · {joined.interview.job_title}
+        </p>
       )}
-      {phase === "starting" && <p role="status">Starting the camera...</p>}
-      {phase === "failed" && (
+      {phase === "pairing" && <p role="status">Pairing with the interview…</p>}
+      {phase === "error" && <p role="alert">{error}</p>}
+
+      {(phase === "ready" || phase === "camera" || phase === "denied") && joined && (
+        <section aria-labelledby="placement">
+          <h2 id="placement">Place this phone</h2>
+          <ol className="steps">
+            <li>
+              About {joined.placement.distance_m} m behind you and to one side, a little above the
+              desk.
+            </li>
+            <li>
+              Point the back camera so it sees your face, your hands, the desk and the screen.
+            </li>
+            <li>Plug in the charger and lean the phone on something steady.</li>
+            <li>Keep this page open and the screen on until the interview ends.</li>
+          </ol>
+          <figure className="placement" aria-hidden="true">
+            <div className="desk">Screen</div>
+            <div className="you">You</div>
+            <div className="phone">Phone</div>
+          </figure>
+        </section>
+      )}
+
+      {phase === "ready" && (
         <>
-          <p role="alert">{error}</p>
+          {cameraHelp(browser, "prompt").map((line) => (
+            <p key={line}>{line}</p>
+          ))}
           <button type="button" onClick={() => void start()}>
-            Try again
+            Start camera
           </button>
         </>
       )}
-      <dl>
-        <dt>Connection</dt>
-        <dd>{connection}</dd>
-        {timings && (
-          <>
-            <dt>Start-up</dt>
-            <dd>
-              camera {Math.round(timings.cameraMs)} ms, connect {Math.round(timings.connectMs)} ms,
-              publish {Math.round(timings.publishMs)} ms
-            </dd>
-          </>
-        )}
-        {live && (
-          <>
-            <dt>Network</dt>
-            <dd>{live.network}</dd>
-            <dt>Video</dt>
-            <dd>{live.video}</dd>
-          </>
-        )}
-      </dl>
+      {phase === "camera" && <p role="status">Starting the camera…</p>}
+      {phase === "denied" && (
+        <section role="alert" aria-labelledby="denied">
+          <h2 id="denied">The camera is blocked</h2>
+          {cameraHelp(browser, "denied").map((line) => (
+            <p key={line}>{line}</p>
+          ))}
+          <button type="button" onClick={() => void start()}>
+            Try again
+          </button>
+        </section>
+      )}
+
+      <video ref={preview} autoPlay muted playsInline hidden={phase !== "streaming"} />
+      {phase === "streaming" && (
+        <dl>
+          <dt>Status</dt>
+          <dd role="status" data-state={state}>
+            {STATE_TEXT[state]}
+          </dd>
+          {pairedIn !== null && (
+            <>
+              <dt>Paired in</dt>
+              <dd data-testid="paired-in">{pairedIn.toFixed(1)} s</dd>
+            </>
+          )}
+          {video && (
+            <>
+              <dt>Video</dt>
+              <dd>{video}</dd>
+            </>
+          )}
+        </dl>
+      )}
     </main>
   );
-}
-
-/** Keeps the phone's screen on while the camera runs (Safari 16.4+, Chrome). */
-async function holdWakeLock(): Promise<void> {
-  if (!("wakeLock" in navigator)) {
-    return;
-  }
-  const request = () => navigator.wakeLock.request("screen").catch(() => undefined);
-  await request();
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") {
-      void request();
-    }
-  });
 }

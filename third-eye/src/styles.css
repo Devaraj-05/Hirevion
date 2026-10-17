@@ -42,3 +42,56 @@ body {
 .eye dd {
   margin: 0;
 }
+
+.eye h1,
+.eye h2 {
+  margin: 0;
+}
+
+.eye .context {
+  margin: 0;
+  opacity: 0.8;
+}
+
+.eye .steps {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+/* A top view of the desk: the phone sits behind and to one side of the candidate. */
+.placement {
+  position: relative;
+  height: 9rem;
+  margin: 0;
+  border: 1px dashed currentColor;
+  border-radius: 0.5rem;
+}
+
+.placement > div {
+  position: absolute;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid currentColor;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.placement .desk {
+  top: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.placement .you {
+  top: 3.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.placement .phone {
+  bottom: 0.75rem;
+  right: 1rem;
+}
+
+.eye video[hidden] {
+  display: none;
+}
