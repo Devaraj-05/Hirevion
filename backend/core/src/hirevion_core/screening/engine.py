@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from hirevion_core.ai import AiServices
 from hirevion_core.db.session import Database
+from hirevion_core.hiring.workflow import sync_from_stage
 from hirevion_core.models import (
     Application,
     ApplicationHistory,
@@ -181,6 +182,8 @@ async def record_stage(
         )
     )
     application.stage = to_stage
+    # The hiring status (PRD §72) follows the stage; a person's move names them.
+    await sync_from_stage(session, application, actor_id=actor_id, reason=reason)
 
 
 async def screen_application(

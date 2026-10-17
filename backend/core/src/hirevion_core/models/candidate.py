@@ -37,6 +37,19 @@ APPLICATION_STAGES = (
     "interviewed",
 )
 APPLICATION_SOURCES = ("upload",)
+# PRD §72's nine hiring statuses, in the order the pipeline shows them. The screening `stage`
+# says how far the resume got; this says where the hiring stands (SP-17, ADR-0023).
+HIRING_STATUSES = (
+    "under_review",
+    "shortlisted",
+    "interview_invited",
+    "interview_started",
+    "interview_completed",
+    "additional_review",
+    "selected",
+    "rejected",
+    "on_hold",
+)
 
 
 def _in(column: str, values: tuple[str, ...]) -> str:
@@ -135,12 +148,14 @@ class Application(IdMixin, TenantMixin, TimestampMixin, Base):
         Index("ix_applications_job_id_rank", "job_id", "rank"),
         CheckConstraint(_in("stage", APPLICATION_STAGES), name="stage"),
         CheckConstraint(_in("source", APPLICATION_SOURCES), name="source"),
+        CheckConstraint(_in("hiring_status", HIRING_STATUSES), name="hiring_status"),
     )
 
     candidate_id: Mapped[UUID] = mapped_column(index=True)
     job_id: Mapped[UUID]
     document_id: Mapped[UUID | None]
     stage: Mapped[str] = mapped_column(Text, server_default="uploaded")
+    hiring_status: Mapped[str] = mapped_column(Text, server_default="under_review")
     source: Mapped[str] = mapped_column(Text, server_default="upload")
     # Who looks after this candidate for this job; the job's recruiter and manager when unset.
     recruiter_id: Mapped[UUID | None]

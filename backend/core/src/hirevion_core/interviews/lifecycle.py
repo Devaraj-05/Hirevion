@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from hirevion_core.access.actor import Actor
 from hirevion_core.access.errors import Conflict
 from hirevion_core.audit import AuditEntry, AuditService
+from hirevion_core.hiring.workflow import sync_interview
 from hirevion_core.models import Interview, InterviewEvent
 from hirevion_core.outbox import publish_event
 
@@ -173,6 +174,8 @@ async def transition(
     await record_event(
         session, interview, action, by, from_status=source, reason=reason, details=details
     )
+    if target in ("in_progress", "completed", "abandoned"):
+        await sync_interview(session, interview)  # the application's hiring status (PRD §72)
     topic = WEBHOOK_TOPICS.get(target)
     # A resumed interview (interrupted → in progress) didn't start again, and a re-evaluated one
     # (evaluating → completed) didn't complete again; one completed while interrupted did.

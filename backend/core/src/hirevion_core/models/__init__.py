@@ -54,6 +54,14 @@ from hirevion_core.models.proctoring import (
 )
 from hirevion_core.models.quota import Quota
 from hirevion_core.models.recording import Recording, RecordingSegment
+from hirevion_core.models.reporting import (
+    ApplicationStatusHistory,
+    CandidateNote,
+    HiringInput,
+    Report,
+    ReportExport,
+    ScoreChange,
+)
 from hirevion_core.models.role import Role, RolePermission, UserRole
 from hirevion_core.models.screening import ApplicationHistory, ScreeningConfig, ScreeningResult
 from hirevion_core.models.skill import Skill, SkillAlias
@@ -70,11 +78,13 @@ __all__ = [
     "AppRule",
     "Application",
     "ApplicationHistory",
+    "ApplicationStatusHistory",
     "AuditLog",
     "AuthToken",
     "Candidate",
     "CandidateAccount",
     "CandidateDevice",
+    "CandidateNote",
     "CandidateOtp",
     "CandidateRefreshToken",
     "CandidateRequest",
@@ -88,6 +98,7 @@ __all__ = [
     "Document",
     "Evaluation",
     "FeatureFlag",
+    "HiringInput",
     "HumanScore",
     "IdempotencyKey",
     "Interview",
@@ -115,8 +126,11 @@ __all__ = [
     "Quota",
     "Recording",
     "RecordingSegment",
+    "Report",
+    "ReportExport",
     "Role",
     "RolePermission",
+    "ScoreChange",
     "ScreeningConfig",
     "ScreeningResult",
     "Skill",

@@ -201,5 +201,10 @@ class OrganizationSettings(Base):
     interview_briefing: Mapped[dict[str, Any]] = mapped_column(
         JSONB, server_default=sql_text("'{}'::jsonb")
     )
+    # Which of PRD §99's five items candidates may be shown (SP-17): `items` maps an item's key to
+    # a boolean. A recruiter still approves each release.
+    candidate_report: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, server_default=sql_text("'{}'::jsonb")
+    )
     updated_by: Mapped[UUID | None]
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now())
