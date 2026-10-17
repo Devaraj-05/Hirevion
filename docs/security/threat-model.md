@@ -432,3 +432,40 @@
 - Snapshots are requested in the heartbeat answer; a desktop that ignores them is not detected beyond the unanswered request being visible in the evidence list.
 - Hidden observers are visible to the room's administrators in LiveKit's server logs; the room list shows only visible participants.
 - Proctoring events are not partitioned or aged out yet; retention (SP-22) will decide.
+
+## SP-13 Third eye and Egress
+
+**Assets:**
+- the pairing token and the phone's device secret (whoever holds them streams into the interview);
+- the third eye's video and the conversation's audio, live and recorded;
+- the third eye's status, which feeds proctoring events;
+- the candidate's phone: its camera, and the page's access to it.
+
+**Trust boundaries:**
+- the candidate's desktop (untrusted) → the pairing routes;
+- the phone's browser (untrusted, no account) → `redeem` and `rejoin`, through a public tunnel in development;
+- LiveKit → the API's webhook (signed), and Egress → the shared volume or the blob container;
+- the media worker → blob storage.
+
+| Threat (STRIDE) | Example | Control |
+|---|---|---|
+| Spoofing | Someone else's phone joins as the third eye (a photographed or leaked QR code) | The token is 256 random bits, spent once under a row lock within 2 minutes; issuing again revokes it and removes the phone; the desktop and the recruiter see the phone's platform and every change; the redeem is audited with its address |
+| Spoofing | A desktop pairs a phone to another candidate's interview | The interview-session token (with DPoP) must name the body's interview (`403`); another interview's pairing is `404`; the pairing row holds the interview's own candidate |
+| Spoofing | The phone claims to be connected while it isn't | The phone reports nothing; the status comes only from LiveKit's signed webhooks, and only the current pairing's |
+| Tampering | A phone publishes a microphone, a screen or data, or watches the room | Its LiveKit token grants only `camera` publishing in one room: no subscribe, data, metadata, recording or admin |
+| Tampering | A revoked phone keeps streaming on its still-valid LiveKit token | Revoking removes it from the room; a revoked identity that joins or publishes again is removed when its webhook arrives; its device secret is erased |
+| Tampering | Egress output names a path outside the organisation, or a forged `egress_ended` | Webhooks are signed; the output path is built by the server from validated parts; the row is found by its Egress id or planned path within the tenant; the shared-volume adapter refuses paths outside its directory |
+| Repudiation | A candidate denies pairing or revoking a phone | Issue, redeem and revoke are interview events in the audit chain, with the account, address and user agent |
+| Information disclosure | The token leaks through logs, history or the Referer header | It travels in the URL fragment (never sent), the page removes it from the address bar at once and sets `no-referrer`; only its SHA-256 is stored |
+| Information disclosure | The tunnel exposes the API | The tunnel's and the eye site's Caddy routes pass only `/api/v1/third-eye/redeem` and `/rejoin` (other `/api/*` is `404`) and `/rtc`; the tunnel runs only while testing |
+| Information disclosure | Recordings read by the wrong people | Egress files sit under the organisation's prefix and are listed only by the audited playback route (SP-12's permissions); the shared volume is gitignored and the worker deletes each file once uploaded |
+| Denial of service | Guessing tokens, or a flood of pairings | 30 phone calls a minute per address; 20 pairings a minute per interview; one live pairing per interview (a unique index) |
+| Denial of service | A lost Egress file blocks the worker | A missing file is retried and the row fails after five attempts; other recordings carry on |
+| Elevation of privilege | The phone's secrets reach the recruiter's or the desktop's APIs | The phone's routes take no session and return only a LiveKit token for its own pairing; the device secret works only for `rejoin` |
+
+**Residual risks:**
+- Anyone who scans the QR code first (within 2 minutes) becomes the third eye; the candidate sees the phone's platform on the desktop, and pairing again removes it.
+- A phone that dies without running JavaScript is noticed only when LiveKit times it out, later than a lock.
+- Behind a proxy that isn't in `HV_API_TRUSTED_PROXIES`, every phone shares one address for rate limiting.
+- The third eye's video shows the candidate's room; the notice (§83) names it, and the video is evidence only (§53).
+- The audio Egress runs headless Chrome with `SYS_ADMIN` in its container; it only reaches LiveKit and the shared volume.

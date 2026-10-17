@@ -634,6 +634,33 @@ so the page goes through a Cloudflare quick tunnel, while the video itself stays
    - The page shows the connection type (UDP or TCP, direct or relayed), round-trip time,
      resolution, frame rate and bit rate.
 
+### Real pairing through the API (SP-13)
+
+The desktop asks the API for a pairing and shows its QR code; the phone redeems it once.
+
+1. Steps 1–4 above, plus the API (`uv run hv api`, with `HV_MEDIA_BACKEND` unset so it uses
+   LiveKit) and the workers (`uv run hv worker`, which also collect Egress files).
+2. `uv run hv eye-tunnel --page-only` prints `HV_THIRD_EYE_URL=https://….trycloudflare.com`. Put
+   that line in `.env` and restart the API: QR codes now point at the tunnel. The tunnel's Caddy
+   site passes only `/api/v1/third-eye/redeem` and `/rejoin` to the API, and `/rtc` to LiveKit.
+3. Pair from the desktop (B4's pairing screen), or by hand: `POST /api/v1/third-eye/pairings`
+   with the interview-session token, then open `qr_url` on the phone.
+4. Check: the desktop's `GET /third-eye/pairings/{id}` goes `issued` → `redeemed` →
+   `connected`; locking the phone makes it `disconnected` within a couple of seconds and, once an
+   interview is running, raises `THIRD_EYE_DISCONNECTED` on the live dashboard within 10 s.
+   Pairing again shows `revoked` for the old pairing and the old phone's page stops.
+5. On this PC only (no tunnel), `https://eye.hirevion.localhost/#t=<token>` works too.
+
+**Measuring pairing without a phone:** from `third-eye`, `pnpm e2e` runs headless Chromium with a
+fake 720p camera against the local LiveKit and prints "Paired in N s" (about 1.6 s on this PC;
+the budget is 60 s). Real phones (iOS Safari 16.4+, Android Chrome) remain a hands-on check.
+
+**Egress:** `uv run hv up` starts `egress` with the `media` profile (the first pull is about
+1 GB). It writes into `infrastructure/local/egress/` (gitignored), and the media worker moves
+each file into blob storage under `{org}/interviews/{id}/audio/` or `third-eye/`; playback then
+lists `conversation-audio-N` and `third-eye-N`. `HV_EGRESS_OUTPUT=off` turns it off;
+`HV_EGRESS_LOCAL_DIR` moves the shared directory.
+
 Press Ctrl+C in the `eye-tunnel` terminal as soon as you're done: while it runs, the page and
 LiveKit signalling are reachable at a public (random) address. Docker Desktop's installer already
 allows its backend through Windows Firewall. If the phone connects but shows no video, check the

@@ -27,5 +27,6 @@
 | [0030](0030-interview-engine.md) | The interview engine: a deterministic policy over a checkpointed state, one conductor for every turn | Accepted |
 | [0031](0031-evaluation-and-governance.md) | Evaluation and AI governance: verified quotes, rubric-weighted scores, pinned versions and a gate | Accepted |
 | [0032](0032-proctoring-engine.md) | The proctoring engine: the server decides, what it sees itself is the ground truth, and nothing a reviewer dismisses is deleted | Accepted |
+| [0040](0040-third-eye-and-egress.md) | The third eye: a single-use pairing, LiveKit's view as its status, and Egress files beside the desktop's tracks | Accepted |
 
 New decisions copy [0000-template.md](0000-template.md) and take the next number.

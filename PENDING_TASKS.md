@@ -206,7 +206,7 @@ A box is ticked in the PR that merges the part. Deliverables are in MASTER §14;
   - [ ] Dashboard: KPIs from real data (PRD §10) for jobs and candidates.
 - [x] **D2 SP-12 Server side.** Depends on: SP-01, `recordings.md`. See MASTER §14 SP-12. Plan: `docs/superpowers/plans/2026-10-10-sp-12-server-recording.md`.
   - Exit: as in MASTER §14 SP-12 (with B2's client). Egress moved to D3, evidence snapshots to C5.
-- [ ] **D3 SP-13 Third-eye.** Depends on: C3, D2. See MASTER §14 SP-13.
+- [x] **D3 SP-13 Third-eye.** Depends on: C3, D2. See MASTER §14 SP-13. Plan: `docs/superpowers/plans/2026-10-12-sp-13-third-eye.md`.
   - Also (moved from D2): LiveKit Egress of the conversation audio and the third-eye video.
   - Exit: a reused token is refused; revoking kicks the old device; a locked phone is flagged within 10 s.
 - [ ] **D4 SP-19 Enterprise identity** (includes TOTP MFA, moved from SP-02). Depends on: SP-02. See MASTER §14 SP-19.
@@ -275,7 +275,7 @@ pnpm --filter @hirevion/ai-interviewer-desktop tauri dev       # the candidate a
 - **A1 (SP-07a):** done (ADR-0020): the "Create interview" action, the candidates' Interview and Completed tabs, and interviews pinning a template version, its questions and its policy.
 - **C2 (SP-09b):** done (ADR-0030): question time limits and follow-up rules are used live.
 - **C6 (SP-16):** the coding question's runs, tests and grading (SP-09 asks it with the code workspace).
-- **D3 (SP-13):** pairing check at `start` (until then a required third eye needs the waiver).
+- **D3 (SP-13):** done (ADR-0040): the pairing check at `start`. Left for B4: the desktop's pairing screen, placement guide and third-eye status (contract "Changes", 2026-10-17).
 - **C5 (SP-14):** `Conductor.note_proctor_event` fills §34's proctor summary and the CRITICAL-event reminder; `/ws/proctoring` and `/ws/recruiter`.
 - **C5 (SP-14) and D5 (SP-22):** proctoring presets become editable policies.
 - **A5 (SP-17):** moving cards on the pipeline board; the remaining Candidate 360 tabs.
