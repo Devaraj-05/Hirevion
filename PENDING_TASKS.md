@@ -98,7 +98,8 @@ The desktop calls APIs that other lanes build. The five contracts live in `docs/
    - regenerate `packages/api-client/openapi.json` (`uv run hv openapi`) and `schema.d.ts` (`pnpm --filter @hirevion/api-codegen generate`) if the API changed;
    - re-run the local checks.
 3. **Open the PR.** Push the branch and open a PR to `main`. Run one background CI watcher that polls every 60–90 s; never poll by hand.
-4. **Merge when CI is green:**
+   - **While GitHub Actions are off** (the free minutes are used up until they reset), the gate is `bash scripts/ci-local.sh` on the branch: it runs CI's jobs for what the branch touched. Paste its summary (`.ci-local/summary.md`) into the PR, and merge only when every job it ran passed.
+4. **Merge when CI (or, while Actions are off, the local CI) is green:**
 
    ```bash
    git fetch origin

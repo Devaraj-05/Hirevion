@@ -49,3 +49,6 @@ ai-interviewer-desktop/public/mediapipe/
 
 # Subagent worktrees (Claude Code)
 .claude/worktrees/
+
+# Local CI logs (scripts/ci-local.sh)
+.ci-local/

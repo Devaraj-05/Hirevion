@@ -12,9 +12,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Which parts of the repo a push touched, so each job runs only when its area changed. On main
-  # and on manual runs every job runs. Feature branches compare against main, so a later push
-  # never skips a job the branch as a whole needs.
+  # Which parts of the repo a push touched, so each job runs only when its area changed; a manual
+  # run runs every job. Feature branches compare against main, so a later push never skips a job
+  # the branch as a whole needs. A push to main compares with the commit before it: merges are
+  # fast-forwards of branches that already passed, so main doesn't re-run untouched jobs (Actions
+  # minutes are limited; Windows minutes count double).
   changes:
     runs-on: ubuntu-24.04
     outputs:
@@ -83,7 +85,7 @@ jobs:
 
   python:
     needs: changes
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.python == 'true'
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.python == 'true'
     runs-on: ubuntu-24.04
     # The `db` tests run against real PostgreSQL and Valkey (the same images as the local stack).
     services:
@@ -159,7 +161,7 @@ jobs:
   # The committed OpenAPI document and the TypeScript types generated from it match the API.
   api-contract:
     needs: changes
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.contract == 'true'
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.contract == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -183,7 +185,7 @@ jobs:
 
   web:
     needs: changes
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.web == 'true'
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.web == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -209,7 +211,7 @@ jobs:
   # PostgreSQL, Valkey and Mailpit (SP-02a).
   e2e-auth:
     needs: changes
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.e2e == 'true'
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     services:
@@ -328,7 +330,7 @@ jobs:
 
   compose:
     needs: changes
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.compose == 'true'
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.compose == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -384,7 +386,7 @@ jobs:
 
   desktop:
     needs: changes
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.desktop == 'true'
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.desktop == 'true'
     runs-on: windows-2025
     defaults:
       run:
@@ -417,7 +419,7 @@ jobs:
 
   rust-licenses:
     needs: changes
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.rust == 'true'
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
