@@ -128,6 +128,13 @@ function text(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
+const THIRD_EYE_DEVICE: Record<string, ProctoringStatus["devices"]["third_eye"]> = {
+  connected: "up",
+  reconnected: "up",
+  disconnected: "down",
+  revoked: "down",
+};
+
 function stream(state: MonitorState, message: StreamMessage): MonitorState {
   if (!isAfter(message.id, state.cursor)) return state;
   const base = { ...state, cursor: message.id };
@@ -141,6 +148,15 @@ function stream(state: MonitorState, message: StreamMessage): MonitorState {
       );
     case "PROCTOR_STATUS":
       return { ...base, status: data as unknown as ProctoringStatus };
+    case "THIRD_EYE_STATUS": {
+      // The phone as LiveKit sees it (SP-13); the next PROCTOR_STATUS agrees.
+      const device = THIRD_EYE_DEVICE[text(data.status)];
+      if (!device || !base.status) return base;
+      return {
+        ...base,
+        status: { ...base.status, devices: { ...base.status.devices, third_eye: device } },
+      };
+    }
     case "PROCTOR_REVIEW": {
       const target = base.events.find((e) => e.id === data.event_id);
       const outcome = data.review_status as ProctorEvent["review_status"];

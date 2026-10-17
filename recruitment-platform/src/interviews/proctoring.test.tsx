@@ -188,6 +188,25 @@ describe("monitorReducer", () => {
     expect(state.events).toHaveLength(1);
   });
 
+  it("follows the third eye's phone as the server sees it", () => {
+    let state = loaded();
+    const eye = (id: string, status: string) =>
+      (state = monitorReducer(state, {
+        type: "stream",
+        message: message(id, "THIRD_EYE_STATUS", { pairing_id: "p-1", status }),
+      }));
+    eye("201-0", "redeemed");
+    expect(state.status?.devices.third_eye).toBe(snapshot().proctoring?.devices.third_eye);
+    eye("202-0", "connected");
+    expect(state.status?.devices.third_eye).toBe("up");
+    eye("203-0", "disconnected");
+    expect(state.status?.devices.third_eye).toBe("down");
+    eye("204-0", "reconnected");
+    expect(state.status?.devices.third_eye).toBe("up");
+    eye("205-0", "revoked");
+    expect(state.status?.devices.third_eye).toBe("down");
+  });
+
   it("follows the devices, the AI and the transcript", () => {
     let state = loaded();
     state = monitorReducer(state, {
