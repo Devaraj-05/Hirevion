@@ -37,7 +37,10 @@ export default async function PortalNoticesPage() {
             <ul className="grid gap-1 text-sm">
               {notices.policies.map((policy) => (
                 <li key={policy.key}>
-                  <a href={`#policy-${policy.key}`} className="text-primary underline">
+                  <a
+                    href={`#policy-${policy.key}`}
+                    className="inline-flex min-h-6 items-center text-primary underline"
+                  >
                     {policy.title}
                   </a>
                 </li>
