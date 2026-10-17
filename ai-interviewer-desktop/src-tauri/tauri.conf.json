@@ -15,6 +15,7 @@
     "windows": [
       {
         "label": "main",
+        "create": false,
         "title": "Hirevion AI Interview",
         "width": 1280,
         "height": 800,

@@ -30,6 +30,42 @@ fn startup_integrity() -> (Vec<String>, bool) {
     (found, hv_security::integrity::debugger_present())
 }
 
+/// The main window, built from `tauri.conf.json` (which sets `create: false` for it).
+fn main_window(app: &tauri::App) -> tauri::Result<tauri::WebviewWindow> {
+    let config = app
+        .config()
+        .app
+        .windows
+        .iter()
+        .find(|window| window.label == "main")
+        .ok_or_else(|| tauri::Error::WindowNotFound)?;
+    let builder = tauri::WebviewWindowBuilder::from_config(app, config)?;
+    #[cfg(all(windows, debug_assertions))]
+    let builder = with_driver_environment(builder);
+    builder.build()
+}
+
+/// Debug builds only: hands the WebView2 browser switches and user-data folder that a WebDriver
+/// (msedgedriver, under tauri-driver) passes as environment variables to WebView2 through its
+/// API instead. On GitHub's Windows runners the runtime does not apply those environment
+/// overrides (the browser started without `--remote-debugging-port`, so no session could be
+/// created), while options given through the API are always applied. Release builds never do
+/// this: they remove those variables at start (ADR-0018).
+#[cfg(all(windows, debug_assertions))]
+fn with_driver_environment<R: tauri::Runtime, M: Manager<R>>(
+    mut builder: tauri::WebviewWindowBuilder<'_, R, M>,
+) -> tauri::WebviewWindowBuilder<'_, R, M> {
+    // wry's own defaults, which giving any argument would otherwise replace.
+    const WRY_DEFAULTS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required";
+    if let Ok(extra) = std::env::var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS") {
+        builder = builder.additional_browser_args(&format!("{WRY_DEFAULTS} {extra}"));
+    }
+    if let Some(folder) = std::env::var_os("WEBVIEW2_USER_DATA_FOLDER") {
+        builder = builder.data_directory(std::path::PathBuf::from(folder));
+    }
+    builder
+}
+
 /// Starts the desktop app. Returns when the last window closes.
 pub fn run() {
     // One TLS provider for the updater and crash reporting (ring, as the API client uses).
@@ -53,18 +89,16 @@ pub fn run() {
         // Signed updates (SP-08c); driven only by the update_install command.
         .plugin(app::update::plugin())
         .setup(move |app| {
-            #[cfg(windows)]
-            {
-                let window = app
-                    .get_webview_window("main")
-                    .ok_or("the main window is missing from tauri.conf.json")?;
-                permissions::install(&window, permissions::allowed_origins(app.config()))?;
-            }
             let data_dir = app.path().app_local_data_dir()?;
             let version = app.package_info().version.to_string();
             let state =
                 app::AppState::new(&version, &data_dir, integrity_variables, debugger_present)?;
             app.manage(state);
+            // The window is made here, after the state its commands read exists.
+            #[cfg_attr(not(windows), allow(unused_variables))]
+            let window = main_window(app)?;
+            #[cfg(windows)]
+            permissions::install(&window, permissions::allowed_origins(app.config()))?;
             Ok(())
         });
 
