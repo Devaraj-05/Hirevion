@@ -170,6 +170,29 @@ services:
       <<: *healthcheck-timing
     restart: unless-stopped
 
+  # LiveKit Egress (SP-13): records the conversation's audio and the third eye's video into
+  # ./egress (shared with the media worker, which moves each file into blob storage).
+  egress:
+    image: livekit/egress:latest@sha256:ac244a40268ce1dd1510fbff6eb529609ec68aceff1602343f79be8ca08c355b
+    profiles: [media]
+    # The room-composite (audio) recording runs headless Chrome, which needs it.
+    cap_add: [SYS_ADMIN]
+    environment:
+      EGRESS_CONFIG_BODY: |
+        api_key: "${LIVEKIT_API_KEY:?set in .env}"
+        api_secret: "${LIVEKIT_API_SECRET:?set in .env}"
+        ws_url: ws://livekit:7880
+        redis:
+          address: valkey:6379
+          password: "${VALKEY_PASSWORD}"
+        log_level: info
+    volumes:
+      - ./egress:/out
+    depends_on:
+      livekit:
+        condition: service_healthy
+    restart: unless-stopped
+
   otel-lgtm:
     image: grafana/otel-lgtm:latest@sha256:b966ea107831d526d9eb8fe4d2d86c9e5731392fad9dce8296bcf2072031f07c
     profiles: [obs]

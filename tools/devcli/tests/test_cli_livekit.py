@@ -113,6 +113,20 @@ def test_eye_tunnel_prints_the_phone_link(repo: Path, monkeypatch: pytest.Monkey
     assert tunnel.terminated
 
 
+def test_eye_tunnel_page_only_prints_the_address_for_real_pairing(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tunnel = FakeTunnel(["INF |  https://quiet-owl-river.trycloudflare.com   |"])
+    monkeypatch.setattr(cli, "find_cloudflared", lambda: "cloudflared")
+    monkeypatch.setattr(cli, "_start_tunnel", lambda command: tunnel)
+    monkeypatch.setattr(cli, "_print_qr", lambda link: pytest.fail("no QR without a token"))
+    result = runner.invoke(cli.app, ["eye-tunnel", "--page-only"])
+    assert result.exit_code == 0, result.output
+    assert "HV_THIRD_EYE_URL=https://quiet-owl-river.trycloudflare.com" in result.output
+    assert "#t=" not in result.output
+    assert tunnel.terminated
+
+
 def test_eye_tunnel_explains_a_missing_cloudflared(
     repo: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

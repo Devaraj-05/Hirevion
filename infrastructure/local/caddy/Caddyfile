@@ -37,8 +37,22 @@ ws.hirevion.localhost {
 	reverse_proxy host.docker.internal:8001
 }
 
+# The third-eye phone page (SP-13): LiveKit signalling and the phone's two API calls share its
+# origin; no other API route is reachable from it.
 eye.hirevion.localhost {
-	reverse_proxy host.docker.internal:5174
+	@phone path /api/v1/third-eye/redeem /api/v1/third-eye/rejoin
+	handle @phone {
+		reverse_proxy host.docker.internal:8000
+	}
+	handle /api/* {
+		respond 404
+	}
+	handle /rtc* {
+		reverse_proxy livekit:7880
+	}
+	handle {
+		reverse_proxy host.docker.internal:5174
+	}
 }
 
 livekit.hirevion.localhost {
@@ -67,8 +81,16 @@ downloads.hirevion.localhost {
 }
 
 # Plain HTTP for Cloudflare quick tunnels (`uv run hv eye-tunnel`); the tunnel gives the phone
-# HTTPS. /rtc is LiveKit signalling, so the phone page and LiveKit share one origin.
+# HTTPS. /rtc is LiveKit signalling, so the phone page and LiveKit share one origin; the phone's
+# two API calls (SP-13) are the only API routes the tunnel reaches.
 http://:8088 {
+	@phone path /api/v1/third-eye/redeem /api/v1/third-eye/rejoin
+	handle @phone {
+		reverse_proxy host.docker.internal:8000
+	}
+	handle /api/* {
+		respond 404
+	}
 	handle /rtc* {
 		reverse_proxy livekit:7880
 	}

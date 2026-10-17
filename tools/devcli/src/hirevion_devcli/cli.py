@@ -729,6 +729,13 @@ def lk_token(
 def eye_tunnel(
     room: Annotated[str, typer.Option(help="Room the phone joins.")] = "spike",
     ttl: Annotated[int, typer.Option(help="Seconds the phone's token stays valid.")] = 900,
+    page_only: Annotated[
+        bool,
+        typer.Option(
+            "--page-only",
+            help="Mint no token: open the tunnel for real pairing (the desktop's QR code).",
+        ),
+    ] = False,
 ) -> None:
     """Open the third-eye page to a phone through a Cloudflare quick tunnel (development only)."""
     values = _require_env(repo_root())
@@ -759,6 +766,13 @@ def eye_tunnel(
         if url is None:
             console.print("cloudflared stopped before reporting a tunnel address.")
             raise typer.Exit(code=1)
+        if page_only:
+            # SP-13: the API issues the pairing; its QR code must point at this tunnel.
+            console.print("Set this in .env and restart the API, then pair from the desktop:")
+            typer.echo(f"HV_THIRD_EYE_URL={url}")
+            console.print("Keep this running while you test; press Ctrl+C to close the tunnel.")
+            tunnel.wait()
+            return
         token = build_token(
             key,
             secret,

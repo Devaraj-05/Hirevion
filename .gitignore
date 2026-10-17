@@ -55,3 +55,6 @@ ai-interviewer-desktop/public/mediapipe/
 
 # Desktop end-to-end failure screenshots
 ai-interviewer-desktop/e2e/output/
+
+# LiveKit Egress output, shared with the media worker (SP-13)
+infrastructure/local/egress/
