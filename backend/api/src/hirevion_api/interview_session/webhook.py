@@ -1,6 +1,7 @@
 """LiveKit's webhook (SP-09): the room tells the interview when the candidate leaves (an
 interruption, under the resume policy) and when the agent leaves while the interview is still
-running (a crash: another agent is dispatched and resumes from the checkpoint). Deliveries are
+running (a crash: another agent is dispatched and resumes from the checkpoint). The third eye's
+phone coming and going, and Egress ending, go to the third eye's service (SP-13). Deliveries are
 accepted only with LiveKit's signature over the body."""
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ from hirevion_api.deps import get_db, get_redis
 from hirevion_api.interview_session.routes import conductor, media
 from hirevion_api.problems import ProblemError
 from hirevion_api.routing import api_router
+from hirevion_api.third_eye.routes import third_eye
 from hirevion_core.access.errors import AccessError
 from hirevion_core.interview_session.media import MediaError, MediaEvent
 from hirevion_core.interviews.lifecycle import By
@@ -61,6 +63,7 @@ async def livekit_webhook(request: Request) -> None:
         elif event.kind == "agent_left":
             await runner.redispatch(event.organization_id, event.interview_id)
         await _proctoring(request, event)
+        await third_eye(request).on_media(event)
     except AccessError as error:
         # An interview that isn't there or can't change now: nothing to do, and LiveKit needn't
         # retry.
@@ -72,7 +75,8 @@ TRACK_CHANNELS = {"camera": "camera", "microphone": "mic", "screen_share": "scre
 
 async def _proctoring(request: Request, event: MediaEvent) -> None:
     """What the room shows about the candidate's devices is the proctoring engine's ground truth
-    (SP-14): a track that goes away, the third eye leaving, or the candidate coming and going.
+    (SP-14): a track that goes away, or the candidate coming and going. The third eye's votes come
+    from its service, which knows which phone is the interview's current one.
     Deliveries are idempotent: the engine keeps the newest view of each channel."""
     if event.interview_id is None or event.organization_id is None:
         return
@@ -87,11 +91,6 @@ async def _proctoring(request: Request, event: MediaEvent) -> None:
             "livekit",
             state,
             event.at,
-        )
-    elif event.kind in ("third_eye_joined", "third_eye_left"):
-        state = "up" if event.kind == "third_eye_joined" else "down"
-        await engine.observe(
-            event.organization_id, event.interview_id, "third_eye", "livekit", state, event.at
         )
     elif event.kind in ("candidate_left", "candidate_joined", "room_finished"):
         await engine.wake(event.organization_id, event.interview_id)

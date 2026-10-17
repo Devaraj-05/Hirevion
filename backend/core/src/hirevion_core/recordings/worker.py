@@ -15,7 +15,7 @@ import logging
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
 from functools import partial
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 from redis.asyncio import Redis
@@ -79,4 +79,27 @@ def media_workers(
         )
         workers.append(consumer.run_forever(stop))
     workers.append(_sweep(assembler, stop, settings.recording_poll_seconds))
+    workers += _egress_workers(db, redis, store, stop)
     return workers
+
+
+def _egress_workers(
+    db: Database, redis: Redis, store: AssemblyStore, stop: asyncio.Event
+) -> list[Awaitable[None]]:
+    """The `egress.ended` consumer (SP-13): LiveKit's files become blobs. A file not there yet
+    is retried when the stream's pending message is claimed again."""
+    from hirevion_core.third_eye import egress
+    from hirevion_core.third_eye.settings import load_third_eye_settings
+
+    egress_store = cast(egress.EgressStore, store)
+    output = egress.build_output(load_third_eye_settings(), egress_store)
+    if output is None:
+        return []
+
+    async def collect(organization_id: UUID, payload: dict[str, Any]) -> None:
+        await egress.collect(db, redis, output, egress_store, organization_id, payload)
+
+    consumer = StreamConsumer(
+        redis, collect, topic=egress.TOPIC, group=MEDIA_GROUP, delete_handled=False
+    )
+    return [consumer.run_forever(stop)]

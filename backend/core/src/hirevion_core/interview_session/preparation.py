@@ -29,6 +29,7 @@ from hirevion_core.interview_session.briefing import (
     mandatory_checks,
     notice_items,
     resume_policy,
+    third_eye_mode,
 )
 from hirevion_core.interviews.lifecycle import By, record_event
 from hirevion_core.models import Accommodation, Consent, Interview, SystemCheckResult
@@ -77,6 +78,9 @@ async def record_system_check(
         if item.status not in CHECK_STATUSES:
             raise Invalid("invalid-status", "Use pass, warn, fail or skipped", field="results")
         seen[item.check] = item
+    if third_eye_mode(interview.policy or {}) != "off":
+        # What the server sees of the phone, not what the desktop says (SP-13).
+        seen["third_eye"] = await _third_eye_seen(session, interview)
     failed = [
         c for c in mandatory_checks(interview.policy) if c not in seen or seen[c].status != "pass"
     ]
@@ -100,6 +104,20 @@ async def record_system_check(
     session.add(row)
     await session.flush()
     return row
+
+
+async def _third_eye_seen(session: AsyncSession, interview: Interview) -> CheckReport:
+    from hirevion_core.third_eye.service import current
+
+    pairing = await current(session, interview.id)
+    status = pairing.status if pairing is not None else "not-paired"
+    platform = (pairing.device or {}).get("platform") if pairing is not None else None
+    if status == "connected":
+        outcome = "pass"
+    else:
+        outcome = "fail" if third_eye_mode(interview.policy or {}) == "required" else "warn"
+    detail = f"server-observed: {platform}" if platform else "server-observed"
+    return CheckReport("third_eye", outcome, status, detail)
 
 
 async def record_consent(

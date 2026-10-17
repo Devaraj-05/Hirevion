@@ -2303,6 +2303,19 @@
         "title": "DeviceBody",
         "type": "object"
       },
+      "DeviceInfo": {
+        "properties": {
+          "platform": {
+            "title": "Platform",
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform"
+        ],
+        "title": "DeviceInfo",
+        "type": "object"
+      },
       "Devices": {
         "properties": {
           "camera": {
@@ -4412,6 +4425,24 @@
         "title": "InterviewEventResponse",
         "type": "object"
       },
+      "InterviewNames": {
+        "properties": {
+          "company": {
+            "title": "Company",
+            "type": "string"
+          },
+          "job_title": {
+            "title": "Job Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "company",
+          "job_title"
+        ],
+        "title": "InterviewNames",
+        "type": "object"
+      },
       "InterviewResponse": {
         "properties": {
           "application_id": {
@@ -4806,6 +4837,20 @@
           "created_at"
         ],
         "title": "InvitationResponse",
+        "type": "object"
+      },
+      "IssueBody": {
+        "properties": {
+          "interview_id": {
+            "format": "uuid",
+            "title": "Interview Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "interview_id"
+        ],
+        "title": "IssueBody",
         "type": "object"
       },
       "JdApply": {
@@ -6305,6 +6350,68 @@
         "title": "JobVersionResponse",
         "type": "object"
       },
+      "JoinResponse": {
+        "properties": {
+          "device_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Token"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "interview": {
+            "$ref": "#/components/schemas/InterviewNames"
+          },
+          "livekit_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Livekit Url"
+          },
+          "pairing_id": {
+            "format": "uuid",
+            "title": "Pairing Id",
+            "type": "string"
+          },
+          "participant_identity": {
+            "title": "Participant Identity",
+            "type": "string"
+          },
+          "participant_token": {
+            "title": "Participant Token",
+            "type": "string"
+          },
+          "placement": {
+            "$ref": "#/components/schemas/Placement"
+          }
+        },
+        "required": [
+          "pairing_id",
+          "livekit_url",
+          "participant_token",
+          "participant_identity",
+          "expires_at",
+          "device_token",
+          "interview",
+          "placement"
+        ],
+        "title": "JoinResponse",
+        "type": "object"
+      },
       "LiveAi": {
         "properties": {
           "agent_connected": {
@@ -7413,6 +7520,130 @@
         "title": "Page[UserResponse]",
         "type": "object"
       },
+      "PairingIssued": {
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "pairing_id": {
+            "format": "uuid",
+            "title": "Pairing Id",
+            "type": "string"
+          },
+          "qr_url": {
+            "title": "Qr Url",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "issued",
+              "redeemed",
+              "connected",
+              "disconnected",
+              "revoked",
+              "expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pairing_id",
+          "qr_url",
+          "expires_at",
+          "status"
+        ],
+        "title": "PairingIssued",
+        "type": "object"
+      },
+      "PairingState": {
+        "properties": {
+          "connected_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connected At"
+          },
+          "device": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeviceInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "last_seen_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen At"
+          },
+          "pairing_id": {
+            "format": "uuid",
+            "title": "Pairing Id",
+            "type": "string"
+          },
+          "reconnects": {
+            "title": "Reconnects",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "issued",
+              "redeemed",
+              "connected",
+              "disconnected",
+              "revoked",
+              "expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "video": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VideoInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "pairing_id",
+          "status",
+          "expires_at",
+          "device",
+          "connected_at",
+          "last_seen_at",
+          "video",
+          "reconnects"
+        ],
+        "title": "PairingState",
+        "type": "object"
+      },
       "PasswordChangeRequest": {
         "properties": {
           "current_password": {
@@ -7519,6 +7750,18 @@
         "title": "PersonRef",
         "type": "object"
       },
+      "PhoneDevice": {
+        "properties": {
+          "user_agent": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "User Agent",
+            "type": "string"
+          }
+        },
+        "title": "PhoneDevice",
+        "type": "object"
+      },
       "PinnedQuestion": {
         "properties": {
           "question_id": {
@@ -7537,6 +7780,32 @@
           "version"
         ],
         "title": "PinnedQuestion",
+        "type": "object"
+      },
+      "Placement": {
+        "properties": {
+          "angle": {
+            "title": "Angle",
+            "type": "string"
+          },
+          "distance_m": {
+            "title": "Distance M",
+            "type": "number"
+          },
+          "show": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Show",
+            "type": "array"
+          }
+        },
+        "required": [
+          "distance_m",
+          "angle",
+          "show"
+        ],
+        "title": "Placement",
         "type": "object"
       },
       "PlaybackFile": {
@@ -9520,6 +9789,24 @@
         "title": "RecoveryResponse",
         "type": "object"
       },
+      "RedeemBody": {
+        "properties": {
+          "device": {
+            "$ref": "#/components/schemas/PhoneDevice"
+          },
+          "token": {
+            "maxLength": 200,
+            "minLength": 20,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "RedeemBody",
+        "type": "object"
+      },
       "RefreshBody": {
         "additionalProperties": false,
         "properties": {
@@ -9567,6 +9854,21 @@
           "refresh_expires_in"
         ],
         "title": "RefreshedResponse",
+        "type": "object"
+      },
+      "RejoinBody": {
+        "properties": {
+          "device_token": {
+            "maxLength": 200,
+            "minLength": 20,
+            "title": "Device Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_token"
+        ],
+        "title": "RejoinBody",
         "type": "object"
       },
       "ReleaseCheckResponse": {
@@ -13540,6 +13842,35 @@
           }
         },
         "title": "UserUpdate",
+        "type": "object"
+      },
+      "VideoInfo": {
+        "properties": {
+          "fps": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fps"
+          },
+          "height": {
+            "title": "Height",
+            "type": "integer"
+          },
+          "width": {
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "width",
+          "height"
+        ],
+        "title": "VideoInfo",
         "type": "object"
       },
       "WorkspaceBody": {
@@ -23404,6 +23735,263 @@
         "summary": "Add Team Member",
         "tags": [
           "structure"
+        ]
+      }
+    },
+    "/api/v1/third-eye/pairings": {
+      "post": {
+        "description": "A pairing for the interview's phone: show `qr_url` as a QR code. Issuing again revokes\nthe previous pairing and disconnects its phone.",
+        "operationId": "issue_pairing",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairingIssued"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Issue Pairing",
+        "tags": [
+          "third-eye"
+        ]
+      }
+    },
+    "/api/v1/third-eye/pairings/{pairing_id}": {
+      "get": {
+        "description": "The pairing as LiveKit shows it; the desktop polls it every 2 s while pairing.",
+        "operationId": "pairing_status",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pairing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pairing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairingState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Pairing Status",
+        "tags": [
+          "third-eye"
+        ]
+      }
+    },
+    "/api/v1/third-eye/pairings/{pairing_id}/revoke": {
+      "post": {
+        "description": "Ends the pairing and disconnects its phone.",
+        "operationId": "revoke_pairing",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pairing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pairing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Revoke Pairing",
+        "tags": [
+          "third-eye"
+        ]
+      }
+    },
+    "/api/v1/third-eye/redeem": {
+      "post": {
+        "description": "Spends the QR code's token (once, within two minutes) for a camera-only LiveKit token and\na device secret for rejoining.",
+        "operationId": "redeem_pairing",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RedeemBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JoinResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Redeem Pairing",
+        "tags": [
+          "third-eye"
+        ]
+      }
+    },
+    "/api/v1/third-eye/rejoin": {
+      "post": {
+        "description": "A fresh LiveKit token for a phone that redeemed, after its token ran out while locked.",
+        "operationId": "rejoin_pairing",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejoinBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JoinResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Rejoin Pairing",
+        "tags": [
+          "third-eye"
         ]
       }
     },

@@ -1095,6 +1095,8 @@ class MediaUnavailable(Exception):
 
 
 async def third_eye_paired(session: AsyncSession, interview: Interview) -> bool:
-    """Whether a phone is paired as the third camera. SP-13 adds pairing; until then a required
-    third eye can only be met with the `third_eye_waiver` accommodation."""
-    return False
+    """Whether a phone is paired as the third camera with its camera live (SP-13); the
+    `third_eye_waiver` accommodation makes a required third eye optional instead."""
+    from hirevion_core.third_eye.service import paired
+
+    return await paired(session, interview)

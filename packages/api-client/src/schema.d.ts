@@ -2779,6 +2779,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/third-eye/pairings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Issue Pairing
+         * @description A pairing for the interview's phone: show `qr_url` as a QR code. Issuing again revokes
+         *     the previous pairing and disconnects its phone.
+         */
+        post: operations["issue_pairing"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/third-eye/pairings/{pairing_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Pairing Status
+         * @description The pairing as LiveKit shows it; the desktop polls it every 2 s while pairing.
+         */
+        get: operations["pairing_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/third-eye/pairings/{pairing_id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke Pairing
+         * @description Ends the pairing and disconnects its phone.
+         */
+        post: operations["revoke_pairing"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/third-eye/redeem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redeem Pairing
+         * @description Spends the QR code's token (once, within two minutes) for a camera-only LiveKit token and
+         *     a device secret for rejoining.
+         */
+        post: operations["redeem_pairing"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/third-eye/rejoin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rejoin Pairing
+         * @description A fresh LiveKit token for a phone that redeemed, after its token ran out while locked.
+         */
+        post: operations["rejoin_pairing"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/time": {
         parameters: {
             query?: never;
@@ -3809,6 +3911,11 @@ export interface components {
              */
             name: string;
         };
+        /** DeviceInfo */
+        DeviceInfo: {
+            /** Platform */
+            platform: string;
+        };
         /** Devices */
         Devices: {
             /**
@@ -4532,6 +4639,13 @@ export interface components {
              */
             to_status: "scheduled" | "invited" | "in_progress" | "interrupted" | "completed" | "evaluating" | "evaluated" | "expired" | "cancelled" | "abandoned";
         };
+        /** InterviewNames */
+        InterviewNames: {
+            /** Company */
+            company: string;
+            /** Job Title */
+            job_title: string;
+        };
         /** InterviewResponse */
         InterviewResponse: {
             /**
@@ -4713,6 +4827,14 @@ export interface components {
             locale: string;
             /** Sent To */
             sent_to: string;
+        };
+        /** IssueBody */
+        IssueBody: {
+            /**
+             * Interview Id
+             * Format: uuid
+             */
+            interview_id: string;
         };
         /**
          * JdApply
@@ -5062,6 +5184,29 @@ export interface components {
             };
             /** Version */
             version: number;
+        };
+        /** JoinResponse */
+        JoinResponse: {
+            /** Device Token */
+            device_token: string | null;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            interview: components["schemas"]["InterviewNames"];
+            /** Livekit Url */
+            livekit_url: string | null;
+            /**
+             * Pairing Id
+             * Format: uuid
+             */
+            pairing_id: string;
+            /** Participant Identity */
+            participant_identity: string;
+            /** Participant Token */
+            participant_token: string;
+            placement: components["schemas"]["Placement"];
         };
         /** LiveAi */
         LiveAi: {
@@ -5479,6 +5624,52 @@ export interface components {
              */
             next_cursor: string | null;
         };
+        /** PairingIssued */
+        PairingIssued: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Pairing Id
+             * Format: uuid
+             */
+            pairing_id: string;
+            /** Qr Url */
+            qr_url: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "issued" | "redeemed" | "connected" | "disconnected" | "revoked" | "expired";
+        };
+        /** PairingState */
+        PairingState: {
+            /** Connected At */
+            connected_at: string | null;
+            device: components["schemas"]["DeviceInfo"] | null;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Last Seen At */
+            last_seen_at: string | null;
+            /**
+             * Pairing Id
+             * Format: uuid
+             */
+            pairing_id: string;
+            /** Reconnects */
+            reconnects: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "issued" | "redeemed" | "connected" | "disconnected" | "revoked" | "expired";
+            video: components["schemas"]["VideoInfo"] | null;
+        };
         /** PasswordChangeRequest */
         PasswordChangeRequest: {
             /** Current Password */
@@ -5509,6 +5700,14 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** PhoneDevice */
+        PhoneDevice: {
+            /**
+             * User Agent
+             * @default
+             */
+            user_agent: string;
+        };
         /** PinnedQuestion */
         PinnedQuestion: {
             /**
@@ -5518,6 +5717,15 @@ export interface components {
             question_id: string;
             /** Version */
             version: number;
+        };
+        /** Placement */
+        Placement: {
+            /** Angle */
+            angle: string;
+            /** Distance M */
+            distance_m: number;
+            /** Show */
+            show: string[];
         };
         /** PlaybackFile */
         PlaybackFile: {
@@ -6277,6 +6485,12 @@ export interface components {
                 [key: string]: components["schemas"]["TrackProgress"];
             };
         };
+        /** RedeemBody */
+        RedeemBody: {
+            device?: components["schemas"]["PhoneDevice"];
+            /** Token */
+            token: string;
+        };
         /** RefreshBody */
         RefreshBody: {
             /** Refresh Token */
@@ -6298,6 +6512,11 @@ export interface components {
              * @constant
              */
             token_type: "DPoP";
+        };
+        /** RejoinBody */
+        RejoinBody: {
+            /** Device Token */
+            device_token: string;
         };
         /** ReleaseCheckResponse */
         ReleaseCheckResponse: {
@@ -7709,6 +7928,15 @@ export interface components {
              * @description Replaces their teams.
              */
             team_ids?: string[] | null;
+        };
+        /** VideoInfo */
+        VideoInfo: {
+            /** Fps */
+            fps?: number | null;
+            /** Height */
+            height: number;
+            /** Width */
+            width: number;
         };
         /** WorkspaceBody */
         WorkspaceBody: {
@@ -14343,6 +14571,210 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    issue_pairing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PairingIssued"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    pairing_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pairing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PairingState"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    revoke_pairing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pairing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    redeem_pairing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RedeemBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JoinResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    rejoin_pairing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejoinBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JoinResponse"];
+                };
             };
             /** @description Client error, as an RFC 9457 problem */
             "4XX": {

@@ -54,6 +54,7 @@ from hirevion_api.recordings.recruiter import router as recordings_recruiter_rou
 from hirevion_api.routing import API_PREFIX, build_openapi, operation_id
 from hirevion_api.screening.routes import router as screening_router
 from hirevion_api.settings import ApiSettings, load_api_settings
+from hirevion_api.third_eye.routes import router as third_eye_router
 from hirevion_core.ai import AiServices, build_ai
 from hirevion_core.ai.settings import load_ai_settings
 from hirevion_core.candidate_access.tokens import (
@@ -215,6 +216,7 @@ def create_app(
     app.include_router(proctoring_live_router)
     app.include_router(portal_router)
     app.include_router(candidate_requests_router)
+    app.include_router(third_eye_router)
     if telemetry is not None and telemetry.enabled:
         FastAPIInstrumentor.instrument_app(
             app,

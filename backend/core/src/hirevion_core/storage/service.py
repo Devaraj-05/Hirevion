@@ -216,13 +216,19 @@ class StorageService:
 
     async def upload_file(self, path: BlobPath, source: Path, content_type: str) -> None:
         """Streams a local file into a blob (replacing it), reading the file off the event loop."""
-        await self._container.upload_blob(
-            str(path),
-            _file_chunks(source),
-            length=source.stat().st_size,
-            overwrite=True,
-            content_settings=ContentSettings(content_type=content_type),
-        )
+        chunks = _file_chunks(source)
+        try:
+            await self._container.upload_blob(
+                str(path),
+                chunks,
+                length=source.stat().st_size,
+                overwrite=True,
+                content_settings=ContentSettings(content_type=content_type),
+            )
+        finally:
+            # The client stops reading at `length` without exhausting the generator, which
+            # would keep the file open (and, on Windows, undeletable) until it is collected.
+            await chunks.aclose()
 
     async def delete(self, path: BlobPath) -> None:
         with suppress(ResourceNotFoundError):
