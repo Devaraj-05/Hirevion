@@ -12,6 +12,7 @@ import json
 import os
 from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from io import BytesIO
 from typing import Protocol
 from uuid import UUID
@@ -493,6 +494,222 @@ def make_completed_interview(
         return CompletedInterview(hiring, interview_id, ids)
 
     return make
+
+
+@dataclass(frozen=True)
+class Telemetry:
+    """What the desktop would have sent during a completed interview (SP-17's reports read it):
+    a system check, a proctor session with one event in every report section, the server's
+    evidence for the serious ones, four assembled recordings and a saved piece of code."""
+
+    proctor_session_id: UUID
+    events: dict[str, UUID]
+    """By event name."""
+    started_at: datetime
+
+
+class AddTelemetry(Protocol):
+    async def __call__(self, scene: CompletedInterview) -> Telemetry: ...
+
+
+# (event, source, offset into the interview in seconds, duration ms, confidence, severity, reasons)
+TELEMETRY_EVENTS = (
+    ("APPLICATION_FOCUS_CHANGE", "native", 30, 4_000, 1.0, "WARNING", ["duration:4000ms"]),
+    ("BLOCKED_PROCESS_DETECTED", "native", 60, None, 1.0, "WARNING", ["fixed:WARNING"]),
+    ("FACE_ABSENT", "camera", 90, 7_000, 0.92, "WARNING", ["duration:7000ms"]),
+    ("GAZE_DEVIATION", "camera", 120, 12_000, 0.7, "WARNING", ["duration:12000ms"]),
+    ("PHONE_DETECTED", "camera", 150, 2_000, 0.88, "CRITICAL", ["duration:2000ms"]),
+    ("CAMERA_RECONNECTED", "camera", 160, None, 1.0, "INFO", ["fixed:INFO"]),
+    ("EXTERNAL_DISPLAY_CHANGE", "native", 170, None, 1.0, "WARNING", ["fixed:WARNING"]),
+    ("THIRD_EYE_DISCONNECTED", "third_eye", 180, 15_000, 1.0, "WARNING", ["duration:15000ms"]),
+    ("ADDITIONAL_SPEAKER_DETECTED", "audio", 200, 3_000, 0.6, "WARNING", ["fixed:WARNING"]),
+)
+
+
+@pytest.fixture
+def add_telemetry(admin_engine: AsyncEngine) -> AddTelemetry:
+    """Gives a completed interview the telemetry a desktop run leaves behind."""
+
+    async def add(scene: CompletedInterview) -> Telemetry:
+        org, interview = scene.organization_id, scene.interview_id
+        started = datetime.now(UTC).replace(microsecond=0) - timedelta(hours=1)
+        proctor_id = uuid7()
+        events: dict[str, UUID] = {}
+        observed = {
+            name: {
+                "votes": {"heartbeat": {"state": "up", "at": started.isoformat()}},
+                "down_since": None,
+                "event_id": None,
+            }
+            for name in ("camera", "mic", "screen", "heartbeat")
+        }
+        async with admin_engine.begin() as conn:
+            await conn.execute(
+                text(
+                    "UPDATE interviews SET started_at = :at, ended_at = :end, completed_at = :end "
+                    "WHERE id = :id"
+                ),
+                {"at": started, "end": started + timedelta(minutes=40), "id": interview},
+            )
+            await conn.execute(
+                text(
+                    "INSERT INTO interview_sessions (interview_id, organization_id, mode, room, "
+                    "state, started_at, deadline_at, interruptions, reconnects) VALUES (:iv, :org, "
+                    "'text', :room, '{}'::jsonb, :at, :deadline, 1, 1)"
+                ),
+                {
+                    "iv": interview,
+                    "org": org,
+                    "room": f"iv-{interview}",
+                    "at": started,
+                    "deadline": started + timedelta(minutes=45),
+                },
+            )
+            await conn.execute(
+                text(
+                    "INSERT INTO system_check_results (id, organization_id, interview_id, "
+                    "app_version, os, results, passed, failed_mandatory) VALUES (:id, :org, :iv, "
+                    "'1.4.0', 'Windows 11 26200', CAST(:results AS jsonb), true, '{}')"
+                ),
+                {
+                    "id": uuid7(),
+                    "org": org,
+                    "iv": interview,
+                    "results": json.dumps(
+                        [
+                            {"check": "camera", "status": "pass", "value": "720p"},
+                            {"check": "microphone", "status": "pass", "value": "default"},
+                            {"check": "network", "status": "warn", "value": "42 Mbps"},
+                        ]
+                    ),
+                },
+            )
+            await conn.execute(
+                text(
+                    "INSERT INTO proctor_sessions (id, organization_id, interview_id, status, "
+                    "app_version, level, policy_version, policy, opened_at, closed_at, "
+                    "acked_through, max_seq, last_heartbeat_at, heartbeats, last_status, observed) "
+                    "VALUES (:id, :org, :iv, 'closed', '1.4.0', 'standard', 1, "
+                    "CAST(:policy AS jsonb), :at, :end, 9, 9, :end, 480, CAST(:last AS jsonb), "
+                    "CAST(:observed AS jsonb))"
+                ),
+                {
+                    "id": proctor_id,
+                    "org": org,
+                    "iv": interview,
+                    "at": started,
+                    "end": started + timedelta(minutes=40),
+                    "policy": json.dumps(
+                        {"checks": ["face", "focus", "gaze", "phone"], "accommodations": []}
+                    ),
+                    "last": json.dumps(
+                        {"camera": "on", "mic": "on", "screen": "capturing", "displays": 1}
+                    ),
+                    "observed": json.dumps(observed),
+                },
+            )
+            for seq, (name, source, offset, duration, confidence, severity, reasons) in enumerate(
+                TELEMETRY_EVENTS, start=1
+            ):
+                event_id = uuid7()
+                events[name] = event_id
+                await conn.execute(
+                    text(
+                        "INSERT INTO proctor_events (id, organization_id, proctor_session_id, "
+                        "interview_id, seq, origin, event, source, started_at, duration_ms, "
+                        "confidence, severity, details, policy_version) VALUES (:id, :org, :ps, "
+                        ":iv, :seq, 'client', :event, :source, :at, :duration, :confidence, "
+                        ":severity, CAST(:details AS jsonb), 1)"
+                    ),
+                    {
+                        "id": event_id,
+                        "org": org,
+                        "ps": proctor_id,
+                        "iv": interview,
+                        "seq": seq,
+                        "event": name,
+                        "source": source,
+                        "at": started + timedelta(seconds=offset),
+                        "duration": duration,
+                        "confidence": confidence,
+                        "severity": severity,
+                        "details": json.dumps({"server": {"reasons": reasons}}),
+                    },
+                )
+            for name, kind, ref in (
+                ("BLOCKED_PROCESS_DETECTED", "process_metadata", {"name": "AnyDesk.exe"}),
+                ("PHONE_DETECTED", "transcript_segment", {"first_seq": 9, "last_seq": 11}),
+            ):
+                await conn.execute(
+                    text(
+                        "INSERT INTO proctor_evidence (id, organization_id, proctor_session_id, "
+                        "interview_id, proctor_event_id, kind, origin, ref, window_start, "
+                        "window_end) VALUES (:id, :org, :ps, :iv, :event, :kind, 'server', "
+                        "CAST(:ref AS jsonb), :ws, :we)"
+                    ),
+                    {
+                        "id": uuid7(),
+                        "org": org,
+                        "ps": proctor_id,
+                        "iv": interview,
+                        "event": events[name],
+                        "kind": kind,
+                        "ref": json.dumps(ref),
+                        "ws": started + timedelta(seconds=55),
+                        "we": started + timedelta(seconds=75),
+                    },
+                )
+            for track, source, status in (
+                ("camera", "desktop", "assembled"),
+                ("mic", "desktop", "assembled"),
+                ("screen-1", "desktop", "assembled"),
+                ("third-eye-1", "egress", "assembled"),
+            ):
+                await conn.execute(
+                    text(
+                        "INSERT INTO recordings (id, organization_id, interview_id, track, status, "
+                        "source, egress_id, started_at, container, blob_path, timeline_path, "
+                        "assembled_bytes, assembled_sha256, duration_ms, assembled_at) VALUES "
+                        "(:id, :org, :iv, :track, :status, :source, :egress, :at, 'webm', :blob, "
+                        ":timeline, 1000, :sha, 2400000, :done)"
+                    ),
+                    {
+                        "id": uuid7(),
+                        "org": org,
+                        "iv": interview,
+                        "track": track,
+                        "status": status,
+                        "source": source,
+                        "egress": f"EG_{uuid7().hex[-8:]}" if source == "egress" else None,
+                        "at": started,
+                        "blob": f"{org}/interviews/{interview}/camera/{track}-full.webm",
+                        "timeline": f"{org}/interviews/{interview}/camera/{track}-timeline.json",
+                        "sha": "a" * 64,
+                        "done": started + timedelta(minutes=41),
+                    },
+                )
+            await conn.execute(
+                text("UPDATE interview_questions SET workspace = 'code' WHERE id = :id"),
+                {"id": scene.questions["python"]},
+            )
+            await conn.execute(
+                text(
+                    "INSERT INTO workspace_snapshots (id, organization_id, interview_id, "
+                    "question_id, kind, language, content, size) VALUES (:id, :org, :iv, :q, "
+                    "'code', 'python', :code, :size)"
+                ),
+                {
+                    "id": uuid7(),
+                    "org": org,
+                    "iv": interview,
+                    "q": scene.questions["python"],
+                    "code": "def decorate(fn):\n    return fn\n",
+                    "size": 33,
+                },
+            )
+        return Telemetry(proctor_id, events, started)
+
+    return add
 
 
 async def _segment(
