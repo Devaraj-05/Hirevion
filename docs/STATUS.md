@@ -38,7 +38,7 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 
 ## Found in testing (open)
 
-- None.
+- [ ] B3: the desktop e2e once failed at the system check with "Camera: not available" when run right after the desktop job in `scripts/ci-local.sh`; it passed alone and on the next full run. Watch for it; if it recurs, find what holds the camera.
 
 ## Known blockers
 
