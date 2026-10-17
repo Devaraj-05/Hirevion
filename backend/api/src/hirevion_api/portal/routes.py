@@ -13,11 +13,12 @@ import math
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import Depends, Request, Response
 
 from hirevion_api.auth.schemas import ForgotPasswordRequest, LoginRequest, TokenPasswordRequest
-from hirevion_api.deps import client_ip, get_db
+from hirevion_api.deps import client_ip, get_db, get_storage
 from hirevion_api.idempotency import Idempotency, idempotency
 from hirevion_api.portal.cookies import clear_portal_cookies, set_portal_cookies
 from hirevion_api.portal.deps import CurrentCandidate, OptionalCandidate, PortalAuth
@@ -36,16 +37,21 @@ from hirevion_api.portal.schemas import (
 )
 from hirevion_api.problems import ProblemError
 from hirevion_api.ratelimit import enforce, rate_limited
+from hirevion_api.reports.schemas import PortalReportItem, PortalReportList, ReleasedItem
 from hirevion_api.routing import api_router
+from hirevion_core.audit import AuditEntry, AuditService
 from hirevion_core.candidate_portal import notices, requests
 from hirevion_core.candidate_portal.interviews import portal_interviews
 from hirevion_core.candidate_portal.requests import NewRequest
 from hirevion_core.desktop import releases
 from hirevion_core.identity.service import LoginRefused, PasswordOutcome
 from hirevion_core.interviews.invitations import SYSTEM_REQUIREMENTS, THIRD_EYE_REQUIREMENT
+from hirevion_core.interviews.lifecycle import reference
 from hirevion_core.models import CandidateAccount, CandidateRequest
 from hirevion_core.models.desktop_release import DESKTOP_ARCHES
 from hirevion_core.ratelimit import RateRule
+from hirevion_core.reports import blocks, exports, visible
+from hirevion_core.reports.pdf import PdfUnavailable
 
 router = api_router(tags=["portal"])
 
@@ -57,6 +63,9 @@ FORGOT_BY_EMAIL = RateRule("portal-forgot-email", 5, 3600, fail_closed=True)
 TOKENS_BY_IP = RateRule("portal-token-ip", 20, 60, fail_closed=True)
 # Each request is mailed and lands with a recruiter: a person asks a handful, not hundreds.
 REQUESTS_BY_ACCOUNT = RateRule("portal-requests-account", 20, 3600, fail_closed=True)
+# Rendering a PDF starts a browser: a released report is rendered once and then kept.
+REPORT_PDFS_BY_ACCOUNT = RateRule("portal-report-pdf-account", 10, 3600, fail_closed=True)
+_audit = AuditService()
 
 _INVALID_CREDENTIALS = ("invalid-credentials", "Email or password is incorrect")
 _INVALID_TOKEN = (
@@ -274,6 +283,109 @@ async def create_portal_request(
         return await idem.run(
             session, context.organization_id, f"candidate:{context.account_id}", create
         )
+
+
+# The candidate-visible report (PRD §99): only what a recruiter approved and released
+
+
+@router.get("/portal/report")
+async def list_portal_reports(request: Request, context: CurrentCandidate) -> PortalReportList:
+    """The reports the candidate may see, newest first. Each holds only the items the organisation
+    allows and a recruiter released, as they read when released; nothing else about an interview
+    is read here."""
+    async with get_db(request).tenant(context.organization_id) as session:
+        account = await session.get_one(CandidateAccount, context.account_id)
+        released = await visible.released_reports(session, account.candidate_id)
+    return PortalReportList(
+        reports=[
+            PortalReportItem(
+                interview_id=interview.id,
+                reference=reference(interview.number),
+                job_title=job.title,
+                released_at=report.approved_at,
+                items=[ReleasedItem(**item) for item in visible.released_list(report)],
+            )
+            for interview, job, report in released
+        ]
+    )
+
+
+@router.get("/portal/report/{interview_id}/pdf")
+async def download_portal_report(
+    interview_id: UUID, request: Request, response: Response, context: CurrentCandidate
+) -> Response:
+    """A PDF of a released report, rendered from the released items; downloads are audited."""
+    renderer = getattr(request.app.state, "pdf_renderer", None)
+    storage = get_storage(request)
+    db = get_db(request)
+    async with db.tenant(context.organization_id) as session:
+        account = await session.get_one(CandidateAccount, context.account_id)
+        found = [
+            row
+            for row in await visible.released_reports(session, account.candidate_id)
+            if row[0].id == interview_id
+        ]
+        if not found:
+            raise ProblemError(404, "report-not-found", "No such report")
+        interview, job, report = found[0]
+        doc = visible.visible_document(interview, job, report)
+        digest = blocks.digest(doc)
+        kept = next(
+            (
+                row
+                for row in await exports.list_exports(
+                    session, interview_id=interview.id, audience="candidate"
+                )
+                if row.document_sha256 == digest and row.candidate_account_id == account.id
+            ),
+            None,
+        )
+    if kept is None:
+        if renderer is None:
+            raise ProblemError(503, "pdf-unavailable", "PDF download isn't available")
+        await enforce(request, response, REPORT_PDFS_BY_ACCOUNT, str(context.account_id))
+        try:
+            pdf = await exports.render_pdf(renderer, doc)
+        except PdfUnavailable as error:
+            raise ProblemError(503, "pdf-unavailable", "PDF download isn't available") from error
+        kept = await exports.store_export(
+            db,
+            storage,  # type: ignore[arg-type]
+            context.organization_id,
+            doc,
+            pdf,
+            renderer=renderer.name,
+            kind="candidate_visible",
+            interview_id=interview.id,
+            candidate_account_id=account.id,
+            audience="candidate",
+        )
+    async with db.tenant(context.organization_id) as session:
+        await _audit.append(
+            session,
+            context.organization_id,
+            AuditEntry(
+                action="report.downloaded",
+                resource_type="interview",
+                resource_id=str(interview.id),
+                actor_type="candidate",
+                actor_id=str(account.id),
+                ip=client_ip(request),
+                user_agent=request.headers.get("user-agent"),
+                details={"kind": "candidate_visible", "export_id": str(kept.id)},
+            ),
+        )
+    data = await exports.read_export(storage, kept)  # type: ignore[arg-type]
+    name = f'"interview-feedback-{reference(interview.number)}.pdf"'
+    return Response(
+        data,
+        media_type=exports.PDF,
+        headers={
+            "Content-Disposition": f"attachment; filename={name}",
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 
 # Public pages: the notices and the download

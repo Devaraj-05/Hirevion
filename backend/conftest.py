@@ -712,6 +712,84 @@ def add_telemetry(admin_engine: AsyncEngine) -> AddTelemetry:
     return add
 
 
+class MakeReviewedInterview(Protocol):
+    async def __call__(
+        self, organization_id: UUID
+    ) -> tuple[CompletedInterview, Telemetry, UUID]: ...
+
+
+@pytest.fixture
+def make_reviewed_interview(
+    app_db: Database,
+    make_completed_interview: MakeCompletedInterview,
+    add_telemetry: AddTelemetry,
+    make_user: MakeUser,
+) -> MakeReviewedInterview:
+    """An evaluated interview with telemetry, one reviewed event, a note, a Hiring Manager's
+    input and a changed score: everything a report can show. Returns the interview, its
+    telemetry and the recruiter who reviewed it."""
+
+    async def make(organization_id: UUID) -> tuple[CompletedInterview, Telemetry, UUID]:
+        from hirevion_core.access.actor import Actor
+        from hirevion_core.ai import build_ai
+        from hirevion_core.ai.settings import AiSettings
+        from hirevion_core.evaluation.service import evaluate_interview
+        from hirevion_core.hiring import inputs, notes, scores
+        from hirevion_core.identity.permissions import permissions_for
+        from hirevion_core.models import Application, Interview
+        from hirevion_core.proctoring.review import review_event
+
+        scene = await make_completed_interview(organization_id)
+        telemetry = await add_telemetry(scene)
+        ai = build_ai(AiSettings(profile="mock"), app_db)  # type: ignore[call-arg]
+        await evaluate_interview(app_db, ai.llm, organization_id, scene.interview_id)
+        reviewer = await make_user(organization_id, roles=["recruiter"])
+        manager = await make_user(organization_id, roles=["hiring_manager"])
+
+        def acting(user: UUID, role: str) -> Actor:
+            return Actor(user, organization_id, frozenset(permissions_for([role])))
+
+        async with app_db.tenant(organization_id) as session:
+            interview = await session.get_one(Interview, scene.interview_id)
+            application = await session.get_one(Application, interview.application_id)
+            await review_event(
+                session,
+                acting(reviewer, "recruiter"),
+                interview.id,
+                telemetry.events["GAZE_DEVIATION"],
+                "false_positive",
+                "They were reading the question on a second monitor.",
+            )
+            await notes.add_note(
+                session,
+                acting(reviewer, "recruiter"),
+                candidate_id=interview.candidate_id,
+                interview=interview,
+                body="Confident on query plans.",
+                at_ms=62_000,
+            )
+            await inputs.add_input(
+                session,
+                acting(manager, "hiring_manager"),
+                application,
+                recommendation="hire",
+                ratings={"technical": 4},
+                rationale="Fits the platform team.",
+            )
+            await scores.change_score(
+                session,
+                acting(reviewer, "recruiter"),
+                interview,
+                "communication",
+                None,
+                6.5,
+                "Spoke clearly but slowly.",
+            )
+        return scene, telemetry, reviewer
+
+    return make
+
+
 async def _segment(
     conn: AsyncConnection,
     organization_id: UUID,

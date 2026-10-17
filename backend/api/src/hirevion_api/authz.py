@@ -92,6 +92,8 @@ UNGUARDED: dict[str, str] = {
     "GET /api/v1/portal/auth/session": "portal",
     "GET /api/v1/portal/interviews": "portal",
     "GET /api/v1/portal/requests": "portal",
+    "GET /api/v1/portal/report": "portal",
+    "GET /api/v1/portal/report/{interview_id}/pdf": "portal",
     "POST /api/v1/portal/requests": "portal",
     "POST /api/v1/third-eye/pairings": "interview",
     "GET /api/v1/third-eye/pairings/{pairing_id}": "interview",

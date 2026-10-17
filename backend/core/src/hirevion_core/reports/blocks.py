@@ -121,7 +121,7 @@ def document(
     generated_at: datetime | None = None,
 ) -> Document:
     return {
-        "schema": SCHEMA,
+        "schema_version": SCHEMA,
         "kind": kind,
         "title": title,
         "subtitle": subtitle,

@@ -278,6 +278,16 @@ async def released_reports(
     return [(row[0], row[1], row[2]) for row in rows]
 
 
+def released_list(report: Report) -> list[dict[str, str]]:
+    """The released items in PRD §99's order (a JSON object doesn't keep one)."""
+    items = report.released_items or {}
+    return [
+        {"key": key, "title": str(items[key]["title"]), "text": str(items[key]["text"])}
+        for key in ITEMS
+        if key in items
+    ]
+
+
 def visible_document(interview: Interview, job: Job, report: Report) -> Document:
     """The released items as a document: no internal section can appear in it, because only
     `released_items` goes in."""

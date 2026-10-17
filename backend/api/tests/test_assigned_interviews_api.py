@@ -192,7 +192,12 @@ async def test_the_dashboard_counts_interviews(
     hiring = await make_hiring(acme, recruiter_id=recruiter_id)
     await create(recruiter, hiring)
     figures = (await recruiter.get("/api/v1/dashboard")).json()
-    assert figures == {"interviews_scheduled": 1, "live_interviews": 0, "completed_interviews": 0}
+    assert figures == {
+        "interviews_scheduled": 1,
+        "live_interviews": 0,
+        "completed_interviews": 0,
+        "pending_reviews": 0,
+    }
     filtered = (await recruiter.get("/api/v1/dashboard", params={"job": str(uuid7())})).json()
     assert filtered["interviews_scheduled"] == 0
 

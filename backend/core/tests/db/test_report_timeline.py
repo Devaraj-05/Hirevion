@@ -16,8 +16,6 @@ from hirevion_core.identity.permissions import permissions_for
 from hirevion_core.models import Application, Interview, ScreeningResult
 from hirevion_core.reports.timeline import SOURCES, candidate_entries
 
-from .test_report_documents import full_scene
-
 pytestmark = pytest.mark.db
 
 MakeOrganization = Callable[[str], Awaitable[UUID]]
@@ -45,11 +43,10 @@ async def test_the_timeline_unifies_the_eight_sources_in_order(
     make_completed_interview: Any,
     add_telemetry: Any,
     make_user: Any,
+    make_reviewed_interview: Any,
 ) -> None:
     org = await make_organization("Acme")
-    scene, _, recruiter = await full_scene(
-        app_db, org, make_completed_interview, add_telemetry, make_user
-    )
+    scene, _, recruiter = await make_reviewed_interview(org)
     hiring = scene.hiring
     await screened(app_db, org, hiring.application_id, hiring.job_id, hiring.candidate_id)
     async with app_db.tenant(org) as session:
@@ -96,9 +93,10 @@ async def test_a_reader_sees_only_the_sources_they_may(
     make_completed_interview: Any,
     add_telemetry: Any,
     make_user: Any,
+    make_reviewed_interview: Any,
 ) -> None:
     org = await make_organization("Acme")
-    scene, _, _ = await full_scene(app_db, org, make_completed_interview, add_telemetry, make_user)
+    scene, _, _ = await make_reviewed_interview(org)
     async with app_db.tenant(org) as session:
         interview = await session.get_one(Interview, scene.interview_id)
         application_id = (

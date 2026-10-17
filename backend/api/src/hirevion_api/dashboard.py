@@ -14,6 +14,7 @@ from hirevion_api.interviews.assigned_schemas import DashboardSummary, Interview
 from hirevion_api.routing import api_router
 from hirevion_core.access.scope import resource_scope
 from hirevion_core.dashboard import DashboardFilters, interview_figures
+from hirevion_core.reports.review import pending_count
 
 router = api_router(tags=["dashboard"])
 
@@ -46,4 +47,5 @@ async def get_dashboard(
     async with own_tenant(request, principal) as session:
         scope = await resource_scope(session, principal.user_id)
         figures = await interview_figures(session, scope, filters, reviewer_only=reviewer_only)
-    return DashboardSummary(**figures)
+        pending = await pending_count(session, scope, reviewer_only=reviewer_only)
+    return DashboardSummary(**figures, pending_reviews=pending)

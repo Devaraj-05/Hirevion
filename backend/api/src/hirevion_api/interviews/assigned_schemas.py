@@ -153,3 +153,5 @@ class DashboardSummary(BaseModel):
     interviews_scheduled: int
     live_interviews: int
     completed_interviews: int
+    pending_reviews: int
+    """Interviews that have ended and wait for a person to decide (not narrowed by the filters)."""

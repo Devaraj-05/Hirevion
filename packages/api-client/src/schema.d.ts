@@ -4,6 +4,70 @@
  */
 
 export interface paths {
+    "/api/v1/applications/{application_id}/hiring": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Hiring State
+         * @description Where the hiring stands (PRD §72): the status, what may be chosen next, the history of
+         *     every change, the final decision and the Hiring Managers' input.
+         */
+        get: operations["get_hiring_state"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/applications/{application_id}/hiring-inputs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Hiring Input
+         * @description A Hiring Manager's recommendation with the reasons. It informs the decision and never
+         *     moves the status.
+         */
+        post: operations["add_hiring_input"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/applications/{application_id}/hiring-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change Hiring Status
+         * @description Moves the application to another status, with a reason where one is needed. `selected`
+         *     and a rejection after an interview are the final decision and need `hiring.decide`; the
+         *     interview's own statuses can't be chosen. Every change is audited.
+         */
+        post: operations["change_hiring_status"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/applications/{application_id}/screening": {
         parameters: {
             query?: never;
@@ -508,6 +572,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/candidates/{candidate_id}/360": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Candidate 360
+         * @description The candidate's file for PRD §20's tabs: applications, screening, interview history with
+         *     each evaluation, technical skills, proctoring counts, recordings, reports and notes. The
+         *     resume and profile tabs are `GET /candidates/{id}`; the activity timeline is its own call.
+         */
+        get: operations["get_candidate_360"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/candidates/{candidate_id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Candidate Notes
+         * @description Every note on the candidate, newest first.
+         */
+        get: operations["list_candidate_notes"];
+        put?: never;
+        /** Add Candidate Note */
+        post: operations["add_candidate_note"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/candidates/{candidate_id}/reject": {
         parameters: {
             query?: never;
@@ -528,6 +635,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/candidates/{candidate_id}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Candidate Report
+         * @description The internal candidate report: the whole file on one candidate, for the people who
+         *     decide. Confidential; never shown to the candidate. Viewing it is audited.
+         */
+        get: operations["get_candidate_report"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/candidates/{candidate_id}/shortlist": {
         parameters: {
             query?: never;
@@ -542,6 +670,28 @@ export interface paths {
          * @description Shortlists the candidate for `job_id` (PRD §90).
          */
         post: operations["shortlist_candidate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/candidates/{candidate_id}/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Candidate Timeline
+         * @description What happened to the candidate, newest first, from screening, the interview, the
+         *     transcript, coding, proctoring, recordings, the evaluation and the recruiters' own actions
+         *     (PRD §98). A reader sees only the sources their permissions cover.
+         */
+        get: operations["get_candidate_timeline"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1087,6 +1237,72 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/interviews/{interview_id}/candidate-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Candidate Visible Report
+         * @description What the candidate may be shown (PRD §99): the draft, which items the organisation allows
+         *     and, once approved, exactly what was released.
+         */
+        get: operations["get_candidate_visible_report"];
+        /**
+         * Save Candidate Visible Report
+         * @description Saves the recruiter's edits to the draft. A released report must be withdrawn first.
+         */
+        put: operations["save_candidate_visible_report"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/candidate-report/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve Candidate Visible Report
+         * @description Releases the report to the candidate's portal: what the organisation allows and the
+         *     recruiter included, frozen as it reads now. Audited.
+         */
+        post: operations["approve_candidate_visible_report"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/candidate-report/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Withdraw Candidate Visible Report
+         * @description Takes a released report off the candidate's portal, with the reason. Audited.
+         */
+        post: operations["withdraw_candidate_visible_report"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/interviews/{interview_id}/complete": {
         parameters: {
             query?: never;
@@ -1252,6 +1468,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/interviews/{interview_id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Interview Notes
+         * @description The notes taken on this interview, newest first.
+         */
+        get: operations["list_interview_notes"];
+        put?: never;
+        /**
+         * Add Interview Note
+         * @description Adds a note to the interview, optionally at a moment of it (milliseconds from its start).
+         */
+        post: operations["add_interview_note"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/interviews/{interview_id}/questions/{question_id}/human-scores": {
         parameters: {
             query?: never;
@@ -1294,6 +1534,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/interviews/{interview_id}/reports/coding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Coding Report
+         * @description The coding report: what the interview recorded of its coding so far (the coding service
+         *     is SP-16). Viewing it is audited.
+         */
+        get: operations["get_coding_report"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/reports/interview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Interview Report
+         * @description The interview report: PRD §69's thirteen sections. Viewing it is audited.
+         */
+        get: operations["get_interview_report"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/reports/proctoring": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Proctoring Report Document
+         * @description The proctoring report: PRD §68's fourteen sections, with no single score. Viewing it is
+         *     audited.
+         */
+        get: operations["get_proctoring_report_document"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/interviews/{interview_id}/reschedule": {
         parameters: {
             query?: never;
@@ -1314,6 +1616,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/interviews/{interview_id}/review/media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Review Media
+         * @description Every recorded track (camera, screen, third eye, audio) with a five-minute read URL and
+         *     its timeline map, so the player can seek them all from one position. Playing recordings is
+         *     audited as `recording.viewed`.
+         */
+        get: operations["get_review_media"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/interviews/{interview_id}/reviewers": {
         parameters: {
             query?: never;
@@ -1327,6 +1651,48 @@ export interface paths {
          * @description Replaces who reviews the interview.
          */
         put: operations["set_interview_reviewers"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/score-changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change Score
+         * @description Changes one score, with the reason. The AI's score stays on record; the change is
+         *     audited as `score.modified`.
+         */
+        post: operations["change_score"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/scores": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Scores
+         * @description The evaluation's scores with the people's changes laid over the AI's, and every change
+         *     with its reason.
+         */
+        get: operations["get_scores"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1818,6 +2184,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organization/candidate-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Candidate Report Settings
+         * @description Which of PRD §99's five items the organisation lets recruiters release.
+         */
+        get: operations["get_candidate_report_settings"];
+        /** Put Candidate Report Settings */
+        put: operations["put_candidate_report_settings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organization/interview-briefing": {
         parameters: {
             query?: never;
@@ -1851,6 +2238,27 @@ export interface paths {
          * @description Every permission a custom role may hold, grouped by area.
          */
         get: operations["list_permissions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pipeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Pipeline
+         * @description The hiring pipeline (PRD §72): the nine statuses with their counts and newest cards, and
+         *     for each card the moves this reader may make.
+         */
+        get: operations["get_pipeline"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2181,6 +2589,48 @@ export interface paths {
          * @description PRD §83: the ten kinds of data an interview may collect, and the six policies.
          */
         get: operations["get_portal_notices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Portal Reports
+         * @description The reports the candidate may see, newest first. Each holds only the items the organisation
+         *     allows and a recruiter released, as they read when released; nothing else about an interview
+         *     is read here.
+         */
+        get: operations["list_portal_reports"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/report/{interview_id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Portal Report
+         * @description A PDF of a released report, rendered from the released items; downloads are audited.
+         */
+        get: operations["download_portal_report"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2604,6 +3054,72 @@ export interface paths {
          *     desktop delete its local copy.
          */
         post: operations["acknowledge_segment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/report-exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Report Exports
+         * @description The PDFs made of an interview's or a candidate's reports, newest first.
+         */
+        get: operations["list_report_exports"];
+        put?: never;
+        /**
+         * Create Report Export
+         * @description Renders a report to a PDF, keeps it and audits it. The reader needs the permission to see
+         *     that kind of report as well as `reports.export`.
+         */
+        post: operations["create_report_export"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/report-exports/{export_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Report Export
+         * @description The stored PDF. Each download is audited, and the file is checked against its recorded
+         *     hash before it is sent.
+         */
+        get: operations["download_report_export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reviews/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Pending Reviews
+         * @description Interviews that have ended and wait for a person to decide, longest waiting first.
+         */
+        get: operations["list_pending_reviews"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3211,6 +3727,30 @@ export interface components {
             /** Blocked */
             blocked: components["schemas"]["AppRule"][];
         };
+        /** ApplicationItem */
+        ApplicationItem: {
+            /**
+             * Application Id
+             * Format: uuid
+             */
+            application_id: string;
+            /**
+             * Hiring Status
+             * @enum {string}
+             */
+            hiring_status: "under_review" | "shortlisted" | "interview_invited" | "interview_started" | "interview_completed" | "additional_review" | "selected" | "rejected" | "on_hold";
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Job Title */
+            job_title: string;
+            /** Rank */
+            rank: number | null;
+            /** Stage */
+            stage: string;
+        };
         /** ApplicationResponse */
         ApplicationResponse: {
             candidate: components["schemas"]["CandidateSummary"];
@@ -3399,6 +3939,27 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** Candidate360Response */
+        Candidate360Response: {
+            access: components["schemas"]["TabAccess"];
+            /** Applications */
+            applications: components["schemas"]["ApplicationItem"][];
+            /**
+             * Candidate Id
+             * Format: uuid
+             */
+            candidate_id: string;
+            /** Interviews */
+            interviews: components["schemas"]["InterviewHistoryItem"][];
+            /** Name */
+            name: string;
+            /** Notes */
+            notes: components["schemas"]["NoteResponse"][];
+            /** Screening */
+            screening: components["schemas"]["ScreeningItem"][];
+            /** Skills */
+            skills: components["schemas"]["SkillRow"][];
+        };
         /** CandidateAccessSettings */
         CandidateAccessSettings: {
             /**
@@ -3543,6 +4104,65 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+        };
+        /** CandidateReportBody */
+        CandidateReportBody: {
+            /** Items */
+            items: {
+                [key: string]: components["schemas"]["DraftItem"];
+            };
+        };
+        /** CandidateReportItem */
+        CandidateReportItem: {
+            /** Allowed */
+            allowed: boolean;
+            /** Include */
+            include: boolean;
+            /** Key */
+            key: string;
+            /** Text */
+            text: string;
+            /** Title */
+            title: string;
+        };
+        /** CandidateReportResponse */
+        CandidateReportResponse: {
+            /** Approved At */
+            approved_at: string | null;
+            /** Approved By */
+            approved_by: string | null;
+            /** Approved By Name */
+            approved_by_name: string | null;
+            /**
+             * Interview Id
+             * Format: uuid
+             */
+            interview_id: string;
+            /** Items */
+            items: components["schemas"]["CandidateReportItem"][];
+            /** Ready */
+            ready: boolean;
+            /** Released */
+            released: components["schemas"]["ReleasedItem"][];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "none" | "draft" | "released" | "withdrawn";
+            /** Withdrawn At */
+            withdrawn_at: string | null;
+            /** Withdrawn Reason */
+            withdrawn_reason: string | null;
+        };
+        /**
+         * CandidateReportSettings
+         * @description Which of the five items recruiters may release, by key.
+         */
+        CandidateReportSettings: {
+            /** Items */
+            items: {
+                [key: string]: boolean;
+            };
         };
         /**
          * CandidateRequestItem
@@ -3745,6 +4365,20 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** CodeBlock */
+        CodeBlock: {
+            /** Caption */
+            caption: string;
+            /** Language */
+            language: string | null;
+            /** Text */
+            text: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "code";
+        };
         /** CodingSettings */
         CodingSettings: {
             /** Languages */
@@ -3857,6 +4491,8 @@ export interface components {
             interviews_scheduled: number;
             /** Live Interviews */
             live_interviews: number;
+            /** Pending Reviews */
+            pending_reviews: number;
         };
         /** DecisionRequest */
         DecisionRequest: {
@@ -3997,6 +4633,13 @@ export interface components {
             /** System Requirements */
             system_requirements: string[];
         };
+        /** DraftItem */
+        DraftItem: {
+            /** Include */
+            include: boolean;
+            /** Text */
+            text: string;
+        };
         /** EmailChangeRequest */
         EmailChangeRequest: {
             /** New Email */
@@ -4058,6 +4701,24 @@ export interface components {
             /** Strengths */
             strengths: components["schemas"]["EvaluationFinding"][];
             versions: components["schemas"]["EvaluationVersions"];
+        };
+        /** EvaluationBrief */
+        EvaluationBrief: {
+            communication: components["schemas"]["ScoreValueResponse"] | null;
+            /** Flags */
+            flags: string[];
+            /** Knowledge Gaps */
+            knowledge_gaps: string[];
+            overall: components["schemas"]["ScoreValueResponse"] | null;
+            /** Skills */
+            skills: components["schemas"]["SkillScore"][];
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "none" | "ready";
+            /** Strengths */
+            strengths: string[];
         };
         /**
          * EvaluationCoding
@@ -4185,6 +4846,17 @@ export interface components {
              */
             started_at: string;
         };
+        /** EventCounts */
+        EventCounts: {
+            /** Critical */
+            critical: number;
+            /** Info */
+            info: number;
+            /** Reviewed */
+            reviewed: number;
+            /** Warning */
+            warning: number;
+        };
         /** EventsAck */
         EventsAck: {
             /** Acked Through */
@@ -4294,6 +4966,50 @@ export interface components {
             };
             /** Upload Url */
             upload_url: string;
+        };
+        /** ExportBody */
+        ExportBody: {
+            /** Candidate Id */
+            candidate_id?: string | null;
+            /** Interview Id */
+            interview_id?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "interview" | "proctoring" | "coding" | "candidate" | "candidate_visible";
+        };
+        /** ExportBrief */
+        ExportBrief: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+        };
+        /** FactRow */
+        FactRow: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
+        };
+        /** FactsBlock */
+        FactsBlock: {
+            /** Rows */
+            rows: components["schemas"]["FactRow"][];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "facts";
         };
         /** FaqItem */
         FaqItem: {
@@ -4420,6 +5136,97 @@ export interface components {
             /** Vision Fps */
             vision_fps?: number | null;
         };
+        /** HiringInputBody */
+        HiringInputBody: {
+            /** Ratings */
+            ratings?: {
+                [key: string]: number;
+            };
+            /** Rationale */
+            rationale: string;
+            /**
+             * Recommendation
+             * @enum {string}
+             */
+            recommendation: "strong_hire" | "hire" | "hold" | "no_hire" | "strong_no_hire";
+        };
+        /** HiringInputResponse */
+        HiringInputResponse: {
+            /**
+             * Author Id
+             * Format: uuid
+             */
+            author_id: string;
+            /** Author Name */
+            author_name: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Interview Id */
+            interview_id: string | null;
+            /** Ratings */
+            ratings: {
+                [key: string]: number;
+            };
+            /** Rationale */
+            rationale: string;
+            /**
+             * Recommendation
+             * @enum {string}
+             */
+            recommendation: "strong_hire" | "hire" | "hold" | "no_hire" | "strong_no_hire";
+        };
+        /** HiringStateResponse */
+        HiringStateResponse: {
+            /** Allowed */
+            allowed: ("under_review" | "shortlisted" | "interview_invited" | "interview_started" | "interview_completed" | "additional_review" | "selected" | "rejected" | "on_hold")[];
+            /**
+             * Application Id
+             * Format: uuid
+             */
+            application_id: string;
+            /**
+             * Candidate Id
+             * Format: uuid
+             */
+            candidate_id: string;
+            decision: components["schemas"]["HistoryItem"] | null;
+            /** Has Interview */
+            has_interview: boolean;
+            /** History */
+            history: components["schemas"]["HistoryItem"][];
+            /** Inputs */
+            inputs: components["schemas"]["HiringInputResponse"][];
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Job Title */
+            job_title: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "under_review" | "shortlisted" | "interview_invited" | "interview_started" | "interview_completed" | "additional_review" | "selected" | "rejected" | "on_hold";
+        };
+        /** HiringStatusBody */
+        HiringStatusBody: {
+            /** Reason */
+            reason?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "under_review" | "shortlisted" | "interview_invited" | "interview_started" | "interview_completed" | "additional_review" | "selected" | "rejected" | "on_hold";
+        };
         /** HistoryEntry */
         HistoryEntry: {
             /** Action */
@@ -4443,6 +5250,41 @@ export interface components {
             score: number | null;
             /** To Stage */
             to_stage: string | null;
+        };
+        /** HistoryItem */
+        HistoryItem: {
+            /** Actor Id */
+            actor_id: string | null;
+            /** Actor Name */
+            actor_name: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Decision */
+            decision: boolean;
+            /** From Status */
+            from_status: ("under_review" | "shortlisted" | "interview_invited" | "interview_started" | "interview_completed" | "additional_review" | "selected" | "rejected" | "on_hold") | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Interview Id */
+            interview_id: string | null;
+            /** Reason */
+            reason: string | null;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "system" | "user";
+            /**
+             * To Status
+             * @enum {string}
+             */
+            to_status: "under_review" | "shortlisted" | "interview_invited" | "interview_started" | "interview_completed" | "additional_review" | "selected" | "rejected" | "on_hold";
         };
         /** HumanScoreBody */
         HumanScoreBody: {
@@ -4638,6 +5480,59 @@ export interface components {
              * @enum {string}
              */
             to_status: "scheduled" | "invited" | "in_progress" | "interrupted" | "completed" | "evaluating" | "evaluated" | "expired" | "cancelled" | "abandoned";
+        };
+        /** InterviewHistoryItem */
+        InterviewHistoryItem: {
+            /**
+             * Application Id
+             * Format: uuid
+             */
+            application_id: string;
+            /**
+             * Candidate Report Status
+             * @enum {string}
+             */
+            candidate_report_status: "none" | "draft" | "released" | "withdrawn";
+            /** Code Snapshots */
+            code_snapshots: number;
+            /** Completed At */
+            completed_at: string | null;
+            evaluation: components["schemas"]["EvaluationBrief"];
+            /** Exports */
+            exports: components["schemas"]["ExportBrief"][];
+            /**
+             * Hiring Status
+             * @enum {string}
+             */
+            hiring_status: "under_review" | "shortlisted" | "interview_invited" | "interview_started" | "interview_completed" | "additional_review" | "selected" | "rejected" | "on_hold";
+            /**
+             * Interview Id
+             * Format: uuid
+             */
+            interview_id: string;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Job Title */
+            job_title: string;
+            proctoring: components["schemas"]["EventCounts"] | null;
+            /** Recordings */
+            recordings: components["schemas"]["RecordingBrief"][];
+            /** Reference */
+            reference: string;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+            /** Status */
+            status: string;
+            /** Template Name */
+            template_name: string;
         };
         /** InterviewNames */
         InterviewNames: {
@@ -5208,6 +6103,16 @@ export interface components {
             participant_token: string;
             placement: components["schemas"]["Placement"];
         };
+        /** ListBlock */
+        ListBlock: {
+            /** Items */
+            items: string[];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "list";
+        };
         /** LiveAi */
         LiveAi: {
             /** Agent Connected */
@@ -5302,6 +6207,38 @@ export interface components {
             /** Weight */
             weight: number;
         };
+        /** MediaTrackResponse */
+        MediaTrackResponse: {
+            /** Container */
+            container: string | null;
+            /** Duration Ms */
+            duration_ms: number | null;
+            /** Gaps */
+            gaps: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "camera" | "screen" | "third_eye" | "audio";
+            /** Label */
+            label: string;
+            /** Stalled */
+            stalled: boolean;
+            /** Started At */
+            started_at: string | null;
+            /** Status */
+            status: string;
+            /** Timeline */
+            timeline: {
+                [key: string]: unknown;
+            } | null;
+            /** Track */
+            track: string;
+            /** Url */
+            url: string | null;
+        };
         /** MemberResponse */
         MemberResponse: {
             /** Email */
@@ -5319,12 +6256,70 @@ export interface components {
              */
             status: "invited" | "active" | "disabled";
         };
+        /** NoteBody */
+        NoteBody: {
+            /** At Ms */
+            at_ms?: number | null;
+            /** Body */
+            body: string;
+        };
+        /** NoteList */
+        NoteList: {
+            /** Items */
+            items: components["schemas"]["NoteResponse"][];
+        };
+        /** NoteResponse */
+        NoteResponse: {
+            /** At Ms */
+            at_ms: number | null;
+            /**
+             * Author Id
+             * Format: uuid
+             */
+            author_id: string;
+            /** Author Name */
+            author_name: string;
+            /** Body */
+            body: string;
+            /**
+             * Candidate Id
+             * Format: uuid
+             */
+            candidate_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Interview Id */
+            interview_id: string | null;
+        };
         /** Notice */
         Notice: {
             /** Items */
             items: components["schemas"]["NoticeItem"][];
             /** Version */
             version: string;
+        };
+        /** NoticeBlock */
+        NoticeBlock: {
+            /** Text */
+            text: string;
+            /**
+             * Tone
+             * @enum {string}
+             */
+            tone: "info" | "warning";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "notice";
         };
         /** NoticeItem */
         NoticeItem: {
@@ -5677,6 +6672,50 @@ export interface components {
             /** New Password */
             new_password: string;
         };
+        /** PendingReviewItem */
+        PendingReviewItem: {
+            /**
+             * Application Id
+             * Format: uuid
+             */
+            application_id: string;
+            /**
+             * Candidate Id
+             * Format: uuid
+             */
+            candidate_id: string;
+            /** Candidate Name */
+            candidate_name: string;
+            /** Completed At */
+            completed_at: string | null;
+            /** Evaluated */
+            evaluated: boolean;
+            /**
+             * Hiring Status
+             * @enum {string}
+             */
+            hiring_status: "under_review" | "shortlisted" | "interview_invited" | "interview_started" | "interview_completed" | "additional_review" | "selected" | "rejected" | "on_hold";
+            /**
+             * Interview Id
+             * Format: uuid
+             */
+            interview_id: string;
+            /** Job Title */
+            job_title: string;
+            /** Overall Score */
+            overall_score: number | null;
+            /** Reference */
+            reference: string;
+            /** Unreviewed Critical */
+            unreviewed_critical: number;
+        };
+        /** PendingReviewList */
+        PendingReviewList: {
+            /** Items */
+            items: components["schemas"]["PendingReviewItem"][];
+            /** Total */
+            total: number;
+        };
         /** PermissionResponse */
         PermissionResponse: {
             /**
@@ -5688,7 +6727,7 @@ export interface components {
              * Name
              * @enum {string}
              */
-            name: "dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "candidates.requests.view" | "candidates.requests.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view";
+            name: "dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "candidates.requests.view" | "candidates.requests.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "reports.export" | "reports.release" | "reports.score.modify" | "hiring.input" | "hiring.decide" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view";
         };
         /** PersonRef */
         PersonRef: {
@@ -5717,6 +6756,49 @@ export interface components {
             question_id: string;
             /** Version */
             version: number;
+        };
+        /** PipelineCard */
+        PipelineCard: {
+            /**
+             * Application Id
+             * Format: uuid
+             */
+            application_id: string;
+            /**
+             * Candidate Id
+             * Format: uuid
+             */
+            candidate_id: string;
+            /** Candidate Name */
+            candidate_name: string;
+            /** Interview Id */
+            interview_id: string | null;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Job Title */
+            job_title: string;
+            /** Moves */
+            moves: ("under_review" | "shortlisted" | "interview_invited" | "interview_started" | "interview_completed" | "additional_review" | "selected" | "rejected" | "on_hold")[];
+        };
+        /** PipelineColumn */
+        PipelineColumn: {
+            /** Cards */
+            cards: components["schemas"]["PipelineCard"][];
+            /** Count */
+            count: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "under_review" | "shortlisted" | "interview_invited" | "interview_started" | "interview_completed" | "additional_review" | "selected" | "rejected" | "on_hold";
+        };
+        /** PipelineResponse */
+        PipelineResponse: {
+            /** Columns */
+            columns: components["schemas"]["PipelineColumn"][];
         };
         /** Placement */
         Placement: {
@@ -5892,6 +6974,27 @@ export interface components {
              * @description Where the candidate writes for help (PRD §25).
              */
             support_email: string;
+        };
+        /** PortalReportItem */
+        PortalReportItem: {
+            /**
+             * Interview Id
+             * Format: uuid
+             */
+            interview_id: string;
+            /** Items */
+            items: components["schemas"]["ReleasedItem"][];
+            /** Job Title */
+            job_title: string;
+            /** Reference */
+            reference: string;
+            /** Released At */
+            released_at: string | null;
+        };
+        /** PortalReportList */
+        PortalReportList: {
+            /** Reports */
+            reports: components["schemas"]["PortalReportItem"][];
         };
         /** PortalRequestCreate */
         PortalRequestCreate: {
@@ -6412,6 +7515,23 @@ export interface components {
             /** Version */
             version: number;
         };
+        /** QuoteItem */
+        QuoteItem: {
+            /** Source */
+            source: string;
+            /** Text */
+            text: string;
+        };
+        /** QuotesBlock */
+        QuotesBlock: {
+            /** Items */
+            items: components["schemas"]["QuoteItem"][];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "quotes";
+        };
         /** RankedApplication */
         RankedApplication: {
             /**
@@ -6477,6 +7597,22 @@ export interface components {
              * @default true
              */
             screen: boolean;
+        };
+        /** RecordingBrief */
+        RecordingBrief: {
+            /** Duration Ms */
+            duration_ms: number | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "camera" | "screen" | "third_eye" | "audio";
+            /** Label */
+            label: string;
+            /** Status */
+            status: string;
+            /** Track */
+            track: string;
         };
         /** RecoveryResponse */
         RecoveryResponse: {
@@ -6632,6 +7768,103 @@ export interface components {
             /** Status */
             status?: ("draft" | "published" | "withdrawn") | null;
         };
+        /** ReleasedItem */
+        ReleasedItem: {
+            /** Key */
+            key: string;
+            /** Text */
+            text: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * ReportDocument
+         * @description A report as data: the web view and the PDF both render it.
+         */
+        ReportDocument: {
+            /**
+             * Audience
+             * @enum {string}
+             */
+            audience: "internal" | "candidate";
+            /** Confidential */
+            confidential: boolean;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "interview" | "proctoring" | "coding" | "candidate" | "candidate_visible";
+            /** Schema Version */
+            schema_version: number;
+            /** Sections */
+            sections: components["schemas"]["ReportSection"][];
+            /** Subject */
+            subject: {
+                [key: string]: string | null;
+            };
+            /** Subtitle */
+            subtitle: string;
+            /** Title */
+            title: string;
+        };
+        /** ReportExportList */
+        ReportExportList: {
+            /** Items */
+            items: components["schemas"]["ReportExportResponse"][];
+        };
+        /** ReportExportResponse */
+        ReportExportResponse: {
+            /** Bytes */
+            bytes: number;
+            /** Candidate Id */
+            candidate_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Interview Id */
+            interview_id: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "interview" | "proctoring" | "coding" | "candidate" | "candidate_visible";
+            /** Renderer */
+            renderer: string;
+            /** Requested By */
+            requested_by: string | null;
+            /** Requested By Name */
+            requested_by_name: string | null;
+            /** Sha256 */
+            sha256: string;
+        };
+        /** ReportSection */
+        ReportSection: {
+            /** Blocks */
+            blocks: (components["schemas"]["TextBlock"] | components["schemas"]["ListBlock"] | components["schemas"]["FactsBlock"] | components["schemas"]["TableBlock"] | components["schemas"]["QuotesBlock"] | components["schemas"]["NoticeBlock"] | components["schemas"]["CodeBlock"])[];
+            /** Key */
+            key: string;
+            /** Note */
+            note: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "populated" | "empty" | "pending";
+            /** Title */
+            title: string;
+        };
         /** RerunQueued */
         RerunQueued: {
             /**
@@ -6772,6 +8005,23 @@ export interface components {
              */
             reviewer_id: string;
         };
+        /** ReviewMediaResponse */
+        ReviewMediaResponse: {
+            /** Anchor */
+            anchor: string | null;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Interview Id
+             * Format: uuid
+             */
+            interview_id: string;
+            /** Tracks */
+            tracks: components["schemas"]["MediaTrackResponse"][];
+        };
         /** ReviewersBody */
         ReviewersBody: {
             /** Reviewer Ids */
@@ -6784,7 +8034,7 @@ export interface components {
             /** Name */
             name: string;
             /** Permissions */
-            permissions: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "candidates.requests.view" | "candidates.requests.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[];
+            permissions: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "candidates.requests.view" | "candidates.requests.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "reports.export" | "reports.release" | "reports.score.modify" | "hiring.input" | "hiring.decide" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[];
         };
         /** RoleRef */
         RoleRef: {
@@ -6823,7 +8073,7 @@ export interface components {
              * Permissions
              * @description What it grants, in catalogue order.
              */
-            permissions: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "candidates.requests.view" | "candidates.requests.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[];
+            permissions: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "candidates.requests.view" | "candidates.requests.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "reports.export" | "reports.release" | "reports.score.modify" | "hiring.input" | "hiring.decide" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[];
             /**
              * System
              * @description Built in: can't be changed or deleted.
@@ -6837,7 +8087,7 @@ export interface components {
             /** Name */
             name?: string | null;
             /** Permissions */
-            permissions?: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "candidates.requests.view" | "candidates.requests.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[] | null;
+            permissions?: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "candidates.requests.view" | "candidates.requests.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "reports.export" | "reports.release" | "reports.score.modify" | "hiring.input" | "hiring.decide" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[] | null;
         };
         /** RubricCriterion */
         RubricCriterion: {
@@ -6867,6 +8117,86 @@ export interface components {
             match: "name" | "path" | "publisher" | "signature" | "hash" | "window_title";
             /** Value */
             value: string;
+        };
+        /** ScoreChangeBody */
+        ScoreChangeBody: {
+            /** New Score */
+            new_score: number;
+            /** Reason */
+            reason: string;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "overall" | "skill" | "communication" | "question";
+            /** Target */
+            target?: string | null;
+        };
+        /** ScoreChangeResponse */
+        ScoreChangeResponse: {
+            /**
+             * Changed By
+             * Format: uuid
+             */
+            changed_by: string;
+            /** Changed By Name */
+            changed_by_name: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** New Score */
+            new_score: number;
+            /** Previous Score */
+            previous_score: number | null;
+            /** Reason */
+            reason: string;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "overall" | "skill" | "communication" | "question";
+            /** Target */
+            target: string | null;
+        };
+        /** ScoreValueResponse */
+        ScoreValueResponse: {
+            /** Ai */
+            ai: number | null;
+            change: components["schemas"]["ScoreChangeResponse"] | null;
+            /** Value */
+            value: number | null;
+        };
+        /** ScoresResponse */
+        ScoresResponse: {
+            /** Changes */
+            changes: components["schemas"]["ScoreChangeResponse"][];
+            communication: components["schemas"]["ScoreValueResponse"];
+            /**
+             * Evaluation Id
+             * Format: uuid
+             */
+            evaluation_id: string;
+            /**
+             * Interview Id
+             * Format: uuid
+             */
+            interview_id: string;
+            overall: components["schemas"]["ScoreValueResponse"];
+            /** Questions */
+            questions: {
+                [key: string]: components["schemas"]["ScoreValueResponse"];
+            };
+            /** Skills */
+            skills: {
+                [key: string]: components["schemas"]["ScoreValueResponse"];
+            };
         };
         /** ScreenAccepted */
         ScreenAccepted: {
@@ -6918,6 +8248,38 @@ export interface components {
             weights?: {
                 [key: string]: number;
             } | null;
+        };
+        /** ScreeningItem */
+        ScreeningItem: {
+            /**
+             * Application Id
+             * Format: uuid
+             */
+            application_id: string;
+            /** Concerns */
+            concerns: string[];
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Job Title */
+            job_title: string;
+            /** Knockouts */
+            knockouts: string[];
+            /** Missing */
+            missing: string[];
+            /** Rank */
+            rank: number | null;
+            /** Score */
+            score: number;
+            /**
+             * Screened At
+             * Format: date-time
+             */
+            screened_at: string;
+            /** Strengths */
+            strengths: string[];
         };
         /** ScreeningResultResponse */
         ScreeningResultResponse: {
@@ -7107,7 +8469,7 @@ export interface components {
             custom_roles?: string[];
             organization: components["schemas"]["SessionOrganization"] | null;
             /** Permissions */
-            permissions: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "candidates.requests.view" | "candidates.requests.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[];
+            permissions: ("dashboard.view" | "jobs.view" | "jobs.create" | "candidates.view" | "candidates.manage" | "candidates.requests.view" | "candidates.requests.manage" | "interviews.view" | "interviews.manage" | "interviews.templates.view" | "interviews.templates.manage" | "questions.view" | "questions.manage" | "reports.view" | "reports.interview.view" | "reports.proctoring.view" | "reports.candidate.view" | "reports.analytics.view" | "reports.export" | "reports.release" | "reports.score.modify" | "hiring.input" | "hiring.decide" | "notifications.view" | "account.manage" | "admin.view" | "admin.organization.manage" | "admin.users.manage" | "admin.roles.manage" | "admin.teams.manage" | "admin.departments.manage" | "admin.ai.manage" | "admin.integrations.manage" | "admin.security.manage" | "admin.proctoring.manage" | "admin.retention.manage" | "admin.branding.manage" | "admin.webhooks.manage" | "admin.api_keys.manage" | "admin.usage.view" | "admin.audit.view" | "platform.view" | "platform.organizations.manage" | "platform.ai.manage" | "platform.security.manage" | "platform.app_catalog.manage" | "platform.desktop_releases.manage" | "platform.audit.view" | "platform.health.view")[];
             /**
              * Roles
              * @description The user's system roles, by key.
@@ -7288,6 +8650,18 @@ export interface components {
             /** Weight */
             weight: number;
         };
+        /** SkillInterviewScore */
+        SkillInterviewScore: {
+            /**
+             * Interview Id
+             * Format: uuid
+             */
+            interview_id: string;
+            /** Reference */
+            reference: string;
+            /** Score */
+            score: number | null;
+        };
         /** SkillResponse */
         SkillResponse: {
             /**
@@ -7301,6 +8675,23 @@ export interface components {
             name: string;
             /** Skill Id */
             skill_id: string | null;
+        };
+        /** SkillRow */
+        SkillRow: {
+            /** Interviews */
+            interviews: components["schemas"]["SkillInterviewScore"][];
+            /** On Resume */
+            on_resume: boolean;
+            /** Resume Years */
+            resume_years: number | null;
+            /** Skill */
+            skill: string;
+        };
+        /** SkillScore */
+        SkillScore: {
+            score: components["schemas"]["ScoreValueResponse"];
+            /** Skill */
+            skill: string;
         };
         /** SkillSuggestion */
         SkillSuggestion: {
@@ -7419,6 +8810,36 @@ export interface components {
             id: string;
             /** Passed */
             passed: boolean;
+        };
+        /**
+         * TabAccess
+         * @description Which of the thirteen tabs hold data this reader may see.
+         */
+        TabAccess: {
+            /** Interviews */
+            interviews: boolean;
+            /** Notes */
+            notes: boolean;
+            /** Proctoring */
+            proctoring: boolean;
+            /** Recordings */
+            recordings: boolean;
+            /** Reports */
+            reports: boolean;
+        };
+        /** TableBlock */
+        TableBlock: {
+            /** Caption */
+            caption: string;
+            /** Columns */
+            columns: string[];
+            /** Rows */
+            rows: string[][];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "table";
         };
         /** TeamCreate */
         TeamCreate: {
@@ -7705,12 +9126,65 @@ export interface components {
             /** Version */
             version: number;
         };
+        /** TextBlock */
+        TextBlock: {
+            /** Text */
+            text: string;
+            /**
+             * Tone
+             * @enum {string}
+             */
+            tone: "normal" | "muted";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "text";
+        };
         /** Threshold */
         Threshold: {
             /** Critical After Ms */
             critical_after_ms?: number | null;
             /** Warn After Ms */
             warn_after_ms?: number | null;
+        };
+        /** TimelineItem */
+        TimelineItem: {
+            /** Actor */
+            actor: string | null;
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Detail */
+            detail: string | null;
+            /** Interview Id */
+            interview_id: string | null;
+            /** Kind */
+            kind: string;
+            /** Offset Ms */
+            offset_ms: number | null;
+            /** Ref */
+            ref: {
+                [key: string]: unknown;
+            };
+            /** Severity */
+            severity: ("INFO" | "WARNING" | "CRITICAL") | null;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "screening" | "interview" | "transcript" | "coding" | "proctoring" | "recording" | "evaluation" | "recruiter";
+            /** Title */
+            title: string;
+        };
+        /** TimelineResponse */
+        TimelineResponse: {
+            /** Items */
+            items: components["schemas"]["TimelineItem"][];
+            /** Next Before */
+            next_before: string | null;
         };
         /** TokenPasswordRequest */
         TokenPasswordRequest: {
@@ -7938,6 +9412,11 @@ export interface components {
             /** Width */
             width: number;
         };
+        /** WithdrawBody */
+        WithdrawBody: {
+            /** Reason */
+            reason: string;
+        };
         /** WorkspaceBody */
         WorkspaceBody: {
             /** Content */
@@ -7964,6 +9443,134 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    get_hiring_state: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HiringStateResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    add_hiring_input: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HiringInputBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HiringInputResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    change_hiring_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HiringStatusBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HiringStateResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     application_screening: {
         parameters: {
             query?: never;
@@ -8971,6 +10578,130 @@ export interface operations {
             };
         };
     };
+    get_candidate_360: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Candidate360Response"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_candidate_notes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteList"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    add_candidate_note: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     reject_candidate: {
         parameters: {
             query?: never;
@@ -9015,6 +10746,46 @@ export interface operations {
             };
         };
     };
+    get_candidate_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportDocument"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     shortlist_candidate: {
         parameters: {
             query?: never;
@@ -9037,6 +10808,54 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApplicationState"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_candidate_timeline: {
+        parameters: {
+            query?: {
+                /** @description Only these sources (PRD §98's eight); all the reader may see if empty. */
+                source?: ("screening" | "interview" | "transcript" | "coding" | "proctoring" | "recording" | "evaluation" | "recruiter")[] | null;
+                /** @description Only this interview's. */
+                interview_id?: string | null;
+                /** @description Only older than this. */
+                before?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimelineResponse"];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */
@@ -10412,6 +12231,174 @@ export interface operations {
             };
         };
     };
+    get_candidate_visible_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateReportResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    save_candidate_visible_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CandidateReportBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateReportResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    approve_candidate_visible_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateReportResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    withdraw_candidate_visible_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WithdrawBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateReportResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     complete_interview: {
         parameters: {
             query?: never;
@@ -10741,6 +12728,90 @@ export interface operations {
             };
         };
     };
+    list_interview_notes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteList"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    add_interview_note: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     put_human_scores: {
         parameters: {
             query?: never;
@@ -10826,6 +12897,126 @@ export interface operations {
             };
         };
     };
+    get_coding_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportDocument"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_interview_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportDocument"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_proctoring_report_document: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportDocument"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     reschedule_interview: {
         parameters: {
             query?: never;
@@ -10870,6 +13061,46 @@ export interface operations {
             };
         };
     };
+    get_review_media: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewMediaResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     set_interview_reviewers: {
         parameters: {
             query?: never;
@@ -10892,6 +13123,90 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InterviewResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    change_score: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScoreChangeBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScoresResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_scores: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScoresResponse"];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */
@@ -12232,6 +14547,86 @@ export interface operations {
             };
         };
     };
+    get_candidate_report_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateReportSettings"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    put_candidate_report_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CandidateReportSettings"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateReportSettings"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     get_interview_briefing: {
         parameters: {
             query?: never;
@@ -12328,6 +14723,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PermissionResponse"][];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_pipeline: {
+        parameters: {
+            query?: {
+                job?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PipelineResponse"];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */
@@ -13061,6 +15496,84 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NoticesResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_portal_reports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalReportList"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    download_portal_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Client error, as an RFC 9457 problem */
@@ -14036,6 +16549,167 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AckResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_report_exports: {
+        parameters: {
+            query?: {
+                interview_id?: string | null;
+                candidate_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportExportList"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_report_export: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExportBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportExportResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    download_report_export: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                export_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_pending_reviews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PendingReviewList"];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */

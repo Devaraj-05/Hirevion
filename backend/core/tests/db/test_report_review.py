@@ -26,8 +26,6 @@ from hirevion_core.reports.candidate360 import load_candidate_360
 from hirevion_core.reports.data import load_interview_data
 from hirevion_core.storage.paths import BlobPath
 
-from .test_report_documents import full_scene
-
 pytestmark = pytest.mark.db
 
 MakeOrganization = Callable[[str], Awaitable[UUID]]
@@ -56,9 +54,10 @@ async def test_candidate_360_loads_what_the_reader_may_see(
     make_completed_interview: Any,
     add_telemetry: Any,
     make_user: Any,
+    make_reviewed_interview: Any,
 ) -> None:
     org = await make_organization("Acme")
-    scene, _, _ = await full_scene(app_db, org, make_completed_interview, add_telemetry, make_user)
+    scene, _, _ = await make_reviewed_interview(org)
     candidate_id = scene.hiring.candidate_id
     async with app_db.tenant(org) as session:
         full = await load_candidate_360(session, candidate_id, EVERYTHING, perms("recruiter"))
@@ -84,9 +83,10 @@ async def test_the_internal_candidate_report_has_eleven_sections(
     make_completed_interview: Any,
     add_telemetry: Any,
     make_user: Any,
+    make_reviewed_interview: Any,
 ) -> None:
     org = await make_organization("Acme")
-    scene, _, _ = await full_scene(app_db, org, make_completed_interview, add_telemetry, make_user)
+    scene, _, _ = await make_reviewed_interview(org)
     hiring = scene.hiring
     async with app_db.tenant(org) as session:
         session.add(
@@ -122,11 +122,10 @@ async def test_the_queue_lists_interviews_waiting_for_a_person_oldest_first(
     make_completed_interview: Any,
     add_telemetry: Any,
     make_user: Any,
+    make_reviewed_interview: Any,
 ) -> None:
     org = await make_organization("Acme")
-    scene, telemetry, recruiter = await full_scene(
-        app_db, org, make_completed_interview, add_telemetry, make_user
-    )
+    scene, telemetry, recruiter = await make_reviewed_interview(org)
     other = await make_completed_interview(org)  # not waiting: still under review
     await awaiting(admin_engine, scene)
     async with app_db.tenant(org) as session:

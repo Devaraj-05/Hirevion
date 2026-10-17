@@ -24,6 +24,7 @@ from hirevion_api.access.structure import router as structure_router
 from hirevion_api.access.users import router as users_router
 from hirevion_api.auth.csrf import CsrfMiddleware
 from hirevion_api.auth.router import router as auth_router
+from hirevion_api.candidate360.routes import router as candidate360_router
 from hirevion_api.candidate_auth.routes import router as candidate_auth_router
 from hirevion_api.candidates.routes import router as candidates_router
 from hirevion_api.desktop_admin import router as desktop_admin_router
@@ -51,6 +52,8 @@ from hirevion_api.proctoring.routes import router as proctoring_router
 from hirevion_api.ratelimit import RateLimitMiddleware
 from hirevion_api.recordings.desktop import router as recordings_desktop_router
 from hirevion_api.recordings.recruiter import router as recordings_recruiter_router
+from hirevion_api.reports.routes import router as reports_router
+from hirevion_api.review.routes import router as review_router
 from hirevion_api.routing import API_PREFIX, build_openapi, operation_id
 from hirevion_api.screening.routes import router as screening_router
 from hirevion_api.settings import ApiSettings, load_api_settings
@@ -75,6 +78,7 @@ from hirevion_core.identity.settings import IdentitySettings, load_identity_sett
 from hirevion_core.interview_session.media import MediaControl, build_media
 from hirevion_core.mail.runner import run_workers
 from hirevion_core.ratelimit import RateRule
+from hirevion_core.reports.pdf import PdfRenderer, PlaywrightPdfRenderer
 from hirevion_core.settings import CoreSettings, load_core_settings
 from hirevion_core.storage.service import load_optional_storage
 from hirevion_core.telemetry import Telemetry, instrument_engine
@@ -101,6 +105,7 @@ def create_app(
     ai: AiServices | None = None,
     candidate_auth: CandidateAuthSettings | None = None,
     media: MediaControl | None = None,
+    pdf: PdfRenderer | None = None,
 ) -> FastAPI:
     """Build the API. Injected `db` and `redis` are used as they are and never closed here;
     otherwise the lifespan opens them from `core` (loaded from `.env` when not given), and also
@@ -175,6 +180,7 @@ def create_app(
     app.state.ai = ai
     app.state.identity = identity_settings
     app.state.media = media
+    app.state.pdf_renderer = pdf or PlaywrightPdfRenderer()
     app.state.allowed_origins = settings.origins
     app.state.candidate_auth = candidate_auth or load_candidate_auth_settings()
     app.state.candidate_signer = TokenSigner.from_settings(app.state.candidate_auth)
@@ -217,6 +223,9 @@ def create_app(
     app.include_router(portal_router)
     app.include_router(candidate_requests_router)
     app.include_router(third_eye_router)
+    app.include_router(reports_router)
+    app.include_router(review_router)
+    app.include_router(candidate360_router)
     if telemetry is not None and telemetry.enabled:
         FastAPIInstrumentor.instrument_app(
             app,

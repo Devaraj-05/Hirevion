@@ -16,11 +16,9 @@ from hirevion_core.ai import build_ai
 from hirevion_core.ai.settings import AiSettings
 from hirevion_core.db.session import Database
 from hirevion_core.evaluation.service import evaluate_interview
-from hirevion_core.hiring import inputs, notes, scores
 from hirevion_core.identity.permissions import permissions_for
-from hirevion_core.models import Application, Interview
+from hirevion_core.models import Interview
 from hirevion_core.proctoring.catalogue import EVENTS
-from hirevion_core.proctoring.review import review_event
 from hirevion_core.reports import interview as interview_report
 from hirevion_core.reports import proctoring as proctoring_report
 from hirevion_core.reports import visible
@@ -50,64 +48,16 @@ async def load(app_db: Database, scene: Any) -> InterviewData:
         return await load_interview_data(session, interview)
 
 
-async def full_scene(
-    app_db: Database, org: UUID, make_completed_interview: Any, add_telemetry: Any, make_user: Any
-) -> tuple[Any, Any, UUID]:
-    """An evaluated interview with telemetry, a reviewed event, a note, a Hiring Manager's input
-    and a changed score: everything a report can show."""
-    scene = await make_completed_interview(org)
-    telemetry = await add_telemetry(scene)
-    await evaluated(app_db, scene)
-    reviewer = await make_user(org, roles=["recruiter"])
-    manager = await make_user(org, roles=["hiring_manager"])
-    async with app_db.tenant(org) as session:
-        interview = await session.get_one(Interview, scene.interview_id)
-        application = await session.get_one(Application, interview.application_id)
-        await review_event(
-            session,
-            actor(org, reviewer, "recruiter"),
-            interview.id,
-            telemetry.events["GAZE_DEVIATION"],
-            "false_positive",
-            "They were reading the question on a second monitor.",
-        )
-        await notes.add_note(
-            session,
-            actor(org, reviewer, "recruiter"),
-            candidate_id=interview.candidate_id,
-            interview=interview,
-            body="Confident on query plans.",
-            at_ms=62_000,
-        )
-        await inputs.add_input(
-            session,
-            actor(org, manager, "hiring_manager"),
-            application,
-            recommendation="hire",
-            ratings={"technical": 4},
-            rationale="Fits the platform team.",
-        )
-        await scores.change_score(
-            session,
-            actor(org, reviewer, "recruiter"),
-            interview,
-            "communication",
-            None,
-            6.5,
-            "Spoke clearly but slowly.",
-        )
-    return scene, telemetry, reviewer
-
-
 async def test_the_interview_report_has_thirteen_sections_and_each_is_populated(
     app_db: Database,
     make_organization: MakeOrganization,
     make_completed_interview: Any,
     add_telemetry: Any,
     make_user: Any,
+    make_reviewed_interview: Any,
 ) -> None:
     org = await make_organization("Acme")
-    scene, _, _ = await full_scene(app_db, org, make_completed_interview, add_telemetry, make_user)
+    scene, _, _ = await make_reviewed_interview(org)
     data = await load(app_db, scene)
     doc = interview_report.interview_report(data)
     assert [s["key"] for s in doc["sections"]] == list(interview_report.SECTION_KEYS)
@@ -168,11 +118,10 @@ async def test_the_proctoring_report_has_fourteen_populated_sections_and_no_sing
     make_completed_interview: Any,
     add_telemetry: Any,
     make_user: Any,
+    make_reviewed_interview: Any,
 ) -> None:
     org = await make_organization("Acme")
-    scene, telemetry, _ = await full_scene(
-        app_db, org, make_completed_interview, add_telemetry, make_user
-    )
+    scene, telemetry, _ = await make_reviewed_interview(org)
     doc = proctoring_report.proctoring_report(await load(app_db, scene))
     assert [s["key"] for s in doc["sections"]] == list(proctoring_report.SECTION_KEYS)
     assert len(doc["sections"]) == 14
@@ -276,9 +225,10 @@ async def test_the_candidate_visible_draft_holds_nothing_internal(
     make_completed_interview: Any,
     add_telemetry: Any,
     make_user: Any,
+    make_reviewed_interview: Any,
 ) -> None:
     org = await make_organization("Acme")
-    scene, _, _ = await full_scene(app_db, org, make_completed_interview, add_telemetry, make_user)
+    scene, _, _ = await make_reviewed_interview(org)
     data = await load(app_db, scene)
     draft = visible.draft_items(data)
     assert list(draft) == list(visible.ITEMS) and len(visible.ITEMS) == 5
@@ -307,11 +257,10 @@ async def test_a_recruiter_approves_what_the_organisation_allows_and_it_stays_as
     make_completed_interview: Any,
     add_telemetry: Any,
     make_user: Any,
+    make_reviewed_interview: Any,
 ) -> None:
     org = await make_organization("Acme")
-    scene, _, recruiter = await full_scene(
-        app_db, org, make_completed_interview, add_telemetry, make_user
-    )
+    scene, _, recruiter = await make_reviewed_interview(org)
     me = actor(org, recruiter, "recruiter")
     data = await load(app_db, scene)
     async with app_db.tenant(org) as session:

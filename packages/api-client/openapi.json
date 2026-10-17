@@ -468,6 +468,64 @@
         "title": "AppRules",
         "type": "object"
       },
+      "ApplicationItem": {
+        "properties": {
+          "application_id": {
+            "format": "uuid",
+            "title": "Application Id",
+            "type": "string"
+          },
+          "hiring_status": {
+            "enum": [
+              "under_review",
+              "shortlisted",
+              "interview_invited",
+              "interview_started",
+              "interview_completed",
+              "additional_review",
+              "selected",
+              "rejected",
+              "on_hold"
+            ],
+            "title": "Hiring Status",
+            "type": "string"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "job_title": {
+            "title": "Job Title",
+            "type": "string"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "application_id",
+          "job_id",
+          "job_title",
+          "stage",
+          "hiring_status",
+          "rank"
+        ],
+        "title": "ApplicationItem",
+        "type": "object"
+      },
       "ApplicationResponse": {
         "properties": {
           "candidate": {
@@ -982,6 +1040,69 @@
         "title": "CancelBody",
         "type": "object"
       },
+      "Candidate360Response": {
+        "properties": {
+          "access": {
+            "$ref": "#/components/schemas/TabAccess"
+          },
+          "applications": {
+            "items": {
+              "$ref": "#/components/schemas/ApplicationItem"
+            },
+            "title": "Applications",
+            "type": "array"
+          },
+          "candidate_id": {
+            "format": "uuid",
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "interviews": {
+            "items": {
+              "$ref": "#/components/schemas/InterviewHistoryItem"
+            },
+            "title": "Interviews",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/NoteResponse"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "screening": {
+            "items": {
+              "$ref": "#/components/schemas/ScreeningItem"
+            },
+            "title": "Screening",
+            "type": "array"
+          },
+          "skills": {
+            "items": {
+              "$ref": "#/components/schemas/SkillRow"
+            },
+            "title": "Skills",
+            "type": "array"
+          }
+        },
+        "required": [
+          "candidate_id",
+          "name",
+          "access",
+          "applications",
+          "screening",
+          "interviews",
+          "skills",
+          "notes"
+        ],
+        "title": "Candidate360Response",
+        "type": "object"
+      },
       "CandidateAccessSettings": {
         "additionalProperties": false,
         "properties": {
@@ -1284,6 +1405,181 @@
           "name"
         ],
         "title": "CandidateRef",
+        "type": "object"
+      },
+      "CandidateReportBody": {
+        "properties": {
+          "items": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/DraftItem"
+            },
+            "title": "Items",
+            "type": "object"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "CandidateReportBody",
+        "type": "object"
+      },
+      "CandidateReportItem": {
+        "properties": {
+          "allowed": {
+            "title": "Allowed",
+            "type": "boolean"
+          },
+          "include": {
+            "title": "Include",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "text",
+          "include",
+          "allowed"
+        ],
+        "title": "CandidateReportItem",
+        "type": "object"
+      },
+      "CandidateReportResponse": {
+        "properties": {
+          "approved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "approved_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By"
+          },
+          "approved_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By Name"
+          },
+          "interview_id": {
+            "format": "uuid",
+            "title": "Interview Id",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CandidateReportItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "released": {
+            "items": {
+              "$ref": "#/components/schemas/ReleasedItem"
+            },
+            "title": "Released",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "none",
+              "draft",
+              "released",
+              "withdrawn"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "withdrawn_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Withdrawn At"
+          },
+          "withdrawn_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Withdrawn Reason"
+          }
+        },
+        "required": [
+          "interview_id",
+          "status",
+          "ready",
+          "items",
+          "released",
+          "approved_by",
+          "approved_by_name",
+          "approved_at",
+          "withdrawn_at",
+          "withdrawn_reason"
+        ],
+        "title": "CandidateReportResponse",
+        "type": "object"
+      },
+      "CandidateReportSettings": {
+        "description": "Which of the five items recruiters may release, by key.",
+        "properties": {
+          "items": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Items",
+            "type": "object"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "CandidateReportSettings",
         "type": "object"
       },
       "CandidateRequestItem": {
@@ -1847,6 +2143,42 @@
         "title": "Choice",
         "type": "object"
       },
+      "CodeBlock": {
+        "properties": {
+          "caption": {
+            "title": "Caption",
+            "type": "string"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "code",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "caption",
+          "language",
+          "text"
+        ],
+        "title": "CodeBlock",
+        "type": "object"
+      },
       "CodingSettings": {
         "properties": {
           "languages": {
@@ -2133,12 +2465,17 @@
           "live_interviews": {
             "title": "Live Interviews",
             "type": "integer"
+          },
+          "pending_reviews": {
+            "title": "Pending Reviews",
+            "type": "integer"
           }
         },
         "required": [
           "interviews_scheduled",
           "live_interviews",
-          "completed_interviews"
+          "completed_interviews",
+          "pending_reviews"
         ],
         "title": "DashboardSummary",
         "type": "object"
@@ -2521,6 +2858,25 @@
         "title": "DownloadsResponse",
         "type": "object"
       },
+      "DraftItem": {
+        "properties": {
+          "include": {
+            "title": "Include",
+            "type": "boolean"
+          },
+          "text": {
+            "maxLength": 4000,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "include"
+        ],
+        "title": "DraftItem",
+        "type": "object"
+      },
       "EmailChangeRequest": {
         "properties": {
           "new_email": {
@@ -2732,6 +3088,77 @@
           "questions"
         ],
         "title": "EvaluationBody",
+        "type": "object"
+      },
+      "EvaluationBrief": {
+        "properties": {
+          "communication": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScoreValueResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "flags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "knowledge_gaps": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Knowledge Gaps",
+            "type": "array"
+          },
+          "overall": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScoreValueResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "skills": {
+            "items": {
+              "$ref": "#/components/schemas/SkillScore"
+            },
+            "title": "Skills",
+            "type": "array"
+          },
+          "state": {
+            "enum": [
+              "none",
+              "ready"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "strengths": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Strengths",
+            "type": "array"
+          }
+        },
+        "required": [
+          "state",
+          "overall",
+          "communication",
+          "skills",
+          "flags",
+          "strengths",
+          "knowledge_gaps"
+        ],
+        "title": "EvaluationBrief",
         "type": "object"
       },
       "EvaluationCoding": {
@@ -3082,6 +3509,34 @@
         "title": "EventBody",
         "type": "object"
       },
+      "EventCounts": {
+        "properties": {
+          "critical": {
+            "title": "Critical",
+            "type": "integer"
+          },
+          "info": {
+            "title": "Info",
+            "type": "integer"
+          },
+          "reviewed": {
+            "title": "Reviewed",
+            "type": "integer"
+          },
+          "warning": {
+            "title": "Warning",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "critical",
+          "warning",
+          "info",
+          "reviewed"
+        ],
+        "title": "EventCounts",
+        "type": "object"
+      },
       "EventsAck": {
         "properties": {
           "acked_through": {
@@ -3383,6 +3838,115 @@
           "headers"
         ],
         "title": "EvidenceUploadResponse",
+        "type": "object"
+      },
+      "ExportBody": {
+        "properties": {
+          "candidate_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidate Id"
+          },
+          "interview_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interview Id"
+          },
+          "kind": {
+            "enum": [
+              "interview",
+              "proctoring",
+              "coding",
+              "candidate",
+              "candidate_visible"
+            ],
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "ExportBody",
+        "type": "object"
+      },
+      "ExportBrief": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "created_at"
+        ],
+        "title": "ExportBrief",
+        "type": "object"
+      },
+      "FactRow": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ],
+        "title": "FactRow",
+        "type": "object"
+      },
+      "FactsBlock": {
+        "properties": {
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/FactRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "type": {
+            "const": "facts",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "rows"
+        ],
+        "title": "FactsBlock",
         "type": "object"
       },
       "FaqItem": {
@@ -3776,6 +4340,243 @@
         "title": "HeartbeatBody",
         "type": "object"
       },
+      "HiringInputBody": {
+        "properties": {
+          "ratings": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Ratings",
+            "type": "object"
+          },
+          "rationale": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Rationale",
+            "type": "string"
+          },
+          "recommendation": {
+            "enum": [
+              "strong_hire",
+              "hire",
+              "hold",
+              "no_hire",
+              "strong_no_hire"
+            ],
+            "title": "Recommendation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "recommendation",
+          "rationale"
+        ],
+        "title": "HiringInputBody",
+        "type": "object"
+      },
+      "HiringInputResponse": {
+        "properties": {
+          "author_id": {
+            "format": "uuid",
+            "title": "Author Id",
+            "type": "string"
+          },
+          "author_name": {
+            "title": "Author Name",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "interview_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interview Id"
+          },
+          "ratings": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Ratings",
+            "type": "object"
+          },
+          "rationale": {
+            "title": "Rationale",
+            "type": "string"
+          },
+          "recommendation": {
+            "enum": [
+              "strong_hire",
+              "hire",
+              "hold",
+              "no_hire",
+              "strong_no_hire"
+            ],
+            "title": "Recommendation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "author_id",
+          "author_name",
+          "interview_id",
+          "recommendation",
+          "ratings",
+          "rationale",
+          "created_at"
+        ],
+        "title": "HiringInputResponse",
+        "type": "object"
+      },
+      "HiringStateResponse": {
+        "properties": {
+          "allowed": {
+            "items": {
+              "enum": [
+                "under_review",
+                "shortlisted",
+                "interview_invited",
+                "interview_started",
+                "interview_completed",
+                "additional_review",
+                "selected",
+                "rejected",
+                "on_hold"
+              ],
+              "type": "string"
+            },
+            "title": "Allowed",
+            "type": "array"
+          },
+          "application_id": {
+            "format": "uuid",
+            "title": "Application Id",
+            "type": "string"
+          },
+          "candidate_id": {
+            "format": "uuid",
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoryItem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "has_interview": {
+            "title": "Has Interview",
+            "type": "boolean"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryItem"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "inputs": {
+            "items": {
+              "$ref": "#/components/schemas/HiringInputResponse"
+            },
+            "title": "Inputs",
+            "type": "array"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "job_title": {
+            "title": "Job Title",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "under_review",
+              "shortlisted",
+              "interview_invited",
+              "interview_started",
+              "interview_completed",
+              "additional_review",
+              "selected",
+              "rejected",
+              "on_hold"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "application_id",
+          "candidate_id",
+          "job_id",
+          "job_title",
+          "status",
+          "allowed",
+          "has_interview",
+          "decision",
+          "history",
+          "inputs"
+        ],
+        "title": "HiringStateResponse",
+        "type": "object"
+      },
+      "HiringStatusBody": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "status": {
+            "enum": [
+              "under_review",
+              "shortlisted",
+              "interview_invited",
+              "interview_started",
+              "interview_completed",
+              "additional_review",
+              "selected",
+              "rejected",
+              "on_hold"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "HiringStatusBody",
+        "type": "object"
+      },
       "HistoryEntry": {
         "properties": {
           "action": {
@@ -3871,6 +4672,129 @@
           "created_at"
         ],
         "title": "HistoryEntry",
+        "type": "object"
+      },
+      "HistoryItem": {
+        "properties": {
+          "actor_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          },
+          "actor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Name"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "decision": {
+            "title": "Decision",
+            "type": "boolean"
+          },
+          "from_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "under_review",
+                  "shortlisted",
+                  "interview_invited",
+                  "interview_started",
+                  "interview_completed",
+                  "additional_review",
+                  "selected",
+                  "rejected",
+                  "on_hold"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Status"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "interview_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interview Id"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "source": {
+            "enum": [
+              "system",
+              "user"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "to_status": {
+            "enum": [
+              "under_review",
+              "shortlisted",
+              "interview_invited",
+              "interview_started",
+              "interview_completed",
+              "additional_review",
+              "selected",
+              "rejected",
+              "on_hold"
+            ],
+            "title": "To Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "from_status",
+          "to_status",
+          "source",
+          "decision",
+          "reason",
+          "actor_id",
+          "actor_name",
+          "interview_id",
+          "created_at"
+        ],
+        "title": "HistoryItem",
         "type": "object"
       },
       "HumanScoreBody": {
@@ -4423,6 +5347,147 @@
           "created_at"
         ],
         "title": "InterviewEventResponse",
+        "type": "object"
+      },
+      "InterviewHistoryItem": {
+        "properties": {
+          "application_id": {
+            "format": "uuid",
+            "title": "Application Id",
+            "type": "string"
+          },
+          "candidate_report_status": {
+            "enum": [
+              "none",
+              "draft",
+              "released",
+              "withdrawn"
+            ],
+            "title": "Candidate Report Status",
+            "type": "string"
+          },
+          "code_snapshots": {
+            "title": "Code Snapshots",
+            "type": "integer"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "evaluation": {
+            "$ref": "#/components/schemas/EvaluationBrief"
+          },
+          "exports": {
+            "items": {
+              "$ref": "#/components/schemas/ExportBrief"
+            },
+            "title": "Exports",
+            "type": "array"
+          },
+          "hiring_status": {
+            "enum": [
+              "under_review",
+              "shortlisted",
+              "interview_invited",
+              "interview_started",
+              "interview_completed",
+              "additional_review",
+              "selected",
+              "rejected",
+              "on_hold"
+            ],
+            "title": "Hiring Status",
+            "type": "string"
+          },
+          "interview_id": {
+            "format": "uuid",
+            "title": "Interview Id",
+            "type": "string"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "job_title": {
+            "title": "Job Title",
+            "type": "string"
+          },
+          "proctoring": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EventCounts"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recordings": {
+            "items": {
+              "$ref": "#/components/schemas/RecordingBrief"
+            },
+            "title": "Recordings",
+            "type": "array"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "template_name": {
+            "title": "Template Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "interview_id",
+          "reference",
+          "application_id",
+          "job_id",
+          "job_title",
+          "template_name",
+          "status",
+          "hiring_status",
+          "starts_at",
+          "started_at",
+          "completed_at",
+          "evaluation",
+          "proctoring",
+          "recordings",
+          "candidate_report_status",
+          "code_snapshots",
+          "exports"
+        ],
+        "title": "InterviewHistoryItem",
         "type": "object"
       },
       "InterviewNames": {
@@ -6412,6 +7477,28 @@
         "title": "JoinResponse",
         "type": "object"
       },
+      "ListBlock": {
+        "properties": {
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "type": {
+            "const": "list",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "items"
+        ],
+        "title": "ListBlock",
+        "type": "object"
+      },
       "LiveAi": {
         "properties": {
           "agent_connected": {
@@ -6686,6 +7773,116 @@
         "title": "MatrixRowResponse",
         "type": "object"
       },
+      "MediaTrackResponse": {
+        "properties": {
+          "container": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Container"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "gaps": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Gaps",
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "camera",
+              "screen",
+              "third_eye",
+              "audio"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "stalled": {
+            "title": "Stalled",
+            "type": "boolean"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "timeline": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeline"
+          },
+          "track": {
+            "title": "Track",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "track",
+          "kind",
+          "label",
+          "status",
+          "stalled",
+          "url",
+          "container",
+          "duration_ms",
+          "started_at",
+          "timeline",
+          "gaps"
+        ],
+        "title": "MediaTrackResponse",
+        "type": "object"
+      },
       "MemberResponse": {
         "properties": {
           "email": {
@@ -6720,6 +7917,116 @@
         "title": "MemberResponse",
         "type": "object"
       },
+      "NoteBody": {
+        "properties": {
+          "at_ms": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At Ms"
+          },
+          "body": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body"
+        ],
+        "title": "NoteBody",
+        "type": "object"
+      },
+      "NoteList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NoteResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "NoteList",
+        "type": "object"
+      },
+      "NoteResponse": {
+        "properties": {
+          "at_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At Ms"
+          },
+          "author_id": {
+            "format": "uuid",
+            "title": "Author Id",
+            "type": "string"
+          },
+          "author_name": {
+            "title": "Author Name",
+            "type": "string"
+          },
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "candidate_id": {
+            "format": "uuid",
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "interview_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interview Id"
+          }
+        },
+        "required": [
+          "id",
+          "candidate_id",
+          "interview_id",
+          "author_id",
+          "author_name",
+          "body",
+          "at_ms",
+          "created_at"
+        ],
+        "title": "NoteResponse",
+        "type": "object"
+      },
       "Notice": {
         "properties": {
           "items": {
@@ -6739,6 +8046,34 @@
           "items"
         ],
         "title": "Notice",
+        "type": "object"
+      },
+      "NoticeBlock": {
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "tone": {
+            "enum": [
+              "info",
+              "warning"
+            ],
+            "title": "Tone",
+            "type": "string"
+          },
+          "type": {
+            "const": "notice",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "tone",
+          "text"
+        ],
+        "title": "NoticeBlock",
         "type": "object"
       },
       "NoticeItem": {
@@ -7666,6 +9001,119 @@
         "title": "PasswordChangeRequest",
         "type": "object"
       },
+      "PendingReviewItem": {
+        "properties": {
+          "application_id": {
+            "format": "uuid",
+            "title": "Application Id",
+            "type": "string"
+          },
+          "candidate_id": {
+            "format": "uuid",
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "candidate_name": {
+            "title": "Candidate Name",
+            "type": "string"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "evaluated": {
+            "title": "Evaluated",
+            "type": "boolean"
+          },
+          "hiring_status": {
+            "enum": [
+              "under_review",
+              "shortlisted",
+              "interview_invited",
+              "interview_started",
+              "interview_completed",
+              "additional_review",
+              "selected",
+              "rejected",
+              "on_hold"
+            ],
+            "title": "Hiring Status",
+            "type": "string"
+          },
+          "interview_id": {
+            "format": "uuid",
+            "title": "Interview Id",
+            "type": "string"
+          },
+          "job_title": {
+            "title": "Job Title",
+            "type": "string"
+          },
+          "overall_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overall Score"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "unreviewed_critical": {
+            "title": "Unreviewed Critical",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "interview_id",
+          "reference",
+          "application_id",
+          "candidate_id",
+          "candidate_name",
+          "job_title",
+          "hiring_status",
+          "completed_at",
+          "overall_score",
+          "evaluated",
+          "unreviewed_critical"
+        ],
+        "title": "PendingReviewItem",
+        "type": "object"
+      },
+      "PendingReviewList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PendingReviewItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "items"
+        ],
+        "title": "PendingReviewList",
+        "type": "object"
+      },
       "PermissionResponse": {
         "properties": {
           "area": {
@@ -7693,6 +9141,11 @@
               "reports.proctoring.view",
               "reports.candidate.view",
               "reports.analytics.view",
+              "reports.export",
+              "reports.release",
+              "reports.score.modify",
+              "hiring.input",
+              "hiring.decide",
               "notifications.view",
               "account.manage",
               "admin.view",
@@ -7780,6 +9233,127 @@
           "version"
         ],
         "title": "PinnedQuestion",
+        "type": "object"
+      },
+      "PipelineCard": {
+        "properties": {
+          "application_id": {
+            "format": "uuid",
+            "title": "Application Id",
+            "type": "string"
+          },
+          "candidate_id": {
+            "format": "uuid",
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "candidate_name": {
+            "title": "Candidate Name",
+            "type": "string"
+          },
+          "interview_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interview Id"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "job_title": {
+            "title": "Job Title",
+            "type": "string"
+          },
+          "moves": {
+            "items": {
+              "enum": [
+                "under_review",
+                "shortlisted",
+                "interview_invited",
+                "interview_started",
+                "interview_completed",
+                "additional_review",
+                "selected",
+                "rejected",
+                "on_hold"
+              ],
+              "type": "string"
+            },
+            "title": "Moves",
+            "type": "array"
+          }
+        },
+        "required": [
+          "application_id",
+          "candidate_id",
+          "candidate_name",
+          "job_id",
+          "job_title",
+          "interview_id",
+          "moves"
+        ],
+        "title": "PipelineCard",
+        "type": "object"
+      },
+      "PipelineColumn": {
+        "properties": {
+          "cards": {
+            "items": {
+              "$ref": "#/components/schemas/PipelineCard"
+            },
+            "title": "Cards",
+            "type": "array"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "under_review",
+              "shortlisted",
+              "interview_invited",
+              "interview_started",
+              "interview_completed",
+              "additional_review",
+              "selected",
+              "rejected",
+              "on_hold"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "count",
+          "cards"
+        ],
+        "title": "PipelineColumn",
+        "type": "object"
+      },
+      "PipelineResponse": {
+        "properties": {
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/PipelineColumn"
+            },
+            "title": "Columns",
+            "type": "array"
+          }
+        },
+        "required": [
+          "columns"
+        ],
+        "title": "PipelineResponse",
         "type": "object"
       },
       "Placement": {
@@ -8164,6 +9738,67 @@
           "support_email"
         ],
         "title": "PortalOrganization",
+        "type": "object"
+      },
+      "PortalReportItem": {
+        "properties": {
+          "interview_id": {
+            "format": "uuid",
+            "title": "Interview Id",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReleasedItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "job_title": {
+            "title": "Job Title",
+            "type": "string"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "released_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Released At"
+          }
+        },
+        "required": [
+          "interview_id",
+          "reference",
+          "job_title",
+          "released_at",
+          "items"
+        ],
+        "title": "PortalReportItem",
+        "type": "object"
+      },
+      "PortalReportList": {
+        "properties": {
+          "reports": {
+            "items": {
+              "$ref": "#/components/schemas/PortalReportItem"
+            },
+            "title": "Reports",
+            "type": "array"
+          }
+        },
+        "required": [
+          "reports"
+        ],
+        "title": "PortalReportList",
         "type": "object"
       },
       "PortalRequestCreate": {
@@ -9600,6 +11235,46 @@
         "title": "QuestionVersionResponse",
         "type": "object"
       },
+      "QuoteItem": {
+        "properties": {
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "source"
+        ],
+        "title": "QuoteItem",
+        "type": "object"
+      },
+      "QuotesBlock": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/QuoteItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "type": {
+            "const": "quotes",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "items"
+        ],
+        "title": "QuotesBlock",
+        "type": "object"
+      },
       "RankedApplication": {
         "properties": {
           "application_id": {
@@ -9771,6 +11446,52 @@
           }
         },
         "title": "Recording",
+        "type": "object"
+      },
+      "RecordingBrief": {
+        "properties": {
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "kind": {
+            "enum": [
+              "camera",
+              "screen",
+              "third_eye",
+              "audio"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "track": {
+            "title": "Track",
+            "type": "string"
+          }
+        },
+        "required": [
+          "track",
+          "kind",
+          "label",
+          "status",
+          "duration_ms"
+        ],
+        "title": "RecordingBrief",
         "type": "object"
       },
       "RecoveryResponse": {
@@ -10163,6 +11884,304 @@
         "title": "ReleaseUpdate",
         "type": "object"
       },
+      "ReleasedItem": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "text"
+        ],
+        "title": "ReleasedItem",
+        "type": "object"
+      },
+      "ReportDocument": {
+        "description": "A report as data: the web view and the PDF both render it.",
+        "properties": {
+          "audience": {
+            "enum": [
+              "internal",
+              "candidate"
+            ],
+            "title": "Audience",
+            "type": "string"
+          },
+          "confidential": {
+            "title": "Confidential",
+            "type": "boolean"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "interview",
+              "proctoring",
+              "coding",
+              "candidate",
+              "candidate_visible"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "schema_version": {
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/ReportSection"
+            },
+            "title": "Sections",
+            "type": "array"
+          },
+          "subject": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Subject",
+            "type": "object"
+          },
+          "subtitle": {
+            "title": "Subtitle",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "kind",
+          "title",
+          "subtitle",
+          "audience",
+          "confidential",
+          "generated_at",
+          "subject",
+          "sections"
+        ],
+        "title": "ReportDocument",
+        "type": "object"
+      },
+      "ReportExportList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReportExportResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ReportExportList",
+        "type": "object"
+      },
+      "ReportExportResponse": {
+        "properties": {
+          "bytes": {
+            "title": "Bytes",
+            "type": "integer"
+          },
+          "candidate_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidate Id"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "interview_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interview Id"
+          },
+          "kind": {
+            "enum": [
+              "interview",
+              "proctoring",
+              "coding",
+              "candidate",
+              "candidate_visible"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "renderer": {
+            "title": "Renderer",
+            "type": "string"
+          },
+          "requested_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested By"
+          },
+          "requested_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested By Name"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "interview_id",
+          "candidate_id",
+          "bytes",
+          "sha256",
+          "renderer",
+          "requested_by",
+          "requested_by_name",
+          "created_at"
+        ],
+        "title": "ReportExportResponse",
+        "type": "object"
+      },
+      "ReportSection": {
+        "properties": {
+          "blocks": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "code": "#/components/schemas/CodeBlock",
+                  "facts": "#/components/schemas/FactsBlock",
+                  "list": "#/components/schemas/ListBlock",
+                  "notice": "#/components/schemas/NoticeBlock",
+                  "quotes": "#/components/schemas/QuotesBlock",
+                  "table": "#/components/schemas/TableBlock",
+                  "text": "#/components/schemas/TextBlock"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/TextBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/ListBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/FactsBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/TableBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/QuotesBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/NoticeBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/CodeBlock"
+                }
+              ]
+            },
+            "title": "Blocks",
+            "type": "array"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "status": {
+            "enum": [
+              "populated",
+              "empty",
+              "pending"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "status",
+          "note",
+          "blocks"
+        ],
+        "title": "ReportSection",
+        "type": "object"
+      },
       "RerunQueued": {
         "properties": {
           "action": {
@@ -10532,6 +12551,47 @@
         "title": "ReviewInfo",
         "type": "object"
       },
+      "ReviewMediaResponse": {
+        "properties": {
+          "anchor": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anchor"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "interview_id": {
+            "format": "uuid",
+            "title": "Interview Id",
+            "type": "string"
+          },
+          "tracks": {
+            "items": {
+              "$ref": "#/components/schemas/MediaTrackResponse"
+            },
+            "title": "Tracks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "interview_id",
+          "anchor",
+          "expires_at",
+          "tracks"
+        ],
+        "title": "ReviewMediaResponse",
+        "type": "object"
+      },
       "ReviewersBody": {
         "additionalProperties": false,
         "properties": {
@@ -10593,6 +12653,11 @@
                 "reports.proctoring.view",
                 "reports.candidate.view",
                 "reports.analytics.view",
+                "reports.export",
+                "reports.release",
+                "reports.score.modify",
+                "hiring.input",
+                "hiring.decide",
                 "notifications.view",
                 "account.manage",
                 "admin.view",
@@ -10725,6 +12790,11 @@
                 "reports.proctoring.view",
                 "reports.candidate.view",
                 "reports.analytics.view",
+                "reports.export",
+                "reports.release",
+                "reports.score.modify",
+                "hiring.input",
+                "hiring.decide",
                 "notifications.view",
                 "account.manage",
                 "admin.view",
@@ -10826,6 +12896,11 @@
                     "reports.proctoring.view",
                     "reports.candidate.view",
                     "reports.analytics.view",
+                    "reports.export",
+                    "reports.release",
+                    "reports.score.modify",
+                    "hiring.input",
+                    "hiring.decide",
                     "notifications.view",
                     "account.manage",
                     "admin.view",
@@ -10939,6 +13014,222 @@
           "value"
         ],
         "title": "RuleCondition",
+        "type": "object"
+      },
+      "ScoreChangeBody": {
+        "properties": {
+          "new_score": {
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "New Score",
+            "type": "number"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "scope": {
+            "enum": [
+              "overall",
+              "skill",
+              "communication",
+              "question"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          }
+        },
+        "required": [
+          "scope",
+          "new_score",
+          "reason"
+        ],
+        "title": "ScoreChangeBody",
+        "type": "object"
+      },
+      "ScoreChangeResponse": {
+        "properties": {
+          "changed_by": {
+            "format": "uuid",
+            "title": "Changed By",
+            "type": "string"
+          },
+          "changed_by_name": {
+            "title": "Changed By Name",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "new_score": {
+            "title": "New Score",
+            "type": "number"
+          },
+          "previous_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Score"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "scope": {
+            "enum": [
+              "overall",
+              "skill",
+              "communication",
+              "question"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          }
+        },
+        "required": [
+          "id",
+          "scope",
+          "target",
+          "previous_score",
+          "new_score",
+          "reason",
+          "changed_by",
+          "changed_by_name",
+          "created_at"
+        ],
+        "title": "ScoreChangeResponse",
+        "type": "object"
+      },
+      "ScoreValueResponse": {
+        "properties": {
+          "ai": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai"
+          },
+          "change": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScoreChangeResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "ai",
+          "value",
+          "change"
+        ],
+        "title": "ScoreValueResponse",
+        "type": "object"
+      },
+      "ScoresResponse": {
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/ScoreChangeResponse"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "communication": {
+            "$ref": "#/components/schemas/ScoreValueResponse"
+          },
+          "evaluation_id": {
+            "format": "uuid",
+            "title": "Evaluation Id",
+            "type": "string"
+          },
+          "interview_id": {
+            "format": "uuid",
+            "title": "Interview Id",
+            "type": "string"
+          },
+          "overall": {
+            "$ref": "#/components/schemas/ScoreValueResponse"
+          },
+          "questions": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ScoreValueResponse"
+            },
+            "title": "Questions",
+            "type": "object"
+          },
+          "skills": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ScoreValueResponse"
+            },
+            "title": "Skills",
+            "type": "object"
+          }
+        },
+        "required": [
+          "interview_id",
+          "evaluation_id",
+          "overall",
+          "communication",
+          "skills",
+          "questions",
+          "changes"
+        ],
+        "title": "ScoresResponse",
         "type": "object"
       },
       "ScreenAccepted": {
@@ -11071,6 +13362,86 @@
           }
         },
         "title": "ScreeningConfigUpdate",
+        "type": "object"
+      },
+      "ScreeningItem": {
+        "properties": {
+          "application_id": {
+            "format": "uuid",
+            "title": "Application Id",
+            "type": "string"
+          },
+          "concerns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Concerns",
+            "type": "array"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "job_title": {
+            "title": "Job Title",
+            "type": "string"
+          },
+          "knockouts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Knockouts",
+            "type": "array"
+          },
+          "missing": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "score": {
+            "title": "Score",
+            "type": "integer"
+          },
+          "screened_at": {
+            "format": "date-time",
+            "title": "Screened At",
+            "type": "string"
+          },
+          "strengths": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Strengths",
+            "type": "array"
+          }
+        },
+        "required": [
+          "application_id",
+          "job_id",
+          "job_title",
+          "score",
+          "rank",
+          "strengths",
+          "concerns",
+          "missing",
+          "knockouts",
+          "screened_at"
+        ],
+        "title": "ScreeningItem",
         "type": "object"
       },
       "ScreeningResultResponse": {
@@ -11480,6 +13851,11 @@
                 "reports.proctoring.view",
                 "reports.candidate.view",
                 "reports.analytics.view",
+                "reports.export",
+                "reports.release",
+                "reports.score.modify",
+                "hiring.input",
+                "hiring.decide",
                 "notifications.view",
                 "account.manage",
                 "admin.view",
@@ -11966,6 +14342,37 @@
         "title": "SkillEvaluation",
         "type": "object"
       },
+      "SkillInterviewScore": {
+        "properties": {
+          "interview_id": {
+            "format": "uuid",
+            "title": "Interview Id",
+            "type": "string"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          }
+        },
+        "required": [
+          "interview_id",
+          "reference",
+          "score"
+        ],
+        "title": "SkillInterviewScore",
+        "type": "object"
+      },
       "SkillResponse": {
         "properties": {
           "importance": {
@@ -12012,6 +14419,61 @@
           "min_years"
         ],
         "title": "SkillResponse",
+        "type": "object"
+      },
+      "SkillRow": {
+        "properties": {
+          "interviews": {
+            "items": {
+              "$ref": "#/components/schemas/SkillInterviewScore"
+            },
+            "title": "Interviews",
+            "type": "array"
+          },
+          "on_resume": {
+            "title": "On Resume",
+            "type": "boolean"
+          },
+          "resume_years": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resume Years"
+          },
+          "skill": {
+            "title": "Skill",
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill",
+          "on_resume",
+          "resume_years",
+          "interviews"
+        ],
+        "title": "SkillRow",
+        "type": "object"
+      },
+      "SkillScore": {
+        "properties": {
+          "score": {
+            "$ref": "#/components/schemas/ScoreValueResponse"
+          },
+          "skill": {
+            "title": "Skill",
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill",
+          "score"
+        ],
+        "title": "SkillScore",
         "type": "object"
       },
       "SkillSuggestion": {
@@ -12259,6 +14721,78 @@
           "failed_mandatory"
         ],
         "title": "SystemCheckResponse",
+        "type": "object"
+      },
+      "TabAccess": {
+        "description": "Which of the thirteen tabs hold data this reader may see.",
+        "properties": {
+          "interviews": {
+            "title": "Interviews",
+            "type": "boolean"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "boolean"
+          },
+          "proctoring": {
+            "title": "Proctoring",
+            "type": "boolean"
+          },
+          "recordings": {
+            "title": "Recordings",
+            "type": "boolean"
+          },
+          "reports": {
+            "title": "Reports",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "interviews",
+          "proctoring",
+          "recordings",
+          "reports",
+          "notes"
+        ],
+        "title": "TabAccess",
+        "type": "object"
+      },
+      "TableBlock": {
+        "properties": {
+          "caption": {
+            "title": "Caption",
+            "type": "string"
+          },
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Columns",
+            "type": "array"
+          },
+          "rows": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "type": {
+            "const": "table",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "caption",
+          "columns",
+          "rows"
+        ],
+        "title": "TableBlock",
         "type": "object"
       },
       "TeamCreate": {
@@ -13246,6 +15780,34 @@
         "title": "TemplateVersionResponse",
         "type": "object"
       },
+      "TextBlock": {
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "tone": {
+            "enum": [
+              "normal",
+              "muted"
+            ],
+            "title": "Tone",
+            "type": "string"
+          },
+          "type": {
+            "const": "text",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text",
+          "tone"
+        ],
+        "title": "TextBlock",
+        "type": "object"
+      },
       "Threshold": {
         "properties": {
           "critical_after_ms": {
@@ -13272,6 +15834,146 @@
           }
         },
         "title": "Threshold",
+        "type": "object"
+      },
+      "TimelineItem": {
+        "properties": {
+          "actor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "interview_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interview Id"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "offset_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Offset Ms"
+          },
+          "ref": {
+            "additionalProperties": true,
+            "title": "Ref",
+            "type": "object"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "enum": [
+                  "INFO",
+                  "WARNING",
+                  "CRITICAL"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Severity"
+          },
+          "source": {
+            "enum": [
+              "screening",
+              "interview",
+              "transcript",
+              "coding",
+              "proctoring",
+              "recording",
+              "evaluation",
+              "recruiter"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "source",
+          "kind",
+          "title",
+          "detail",
+          "severity",
+          "interview_id",
+          "offset_ms",
+          "actor",
+          "ref"
+        ],
+        "title": "TimelineItem",
+        "type": "object"
+      },
+      "TimelineResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TimelineItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_before": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Before"
+          }
+        },
+        "required": [
+          "items",
+          "next_before"
+        ],
+        "title": "TimelineResponse",
         "type": "object"
       },
       "TokenPasswordRequest": {
@@ -13873,6 +16575,21 @@
         "title": "VideoInfo",
         "type": "object"
       },
+      "WithdrawBody": {
+        "properties": {
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "WithdrawBody",
+        "type": "object"
+      },
       "WorkspaceBody": {
         "properties": {
           "content": {
@@ -13922,6 +16639,188 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/applications/{application_id}/hiring": {
+      "get": {
+        "description": "Where the hiring stands (PRD §72): the status, what may be chosen next, the history of\nevery change, the final decision and the Hiring Managers' input.",
+        "operationId": "get_hiring_state",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "application_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Application Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HiringStateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Get Hiring State",
+        "tags": [
+          "review"
+        ]
+      }
+    },
+    "/api/v1/applications/{application_id}/hiring-inputs": {
+      "post": {
+        "description": "A Hiring Manager's recommendation with the reasons. It informs the decision and never\nmoves the status.",
+        "operationId": "add_hiring_input",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "application_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Application Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HiringInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HiringInputResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Add Hiring Input",
+        "tags": [
+          "review"
+        ]
+      }
+    },
+    "/api/v1/applications/{application_id}/hiring-status": {
+      "post": {
+        "description": "Moves the application to another status, with a reason where one is needed. `selected`\nand a rejection after an interview are the final decision and need `hiring.decide`; the\ninterview's own statuses can't be chosen. Every change is audited.",
+        "operationId": "change_hiring_status",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "application_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Application Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HiringStatusBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HiringStateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Change Hiring Status",
+        "tags": [
+          "review"
+        ]
+      }
+    },
     "/api/v1/applications/{application_id}/screening": {
       "get": {
         "description": "One application's screening in full: every factor with its evidence, and its history.",
@@ -15309,6 +18208,175 @@
         ]
       }
     },
+    "/api/v1/candidates/{candidate_id}/360": {
+      "get": {
+        "description": "The candidate's file for PRD §20's tabs: applications, screening, interview history with\neach evaluation, technical skills, proctoring counts, recordings, reports and notes. The\nresume and profile tabs are `GET /candidates/{id}`; the activity timeline is its own call.",
+        "operationId": "get_candidate_360",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Candidate360Response"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Get Candidate 360",
+        "tags": [
+          "candidates"
+        ]
+      }
+    },
+    "/api/v1/candidates/{candidate_id}/notes": {
+      "get": {
+        "description": "Every note on the candidate, newest first.",
+        "operationId": "list_candidate_notes",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "List Candidate Notes",
+        "tags": [
+          "review"
+        ]
+      },
+      "post": {
+        "operationId": "add_candidate_note",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Add Candidate Note",
+        "tags": [
+          "review"
+        ]
+      }
+    },
     "/api/v1/candidates/{candidate_id}/reject": {
       "post": {
         "description": "Rejects the candidate for `job_id`, with a reason (PRD §90).",
@@ -15373,6 +18441,60 @@
         ]
       }
     },
+    "/api/v1/candidates/{candidate_id}/report": {
+      "get": {
+        "description": "The internal candidate report: the whole file on one candidate, for the people who\ndecide. Confidential; never shown to the candidate. Viewing it is audited.",
+        "operationId": "get_candidate_report",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportDocument"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Get Candidate Report",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
     "/api/v1/candidates/{candidate_id}/shortlist": {
       "post": {
         "description": "Shortlists the candidate for `job_id` (PRD §90).",
@@ -15434,6 +18556,141 @@
         "summary": "Shortlist Candidate",
         "tags": [
           "screening"
+        ]
+      }
+    },
+    "/api/v1/candidates/{candidate_id}/timeline": {
+      "get": {
+        "description": "What happened to the candidate, newest first, from screening, the interview, the\ntranscript, coding, proctoring, recordings, the evaluation and the recruiters' own actions\n(PRD §98). A reader sees only the sources their permissions cover.",
+        "operationId": "get_candidate_timeline",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only these sources (PRD §98's eight); all the reader may see if empty.",
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "enum": [
+                      "screening",
+                      "interview",
+                      "transcript",
+                      "coding",
+                      "proctoring",
+                      "recording",
+                      "evaluation",
+                      "recruiter"
+                    ],
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only these sources (PRD §98's eight); all the reader may see if empty.",
+              "title": "Source"
+            }
+          },
+          {
+            "description": "Only this interview's.",
+            "in": "query",
+            "name": "interview_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only this interview's.",
+              "title": "Interview Id"
+            }
+          },
+          {
+            "description": "Only older than this.",
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only older than this.",
+              "title": "Before"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimelineResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Get Candidate Timeline",
+        "tags": [
+          "candidates"
         ]
       }
     },
@@ -17588,6 +20845,240 @@
         ]
       }
     },
+    "/api/v1/interviews/{interview_id}/candidate-report": {
+      "get": {
+        "description": "What the candidate may be shown (PRD §99): the draft, which items the organisation allows\nand, once approved, exactly what was released.",
+        "operationId": "get_candidate_visible_report",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateReportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Get Candidate Visible Report",
+        "tags": [
+          "reports"
+        ]
+      },
+      "put": {
+        "description": "Saves the recruiter's edits to the draft. A released report must be withdrawn first.",
+        "operationId": "save_candidate_visible_report",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CandidateReportBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateReportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Save Candidate Visible Report",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/candidate-report/approve": {
+      "post": {
+        "description": "Releases the report to the candidate's portal: what the organisation allows and the\nrecruiter included, frozen as it reads now. Audited.",
+        "operationId": "approve_candidate_visible_report",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateReportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Approve Candidate Visible Report",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/candidate-report/withdraw": {
+      "post": {
+        "description": "Takes a released report off the candidate's portal, with the reason. Audited.",
+        "operationId": "withdraw_candidate_visible_report",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WithdrawBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateReportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Withdraw Candidate Visible Report",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
     "/api/v1/interviews/{interview_id}/complete": {
       "post": {
         "description": "Ends the interview; the desktop then drains its upload queue before closing.",
@@ -18058,6 +21549,122 @@
         ]
       }
     },
+    "/api/v1/interviews/{interview_id}/notes": {
+      "get": {
+        "description": "The notes taken on this interview, newest first.",
+        "operationId": "list_interview_notes",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "List Interview Notes",
+        "tags": [
+          "review"
+        ]
+      },
+      "post": {
+        "description": "Adds a note to the interview, optionally at a moment of it (milliseconds from its start).",
+        "operationId": "add_interview_note",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Add Interview Note",
+        "tags": [
+          "review"
+        ]
+      }
+    },
     "/api/v1/interviews/{interview_id}/questions/{question_id}/human-scores": {
       "put": {
         "description": "Records the signed-in reviewer's own dimension scores for a question (calibration);\nsaving again replaces them. Other reviewers' scores are not shown.",
@@ -18186,6 +21793,168 @@
         ]
       }
     },
+    "/api/v1/interviews/{interview_id}/reports/coding": {
+      "get": {
+        "description": "The coding report: what the interview recorded of its coding so far (the coding service\nis SP-16). Viewing it is audited.",
+        "operationId": "get_coding_report",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportDocument"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Get Coding Report",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/reports/interview": {
+      "get": {
+        "description": "The interview report: PRD §69's thirteen sections. Viewing it is audited.",
+        "operationId": "get_interview_report",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportDocument"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Get Interview Report",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/reports/proctoring": {
+      "get": {
+        "description": "The proctoring report: PRD §68's fourteen sections, with no single score. Viewing it is\naudited.",
+        "operationId": "get_proctoring_report_document",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportDocument"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Get Proctoring Report Document",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
     "/api/v1/interviews/{interview_id}/reschedule": {
       "post": {
         "description": "Gives an interview that hasn't started a new window, and tells the candidate.",
@@ -18250,6 +22019,60 @@
         ]
       }
     },
+    "/api/v1/interviews/{interview_id}/review/media": {
+      "get": {
+        "description": "Every recorded track (camera, screen, third eye, audio) with a five-minute read URL and\nits timeline map, so the player can seek them all from one position. Playing recordings is\naudited as `recording.viewed`.",
+        "operationId": "get_review_media",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewMediaResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Get Review Media",
+        "tags": [
+          "review"
+        ]
+      }
+    },
     "/api/v1/interviews/{interview_id}/reviewers": {
       "put": {
         "description": "Replaces who reviews the interview.",
@@ -18311,6 +22134,124 @@
         "summary": "Set Interview Reviewers",
         "tags": [
           "interviews"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/score-changes": {
+      "post": {
+        "description": "Changes one score, with the reason. The AI's score stays on record; the change is\naudited as `score.modified`.",
+        "operationId": "change_score",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScoreChangeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScoresResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Change Score",
+        "tags": [
+          "review"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/scores": {
+      "get": {
+        "description": "The evaluation's scores with the people's changes laid over the AI's, and every change\nwith its reason.",
+        "operationId": "get_scores",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScoresResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Get Scores",
+        "tags": [
+          "review"
         ]
       }
     },
@@ -20345,6 +24286,97 @@
         ]
       }
     },
+    "/api/v1/organization/candidate-report": {
+      "get": {
+        "description": "Which of PRD §99's five items the organisation lets recruiters release.",
+        "operationId": "get_candidate_report_settings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateReportSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Get Candidate Report Settings",
+        "tags": [
+          "reports"
+        ]
+      },
+      "put": {
+        "operationId": "put_candidate_report_settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CandidateReportSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateReportSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Put Candidate Report Settings",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
     "/api/v1/organization/interview-briefing": {
       "get": {
         "description": "What candidates are told before an interview, and the FAQ the AI answers from.",
@@ -20479,6 +24511,67 @@
         "summary": "List Permissions",
         "tags": [
           "roles"
+        ]
+      }
+    },
+    "/api/v1/pipeline": {
+      "get": {
+        "description": "The hiring pipeline (PRD §72): the nine statuses with their counts and newest cards, and\nfor each card the moves this reader may make.",
+        "operationId": "get_pipeline",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "job",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Job"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PipelineResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Get Pipeline",
+        "tags": [
+          "review"
         ]
       }
     },
@@ -21443,6 +25536,100 @@
           }
         },
         "summary": "Get Portal Notices",
+        "tags": [
+          "portal"
+        ]
+      }
+    },
+    "/api/v1/portal/report": {
+      "get": {
+        "description": "The reports the candidate may see, newest first. Each holds only the items the organisation\nallows and a recruiter released, as they read when released; nothing else about an interview\nis read here.",
+        "operationId": "list_portal_reports",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalReportList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "List Portal Reports",
+        "tags": [
+          "portal"
+        ]
+      }
+    },
+    "/api/v1/portal/report/{interview_id}/pdf": {
+      "get": {
+        "description": "A PDF of a released report, rendered from the released items; downloads are audited.",
+        "operationId": "download_portal_report",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Download Portal Report",
         "tags": [
           "portal"
         ]
@@ -22988,6 +27175,228 @@
         "summary": "Acknowledge Segment",
         "tags": [
           "recordings"
+        ]
+      }
+    },
+    "/api/v1/report-exports": {
+      "get": {
+        "description": "The PDFs made of an interview's or a candidate's reports, newest first.",
+        "operationId": "list_report_exports",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "interview_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Interview Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "candidate_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Candidate Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportExportList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "List Report Exports",
+        "tags": [
+          "reports"
+        ]
+      },
+      "post": {
+        "description": "Renders a report to a PDF, keeps it and audits it. The reader needs the permission to see\nthat kind of report as well as `reports.export`.",
+        "operationId": "create_report_export",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportExportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Create Report Export",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/report-exports/{export_id}/download": {
+      "get": {
+        "description": "The stored PDF. Each download is audited, and the file is checked against its recorded\nhash before it is sent.",
+        "operationId": "download_report_export",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "export_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Export Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Download Report Export",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/reviews/pending": {
+      "get": {
+        "description": "Interviews that have ended and wait for a person to decide, longest waiting first.",
+        "operationId": "list_pending_reviews",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingReviewList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "List Pending Reviews",
+        "tags": [
+          "review"
         ]
       }
     },

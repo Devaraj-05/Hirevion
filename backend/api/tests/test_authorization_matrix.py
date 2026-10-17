@@ -206,6 +206,55 @@ EXPECTED: dict[str, tuple[tuple[str, ...], bool]] = {
     "POST /api/v1/interviews/{interview_id}/evaluation/rerun": (("admin.ai.manage",), False),
     "GET /api/v1/candidate-requests": (("candidates.requests.view",), False),
     "PATCH /api/v1/candidate-requests/{request_id}": (("candidates.requests.manage",), False),
+    # SP-17: reports, review and Candidate 360.
+    "GET /api/v1/interviews/{interview_id}/reports/interview": (
+        ("reports.interview.view",),
+        False,
+    ),
+    "GET /api/v1/interviews/{interview_id}/reports/proctoring": (
+        ("reports.proctoring.view",),
+        False,
+    ),
+    "GET /api/v1/interviews/{interview_id}/reports/coding": (("reports.interview.view",), False),
+    "GET /api/v1/candidates/{candidate_id}/report": (("reports.candidate.view",), False),
+    "POST /api/v1/report-exports": (("reports.export",), False),
+    "GET /api/v1/report-exports": (("reports.export",), False),
+    "GET /api/v1/report-exports/{export_id}/download": (("reports.export",), False),
+    "GET /api/v1/interviews/{interview_id}/candidate-report": (
+        ("reports.candidate.view",),
+        False,
+    ),
+    "PUT /api/v1/interviews/{interview_id}/candidate-report": (("reports.release",), False),
+    "POST /api/v1/interviews/{interview_id}/candidate-report/approve": (
+        ("reports.release",),
+        False,
+    ),
+    "POST /api/v1/interviews/{interview_id}/candidate-report/withdraw": (
+        ("reports.release",),
+        False,
+    ),
+    "GET /api/v1/organization/candidate-report": (("reports.view",), False),
+    "PUT /api/v1/organization/candidate-report": (("admin.organization.manage",), False),
+    "GET /api/v1/interviews/{interview_id}/review/media": (("reports.interview.view",), False),
+    "GET /api/v1/interviews/{interview_id}/notes": (("reports.interview.view",), False),
+    "POST /api/v1/interviews/{interview_id}/notes": (("reports.interview.view",), False),
+    "GET /api/v1/candidates/{candidate_id}/notes": (("candidates.view",), False),
+    "POST /api/v1/candidates/{candidate_id}/notes": (("candidates.view",), False),
+    "GET /api/v1/interviews/{interview_id}/scores": (("reports.interview.view",), False),
+    "POST /api/v1/interviews/{interview_id}/score-changes": (
+        ("reports.score.modify",),
+        False,
+    ),
+    "GET /api/v1/applications/{application_id}/hiring": (("candidates.view",), False),
+    "POST /api/v1/applications/{application_id}/hiring-status": (
+        ("candidates.manage",),
+        False,
+    ),
+    "POST /api/v1/applications/{application_id}/hiring-inputs": (("hiring.input",), False),
+    "GET /api/v1/reviews/pending": (("reports.interview.view",), False),
+    "GET /api/v1/pipeline": (("candidates.view",), False),
+    "GET /api/v1/candidates/{candidate_id}/360": (("candidates.view",), False),
+    "GET /api/v1/candidates/{candidate_id}/timeline": (("candidates.view",), False),
 }
 
 
