@@ -98,3 +98,92 @@ def test_an_observer_token_is_hidden_and_cannot_publish(media: LiveKitMedia) -> 
     )
     assert not video.get("canPublish") and not video.get("canPublishData")
     assert video["canSubscribe"] is True and not video.get("roomAdmin")
+
+
+# SP-13: the third eye's camera, its token, and Egress.
+
+
+def test_the_third_eyes_camera_coming_and_going_is_read(media: LiveKitMedia) -> None:
+    track = {"sid": "TR_abc", "source": "CAMERA", "width": 1280, "height": 720}
+    published = media.parse_webhook(*signed("track_published", "third-eye-abc", track=track))
+    gone = media.parse_webhook(*signed("track_unpublished", "third-eye-abc", track=track))
+    assert (published.kind, gone.kind) == ("third_eye_published", "third_eye_unpublished")
+    assert published.identity == "third-eye-abc" and published.track_sid == "TR_abc"
+    assert (published.width, published.height) == (1280, 720)
+    # A third eye can only publish a camera; anything else is ignored.
+    body, token = signed("track_published", "third-eye-abc", track={"source": "MICROPHONE"})
+    assert media.parse_webhook(body, token).kind == "other"
+
+
+def egress_body(status: str, filename: str, error: str = "") -> dict[str, Any]:
+    second = 1_000_000_000
+    return {
+        "egressInfo": {
+            "egressId": "EG_one",
+            "roomName": f"iv-{INTERVIEW}",
+            "status": status,
+            "startedAt": str(1_790_000_000 * second),
+            "endedAt": str(1_790_000_090 * second),
+            "error": error,
+            "fileResults": [
+                {
+                    "filename": filename,
+                    "startedAt": str(1_790_000_001 * second),
+                    "endedAt": str(1_790_000_090 * second),
+                    "duration": str(89 * second),
+                    "size": "123456",
+                    "location": filename,
+                }
+            ],
+        }
+    }
+
+
+def signed_egress(event: str, body: dict[str, Any]) -> tuple[str, str]:
+    text = json.dumps({"event": event, "createdAt": "1790000090", **body})
+    digest = base64.b64encode(hashlib.sha256(text.encode()).digest()).decode()
+    return text, api.AccessToken(KEY, SECRET).with_sha256(digest).to_jwt()
+
+
+def test_an_egress_ending_is_read_with_its_file(media: LiveKitMedia) -> None:
+    path = f"{ORGANIZATION}/interviews/{INTERVIEW}/third-eye/third-eye-1-full.webm"
+    parsed = media.parse_webhook(
+        *signed_egress("egress_ended", egress_body("EGRESS_COMPLETE", path))
+    )
+    assert parsed.kind == "egress_ended"
+    assert (parsed.interview_id, parsed.organization_id) == (INTERVIEW, ORGANIZATION)
+    report = parsed.egress
+    assert report is not None and report.egress_id == "EG_one" and report.status == "complete"
+    assert report.filename == path and report.size == 123456 and report.duration_ms == 89_000
+    assert report.started_at == datetime.fromtimestamp(1_790_000_001, UTC)
+
+
+def test_a_failed_egress_and_an_unknown_room_are_read_as_such(media: LiveKitMedia) -> None:
+    path = f"{ORGANIZATION}/interviews/{INTERVIEW}/audio/conversation-audio-1-full.mp4"
+    failed = media.parse_webhook(
+        *signed_egress("egress_ended", egress_body("EGRESS_FAILED", path, error="no space"))
+    )
+    assert failed.egress is not None and failed.egress.status == "failed"
+    assert failed.egress.error == "no space"
+    # The organisation comes from the file's path; one that doesn't match the room is ignored.
+    elsewhere = f"{ORGANIZATION}/interviews/{UUID(int=5)}/audio/conversation-audio-1-full.mp4"
+    ignored = media.parse_webhook(
+        *signed_egress("egress_ended", egress_body("EGRESS_COMPLETE", elsewhere))
+    )
+    assert ignored.kind == "other"
+
+
+def test_the_third_eyes_token_publishes_a_camera_and_nothing_else(media: LiveKitMedia) -> None:
+    pairing = UUID(int=77)
+    expires = datetime.now(UTC) + timedelta(minutes=10)
+    issued = media.third_eye_token(INTERVIEW, pairing, expires)
+    assert issued.identity == f"third-eye-{pairing}" and issued.room == f"iv-{INTERVIEW}"
+    claims = jwt.decode(issued.token, SECRET, algorithms=["HS256"])
+    video = claims["video"]
+    assert video["roomJoin"] is True and video["room"] == f"iv-{INTERVIEW}"
+    assert video["canPublish"] is True and video["canPublishSources"] == ["camera"]
+    assert video["canSubscribe"] is False and video["canPublishData"] is False
+    assert not video.get("roomAdmin") and not video.get("roomRecord")
+    assert not video.get("canUpdateOwnMetadata")
+    # Short-lived: at most the ten minutes asked for.
+    assert claims["exp"] - claims["nbf"] <= 600

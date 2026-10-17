@@ -55,8 +55,28 @@ def folder(track: str) -> InterviewArtifact:
     return _FOLDERS[kind(track)]
 
 
+EGRESS_TRACK_PATTERN = r"(conversation-audio|third-eye)-([1-9][0-9]{0,2})"
+"""What LiveKit's Egress records (SP-13), numbered per run: never uploaded by a desktop."""
+_EGRESS_TRACK = re.compile(EGRESS_TRACK_PATTERN)
+EGRESS_FOLDERS: dict[str, InterviewArtifact] = {
+    "conversation-audio": "audio",
+    "third-eye": "third-eye",
+}
+
+
+def egress_track(base: str, number: int) -> str:
+    track = f"{base}-{number}"
+    if base not in EGRESS_FOLDERS or not _EGRESS_TRACK.fullmatch(track):
+        raise ValueError(f"not an Egress track: {track!r}")
+    return track
+
+
 def track_order(track: str) -> tuple[int, int]:
-    """Screens first (by display), then the camera, then the mic."""
+    """Screens first (by display), then the camera, then the mic; then the Egress files (the
+    conversation's audio, then the third eye), each in the order they were recorded."""
+    egress = _EGRESS_TRACK.fullmatch(track)
+    if egress is not None:
+        return (3 if egress.group(1) == "conversation-audio" else 4, int(egress.group(2)))
     which = kind(track)
     if which == "screen":
         return (0, int(track.removeprefix("screen-")))

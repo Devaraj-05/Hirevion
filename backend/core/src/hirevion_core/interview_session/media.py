@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal, Protocol
@@ -118,11 +119,60 @@ MediaKind = Literal[
     "track_unpublished",
     "third_eye_joined",
     "third_eye_left",
+    "third_eye_published",
+    "third_eye_unpublished",
+    "egress_ended",
     "other",
 ]
 THIRD_EYE_PREFIX = "third-eye-"
+THIRD_EYE_SOURCES = ("camera",)
+"""All a third eye may publish (SP-13): its camera; no microphone, screen or data."""
 TRACK_NAMES = {1: "camera", 2: "microphone", 3: "screen_share"}
 """LiveKit's `TrackSource` values for what a candidate publishes."""
+CAMERA_SOURCE = 1
+
+
+def third_eye_identity(pairing_id: UUID) -> str:
+    return f"{THIRD_EYE_PREFIX}{pairing_id}"
+
+
+def pairing_of(identity: str | None) -> UUID | None:
+    """The pairing a third eye's identity names, or None."""
+    if not identity or not identity.startswith(THIRD_EYE_PREFIX):
+        return None
+    try:
+        return UUID(identity[len(THIRD_EYE_PREFIX) :])
+    except ValueError:
+        return None
+
+
+EgressStatus = Literal["active", "complete", "failed"]
+
+
+@dataclass(frozen=True, slots=True)
+class EgressReport:
+    """What an `egress_ended` webhook says about one recording LiveKit wrote."""
+
+    egress_id: str
+    status: EgressStatus
+    filename: str
+    """The file's path as the request named it (`{org}/interviews/{id}/{folder}/{file}`)."""
+    location: str = ""
+    size: int = 0
+    duration_ms: int = 0
+    started_at: datetime | None = None
+    ended_at: datetime | None = None
+    error: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class EgressTarget:
+    """Where LiveKit writes a recording: `filepath` under its output directory (a shared volume
+    locally), or straight into the blob container when `azure` is set (the cloud)."""
+
+    filepath: str
+    azure: tuple[str, str, str] | None = None
+    """(account name, account key, container), for LiveKit's own upload."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -136,6 +186,10 @@ class MediaEvent:
     at: datetime = field(default_factory=lambda: datetime.now(UTC))
     track: str | None = None
     """For a candidate's track: `camera`, `microphone` or `screen_share`."""
+    track_sid: str | None = None
+    width: int | None = None
+    height: int | None = None
+    egress: EgressReport | None = None
 
 
 class MediaError(Exception):
@@ -162,6 +216,18 @@ class MediaControl(Protocol):
 
     def parse_webhook(self, body: str, authorization: str) -> MediaEvent: ...
 
+    def third_eye_token(
+        self, interview_id: UUID, pairing_id: UUID, expires_at: datetime
+    ) -> ParticipantToken: ...
+
+    async def remove_participant(self, interview_id: UUID, identity: str) -> None: ...
+
+    async def start_audio_egress(self, interview_id: UUID, target: EgressTarget) -> str: ...
+
+    async def start_track_egress(
+        self, interview_id: UUID, track_sid: str, target: EgressTarget
+    ) -> str: ...
+
 
 def _metadata(interview_id: UUID, organization_id: UUID) -> str:
     return json.dumps({"interview_id": str(interview_id), "organization_id": str(organization_id)})
@@ -173,6 +239,63 @@ def _ids(metadata: str | None) -> tuple[UUID | None, UUID | None]:
         return UUID(str(data["interview_id"])), UUID(str(data["organization_id"]))
     except (ValueError, KeyError, TypeError):
         return None, None
+
+
+# LiveKit's `EgressStatus`: complete (3) and limit reached (6) wrote a file; failed (4) and
+# aborted (5) didn't.
+_EGRESS_STATUSES: dict[int, EgressStatus] = {3: "complete", 6: "complete", 4: "failed", 5: "failed"}
+_BLOB_KEY = re.compile(
+    r"(?P<org>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/interviews/"
+    r"(?P<interview>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/[^/]+/[^/]+$"
+)
+
+
+def _from_ns(value: int) -> datetime | None:
+    return datetime.fromtimestamp(value / 1_000_000_000, UTC) if value else None
+
+
+def egress_key(path: str) -> tuple[UUID, UUID, str] | None:
+    """The organisation, interview and blob key (`{org}/interviews/{id}/{folder}/{file}`) in an
+    Egress output path, which may start with LiveKit's output directory."""
+    found = _BLOB_KEY.search(path)
+    if found is None:
+        return None
+    return UUID(found["org"]), UUID(found["interview"]), path[found.start() :]
+
+
+def _egress_path(info: Any) -> str:
+    """The file an egress writes, from its request (also there when it failed early)."""
+    request = info.WhichOneof("request")
+    if request == "room_composite":
+        outputs = info.room_composite.file_outputs
+        if outputs:
+            return str(outputs[0].filepath)
+    elif request == "track" and info.track.WhichOneof("output") == "file":
+        return str(info.track.file.filepath)
+    for result in info.file_results:
+        return str(result.filename)
+    return ""
+
+
+def _egress_event(info: Any, at: datetime) -> MediaEvent:
+    interview_id = interview_of(info.room_name)
+    found = egress_key(_egress_path(info))
+    if interview_id is None or found is None or found[1] != interview_id:
+        return MediaEvent("other", None, None)
+    organization_id, _, key = found
+    result = info.file_results[0] if info.file_results else None
+    report = EgressReport(
+        egress_id=str(info.egress_id),
+        status=_EGRESS_STATUSES.get(int(info.status), "active"),
+        filename=key,
+        location=str(result.location) if result is not None else "",
+        size=int(result.size) if result is not None else 0,
+        duration_ms=int(result.duration) // 1_000_000 if result is not None else 0,
+        started_at=_from_ns(int(result.started_at if result is not None else info.started_at)),
+        ended_at=_from_ns(int(result.ended_at if result is not None else info.ended_at)),
+        error=str(info.error)[:500],
+    )
+    return MediaEvent("egress_ended", interview_id, organization_id, at=at, egress=report)
 
 
 class LiveKitMedia:
@@ -319,6 +442,12 @@ class LiveKitMedia:
             event = receiver.receive(body, authorization)
         except Exception as error:
             raise MediaError("the webhook's signature doesn't match") from error
+        at = (
+            datetime.fromtimestamp(event.created_at, UTC) if event.created_at else datetime.now(UTC)
+        )
+        if event.event == "egress_ended":
+            # Egress events carry no room metadata: the output path names the organisation.
+            return _egress_event(event.egress_info, at)
         interview_id, organization_id = _ids(event.room.metadata)
         if interview_id is None or interview_of(event.room.name) != interview_id:
             return MediaEvent("other", None, None)
@@ -328,6 +457,23 @@ class LiveKitMedia:
         track: str | None = None
         if event.event == "room_finished":
             kind = "room_finished"
+        elif event.event in ("track_published", "track_unpublished") and (
+            identity and identity.startswith(THIRD_EYE_PREFIX)
+        ):
+            if int(event.track.source) != CAMERA_SOURCE:
+                return MediaEvent("other", None, None)
+            return MediaEvent(
+                "third_eye_published"
+                if event.event == "track_published"
+                else "third_eye_unpublished",
+                interview_id,
+                organization_id,
+                identity,
+                at,
+                track_sid=event.track.sid or None,
+                width=int(event.track.width) or None,
+                height=int(event.track.height) or None,
+            )
         elif event.event in ("track_published", "track_unpublished") and (
             identity and identity.startswith("candidate-")
         ):
@@ -350,10 +496,104 @@ class LiveKitMedia:
             kind = "candidate_joined"
         else:
             kind = "other"
-        at = (
-            datetime.fromtimestamp(event.created_at, UTC) if event.created_at else datetime.now(UTC)
-        )
         return MediaEvent(kind, interview_id, organization_id, identity, at, track)
+
+    def third_eye_token(
+        self, interview_id: UUID, pairing_id: UUID, expires_at: datetime
+    ) -> ParticipantToken:
+        """The phone's token (SP-13): join this one room and publish a camera; nothing else, not
+        even subscribing. It lives until `expires_at`; LiveKit refreshes it while connected."""
+        from livekit import api
+
+        room = room_name(interview_id)
+        identity = third_eye_identity(pairing_id)
+        ttl = max(timedelta(seconds=30), expires_at - datetime.now(UTC))
+        grants = api.VideoGrants(
+            room_join=True,
+            room=room,
+            room_create=False,
+            room_list=False,
+            room_record=False,
+            room_admin=False,
+            can_publish=True,
+            can_subscribe=False,
+            can_publish_data=False,
+            can_publish_sources=list(THIRD_EYE_SOURCES),
+            can_update_own_metadata=False,
+            hidden=False,
+        )
+        token = (
+            api.AccessToken(self._settings.livekit_api_key, self._secret())
+            .with_identity(identity)
+            .with_name("Third eye")
+            .with_ttl(ttl)
+            .with_grants(grants)
+            .to_jwt()
+        )
+        return ParticipantToken(self.url, room, identity, token, expires_at)
+
+    async def remove_participant(self, interview_id: UUID, identity: str) -> None:
+        """Disconnects `identity` from the room; one that isn't there is already gone."""
+        from livekit import api
+
+        try:
+            async with api.LiveKitAPI(
+                self._settings.http_url, self._settings.livekit_api_key, self._secret()
+            ) as client:
+                await client.room.remove_participant(
+                    api.RoomParticipantIdentity(room=room_name(interview_id), identity=identity)
+                )
+        except Exception as error:
+            if "not found" in str(error).lower() or "not_found" in str(error).lower():
+                return
+            raise MediaError(f"couldn't remove {identity}") from error
+
+    async def start_audio_egress(self, interview_id: UUID, target: EgressTarget) -> str:
+        """Records the room's mixed audio (the candidate's microphone and the agent's voice)."""
+        from livekit import api
+
+        output = api.EncodedFileOutput(file_type=api.EncodedFileType.MP4, filepath=target.filepath)
+        if target.azure is not None:
+            output.azure.CopyFrom(_azure(target.azure))
+        request = api.RoomCompositeEgressRequest(
+            room_name=room_name(interview_id), audio_only=True, file_outputs=[output]
+        )
+        try:
+            async with api.LiveKitAPI(
+                self._settings.http_url, self._settings.livekit_api_key, self._secret()
+            ) as client:
+                info = await client.egress.start_room_composite_egress(request)
+        except Exception as error:
+            raise MediaError(f"couldn't record the audio of {room_name(interview_id)}") from error
+        return str(info.egress_id)
+
+    async def start_track_egress(
+        self, interview_id: UUID, track_sid: str, target: EgressTarget
+    ) -> str:
+        """Records one published track as it arrives (no transcoding: VP8 into WebM)."""
+        from livekit import api
+
+        output = api.DirectFileOutput(filepath=target.filepath)
+        if target.azure is not None:
+            output.azure.CopyFrom(_azure(target.azure))
+        request = api.TrackEgressRequest(
+            room_name=room_name(interview_id), track_id=track_sid, file=output
+        )
+        try:
+            async with api.LiveKitAPI(
+                self._settings.http_url, self._settings.livekit_api_key, self._secret()
+            ) as client:
+                info = await client.egress.start_track_egress(request)
+        except Exception as error:
+            raise MediaError(f"couldn't record track {track_sid}") from error
+        return str(info.egress_id)
+
+
+def _azure(azure: tuple[str, str, str]) -> Any:
+    from livekit import api
+
+    account, key, container = azure
+    return api.AzureBlobUpload(account_name=account, account_key=key, container_name=container)
 
 
 @dataclass
@@ -368,6 +608,45 @@ class FakeMedia:
     present: set[str] = field(default_factory=set)
     """Identities the fake room holds now."""
     fail: bool = False
+    removed: list[str] = field(default_factory=list)
+    """Identities `remove_participant` disconnected."""
+    egresses: list[tuple[str, str, EgressTarget]] = field(default_factory=list)
+    """(egress id, what it records: `audio` or a track sid, where it writes)."""
+
+    def third_eye_token(
+        self, interview_id: UUID, pairing_id: UUID, expires_at: datetime
+    ) -> ParticipantToken:
+        token = ParticipantToken(
+            self.url,
+            room_name(interview_id),
+            third_eye_identity(pairing_id),
+            f"fake-third-eye-{pairing_id}",
+            expires_at,
+        )
+        self.tokens.append(token)
+        return token
+
+    async def remove_participant(self, interview_id: UUID, identity: str) -> None:
+        if self.fail:
+            raise MediaError("the fake media server is down")
+        self.removed.append(identity)
+        self.present.discard(identity)
+
+    async def start_audio_egress(self, interview_id: UUID, target: EgressTarget) -> str:
+        if self.fail:
+            raise MediaError("the fake media server is down")
+        egress_id = f"EG_{len(self.egresses) + 1}"
+        self.egresses.append((egress_id, "audio", target))
+        return egress_id
+
+    async def start_track_egress(
+        self, interview_id: UUID, track_sid: str, target: EgressTarget
+    ) -> str:
+        if self.fail:
+            raise MediaError("the fake media server is down")
+        egress_id = f"EG_{len(self.egresses) + 1}"
+        self.egresses.append((egress_id, track_sid, target))
+        return egress_id
 
     def participant_token(
         self, interview_id: UUID, candidate_id: UUID, name: str, expires_at: datetime
@@ -416,6 +695,21 @@ class FakeMedia:
         if authorization != "fake-signature":
             raise MediaError("bad signature")
         data = json.loads(body)
+        egress = data.get("egress")
+        report = None
+        if egress is not None:
+            report = EgressReport(
+                egress_id=egress["egress_id"],
+                status=egress.get("status", "complete"),
+                filename=egress["filename"],
+                location=egress.get("location", ""),
+                size=int(egress.get("size", 0)),
+                duration_ms=int(egress.get("duration_ms", 0)),
+                started_at=datetime.fromisoformat(egress["started_at"])
+                if egress.get("started_at")
+                else None,
+                error=egress.get("error", ""),
+            )
         return MediaEvent(
             data["kind"],
             UUID(data["interview_id"]),
@@ -423,6 +717,10 @@ class FakeMedia:
             data.get("identity"),
             datetime.fromisoformat(data["at"]) if data.get("at") else datetime.now(UTC),
             data.get("track"),
+            track_sid=data.get("track_sid"),
+            width=data.get("width"),
+            height=data.get("height"),
+            egress=report,
         )
 
 

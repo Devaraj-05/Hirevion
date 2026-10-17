@@ -394,7 +394,11 @@ async def recovery(session: AsyncSession, interview: Interview) -> dict[str, Tra
     for track, seq in rows:
         acknowledged.setdefault(track, set()).add(seq)
     for track in (
-        await session.scalars(select(Recording.track).where(Recording.interview_id == interview.id))
+        await session.scalars(
+            select(Recording.track).where(
+                Recording.interview_id == interview.id, Recording.source == "desktop"
+            )
+        )
     ).all():
         acknowledged.setdefault(track, set())
     result: dict[str, TrackRecovery] = {}

@@ -437,7 +437,12 @@ async def _recordings(
 ) -> list[Recording]:
     statement = (
         select(Recording)
-        .where(Recording.interview_id == interview_id, Recording.status.in_(statuses))
+        .where(
+            Recording.interview_id == interview_id,
+            Recording.status.in_(statuses),
+            # Egress writes whole files (SP-13); only the desktop's segments are assembled.
+            Recording.source == "desktop",
+        )
         .order_by(Recording.track)
         .with_for_update(skip_locked=skip_locked)
     )

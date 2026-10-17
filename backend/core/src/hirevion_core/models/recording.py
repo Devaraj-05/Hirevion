@@ -29,6 +29,9 @@ CONTAINERS = ("mp4", "webm")
 CODECS = ("h264", "vp8", "opus", "aac")
 # Mirrors `hirevion_core.recordings.tracks` and the contract's limits.
 TRACK_PATTERN = "^(screen-[1-8]|camera|mic)$"
+# What LiveKit's Egress records (SP-13): numbered, one per Egress run.
+EGRESS_TRACK_PATTERN = "^(conversation-audio|third-eye)-[1-9][0-9]{0,2}$"
+RECORDING_SOURCES = ("desktop", "egress")
 
 
 def _in(column: str, values: tuple[str, ...]) -> str:
@@ -82,13 +85,22 @@ class RecordingSegment(IdMixin, TenantMixin, TimestampMixin, Base):
 
 
 class Recording(IdMixin, TenantMixin, TimestampMixin, Base):
-    """One track of one interview: what has arrived, whether it stalled, and the assembled file."""
+    """One track of one interview: what has arrived, whether it stalled, and the assembled file.
+
+    The desktop's tracks are assembled from its segments (`source` `desktop`); LiveKit's Egress
+    writes the conversation audio and the third eye's video as whole files (`egress`, SP-13),
+    which the assembly and the continuity monitor leave alone."""
 
     __tablename__ = "recordings"
     __table_args__ = (
         _interview_fk(),
         UniqueConstraint("interview_id", "track"),
-        CheckConstraint(f"track ~ '{TRACK_PATTERN}'", name="track"),
+        CheckConstraint(
+            f"(source = 'desktop' AND track ~ '{TRACK_PATTERN}') "
+            f"OR (source = 'egress' AND track ~ '{EGRESS_TRACK_PATTERN}')",
+            name="track",
+        ),
+        CheckConstraint(_in("source", RECORDING_SOURCES), name="source"),
         CheckConstraint(_in("status", RECORDING_STATUSES), name="status"),
         Index("ix_recordings_status_next_attempt_at", "status", "next_attempt_at"),
     )
@@ -96,6 +108,10 @@ class Recording(IdMixin, TenantMixin, TimestampMixin, Base):
     interview_id: Mapped[UUID]
     track: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(Text, server_default="recording")
+    source: Mapped[str] = mapped_column(Text, server_default="desktop")
+    # LiveKit's id for an Egress recording, and when it started (server time).
+    egress_id: Mapped[str | None] = mapped_column(Text, unique=True)
+    started_at: Mapped[datetime | None]
     # The lowest and highest segment numbers that have been asked for.
     first_seq: Mapped[int | None] = mapped_column(Integer)
     last_seq: Mapped[int | None] = mapped_column(Integer)

@@ -41,6 +41,23 @@ def test_tracks_sort_screens_then_camera_then_mic() -> None:
     assert sorted(names, key=tracks.track_order) == ["screen-1", "screen-2", "camera", "mic"]
 
 
+def test_egress_tracks_sort_after_the_desktops_and_are_never_uploadable() -> None:
+    names = ["third-eye-2", "conversation-audio-1", "mic", "third-eye-10", "third-eye-1"]
+    assert sorted(names, key=tracks.track_order) == [
+        "mic",
+        "conversation-audio-1",
+        "third-eye-1",
+        "third-eye-2",
+        "third-eye-10",
+    ]
+    assert not tracks.is_track("third-eye-1") and not tracks.is_track("conversation-audio-1")
+    assert tracks.egress_track("third-eye", 3) == "third-eye-3"
+    with pytest.raises(ValueError, match="Egress"):
+        tracks.egress_track("screen", 1)
+    with pytest.raises(ValueError, match="Egress"):
+        tracks.egress_track("third-eye", 0)
+
+
 @pytest.mark.parametrize(
     ("track", "container", "codec", "allowed"),
     [

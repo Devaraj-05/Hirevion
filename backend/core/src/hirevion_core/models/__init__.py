@@ -58,6 +58,7 @@ from hirevion_core.models.role import Role, RolePermission, UserRole
 from hirevion_core.models.screening import ApplicationHistory, ScreeningConfig, ScreeningResult
 from hirevion_core.models.skill import Skill, SkillAlias
 from hirevion_core.models.team import Team, TeamMember
+from hirevion_core.models.third_eye import ThirdEyePairing
 from hirevion_core.models.usage_event import UsageEvent
 from hirevion_core.models.user import User
 from hirevion_core.models.web_session import WebSession
@@ -123,6 +124,7 @@ __all__ = [
     "SystemCheckResult",
     "Team",
     "TeamMember",
+    "ThirdEyePairing",
     "Transcript",
     "TranscriptSegment",
     "UsageEvent",
