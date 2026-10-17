@@ -421,7 +421,7 @@ jobs:
   # briefing → system check → consent → ready. Runs when the desktop job does.
   desktop-e2e:
     needs: changes
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.desktop == 'true'
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.desktop == 'true'
     runs-on: windows-2025
     timeout-minutes: 25
     defaults:
