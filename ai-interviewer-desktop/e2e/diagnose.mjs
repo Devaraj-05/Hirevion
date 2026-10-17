@@ -5,7 +5,15 @@
 // the app's data folder, and recent Windows application-error events (crashes, side-by-side
 // manifest problems, missing DLLs).
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import {
+  closeSync,
+  existsSync,
+  openSync,
+  readdirSync,
+  readFileSync,
+  readSync,
+  statSync,
+} from "node:fs";
 import { homedir, release, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,6 +29,20 @@ const dataDir = join(
 );
 const DEBUG_PORT = 9223;
 const WATCH_MS = 20_000;
+
+/** "console" (a debug build) or "windows-gui" (a release build), from the PE header. */
+function peSubsystem(path) {
+  const fd = openSync(path, "r");
+  try {
+    const head = Buffer.alloc(1024);
+    readSync(fd, head, 0, 1024, 0);
+    const pe = head.readUInt32LE(0x3c);
+    const subsystem = head.readUInt16LE(pe + 24 + 68);
+    return { 2: "windows-gui (release-style)", 3: "console (debug-style)" }[subsystem] ?? subsystem;
+  } finally {
+    closeSync(fd);
+  }
+}
 
 async function group(title, run) {
   console.log(`::group::${title}`);
@@ -50,10 +72,12 @@ await group("Windows and WebView2", async () => {
   console.log(`Windows release ${release()}`);
   console.log(`WebView2 runtime ${webview2Version()}`);
   console.log(`app exists: ${existsSync(application)} (${application})`);
+  console.log(`app PE subsystem: ${peSubsystem(application)}`);
   const result = powershell(
     [
       "$PSVersionTable.PSVersion.ToString()",
       "whoami",
+      "(whoami /groups | Select-String 'Mandatory Label') -join ' '",
       "'session: ' + $env:SESSIONNAME",
       "(Get-CimInstance Win32_VideoController | ForEach-Object { $_.Name }) -join ', '",
       "(Get-CimInstance Win32_ComputerSystem).Model",
@@ -134,6 +158,63 @@ await group(
     }
   },
 );
+
+await group("Does WebView2 apply extra switches? Variants (marker: --hv-marker)", async () => {
+  const policyKey =
+    "HKCU\\SOFTWARE\\Policies\\Microsoft\\Edge\\WebView2\\AdditionalBrowserArguments";
+  const variants = [
+    {
+      name: "A: environment variable",
+      env: { WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: "--hv-marker=A" },
+    },
+    {
+      name: "B: environment variable and a fresh user data folder",
+      env: {
+        WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: "--hv-marker=B",
+        WEBVIEW2_USER_DATA_FOLDER: join(tmpdir(), "hv-ud-b"),
+      },
+    },
+    {
+      name: "C: registry policy for AI-Interview.exe (no environment variable)",
+      env: {},
+      before: () =>
+        spawnSync("reg", [
+          "add",
+          policyKey,
+          "/v",
+          "AI-Interview.exe",
+          "/t",
+          "REG_SZ",
+          "/d",
+          "--hv-marker=C",
+          "/f",
+        ]),
+      after: () => spawnSync("reg", ["delete", policyKey, "/f"]),
+    },
+  ];
+  for (const variant of variants) {
+    variant.before?.();
+    const child = spawn(application, [], {
+      env: { ...process.env, HV_DESKTOP_STUB: "1", HV_DESKTOP_STUB_NATIVE: "1", ...variant.env },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let output = "";
+    child.stdout.on("data", (chunk) => (output += chunk));
+    child.stderr.on("data", (chunk) => (output += chunk));
+    await new Promise((resolve) => setTimeout(resolve, 8000));
+    const found = powershell(
+      "$n = @(Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'msedgewebview2.exe' -and $_.CommandLine -match 'webview-exe-name=AI-Interview' -and $_.CommandLine -match 'hv-marker' }).Count; 'browser/child processes carrying the marker: ' + $n",
+    );
+    console.log(`${variant.name} -> ${(found.stdout || found.stderr).trim()}`);
+    console.log(
+      `    app said: ${output.trim().split(/\r?\n/).slice(0, 2).join(" | ") || "(nothing)"}`,
+    );
+    stopProcessTree(child);
+    spawnSync("taskkill", ["/IM", "AI-Interview.exe", "/F", "/T"], { stdio: "ignore" });
+    variant.after?.();
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+  }
+});
 
 await group("msedgedriver, verbose: how it launches the app", async () => {
   const log = join(tmpdir(), "msedgedriver-verbose.log");

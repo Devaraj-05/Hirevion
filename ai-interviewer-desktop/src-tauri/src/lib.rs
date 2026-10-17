@@ -36,6 +36,12 @@ pub fn run() {
     let _ = rustls::crypto::ring::default_provider().install_default();
     let _crash_reporting = crash::init(env!("CARGO_PKG_VERSION"));
     let (integrity_variables, debugger_present) = startup_integrity();
+    // Debug builds say what they inherited (the end-to-end diagnostics read this).
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "hirevion-desktop: debug build; WEBVIEW2 variables: {integrity_variables:?}; WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS={:?}",
+        std::env::var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS").ok()
+    );
     let builder = tauri::Builder::default()
         // A second launch focuses the running app instead of starting another session.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
