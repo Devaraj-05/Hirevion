@@ -16,7 +16,6 @@ into the blob container and the worker only reads its size and hash.
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import json
 import logging
 from dataclasses import dataclass
@@ -53,7 +52,6 @@ THIRD_EYE = "third-eye"
 CONTAINERS = {AUDIO: "mp4", THIRD_EYE: "webm"}
 CONTENT_TYPES = {AUDIO: "audio/mp4", THIRD_EYE: "video/webm"}
 MAX_ATTEMPTS = 5
-_CHUNK = 1024 * 1024
 
 
 class EgressFileMissing(Exception):
@@ -61,7 +59,9 @@ class EgressFileMissing(Exception):
 
 
 class EgressStore(Protocol):
-    async def upload_file(self, path: BlobPath, source: Path, content_type: str) -> None: ...
+    async def upload_file_hashed(
+        self, path: BlobPath, source: Path, content_type: str
+    ) -> tuple[int, str]: ...
     async def put(self, path: BlobPath, data: bytes, content_type: str) -> None: ...
     async def digest(
         self, path: BlobPath, max_bytes: int | None = None
@@ -77,15 +77,9 @@ class EgressOutput(Protocol):
         """Makes Egress's file the blob `path`; returns its size and SHA-256."""
         ...
 
-
-def _hash_file(source: Path) -> tuple[int, str]:
-    digest = hashlib.sha256()
-    size = 0
-    with source.open("rb") as handle:
-        while chunk := handle.read(_CHUNK):
-            digest.update(chunk)
-            size += len(chunk)
-    return size, digest.hexdigest()
+    async def cleanup(self, path: BlobPath) -> None:
+        """Forgets Egress's own copy once the blob is registered."""
+        ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,11 +102,15 @@ class SharedVolumeOutput:
     async def collect(self, path: BlobPath, content_type: str) -> tuple[int, str]:
         source = self._local(path)
         if not await asyncio.to_thread(source.is_file):
-            raise EgressFileMissing(str(path))
-        size, sha = await asyncio.to_thread(_hash_file, source)
-        await self.store.upload_file(path, source, content_type)
-        await asyncio.to_thread(source.unlink, missing_ok=True)
-        return size, sha
+            # Uploaded by an earlier attempt that couldn't record it: the blob is the file.
+            found = await self.store.digest(path)
+            if found is None:
+                raise EgressFileMissing(str(path))
+            return found
+        return await self.store.upload_file_hashed(path, source, content_type)
+
+    async def cleanup(self, path: BlobPath) -> None:
+        await asyncio.to_thread(self._local(path).unlink, missing_ok=True)
 
 
 @dataclass(frozen=True, slots=True)
@@ -132,6 +130,9 @@ class BlobOutput:
         if found is None:
             raise EgressFileMissing(str(path))
         return found
+
+    async def cleanup(self, path: BlobPath) -> None:
+        return None
 
 
 def build_output(settings: ThirdEyeSettings, store: EgressStore | None) -> EgressOutput | None:
@@ -244,10 +245,12 @@ class EgressRecorder:
 
     async def start_third_eye(
         self, organization_id: UUID, interview_id: UUID, track_sid: str, now: datetime
-    ) -> None:
+    ) -> bool:
+        """Records the third eye's camera track; False when nothing was started (the interview
+        isn't running yet, the policy doesn't record cameras, or Egress refused)."""
         planned = await self._plan(organization_id, interview_id, THIRD_EYE, now)
         if planned is None:
-            return
+            return False
         recording_id, path = planned
         try:
             egress_id = await self._media.start_track_egress(
@@ -256,8 +259,9 @@ class EgressRecorder:
         except MediaError as error:
             log.warning("The third eye of %s isn't recorded: %s", interview_id, error)
             await self._started(organization_id, recording_id, None, str(error))
-            return
+            return True  # tried; the failed row says why, and a retry would fail alike
         await self._started(organization_id, recording_id, egress_id)
+        return True
 
 
 async def egress_ended(
@@ -354,6 +358,8 @@ async def collect(
         row.assembled_at = finished
         row.note = None
         interview_id = row.interview_id
+    # Only now: had the row not been updated, a retry would need the file again.
+    await output.cleanup(path)
     if redis is not None:
         try:
             await realtime.publish(

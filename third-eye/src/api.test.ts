@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { PairingError, redeem, rejoin, roomUrl } from "./api";
+import { PairingError, redeem, rejoin, roomUrl, stillValid } from "./api";
 
 const joined = {
   pairing_id: "p-1",
@@ -58,6 +58,15 @@ describe("rejoin", () => {
   it("marks a revoked pairing as final", async () => {
     const failed = rejoin("d", answer(410, { code: "pairing-revoked" }));
     await expect(failed).rejects.toMatchObject({ final: true });
+  });
+});
+
+describe("stillValid", () => {
+  it("keeps a LiveKit token only while it has a minute left", () => {
+    const now = Date.parse("2026-10-12T05:00:00Z");
+    expect(stillValid("2026-10-12T05:05:00Z", now)).toBe(true);
+    expect(stillValid("2026-10-12T05:00:30Z", now)).toBe(false);
+    expect(stillValid("not a date", now)).toBe(false);
   });
 });
 

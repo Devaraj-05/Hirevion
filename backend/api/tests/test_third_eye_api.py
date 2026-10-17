@@ -291,6 +291,20 @@ async def test_a_token_is_spent_once_and_expires(desk: Desk, admin_engine: Async
     assert (await desk.status(late["pairing_id"]))["status"] == "expired"
 
 
+async def test_a_spent_token_never_reaches_livekit(
+    desk: Desk, admin_engine: AsyncEngine, media: FakeMedia
+) -> None:
+    issued = await desk.pair()
+    async with admin_engine.begin() as conn:
+        await conn.execute(
+            text("UPDATE third_eye_pairings SET expires_at = now() WHERE id = :id"),
+            {"id": issued["pairing_id"]},
+        )
+    refused = await desk.redeem(token_of(issued["qr_url"]))
+    assert refused.status_code == 410
+    assert media.rooms == [] and media.tokens == []
+
+
 async def test_pairing_again_revokes_and_kicks_the_old_phone(desk: Desk, media: FakeMedia) -> None:
     first = await desk.pair()
     old = (await desk.redeem(token_of(first["qr_url"]))).json()
@@ -444,15 +458,16 @@ async def test_egress_records_the_conversation_and_the_third_eye_into_playable_t
     await desk.webhook(
         "third_eye_published", identity=joined["participant_identity"], track_sid="TR_9"
     )
-    assert [(e[0], e[1]) for e in media.egresses] == [("EG_1", "audio"), ("EG_2", "TR_9")]
+    assert [e[1] for e in media.egresses] == ["audio", "TR_9"]
+    audio_egress, eye_egress = (e[0] for e in media.egresses)
     org, interview = desk.org, desk.interview
     audio_key = f"{org}/interviews/{interview}/audio/conversation-audio-1-full.mp4"
     eye_key = f"{org}/interviews/{interview}/third-eye/third-eye-1-full.webm"
     assert [e[2].filepath for e in media.egresses] == [f"/out/{audio_key}", f"/out/{eye_key}"]
 
     for egress_id, key, content in (
-        ("EG_1", audio_key, b"audio-bytes" * 100),
-        ("EG_2", eye_key, b"webm-bytes" * 100),
+        (audio_egress, audio_key, b"audio-bytes" * 100),
+        (eye_egress, eye_key, b"webm-bytes" * 100),
     ):
         written = tmp_path / key
         written.parent.mkdir(parents=True, exist_ok=True)
@@ -492,3 +507,39 @@ async def test_egress_records_the_conversation_and_the_third_eye_into_playable_t
         ("third-eye-1", True, True),
     ]
     assert listed[1].file is not None and listed[1].file.container == "webm"
+
+    # A redelivered message after the file was moved: the blob already is the file.
+    async with admin_engine.begin() as conn:
+        await conn.execute(
+            text("UPDATE recordings SET status = 'assembly-pending' WHERE id = :id"),
+            {"id": rows[0].id},
+        )
+    await egress.collect(app_db, valkey, output, storage, org, queued[0].payload)
+    async with app_db.tenant(org) as session:
+        again = await session.get_one(Recording, rows[0].id)
+    assert again.status == "assembled" and again.assembled_sha256 == rows[0].assembled_sha256
+
+
+async def test_a_phone_paired_before_the_start_is_recorded_once_the_interview_runs(
+    client: AsyncClient,
+    app_db: Database,
+    admin_engine: AsyncEngine,
+    make_organization: MakeOrganization,
+    make_user: Any,
+    media: FakeMedia,
+) -> None:
+    desk = await make_desk(client, admin_engine, app_db, make_organization, make_user, voice=True)
+    issued = await desk.pair()
+    joined = (await desk.redeem(token_of(issued["qr_url"]))).json()
+    await desk.webhook(
+        "third_eye_published", identity=joined["participant_identity"], track_sid="TR_5"
+    )
+    assert media.egresses == []  # nothing is recorded before the interview starts
+    async with admin_engine.begin() as conn:
+        await conn.execute(
+            text("UPDATE interviews SET status = 'in_progress', started_at = now() WHERE id = :id"),
+            {"id": desk.seed.interview_id},
+        )
+    await desk.webhook("candidate_joined", identity="candidate-x")
+    await desk.webhook("candidate_joined", identity="candidate-x")
+    assert [e[1] for e in media.egresses] == ["audio", "TR_5"]

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncGenerator, Sequence
 from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -58,7 +58,7 @@ class BlobChanged(ValueError):
 _FILE_CHUNK = 1024 * 1024
 
 
-async def _file_chunks(source: Path) -> AsyncIterator[bytes]:
+async def _file_chunks(source: Path) -> AsyncGenerator[bytes]:
     """A local file's bytes, read off the event loop."""
     handle = await asyncio.to_thread(source.open, "rb")
     try:
@@ -216,7 +216,27 @@ class StorageService:
 
     async def upload_file(self, path: BlobPath, source: Path, content_type: str) -> None:
         """Streams a local file into a blob (replacing it), reading the file off the event loop."""
-        chunks = _file_chunks(source)
+        await self.upload_file_hashed(path, source, content_type)
+
+    async def upload_file_hashed(
+        self, path: BlobPath, source: Path, content_type: str
+    ) -> tuple[int, str]:
+        """`upload_file`, also returning the bytes sent and their SHA-256 (one read of the file)."""
+        digest = hashlib.sha256()
+        size = 0
+
+        async def hashed() -> AsyncGenerator[bytes]:
+            nonlocal size
+            inner = _file_chunks(source)
+            try:
+                async for chunk in inner:
+                    digest.update(chunk)
+                    size += len(chunk)
+                    yield chunk
+            finally:
+                await inner.aclose()
+
+        chunks = hashed()
         try:
             await self._container.upload_blob(
                 str(path),
@@ -229,6 +249,7 @@ class StorageService:
             # The client stops reading at `length` without exhausting the generator, which
             # would keep the file open (and, on Windows, undeletable) until it is collected.
             await chunks.aclose()
+        return size, digest.hexdigest()
 
     async def delete(self, path: BlobPath) -> None:
         with suppress(ResourceNotFoundError):

@@ -28,7 +28,7 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 STATUSES = ("issued", "redeemed", "connected", "disconnected", "revoked")
-REVOKE_REASONS = ("replaced", "revoked", "interview-ended")
+REVOKE_REASONS = ("replaced", "revoked")
 DESKTOP_TRACK = "^(screen-[1-8]|camera|mic)$"
 EGRESS_TRACK = "^(conversation-audio|third-eye)-[1-9][0-9]{0,2}$"
 
@@ -165,6 +165,8 @@ def upgrade() -> None:
         ),
         sa.Column("video", postgresql.JSONB(), nullable=True),
         sa.Column("reconnects", sa.Integer(), server_default=sa.text("0"), nullable=False),
+        sa.Column("track_sid", sa.Text(), nullable=True),
+        sa.Column("recorded_track_sid", sa.Text(), nullable=True),
         _created("created_at"),
         _created("updated_at"),
         sa.CheckConstraint(_in("status", STATUSES), name=op.f(f"ck_{table}_status")),

@@ -1,7 +1,7 @@
 import { kbps, summarizeConnection, type VideoSample, videoSample } from "@hirevion/rtc-stats";
 import type { LocalVideoTrack } from "livekit-client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { type JoinResponse, PairingError, redeem, rejoin, roomUrl } from "./api";
+import { type JoinResponse, PairingError, redeem, rejoin, roomUrl, stillValid } from "./api";
 import { cameraHelp, detectBrowser } from "./guidance";
 import { browserDeps } from "./livekit";
 import { EyeSession, type EyeState } from "./session";
@@ -97,13 +97,18 @@ export function App() {
       camera.current = track;
       if (preview.current) track.attach(preview.current);
     });
-    const next = new EyeSession(
-      deps,
-      { url: roomUrl(joined.livekit_url, window.location.host), token: joined.participant_token },
-      setState,
-    );
-    session.current = next;
     try {
+      // The redeem's token lives 10 minutes; a candidate who took longer to place the phone
+      // gets a fresh one with the device secret.
+      const first = stillValid(joined.expires_at)
+        ? {
+            url: roomUrl(joined.livekit_url, window.location.host),
+            token: joined.participant_token,
+          }
+        : await credentials();
+      await session.current?.stop();
+      const next = new EyeSession(deps, first, setState);
+      session.current = next;
       await next.start();
       setPairedIn((performance.now() - pageOpened) / 1000);
       setPhase("streaming");
@@ -166,6 +171,11 @@ export function App() {
       )}
       {phase === "pairing" && <p role="status">Pairing with the interview…</p>}
       {phase === "error" && <p role="alert">{error}</p>}
+      {phase === "error" && joined && (
+        <button type="button" onClick={() => void start()}>
+          Try again
+        </button>
+      )}
 
       {(phase === "ready" || phase === "camera" || phase === "denied") && joined && (
         <section aria-labelledby="placement">

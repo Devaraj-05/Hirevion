@@ -70,6 +70,12 @@ export function rejoin(deviceToken: string, fetcher: typeof fetch = fetch): Prom
   return post("/api/v1/third-eye/rejoin", { device_token: deviceToken }, fetcher);
 }
 
+/** Whether a LiveKit token (`expires_at`) still has a minute left to join with. */
+export function stillValid(expiresAt: string, now: number = Date.now()): boolean {
+  const expires = Date.parse(expiresAt);
+  return Number.isFinite(expires) && expires - now > 60_000;
+}
+
 /** Where to reach LiveKit: the server's address, or this page's origin (which proxies /rtc). */
 export function roomUrl(livekitUrl: string | null, host: string): string {
   return livekitUrl ?? `wss://${host}`;

@@ -40,8 +40,11 @@ ws.hirevion.localhost {
 # The third-eye phone page (SP-13): LiveKit signalling and the phone's two API calls share its
 # origin; no other API route is reachable from it.
 eye.hirevion.localhost {
-	@phone path /api/v1/third-eye/redeem /api/v1/third-eye/rejoin
-	handle @phone {
+	# Path blocks, so Caddy orders them before the broader /api/* one.
+	handle /api/v1/third-eye/redeem {
+		reverse_proxy host.docker.internal:8000
+	}
+	handle /api/v1/third-eye/rejoin {
 		reverse_proxy host.docker.internal:8000
 	}
 	handle /api/* {
@@ -84,8 +87,11 @@ downloads.hirevion.localhost {
 # HTTPS. /rtc is LiveKit signalling, so the phone page and LiveKit share one origin; the phone's
 # two API calls (SP-13) are the only API routes the tunnel reaches.
 http://:8088 {
-	@phone path /api/v1/third-eye/redeem /api/v1/third-eye/rejoin
-	handle @phone {
+	# Path blocks, so Caddy orders them before the broader /api/* one.
+	handle /api/v1/third-eye/redeem {
+		reverse_proxy host.docker.internal:8000
+	}
+	handle /api/v1/third-eye/rejoin {
 		reverse_proxy host.docker.internal:8000
 	}
 	handle /api/* {

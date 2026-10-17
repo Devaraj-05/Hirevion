@@ -55,6 +55,8 @@ export class EyeSession {
   private state: EyeState = "idle";
   private pending: Promise<void> = Promise.resolve();
   private stopping = false;
+  /** False while the page is hidden; work that finishes then pauses again. */
+  private foreground = true;
 
   constructor(
     private readonly deps: EyeDeps,
@@ -89,7 +91,12 @@ export class EyeSession {
   }
 
   async hidden(): Promise<void> {
+    this.foreground = false;
     if (this.state !== "live" && this.state !== "reconnecting") return;
+    await this.pause();
+  }
+
+  private async pause(): Promise<void> {
     this.set("paused");
     const room = this.room;
     if (room?.connected) {
@@ -101,6 +108,7 @@ export class EyeSession {
   }
 
   async visible(): Promise<void> {
+    this.foreground = true;
     if (this.state !== "paused") return;
     try {
       if (this.room?.connected) {
@@ -114,6 +122,15 @@ export class EyeSession {
         return;
       }
       this.pending = this.reconnect();
+      return;
+    }
+    await this.goLive();
+  }
+
+  /** Live, unless the page was hidden meanwhile: then the camera goes again at once. */
+  private async goLive(): Promise<void> {
+    if (!this.foreground) {
+      await this.pause();
       return;
     }
     await this.deps.holdWakeLock();
@@ -132,16 +149,32 @@ export class EyeSession {
   private async publish(room: RoomLike): Promise<void> {
     const camera = await this.deps.openCamera();
     this.camera = camera;
-    await room.publishCamera(camera);
+    try {
+      await room.publishCamera(camera);
+    } catch (error) {
+      this.release(camera);
+      throw error;
+    }
   }
 
   private async join(credentials: Credentials): Promise<void> {
     const camera = await this.deps.openCamera();
     this.camera = camera;
-    const room = await this.deps.connect(credentials.url, credentials.token);
-    this.room = room;
-    room.onDisconnected(() => this.dropped(room));
-    await room.publishCamera(camera);
+    try {
+      const room = await this.deps.connect(credentials.url, credentials.token);
+      this.room = room;
+      room.onDisconnected(() => this.dropped(room));
+      await room.publishCamera(camera);
+    } catch (error) {
+      // A failed attempt mustn't keep the camera (its light, the battery, iOS's one capture).
+      this.release(camera);
+      throw error;
+    }
+  }
+
+  private release(camera: CameraTrack) {
+    camera.stop();
+    if (this.camera === camera) this.camera = null;
   }
 
   private dropped(room: RoomLike) {
@@ -167,8 +200,7 @@ export class EyeSession {
         }
         continue;
       }
-      await this.deps.holdWakeLock();
-      this.set("live");
+      await this.goLive();
       return;
     }
     this.set("failed");

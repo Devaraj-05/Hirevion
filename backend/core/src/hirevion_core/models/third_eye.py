@@ -21,7 +21,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from hirevion_core.db.base import Base, IdMixin, TenantMixin, TimestampMixin
 
 PAIRING_STATUSES = ("issued", "redeemed", "connected", "disconnected", "revoked")
-REVOKE_REASONS = ("replaced", "revoked", "interview-ended")
+REVOKE_REASONS = ("replaced", "revoked")
 
 
 def _in(column: str, values: tuple[str, ...]) -> str:
@@ -87,3 +87,7 @@ class ThirdEyePairing(IdMixin, TenantMixin, TimestampMixin, Base):
     # The camera track LiveKit reported (`width`, `height`, `fps`).
     video: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     reconnects: Mapped[int] = mapped_column(Integer, server_default=sql_text("0"))
+    # The camera track LiveKit last reported, and the one an Egress recording was started for
+    # (a phone paired before the interview starts is recorded once it does).
+    track_sid: Mapped[str | None] = mapped_column(Text)
+    recorded_track_sid: Mapped[str | None] = mapped_column(Text)

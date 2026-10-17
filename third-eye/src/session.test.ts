@@ -136,4 +136,50 @@ describe("EyeSession", () => {
     await expect(session.start()).rejects.toBe(denied);
     expect(states.at(-1)).toBe("failed");
   });
+
+  it("lets the camera go when joining fails, so retries don't pile up open cameras", async () => {
+    let connects = 0;
+    const base = harness();
+    const { session, cameras } = harness({
+      connect: async (url, token) => {
+        connects += 1;
+        if (connects === 2 || connects === 3) throw new Error("offline");
+        return base.deps.connect(url, token);
+      },
+    });
+    await session.start();
+    base.rooms.at(-1)?.drop();
+    await session.settled();
+    expect(cameras).toHaveLength(4);
+    expect(cameras.slice(0, -1).every((c) => c.stopped)).toBe(true);
+    expect(cameras.at(-1)?.stopped).toBe(false);
+  });
+
+  it("stays paused when the phone locks while a reconnection is under way", async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let first = true;
+    const { session, rooms, states } = harness({
+      rejoin: async () => {
+        if (first) {
+          first = false;
+          await gate;
+        }
+        return { url: "wss://eye", token: "fresh" };
+      },
+    });
+    await session.start();
+    rooms[0]?.drop();
+    await Promise.resolve();
+    await session.hidden();
+    release();
+    await session.settled();
+    expect(states.at(-1)).toBe("paused");
+    expect(rooms.at(-1)?.published).toBeNull();
+    await session.visible();
+    expect(states.at(-1)).toBe("live");
+    expect(rooms.at(-1)?.published).not.toBeNull();
+  });
 });

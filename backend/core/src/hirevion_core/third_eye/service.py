@@ -306,6 +306,9 @@ class ThirdEye:
         media = self._require_media()
         found = await self._find(token, "token")
         organization_id, interview_id = found.organization_id, found.interview_id
+        async with self._db.tenant(organization_id) as session:
+            await self._redeemable(session, found.pairing_id, interview_id, self._clock())
+        # The room must exist before the phone joins; only a usable token gets this far.
         try:
             await media.ensure_room(interview_id, organization_id)
         except MediaError as error:
@@ -314,16 +317,7 @@ class ThirdEye:
         device = new_secret()
         agent = (user_agent or "")[:USER_AGENT_MAX]
         async with self._db.tenant(organization_id) as session:
-            row = await session.get_one(ThirdEyePairing, found.pairing_id, with_for_update=True)
-            if row.revoked_at is not None:
-                raise Gone("pairing-revoked", "This pairing was cancelled; scan the new QR code")
-            if row.redeemed_at is not None:
-                raise Gone("token-used", "This QR code was already used; show a new one")
-            if now >= row.expires_at:
-                raise Gone("token-expired", "This QR code has expired; show a new one")
-            interview = await session.get_one(Interview, interview_id)
-            if interview.status not in OPEN_STATUSES:
-                raise Conflict("interview-not-open", f"The interview is {interview.status}")
+            row, interview = await self._redeemable(session, found.pairing_id, interview_id, now)
             # `last_seen_at` is LiveKit's to set (webhook times order the deliveries).
             row.status, row.redeemed_at = "redeemed", now
             row.device_hash = hash_secret(device)
@@ -348,6 +342,23 @@ class ThirdEye:
             company,
             job_title,
         )
+
+    @staticmethod
+    async def _redeemable(
+        session: AsyncSession, pairing_id: UUID, interview_id: UUID, now: datetime
+    ) -> tuple[ThirdEyePairing, Interview]:
+        """The pairing, locked, if its token can still be spent; otherwise why not."""
+        row = await session.get_one(ThirdEyePairing, pairing_id, with_for_update=True)
+        if row.revoked_at is not None:
+            raise Gone("pairing-revoked", "This pairing was cancelled; scan the new QR code")
+        if row.redeemed_at is not None:
+            raise Gone("token-used", "This QR code was already used; show a new one")
+        if now >= row.expires_at:
+            raise Gone("token-expired", "This QR code has expired; show a new one")
+        interview = await session.get_one(Interview, interview_id)
+        if interview.status not in OPEN_STATUSES:
+            raise Conflict("interview-not-open", f"The interview is {interview.status}")
+        return row, interview
 
     async def rejoin(self, device_token: str) -> Joined:
         """A fresh LiveKit token for a phone that already redeemed (after a long lock)."""
@@ -389,6 +400,7 @@ class ThirdEye:
             )
         elif event.kind == "candidate_joined" and self._recorder is not None:
             await self._recorder.start_audio(event.organization_id, event.interview_id, event.at)
+            await self._record_third_eye(event.organization_id, event.interview_id, event.at)
 
     async def _observe(self, event: MediaEvent) -> None:
         pairing_id = pairing_of(event.identity)
@@ -415,6 +427,7 @@ class ThirdEye:
                         row.reconnects += 1
                     row.status = "connected"
                     row.connected_at = row.connected_at or event.at
+                    row.track_sid = event.track_sid or row.track_sid
                     if event.width and event.height:
                         row.video = {"width": event.width, "height": event.height, "fps": 15}
                 elif (
@@ -435,10 +448,36 @@ class ThirdEye:
             "down" if change == "disconnected" else "up",
             event.at,
         )
-        if event.kind == "third_eye_published" and event.track_sid and self._recorder is not None:
-            await self._recorder.start_third_eye(
-                event.organization_id, event.interview_id, event.track_sid, event.at
-            )
+        if event.kind == "third_eye_published":
+            await self._record_third_eye(event.organization_id, event.interview_id, event.at)
+
+    async def _record_third_eye(
+        self, organization_id: UUID, interview_id: UUID, at: datetime
+    ) -> None:
+        """Starts the Egress of the current pairing's camera track, once per track. A phone
+        paired before the interview starts (as a required third eye must be) is recorded when
+        the candidate joins the running interview's room."""
+        if self._recorder is None:
+            return
+        async with self._db.tenant(organization_id) as session:
+            row = await current(session, interview_id)
+            if row is None or row.status != "connected" or row.track_sid is None:
+                return
+            if row.track_sid == row.recorded_track_sid:
+                return
+            locked = await session.get_one(ThirdEyePairing, row.id, with_for_update=True)
+            if locked.track_sid == locked.recorded_track_sid:
+                return
+            pairing_id, track_sid = locked.id, locked.track_sid
+            # Claimed before the call, so two deliveries can't both start it.
+            locked.recorded_track_sid = track_sid
+        assert track_sid is not None  # noqa: S101 (checked above, under the lock)
+        if await self._recorder.start_third_eye(organization_id, interview_id, track_sid, at):
+            return
+        async with self._db.tenant(organization_id) as session:
+            locked = await session.get_one(ThirdEyePairing, pairing_id, with_for_update=True)
+            if locked.recorded_track_sid == track_sid:
+                locked.recorded_track_sid = None
 
     async def _vote(
         self,

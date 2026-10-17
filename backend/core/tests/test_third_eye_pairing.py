@@ -29,6 +29,11 @@ ANDROID = (
         (IPHONE, "iOS 17 Safari"),
         (IPHONE_CHROME, "iOS 18 Chrome"),
         (ANDROID, "Android 14 Chrome"),
+        (
+            "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) "
+            "SamsungBrowser/23.0 Chrome/115.0.0.0 Mobile Safari/537.36",
+            "Android 14 Samsung Internet",
+        ),
         ("curl/8.0", "Other browser"),
         ("", "Other browser"),
     ],

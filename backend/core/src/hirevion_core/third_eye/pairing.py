@@ -22,10 +22,6 @@ from hirevion_core.identity.sessions import hash_token, new_token
 
 PAIRING_TTL = timedelta(minutes=2)
 LIVEKIT_TTL = timedelta(minutes=10)
-STATUSES = ("issued", "redeemed", "connected", "disconnected", "revoked")
-"""What the table stores; `expired` is an issued pairing past its time, worked out on read."""
-LIVE_STATUSES = ("issued", "redeemed", "connected", "disconnected")
-REVOKE_REASONS = ("replaced", "revoked", "interview-ended")
 USER_AGENT_MAX = 400
 
 _IOS = re.compile(r"(?:iPhone|iPad|iPod).*?OS (\d+)[_\d]*")
@@ -50,14 +46,17 @@ def platform_of(user_agent: str) -> str:
         system = f"Android {android.group(1)}"
     else:
         return "Other browser"
-    if "CriOS/" in agent or ("Chrome/" in agent and "Edg" not in agent):
-        browser = "Chrome"
-    elif "FxiOS/" in agent or "Firefox/" in agent:
-        browser = "Firefox"
+    # Browsers built on Chrome name it too, so they are recognised first.
+    if "SamsungBrowser/" in agent:
+        browser = "Samsung Internet"
     elif "EdgiOS/" in agent or "EdgA/" in agent:
         browser = "Edge"
-    elif "SamsungBrowser/" in agent:
-        browser = "Samsung Internet"
+    elif "OPR/" in agent or "OPiOS/" in agent:
+        browser = "Opera"
+    elif "FxiOS/" in agent or "Firefox/" in agent:
+        browser = "Firefox"
+    elif "CriOS/" in agent or "Chrome/" in agent:
+        browser = "Chrome"
     elif "Safari/" in agent:
         browser = "Safari"
     else:

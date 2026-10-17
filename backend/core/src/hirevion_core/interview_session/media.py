@@ -17,7 +17,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal, Protocol
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from pydantic import AliasChoices, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -635,7 +635,8 @@ class FakeMedia:
     async def start_audio_egress(self, interview_id: UUID, target: EgressTarget) -> str:
         if self.fail:
             raise MediaError("the fake media server is down")
-        egress_id = f"EG_{len(self.egresses) + 1}"
+        # LiveKit's ids are unique across rooms, as these must be in a shared database.
+        egress_id = f"EG_{uuid4().hex[:12]}"
         self.egresses.append((egress_id, "audio", target))
         return egress_id
 
@@ -644,7 +645,8 @@ class FakeMedia:
     ) -> str:
         if self.fail:
             raise MediaError("the fake media server is down")
-        egress_id = f"EG_{len(self.egresses) + 1}"
+        # LiveKit's ids are unique across rooms, as these must be in a shared database.
+        egress_id = f"EG_{uuid4().hex[:12]}"
         self.egresses.append((egress_id, track_sid, target))
         return egress_id
 
