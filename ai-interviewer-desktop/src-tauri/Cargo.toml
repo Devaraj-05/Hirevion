@@ -91,7 +91,9 @@ hv-system-check = { path = "crates/system-check" }
 hv-uploader = { path = "crates/uploader" }
 # SP-08c: the signed updater (Tauri's own, minisign-verified) and crash reporting to GlitchTip.
 # The updater is driven from Rust commands only, so the webview gets no updater permissions.
-tauri-plugin-updater = "2.13.3"
+# Without its default `zip` feature: Windows updates are signed NSIS installers, never archives,
+# and zip 4.x carries RUSTSEC-2026-0367 to 0369.
+tauri-plugin-updater = { version = "2.13.3", default-features = false, features = ["rustls-tls", "system-proxy"] }
 semver = "1.0.28"
 regex = { version = "1.13.1", default-features = false, features = ["std", "unicode-case", "unicode-perl"] }
 # Panics and webview errors go to GlitchTip (Sentry-compatible) when HV_GLITCHTIP_DSN was set at

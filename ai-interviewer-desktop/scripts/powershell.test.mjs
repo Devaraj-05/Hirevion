@@ -12,7 +12,8 @@ afterAll(() => rmSync(root, { recursive: true, force: true }));
 
 const AWKWARD = ["it's a folder", "dollar $env and `tick", "semi; colon (paren) & amp"];
 
-describe.skipIf(!windows)("powershell", () => {
+// Each test starts powershell.exe several times, which can take seconds while other suites run.
+describe.skipIf(!windows)("powershell", { timeout: 60_000 }, () => {
   it("passes a value with quotes and metacharacters through untouched", () => {
     for (const name of AWKWARD) {
       const folder = join(root, name);
