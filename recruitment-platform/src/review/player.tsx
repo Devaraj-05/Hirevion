@@ -3,15 +3,22 @@
 import { Button } from "@hirevion/ui";
 import { Pause, Play } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useId, useMemo, useRef } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { MediaTrack, ReviewMedia } from "./api";
-import { clock, filePosition, offsetFromFile, type TrackTiming } from "./sync";
+import { clock, filePosition, hasRecording, offsetFromFile, type TrackTiming } from "./sync";
 
 /** How far a follower may drift from the leader before it is moved back (milliseconds). */
 const DRIFT_MS = 400;
+/** How often the clock moves on its own where no recording has anything (milliseconds). */
+const GAP_TICK_MS = 250;
+/** The links last five minutes. A file that fails after four was most likely waiting on an
+ * expired link; sooner than that the file itself is the problem and fresh links won't fix it. */
+const LINK_EXPIRY_MS = 4 * 60 * 1000;
 
 interface PlayerProps {
   media: ReviewMedia;
+  /** When the links were issued (milliseconds since the epoch). */
+  linksIssuedAt: number;
   /** The interview's clock, in milliseconds from its start. */
   offset: number;
   playing: boolean;
@@ -21,7 +28,7 @@ interface PlayerProps {
   onOffset: (offset: number) => void;
   onSeek: (offset: number) => void;
   onPlayingChange: (playing: boolean) => void;
-  /** A file stopped loading (its five-minute link ran out): ask for fresh links. */
+  /** A file stopped loading because its five-minute link ran out: ask for fresh links. */
   onExpired: () => void;
 }
 
@@ -32,12 +39,15 @@ const timing = (track: MediaTrack): TrackTiming => ({
 });
 
 /**
- * Camera, screen, third eye and audio on one timeline (PRD §71). The first recording with a
- * file leads; the others follow, each placed by its own timeline map, and rest where it has
- * nothing recorded. Jumping to a transcript line, an event or a quote moves them all.
+ * Camera, screen, third eye and audio on one timeline (PRD §71). The recording that has
+ * something at the current moment leads (a camera before audio); the others follow, each placed
+ * by its own timeline map, and rest where it has nothing recorded. Where none has anything the
+ * clock moves on its own, so a recording that begins a few seconds late still plays. Jumping to a
+ * transcript line, an event or a quote moves them all.
  */
 export function MediaPlayer({
   media,
+  linksIssuedAt,
   offset,
   playing,
   seekRevision,
@@ -50,9 +60,21 @@ export function MediaPlayer({
   const t = useTranslations("review.player");
   const sliderId = useId();
   const elements = useRef(new Map<string, HTMLMediaElement>());
+  const offsetRef = useRef(offset);
+  offsetRef.current = offset;
+  const [failed, setFailed] = useState<ReadonlySet<string>>(new Set());
   const tracks = media.tracks;
-  const playable = useMemo(() => tracks.filter((track) => track.url), [tracks]);
+  const playable = useMemo(
+    () => tracks.filter((track) => track.url && !failed.has(track.track)),
+    [tracks, failed],
+  );
   const leader = playable.find((track) => track.kind !== "audio") ?? playable[0];
+
+  // Fresh links give every file another try.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new `media` is the trigger.
+  useEffect(() => {
+    setFailed(new Set());
+  }, [media]);
 
   const place = useCallback(
     (track: MediaTrack, at: number, play: boolean) => {
@@ -92,8 +114,30 @@ export function MediaPlayer({
     }
   }, [playing, seekRevision]);
 
+  // Where no recording has anything, the clock moves by itself until one begins.
+  const inGap =
+    playing && playable.length > 0 && !hasRecording(media.anchor, offset, playable.map(timing));
+  useEffect(() => {
+    if (!inGap) return;
+    const timer = window.setInterval(() => {
+      const next = Math.min(offsetRef.current + GAP_TICK_MS, end);
+      onOffset(next);
+      for (const track of playable) place(track, next, true);
+      if (next >= end) onPlayingChange(false);
+    }, GAP_TICK_MS);
+    return () => window.clearInterval(timer);
+  }, [inGap, end, playable, place, onOffset, onPlayingChange]);
+
+  /** The track whose own clock moves the interview's: the first with something at `at`. */
+  function clockLeader(at: number): MediaTrack | undefined {
+    const recorded = playable.filter(
+      (track) => filePosition(media.anchor, at, timing(track)) !== null,
+    );
+    return recorded.find((track) => track.kind !== "audio") ?? recorded[0];
+  }
+
   function followLeader(track: MediaTrack) {
-    if (track.track !== leader?.track) return;
+    if (track.track !== clockLeader(offsetRef.current)?.track) return;
     const element = elements.current.get(track.track);
     if (!element) return;
     const at = offsetFromFile(media.anchor, element.currentTime * 1000, timing(track));
@@ -103,6 +147,11 @@ export function MediaPlayer({
       if (other.track !== track.track) place(other, at, playing);
     }
     if (at >= end) onPlayingChange(false);
+  }
+
+  function failedToLoad(track: MediaTrack) {
+    if (Date.now() - linksIssuedAt >= LINK_EXPIRY_MS) onExpired();
+    else setFailed((current) => new Set(current).add(track.track));
   }
 
   if (tracks.length === 0) {
@@ -118,16 +167,17 @@ export function MediaPlayer({
       <h2 className="font-semibold text-base">{t("title")}</h2>
       <div className="grid gap-3 sm:grid-cols-2">
         {tracks.map((track) => {
-          const position = track.url ? filePosition(media.anchor, offset, timing(track)) : null;
+          const loads = Boolean(track.url) && !failed.has(track.track);
+          const position = loads ? filePosition(media.anchor, offset, timing(track)) : null;
           return (
             <figure key={track.track} className="grid gap-1" data-track={track.track}>
               <figcaption className="flex items-center justify-between text-sm">
                 <span className="font-medium">{track.label}</span>
-                {track.url && position === null ? (
+                {loads && position === null ? (
                   <span className="text-muted-foreground text-xs">{t("nothingHere")}</span>
                 ) : null}
               </figcaption>
-              {track.url ? (
+              {loads ? (
                 track.kind === "audio" ? (
                   // biome-ignore lint/a11y/useMediaCaption: the transcript beside the player is the text alternative.
                   <audio
@@ -135,10 +185,10 @@ export function MediaPlayer({
                       if (node) elements.current.set(track.track, node);
                       else elements.current.delete(track.track);
                     }}
-                    src={track.url}
+                    src={track.url ?? undefined}
                     preload="metadata"
                     onTimeUpdate={() => followLeader(track)}
-                    onError={onExpired}
+                    onError={() => failedToLoad(track)}
                     aria-label={track.label}
                   />
                 ) : (
@@ -147,19 +197,23 @@ export function MediaPlayer({
                       if (node) elements.current.set(track.track, node);
                       else elements.current.delete(track.track);
                     }}
-                    src={track.url}
+                    src={track.url ?? undefined}
                     preload="metadata"
                     muted={track.track !== leader?.track}
                     playsInline
                     onTimeUpdate={() => followLeader(track)}
-                    onError={onExpired}
+                    onError={() => failedToLoad(track)}
                     aria-label={track.label}
                     className="aspect-video w-full rounded-md bg-surface-sunken"
                   />
                 )
               ) : (
                 <p className="rounded-md bg-surface-sunken p-3 text-muted-foreground text-xs">
-                  {track.stalled ? t("stalled") : t("preparing", { status: track.status })}
+                  {failed.has(track.track)
+                    ? t("failed")
+                    : track.stalled
+                      ? t("stalled")
+                      : t("preparing", { status: track.status })}
                 </p>
               )}
             </figure>

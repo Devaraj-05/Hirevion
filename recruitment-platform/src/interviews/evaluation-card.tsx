@@ -40,9 +40,9 @@ import {
   gaps,
   mergeScores,
   type ScoreDraft,
-  summaryRevealed,
   validateScores,
 } from "./evaluation-model";
+import { useEvaluationGate } from "./use-evaluation-gate";
 
 const POLL_MS = 5000;
 
@@ -433,7 +433,7 @@ export function EvaluationCard({
         : false,
   });
   const [queued, setQueued] = useState(false);
-  const [waived, setWaived] = useState(false);
+  const gate = useEvaluationGate(id);
   const mine = useQuery({ queryKey: evaluationKeys.mine(id), queryFn: () => listMyScores(id) });
   const rerun = useMutation({
     mutationFn: () => queueRerun(id),
@@ -472,7 +472,7 @@ export function EvaluationCard({
     saved: body ? body.questions.filter((q) => savedBy.has(q.question_id)).length : 0,
     total: body ? body.questions.length : 0,
   };
-  const revealed = mine.isSuccess && summaryRevealed(progress, waived);
+  const revealed = gate.revealed;
 
   return (
     <>
@@ -501,7 +501,7 @@ export function EvaluationCard({
                   : t("hiddenUntilScored", { saved: progress.saved, total: progress.total })}
               </p>
               {mine.isSuccess ? (
-                <Button size="sm" variant="secondary" onClick={() => setWaived(true)}>
+                <Button size="sm" variant="secondary" onClick={gate.waive}>
                   {t("showWithoutScoring")}
                 </Button>
               ) : null}

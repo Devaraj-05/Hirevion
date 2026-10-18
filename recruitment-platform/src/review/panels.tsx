@@ -14,7 +14,7 @@ import {
   Textarea,
   toast,
 } from "@hirevion/ui";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFormatter, useTranslations } from "next-intl";
 import { useId, useState } from "react";
 import { useAdminProblem } from "@/admin/problems";
@@ -166,12 +166,14 @@ export function EventsPanel({
   const names = useTranslations("interviews.proctoring");
   const queryClient = useQueryClient();
   const [open, setOpen] = useState<string | null>(null);
-  const events = useQuery({
+  const events = useInfiniteQuery({
     queryKey: reviewKeys.events(id),
-    queryFn: () => getProctoringEvents(id),
+    queryFn: ({ pageParam }) => getProctoringEvents(id, pageParam),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.next_cursor ?? undefined,
   });
   if (events.isPending) return <Skeleton className="h-32 w-full" />;
-  const rows = events.data?.events ?? [];
+  const rows = events.data?.pages.flatMap((page) => page.events) ?? [];
   return (
     <Card>
       <CardHeader>
@@ -258,8 +260,16 @@ export function EventsPanel({
             })}
           </ul>
         )}
-        {events.data?.next_cursor ? (
-          <p className="mt-2 text-muted-foreground text-xs">{t("more")}</p>
+        {events.hasNextPage ? (
+          <Button
+            className="mt-2"
+            size="sm"
+            variant="secondary"
+            disabled={events.isFetchingNextPage}
+            onClick={() => void events.fetchNextPage()}
+          >
+            {t("more")}
+          </Button>
         ) : null}
       </CardContent>
     </Card>

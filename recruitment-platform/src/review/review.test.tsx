@@ -1,6 +1,8 @@
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as evaluationApi from "@/interviews/evaluation-api";
 import * as proctoring from "@/interviews/proctoring-api";
 import * as session from "@/interviews/session-api";
 import { renderAdmin, renderWithIntl } from "@/test/render";
@@ -24,6 +26,11 @@ vi.mock("./api", async (importOriginal) => ({
   listInterviewNotes: vi.fn(),
   addInterviewNote: vi.fn(),
   getProctoringEvents: vi.fn(),
+}));
+vi.mock("@/interviews/evaluation-api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/interviews/evaluation-api")>()),
+  getEvaluation: vi.fn(),
+  listMyScores: vi.fn(),
 }));
 vi.mock("@/interviews/session-api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/interviews/session-api")>()),
@@ -174,7 +181,9 @@ describe("PendingQueue", () => {
       "href",
       "/interviews/iv-1/review",
     );
-    expect(screen.getByText("7.4")).toBeInTheDocument();
+    // Whether the evaluation is ready, never its score: the reviewer scores first.
+    expect(screen.getByText("Ready")).toBeInTheDocument();
+    expect(screen.queryByText("7.4")).not.toBeInTheDocument();
     expect(screen.getByText("2 critical events not reviewed")).toBeInTheDocument();
   });
 
@@ -212,9 +221,30 @@ const SCORES: api.Scores = {
   changes: [],
 };
 
+// The evaluation card's gate: the AI's numbers wait until the reviewer has scored every question.
+const evaluated = (...scoredQuestions: string[]) => {
+  vi.mocked(evaluationApi.getEvaluation).mockResolvedValue({
+    state: "ready",
+    evaluation: { questions: [{ question_id: "q-1" }, { question_id: "q-2" }] },
+  } as never);
+  vi.mocked(evaluationApi.listMyScores).mockResolvedValue(
+    scoredQuestions.map((question_id) => ({ question_id })) as never,
+  );
+};
+
 describe("ScoresPanel", () => {
+  it("holds the AI's numbers back until the reviewer has scored, like the evaluation card", async () => {
+    vi.mocked(api.getScores).mockResolvedValue(SCORES);
+    evaluated("q-1");
+    renderAdmin(<ScoresPanel id="iv-1" canModify />);
+    expect(await screen.findByText(/shown once you've scored every question/)).toBeInTheDocument();
+    expect(screen.queryByText("5.8")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Change a score" })).not.toBeInTheDocument();
+  });
+
   it("shows the AI's score beside the one in force, with who changed it and why", async () => {
     vi.mocked(api.getScores).mockResolvedValue(SCORES);
+    evaluated("q-1", "q-2");
     renderAdmin(<ScoresPanel id="iv-1" canModify={false} />);
     const row = (await screen.findByRole("row", { name: /Communication/ })) as HTMLElement;
     expect(within(row).getByText("5.8")).toBeInTheDocument();
@@ -227,6 +257,7 @@ describe("ScoresPanel", () => {
     const user = userEvent.setup();
     vi.mocked(api.getScores).mockResolvedValue(SCORES);
     vi.mocked(api.changeScore).mockResolvedValue(SCORES);
+    evaluated("q-1", "q-2");
     renderAdmin(<ScoresPanel id="iv-1" canModify />);
     await user.click(await screen.findByRole("button", { name: "Change a score" }));
     const dialog = await screen.findByRole("dialog", { name: "Change a score" });
@@ -252,6 +283,7 @@ describe("ScoresPanel", () => {
     vi.mocked(api.getScores).mockRejectedValue(
       Object.assign(new Error("x"), { name: "ApiProblem", status: 409, code: "not-evaluated" }),
     );
+    evaluated();
     renderAdmin(<ScoresPanel id="iv-1" canModify />);
     expect(await screen.findByText(/no scores yet|couldn't be loaded/)).toBeInTheDocument();
   });
@@ -361,6 +393,28 @@ describe("EventsPanel", () => {
     );
   });
 
+  it("loads the events past the first page, so none is out of a reviewer's reach", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.getProctoringEvents).mockImplementation(async (_id, cursor) =>
+      cursor
+        ? ({
+            events: [EVENT({ id: "e-late", event: "PHONE_DETECTED" })],
+            next_cursor: null,
+          } as unknown as api.ProctoringEvents)
+        : ({
+            events: [EVENT({ id: "e-first", event: "FACE_ABSENT", severity: "WARNING" })],
+            next_cursor: "page-2",
+          } as unknown as api.ProctoringEvents),
+    );
+    renderAdmin(<EventsPanel id="iv-1" anchor={ANCHOR} canReview={false} onJump={vi.fn()} />);
+    expect(await screen.findByText("Face not visible")).toBeInTheDocument();
+    expect(screen.queryByText("Phone detected")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Show more events" }));
+    expect(await screen.findByText("Phone detected")).toBeInTheDocument();
+    expect(api.getProctoringEvents).toHaveBeenLastCalledWith("iv-1", "page-2");
+    expect(screen.queryByRole("button", { name: "Show more events" })).not.toBeInTheDocument();
+  });
+
   it("shows events without a review button to someone who can't review", async () => {
     vi.mocked(api.getProctoringEvents).mockResolvedValue({
       events: [EVENT({})],
@@ -443,6 +497,7 @@ describe("MediaPlayer", () => {
     const view = renderWithIntl(
       <MediaPlayer
         media={TRACKS(null)}
+        linksIssuedAt={Date.now()}
         offset={0}
         playing={false}
         seekRevision={0}
@@ -458,6 +513,7 @@ describe("MediaPlayer", () => {
     renderWithIntl(
       <MediaPlayer
         media={{ ...TRACKS(null), tracks: [] }}
+        linksIssuedAt={Date.now()}
         offset={0}
         playing={false}
         seekRevision={0}
@@ -477,6 +533,7 @@ describe("MediaPlayer", () => {
     renderWithIntl(
       <MediaPlayer
         media={TRACKS("https://files.test/x")}
+        linksIssuedAt={Date.now()}
         offset={30_000}
         playing={false}
         seekRevision={1}
@@ -502,5 +559,96 @@ describe("MediaPlayer", () => {
     expect(screen.getByRole("slider")).toHaveAttribute("aria-valuetext", "0:30 of 1:00");
     fireEvent.click(screen.getByRole("button", { name: "Play" }));
     expect(onPlayingChange).toHaveBeenCalledWith(true);
+  });
+
+  it("shows a file that fails to load instead of asking for links again and again", () => {
+    const onExpired = vi.fn();
+    const view = renderWithIntl(
+      <MediaPlayer
+        media={TRACKS("https://files.test/x")}
+        linksIssuedAt={Date.now()}
+        offset={0}
+        playing={false}
+        seekRevision={0}
+        end={60_000}
+        onOffset={vi.fn()}
+        onSeek={vi.fn()}
+        onPlayingChange={vi.fn()}
+        onExpired={onExpired}
+      />,
+    );
+    fireEvent.error(screen.getByLabelText("Camera"));
+    expect(onExpired).not.toHaveBeenCalled(); // the links are fresh: the file is the problem
+    expect(
+      within(document.querySelector('[data-track="camera"]') as HTMLElement).getByText(
+        "This recording couldn't be loaded.",
+      ),
+    ).toBeInTheDocument();
+    view.unmount();
+    // Links that are old enough have most likely run out: that one asks for fresh ones.
+    renderWithIntl(
+      <MediaPlayer
+        media={TRACKS("https://files.test/x")}
+        linksIssuedAt={Date.now() - 5 * 60_000}
+        offset={0}
+        playing={false}
+        seekRevision={0}
+        end={60_000}
+        onOffset={vi.fn()}
+        onSeek={vi.fn()}
+        onPlayingChange={vi.fn()}
+        onExpired={onExpired}
+      />,
+    );
+    fireEvent.error(screen.getByLabelText("Camera"));
+    expect(onExpired).toHaveBeenCalledTimes(1);
+  });
+
+  it("moves the clock on by itself where nothing was recorded, then hands over to the recording", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    const late = new Date(Date.parse(ANCHOR) + 5_000).toISOString();
+    const media = TRACKS("https://files.test/x");
+    media.tracks = media.tracks.map((track) => ({ ...track, started_at: late }));
+    const offsets: number[] = [];
+    function Harness() {
+      const [offset, setOffset] = useState(0);
+      return (
+        <MediaPlayer
+          media={media}
+          linksIssuedAt={Date.now()}
+          offset={offset}
+          playing
+          seekRevision={0}
+          end={60_000}
+          onOffset={(next) => {
+            offsets.push(next);
+            setOffset(next);
+          }}
+          onSeek={vi.fn()}
+          onPlayingChange={vi.fn()}
+          onExpired={vi.fn()}
+        />
+      );
+    }
+    try {
+      renderWithIntl(<Harness />);
+      // Both recordings begin five seconds in: until then the clock walks.
+      for (let tick = 0; tick < 20; tick++) {
+        await act(async () => {
+          vi.advanceTimersByTime(250);
+        });
+      }
+      expect(offsets.at(0)).toBe(250);
+      expect(offsets.at(-1)).toBe(5_000);
+      // The recording has begun: it leads, and the clock stops walking on its own.
+      expect(HTMLMediaElement.prototype.play).toHaveBeenCalled();
+      const seen = offsets.length;
+      await act(async () => {
+        vi.advanceTimersByTime(2_000);
+      });
+      expect(offsets.length).toBe(seen);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

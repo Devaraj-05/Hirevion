@@ -20,6 +20,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFormatter, useTranslations } from "next-intl";
 import { useId, useState } from "react";
 import { useAdminProblem } from "@/admin/problems";
+import { useEvaluationGate } from "@/interviews/use-evaluation-gate";
 import { changeScore, getScores, reviewKeys, type ScoreValue } from "./api";
 
 /** The evaluation's scores with the people's changes laid over the AI's (PRD §97 "score
@@ -30,7 +31,8 @@ export function ScoresPanel({ id, canModify }: { id: string; canModify: boolean 
   const format = useFormatter();
   const [asking, setAsking] = useState(false);
   const scores = useQuery({ queryKey: reviewKeys.scores(id), queryFn: () => getScores(id) });
-  if (scores.isPending) return <Skeleton className="h-32 w-full" />;
+  const gate = useEvaluationGate(id);
+  if (scores.isPending || !gate.loaded) return <Skeleton className="h-32 w-full" />;
   if (scores.isError || !scores.data) {
     const notYet = isApiProblem(scores.error) && scores.error.code === "not-evaluated";
     return (
@@ -41,6 +43,23 @@ export function ScoresPanel({ id, canModify }: { id: string; canModify: boolean 
         <CardContent>
           <p className="text-muted-foreground text-sm">
             {notYet ? t("notEvaluated") : t("loadFailed")}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+  if (!gate.revealed) {
+    // The AI's numbers wait, as on the evaluation card, so they don't set the reviewer's own.
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("title")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground text-sm">
+            {gate.failed
+              ? t("loadFailed")
+              : t("hiddenUntilScored", { saved: gate.progress.saved, total: gate.progress.total })}
           </p>
         </CardContent>
       </Card>

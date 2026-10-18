@@ -87,5 +87,8 @@ export const evaluationKeys = {
   question: (id: string, questionId: string) =>
     ["interviews", "evaluation", id, "question", questionId] as const,
   mine: (id: string) => ["interviews", "human-scores", id] as const,
+  /** Whether the reviewer chose to see the AI's numbers without scoring first. Not under
+   * `detail`, so refreshing the evaluation doesn't take the choice back. */
+  waived: (id: string) => ["interviews", "evaluation-waived", id] as const,
   calibration: ["evaluation", "calibration"] as const,
 };

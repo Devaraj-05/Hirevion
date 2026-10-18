@@ -3,6 +3,7 @@ import {
   clock,
   eventOffset,
   filePosition,
+  hasRecording,
   offsetFromFile,
   type TrackTiming,
   timelineEnd,
@@ -45,6 +46,15 @@ describe("the review player's clock", () => {
     expect(offsetFromFile(ANCHOR, 13_000, MAPPED)).toBe(23_000);
     expect(offsetFromFile(ANCHOR, 4_000, WHOLE)).toBe(9_000);
     expect(offsetFromFile(ANCHOR, 99_000, MAPPED)).toBeNull();
+  });
+
+  it("knows when no track recorded anything, so the clock can move by itself", () => {
+    // WHOLE began 5 s in: at 2 s only MAPPED has something; between its segments, WHOLE does.
+    expect(hasRecording(ANCHOR, 2_000, [WHOLE])).toBe(false);
+    expect(hasRecording(ANCHOR, 2_000, [WHOLE, MAPPED])).toBe(true);
+    expect(hasRecording(ANCHOR, 15_000, [MAPPED])).toBe(false);
+    expect(hasRecording(ANCHOR, 15_000, [MAPPED, WHOLE])).toBe(true);
+    expect(hasRecording(ANCHOR, 15_000, [])).toBe(false);
   });
 
   it("measures an event from the interview's start", () => {

@@ -142,6 +142,10 @@ test("the CP3 golden path: simulated interview, evaluation, reports, review, dec
   await page.getByLabel("Add a note").fill("Looked at the phone, then back at the screen.");
   await page.getByRole("button", { name: "Add note" }).click();
   await expect(page.getByText("Note added.")).toBeVisible();
+  // The AI's numbers wait until the reviewer has scored (or chosen to look); then a score changes.
+  await expect(page.getByText(/shown once you've scored every question/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Change a score" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Show the evaluation without scoring" }).click();
   await page.getByRole("button", { name: "Change a score" }).click();
   const change = page.getByRole("dialog", { name: "Change a score" });
   await change.getByLabel("What").selectOption("communication");

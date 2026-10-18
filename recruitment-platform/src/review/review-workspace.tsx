@@ -143,6 +143,7 @@ export function ReviewWorkspace({ id, access }: { id: string; access: ReviewAcce
           ) : media.data ? (
             <MediaPlayer
               media={media.data}
+              linksIssuedAt={media.dataUpdatedAt}
               offset={offset}
               playing={playing}
               seekRevision={seekRevision}

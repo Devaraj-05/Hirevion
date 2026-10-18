@@ -204,13 +204,16 @@ export async function getTimeline(
 
 export type ProctoringEvents = Schemas["ProctoringReport"];
 
-/** The first hundred proctoring events with their review outcomes (the whole report is
- * `getProctoringReport`). */
-export async function getProctoringEvents(id: string): Promise<ProctoringEvents> {
+/** A hundred proctoring events with their review outcomes, from the page `cursor` names (the
+ * previous page's `next_cursor`; the first page without one). */
+export async function getProctoringEvents(id: string, cursor?: string): Promise<ProctoringEvents> {
   return required(
     (
       await apiClient().GET("/api/v1/proctoring/{interview_id}", {
-        params: { path: { interview_id: id }, query: { limit: 100 } },
+        params: {
+          path: { interview_id: id },
+          query: { limit: 100, ...(cursor ? { cursor } : {}) },
+        },
       })
     ).data,
   );

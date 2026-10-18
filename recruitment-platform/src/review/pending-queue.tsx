@@ -39,7 +39,7 @@ export function PendingQueue() {
                 {t("finished")}
               </th>
               <th scope="col" className="px-3 py-2 font-medium">
-                {t("score")}
+                {t("evaluation")}
               </th>
               <th scope="col" className="px-3 py-2 font-medium">
                 {t("attention")}
@@ -69,9 +69,8 @@ export function PendingQueue() {
                     : "—"}
                 </td>
                 <td className="px-3 py-2">
-                  {item.overall_score !== null
-                    ? format.number(item.overall_score, { maximumFractionDigits: 1 })
-                    : t("notEvaluated")}
+                  {/* Whether it is ready, never the AI's score: a reviewer scores first. */}
+                  {item.evaluated ? t("evaluated") : t("notEvaluated")}
                 </td>
                 <td className="px-3 py-2">
                   {item.unreviewed_critical > 0 ? (

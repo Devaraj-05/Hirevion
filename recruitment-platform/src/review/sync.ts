@@ -88,6 +88,16 @@ export function offsetFromFile(
   return start === null ? null : start + position - origin;
 }
 
+/** Whether any of the tracks recorded something at `offsetMs`. Where none did, the player's
+ * clock has no recording to follow and moves on its own. */
+export function hasRecording(
+  anchor: string | null,
+  offsetMs: number,
+  timings: readonly TrackTiming[],
+): boolean {
+  return timings.some((timing) => filePosition(anchor, offsetMs, timing) !== null);
+}
+
 /** How far into the interview an event (a proctoring event, a note) happened. */
 export function eventOffset(anchor: string | null, startedAt: string): number | null {
   const origin = time(anchor);
