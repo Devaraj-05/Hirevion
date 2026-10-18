@@ -3977,6 +3977,11 @@ export interface components {
              */
             created_at: string;
             /**
+             * Hiring Status
+             * @enum {string}
+             */
+            hiring_status: "under_review" | "shortlisted" | "interview_invited" | "interview_started" | "interview_completed" | "additional_review" | "selected" | "rejected" | "on_hold";
+            /**
              * Id
              * Format: uuid
              */

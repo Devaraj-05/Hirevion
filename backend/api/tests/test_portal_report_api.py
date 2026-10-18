@@ -176,8 +176,8 @@ async def test_another_candidate_cant_read_or_download_it(
 
 
 async def test_the_portal_report_needs_a_portal_session(
-    portal: Any,
-    make_organization: Any,  # noqa: F811
+    portal: Any,  # noqa: F811
+    make_organization: Any,
 ) -> None:
     client = portal()
     assert (await client.get("/api/v1/portal/report")).status_code == 401

@@ -284,6 +284,7 @@ async def get_candidate(
                     job_reference=reference(job.number),
                     job_title=job.title,
                     stage=application.stage,  # type: ignore[arg-type]
+                    hiring_status=application.hiring_status,  # type: ignore[arg-type]
                     created_at=application.created_at,
                 )
                 for application, job in detail.applications

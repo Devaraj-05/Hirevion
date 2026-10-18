@@ -1123,6 +1123,21 @@
             "title": "Created At",
             "type": "string"
           },
+          "hiring_status": {
+            "enum": [
+              "under_review",
+              "shortlisted",
+              "interview_invited",
+              "interview_started",
+              "interview_completed",
+              "additional_review",
+              "selected",
+              "rejected",
+              "on_hold"
+            ],
+            "title": "Hiring Status",
+            "type": "string"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -1164,6 +1179,7 @@
           "job_reference",
           "job_title",
           "stage",
+          "hiring_status",
           "created_at"
         ],
         "title": "CandidateApplication",

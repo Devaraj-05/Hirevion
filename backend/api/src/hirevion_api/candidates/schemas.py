@@ -74,12 +74,26 @@ class CandidateSkillResponse(BaseModel):
     years: float | None
 
 
+HiringStatus = Literal[
+    "under_review",
+    "shortlisted",
+    "interview_invited",
+    "interview_started",
+    "interview_completed",
+    "additional_review",
+    "selected",
+    "rejected",
+    "on_hold",
+]
+
+
 class CandidateApplication(BaseModel):
     id: UUID
     job_id: UUID
     job_reference: str
     job_title: str
     stage: Stage
+    hiring_status: HiringStatus
     created_at: datetime
 
 

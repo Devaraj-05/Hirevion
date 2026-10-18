@@ -24,7 +24,9 @@ class CandidateFilters:
     """One of `STAGE_GROUPS`: candidates with an application in one of its stages."""
 
 
-# The /candidates tabs (PRD §7). Decisions beyond rejection arrive with SP-17.
+# The /candidates tabs (PRD §7). A final decision (PRD §72) is a hiring status, so the decision
+# tab also holds applications that were selected or rejected after an interview.
+DECIDED = ("selected", "rejected")
 STAGE_GROUPS: dict[str, tuple[str, ...]] = {
     "screening": ("uploaded", "parsed", "screened", "ranked", "review", "on_hold"),
     "shortlisted": ("shortlisted",),
@@ -44,6 +46,17 @@ class CandidateDetail:
 
 def _escaped(query: str) -> str:
     return query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def _stage_clause(group: str) -> ColumnElement[bool]:
+    """The applications in a tab: by screening stage, and for the last two by the hiring status
+    too (a decided application leaves "completed" and joins "decision")."""
+    stages = Application.stage.in_(STAGE_GROUPS[group])
+    if group == "decision":
+        return stages | Application.hiring_status.in_(DECIDED)
+    if group == "completed":
+        return stages & Application.hiring_status.not_in(DECIDED)
+    return stages
 
 
 def candidates_statement(scope: ResourceScope, filters: CandidateFilters) -> Select[Candidate]:
@@ -66,7 +79,7 @@ def candidates_statement(scope: ResourceScope, filters: CandidateFilters) -> Sel
         if filters.job_id is not None:
             applied = applied.where(Application.job_id == filters.job_id)
         if filters.stage_group is not None:
-            applied = applied.where(Application.stage.in_(STAGE_GROUPS[filters.stage_group]))
+            applied = applied.where(_stage_clause(filters.stage_group))
         statement = statement.where(exists(applied))
     if filters.query and filters.query.strip():
         query = filters.query.strip()
