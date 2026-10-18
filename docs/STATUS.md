@@ -23,7 +23,7 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 | C5 SP-14 | Proctoring pipeline, severity rules, evidence and snapshots, server-observed state, live dashboard, event review | #13 / ADR-0032 |
 | A3 SP-07b | Candidate portal: own cookies and CSRF, invitation link, sign-in and resets, interviews with countdowns, download, §83 notices, report placeholder, requests acted on at `/candidates/requests` | #15 / ADR-0022 |
 | B3 SP-08c | Per-user installer (x64), signed updater, crash reports, desktop e2e; open items moved to B4/B5 | #14 / ADR-0019 |
-| A5 SP-17 | Reports, review and Candidate 360: five reports as a web view and a stored PDF, the review workspace (11 actions, synchronised recordings), score changes with reasons, Hiring Manager input, the nine hiring statuses and the human decision, the candidate-visible report with a recruiter's release, 13 Candidate 360 tabs with one timeline, the pending-review queue, pipeline moves; CP3 golden path e2e | pending / ADR-0023 |
+| A5 SP-17 | Reports, review and Candidate 360: five reports as a web view and a stored PDF, the review workspace (11 actions, synchronised recordings), score changes with reasons, Hiring Manager input, the nine hiring statuses and the human decision, the candidate-visible report with a recruiter's release, 13 Candidate 360 tabs with one timeline, the pending-review queue, pipeline moves; CP3 golden path e2e | #18 / ADR-0023 |
 | D3 SP-13 | Third eye: single-use QR pairing, the phone page (permission guidance, placement, 720p/15 fps rear camera, Wake Lock, pause on lock, reconnect), LiveKit-observed status into proctoring, the `start` gate; Egress of the conversation audio and the third-eye video into playback | #17 / ADR-0040 |
 
 ## In progress (unmerged worktree branches)
@@ -42,6 +42,7 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 
 - [ ] B3: the desktop e2e once failed at the system check with "Camera: not available" when run right after the desktop job in `scripts/ci-local.sh`; it passed alone and on the next full run. Watch for it; if it recurs, find what holds the camera.
 - [ ] D3: not yet tried on real phones (iOS Safari 16.4+, Android Chrome; the owner's check, runbook "Third eye") or with the real Egress container (its image is about 1 GB; tests used the adapter's fake). Run both before CP3.
+- [ ] A5/D2: ffmpeg isn't installed on this PC, so recordings stay assembly-pending and the review player's sync is tested only with pure functions and jsdom. Install ffmpeg (see the runbook's "Recordings") and play a simulator interview's recordings end to end before CP3.
 
 ## Known blockers
 
