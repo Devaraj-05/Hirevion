@@ -46,10 +46,11 @@ export function CandidateReportCard() {
               save.mutate(draft);
             }}
           >
-            <fieldset className="grid gap-2">
+            <fieldset className="grid gap-1">
               <legend className="sr-only">{t("title")}</legend>
               {ITEM_KEYS.map((key) => (
-                <label key={key} className="flex items-center gap-2 text-sm">
+                // Rows tall enough that each checkbox has the 24 px of clear space WCAG 2.2 asks for.
+                <label key={key} className="flex min-h-8 items-center gap-2 text-sm">
                   <input
                     type="checkbox"
                     checked={draft[key] ?? false}
