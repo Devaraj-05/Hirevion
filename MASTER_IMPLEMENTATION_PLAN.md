@@ -1594,8 +1594,8 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 16 | 9 ranking output fields; explainable, with evidence per factor | SP-05 (evidence drawer; NDCG in `docs/evals/`) |
 | 17 | Configurable weights; Required/Preferred/Optional skills | SP-05, SP-22 (organisation defaults) |
 | 18 | 6 workflow stages; 8 actions; override audit | SP-05 (7 actions), SP-07a ("Create interview" on the ranking, single and bulk) |
-| 19 | 13 candidate-profile sections | SP-04b (profile, resume, parsed profile, applications, jobs), SP-05, SP-17 |
-| 20 | 13 Candidate 360 tabs | SP-17 |
+| 19 | 13 candidate-profile sections | SP-04b (profile, resume, parsed profile, applications, jobs), SP-05, SP-17 (delivered: `hirevion_core.reports.candidate360` loads the file's other sections within the reader's scope: screening, interview history, evaluation, proctoring results, recordings, notes and the timeline; the internal candidate report prints them; `test_report_review.py`) |
+| 20 | 13 Candidate 360 tabs | SP-17 (delivered: the thirteen tabs of `candidate-360.tsx` over the 360 and timeline endpoints, a tab the reader may not see is left out; `candidate-360.test.tsx`, `test_candidate_360_api.py`) |
 | 21 | 13 template fields; example weights and difficulty distribution | SP-06 (ADR-0017; skill-matrix preview; built-in defaults 20/50/30) |
 | 22 | 10 question fields; 8 question types | SP-06 (versioned library, §7 categories, approval; time limits and follow-up rules honoured in SP-09) |
 | 23 | AI question generation from 6 inputs; review before reuse | SP-06 (`interviews.generation`: drafts approved by a recruiter; candidate work history only, never contact details) |
@@ -1643,11 +1643,11 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 65 | Realtime path; 8 things the recruiter sees | SP-14 (delivered, Streams instead of Pub/Sub, per §3.2: `PROCTOR_EVENT`, `PROCTOR_STATUS` and `PROCTOR_REVIEW` on `hv:rt:interview:{id}`, `/ws/proctoring/{id}`, `hirevion_core.proctoring.live`; `test_proctoring_api.py`) |
 | 66 | Live dashboard layout | SP-14 (delivered: `monitoring-panel.tsx` on the interview page, `proctoring-state.ts`; `proctoring.test.tsx`; the camera, screen and third-eye video tiles need `POST /proctoring/{interview_id}/observe`'s token and wait for the media player) |
 | 67 | 7 evidence types; JSON schema | SP-12, SP-14 (delivered: the schema and `proctor_evidence` in `hirevion_core.proctoring.evidence`, snapshots asked for at CRITICAL events and answered through `/proctoring/evidence-uploads`; `test_proctoring_api.py`) |
-| 68 | 14 proctoring-report sections; no single score | SP-17 |
-| 69 | 13 interview-report sections | SP-17 |
+| 68 | 14 proctoring-report sections; no single score | SP-17 (delivered: `hirevion_core.reports.proctoring`: fourteen sections, each severity's reason in words, dismissed events kept and marked, an explicit statement that there is no single score; `test_report_documents.py`, `test_simulator_reports.py`) |
+| 69 | 13 interview-report sections | SP-17 (delivered: `hirevion_core.reports.interview`: thirteen sections with the AI's scores beside any change, coding pending until SP-16; `test_report_documents.py`, `golden-path.spec.ts`) |
 | 70 | Per-skill final evaluation, with evidence | SP-10 (`evaluation.aggregate`, `GET /interviews/{id}/evaluation`; `test_aggregate.py`; the coding slot is SP-16) |
-| 71 | 11 recruiter-review actions | SP-17 |
-| 72 | 9 hiring statuses, audited | SP-17 |
+| 71 | 11 recruiter-review actions | SP-17 (delivered: `review-workspace.tsx`: transcript, recordings on one timeline (`sync.ts`), jump to evidence, code and test results, screening, evaluation, proctoring events, notes, export and the hiring status; `review.test.tsx`, `test_review_api.py`) |
+| 72 | 9 hiring statuses, audited | SP-17 (delivered: `hirevion_core.hiring.workflow`: the nine statuses beside the screening stage, every change in the status history and the audit log, the final decision only with its own permission; the pipeline's moves in `pipeline-board.tsx`; `test_hiring_workflow.py`) |
 | 73 | 12 analytics | SP-21 |
 | 74 | 9 funnel stages | SP-21 |
 | 75 | 3 channels; 8 notification events | SP-18 |
@@ -1672,9 +1672,9 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 94 | Technology stack (local parts) | §2; Azure part in the Cloud plan |
 | 95 | 7 failure modes; 5 mechanisms | SP-08, 09, 11, 12, 13 + chaos drills (§16) |
 | 96 | 14 observability signals | SP-01, SP-23 |
-| 97 | 16 audited actions | SP-01 plus the owning SPs (SP-12 D2: "recording viewed" audited on every playback listing, `test_recording_playback_api.py`); audit-coverage test in SP-23 |
-| 98 | Unified timeline (8 sources) | SP-17 |
-| 99 | 5 configurable candidate-visible items; internal reports stay confidential | SP-17, SP-07b (the portal's report page lists the five items until SP-17 fills it; internal reports never reach `/api/v1/portal/`) |
+| 97 | 16 audited actions | SP-01 plus the owning SPs (SP-12 D2: "recording viewed" audited on every playback listing, `test_recording_playback_api.py`; SP-17: report viewed, exported and downloaded, recording viewed on each play of the review workspace, score modified, status changed and decided, `test_reports_api.py`, `test_review_api.py`); audit-coverage test in SP-23 |
+| 98 | Unified timeline (8 sources) | SP-17 (delivered: `hirevion_core.reports.timeline` over the eight sources with each interview entry's offset from the interview's clock; `test_report_timeline.py`, `test_candidate_360_api.py`) |
+| 99 | 5 configurable candidate-visible items; internal reports stay confidential | SP-17 (delivered: `hirevion_core.reports.visible`: the organisation's choice of items, a draft with nothing internal, a recruiter's approval and a frozen release shown on the portal's report page; `test_report_documents.py`, `test_portal_report_api.py`), SP-07b (internal reports never reach `/api/v1/portal/`) |
 | 100 | 10 → 10k growth path; independent scaling; performance targets | Architecture (§5–6), SP-23 local capacity; cloud-scale tests in the Cloud plan |
 | 101 | Web: 4 accessibility items; desktop: 4; proctoring adjustments for accommodations | SP-03, SP-08, SP-22, SP-23 |
 | 102 | 4 kinds of externalised text; English first | SP-03, SP-22 |

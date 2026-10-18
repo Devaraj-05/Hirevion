@@ -469,3 +469,43 @@
 - Behind a proxy that isn't in `HV_API_TRUSTED_PROXIES`, every phone shares one address for rate limiting.
 - The third eye's video shows the candidate's room; the notice (§83) names it, and the video is evidence only (§53).
 - The audio Egress runs headless Chrome with `SYS_ADMIN` in its container; it only reaches LiveKit and the shared volume.
+
+## SP-17 Reports, review and Candidate 360
+
+**Assets:**
+- the reports, which hold scores, integrity signals, transcripts, notes and recommendations (PDFs included);
+- the candidate-visible report and what the candidate is shown of it;
+- the hiring status, its history and the final decision;
+- the audit entries that show who viewed, downloaded, played and changed what;
+- the review workspace's five-minute read links to recordings.
+
+**Trust boundaries:**
+- the recruiter's browser → the report, review and 360 routes (permission and resource scope on every one);
+- the candidate's portal session → `/portal/report` (released items only);
+- the API → Chromium, which renders HTML built from candidates' words;
+- the API → blob storage (PDFs); the browser → blob storage (recording links).
+
+| Threat (STRIDE) | Example | Control |
+|---|---|---|
+| Spoofing | A candidate reads an internal report, or a recruiter's session works on the portal | Internal reports have no portal route; the portal reads only `reports.released_items` of the signed-in candidate's own interviews; cookies and CSRF are separate for the two hosts (ADR-0022) |
+| Tampering | A person's score change overwrites the AI's, or hides it | `score_changes` is insert-only for the app role (no UPDATE or DELETE grant); the evaluation is never written; reports show both with the reason and who |
+| Tampering | A reviewer's dismissal removes an event from the report | The proctoring report lists every event, dismissed ones marked with the reviewer's reason (insert-only reviews, ADR-0032) |
+| Tampering | A status is changed without a trace, or the AI/system decides | Every change is an `application_status_history` row (insert-only) and an audit entry; `selected` and a post-interview rejection need `hiring.decide`, a reason and a finished interview; the system sync never moves a `selected` application and the three interview statuses cannot be chosen |
+| Tampering | Hiring Manager input is used to move an application | Input is a separate insert-only table and never changes a status |
+| Tampering | A candidate's words become markup or script in a web view or PDF | React renders every string as text; the PDF's HTML is built with Jinja2 autoescape and never marks a string safe; its CSP is `default-src 'none'`; Chromium runs with JavaScript off and aborts every request (tested with a script and an image beacon) |
+| Repudiation | A report is viewed, exported, downloaded or released and the person denies it | `report.viewed` (once per five minutes per person and report), `report.exported`, `report.downloaded` (each time, the candidate's own included), `report.released` and `report.withdrawn`, `recording.viewed` on every play, `score.modified`, `hiring.status_changed`, `hiring.decided` |
+| Information disclosure | A recruiter outside the interview's scope, another organisation, or an interviewer who doesn't review it reads its reports | Every route takes the interview through the resource scope (and the interviewer's review assignment); other organisations are filtered by row-level security; an unreachable interview is `404` |
+| Information disclosure | A reader without a permission still gets the data inside another report | Each report has its own permission (`reports.interview.view`, `reports.proctoring.view`, `reports.candidate.view`); exporting and downloading need that and `reports.export`; Candidate 360 leaves out interviews, proctoring and recordings the reader may not see, and its timeline drops the sources they may not see |
+| Information disclosure | The candidate-visible draft leaks a score, a flag or a proctoring signal | The draft is built from the evaluation's plain statements only, never numbers, flags, notes, inputs or events (a test searches it for each); a recruiter edits it and approves; the organisation's setting limits the items; the release is frozen and the portal reads only that |
+| Information disclosure | A stored PDF is swapped or a link is shared | The PDF's SHA-256 is recorded and checked before every download; downloads go through the API (no blob link is handed out) with `Cache-Control: private, no-store`; the portal serves only the candidate's own released report |
+| Information disclosure | A recording's read link is kept and replayed | Links last five minutes, are read-only, and each issue is audited; an expired link is asked for again, which is audited |
+| Information disclosure | PDFs or exports outlive a withdrawn report | The portal route finds only `released` reports, so a withdrawn one gives `404`; PDFs already downloaded cannot be recalled (see residual risks) |
+| Denial of service | Many exports start many browsers | Two renders at once; the portal's PDF is limited to 10 an hour per account and a released report is rendered once and kept; a missing browser is `503` and the web view still works |
+| Elevation of privilege | A hiring manager releases a report, changes a score or decides | `reports.release`, `reports.score.modify` and `hiring.decide` are held by recruiters and organisation admins only (the authorisation matrix tests every route as every role); a hiring manager has `hiring.input` and `reports.export` |
+
+**Residual risks:**
+- A PDF is a copy: once downloaded, a report or the candidate's own PDF can't be recalled, and the audit log shows only that it was downloaded.
+- The pending-review and pipeline views show candidates' names to anyone with `candidates.view` in scope; the resource scope is the only narrowing until SP-22.
+- Chromium parses HTML built from candidate text; the controls above make it inert, but a browser engine is a large attack surface, so the renderer should run in its own container in the cloud (the cloud plan).
+- `report_exports` and notes have no retention yet (SP-22), and `recording.viewed` is written per link issue, not per second watched.
+- The draft's wording comes from AI-written statements that the evaluation verified against the transcript; a recruiter who approves without reading can release a sentence they did not check.

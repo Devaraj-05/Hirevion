@@ -24,6 +24,7 @@
 | [0020](0020-interviews-and-invitations.md) | Interviews and invitations: pinned policy, a lifecycle table, candidate accounts and a cross-tenant scheduler | Accepted |
 | [0021](0021-candidate-desktop-auth.md) | Candidate desktop sign-in: DPoP-bound tokens, refresh families, new-device codes and a release registry | Accepted |
 | [0022](0022-candidate-portal.md) | The candidate portal: its own cookies and origins, the invitation's link, §83's notices and candidate requests | Accepted |
+| [0023](0023-reports-review-and-hiring-workflow.md) | Reports, review and the hiring workflow: one document for the web and the PDF, people's input kept beside the AI's, and a decision only a person makes | Accepted |
 | [0030](0030-interview-engine.md) | The interview engine: a deterministic policy over a checkpointed state, one conductor for every turn | Accepted |
 | [0031](0031-evaluation-and-governance.md) | Evaluation and AI governance: verified quotes, rubric-weighted scores, pinned versions and a gate | Accepted |
 | [0032](0032-proctoring-engine.md) | The proctoring engine: the server decides, what it sees itself is the ground truth, and nothing a reviewer dismisses is deleted | Accepted |
