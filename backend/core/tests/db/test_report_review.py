@@ -26,6 +26,8 @@ from hirevion_core.reports.candidate360 import load_candidate_360
 from hirevion_core.reports.data import load_interview_data
 from hirevion_core.storage.paths import BlobPath
 
+from .test_interviews_schema import insert_interview
+
 pytestmark = pytest.mark.db
 
 MakeOrganization = Callable[[str], Awaitable[UUID]]
@@ -115,6 +117,27 @@ async def test_the_internal_candidate_report_has_eleven_sections(
     assert "Fits the platform team." in text_of and "Confident on query plans." in text_of
 
 
+async def test_the_candidate_report_leaves_out_proctoring_for_a_reader_who_may_not_see_it(
+    app_db: Database,
+    make_organization: MakeOrganization,
+    make_completed_interview: Any,
+    add_telemetry: Any,
+    make_user: Any,
+    make_reviewed_interview: Any,
+) -> None:
+    org = await make_organization("Acme")
+    scene, _, _ = await make_reviewed_interview(org)
+    reader = frozenset({"candidates.view", "reports.candidate.view", "reports.interview.view"})
+    async with app_db.tenant(org) as session:
+        c360 = await load_candidate_360(session, scene.hiring.candidate_id, EVERYTHING, reader)
+        doc = await candidate_report.candidate_report(session, c360)
+    sections = {s["key"]: s for s in doc["sections"]}
+    assert sections["proctoring"]["note"] == "Not shown to this reader."
+    assert "Phone seen in the camera" not in str(doc)
+    assert "Proctor event reviewed" not in str(doc)
+    assert "Fits the platform team." in str(doc)  # the rest of the file is theirs
+
+
 async def test_the_queue_lists_interviews_waiting_for_a_person_oldest_first(
     app_db: Database,
     admin_engine: AsyncEngine,
@@ -161,6 +184,9 @@ async def test_the_pipeline_has_nine_columns_with_the_moves_each_card_allows(
     org = await make_organization("Acme")
     scene = await make_completed_interview(org)
     await awaiting(admin_engine, scene)
+    # A newer interview that is only scheduled doesn't hide the finished one: the server
+    # judges a decision by the finished interview, so the menu must too.
+    await insert_interview(admin_engine, scene.hiring, status="scheduled")
     fresh = await make_hiring(org, candidate_name="Ben Cole")
     async with app_db.tenant(org) as session:
         columns = await review.pipeline(session, EVERYTHING, can_manage=True, can_decide=True)
@@ -178,6 +204,7 @@ async def test_the_pipeline_has_nine_columns_with_the_moves_each_card_allows(
         by_status = {c.status: c for c in columns}
         done = by_status["interview_completed"]
         assert done.count == 1 and done.cards[0].candidate_name == "Asha Rao"
+        assert done.cards[0].interview_id == scene.interview_id  # what there is to review
         assert "selected" in done.cards[0].moves and "interview_started" not in done.cards[0].moves
         waiting = by_status["under_review"]
         assert {card.candidate_id for card in waiting.cards} == {fresh.candidate_id}

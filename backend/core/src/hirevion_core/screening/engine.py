@@ -167,6 +167,7 @@ async def record_stage(
     rank: int | None = None,
     override: bool = False,
 ) -> None:
+    moved = application.stage != to_stage
     session.add(
         ApplicationHistory(
             organization_id=application.organization_id,
@@ -182,8 +183,10 @@ async def record_stage(
         )
     )
     application.stage = to_stage
-    # The hiring status (PRD §72) follows the stage; a person's move names them.
-    await sync_from_stage(session, application, actor_id=actor_id, reason=reason)
+    # The hiring status (PRD §72) follows the stage, when the stage moves: an assignment that
+    # records the same stage again must not rewrite a status that is already further along.
+    if moved:
+        await sync_from_stage(session, application, actor_id=actor_id, reason=reason)
 
 
 async def screen_application(

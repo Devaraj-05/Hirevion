@@ -9,6 +9,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from hirevion_api.jobs.schemas import DocumentStatus
+from hirevion_api.review.schemas import HiringStatus
 
 Stage = Literal[
     "uploaded",
@@ -72,19 +73,6 @@ class CandidateSkillResponse(BaseModel):
     name: str
     skill_id: UUID | None
     years: float | None
-
-
-HiringStatus = Literal[
-    "under_review",
-    "shortlisted",
-    "interview_invited",
-    "interview_started",
-    "interview_completed",
-    "additional_review",
-    "selected",
-    "rejected",
-    "on_hold",
-]
 
 
 class CandidateApplication(BaseModel):

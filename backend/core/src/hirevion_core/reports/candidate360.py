@@ -25,9 +25,9 @@ from hirevion_core.models import (
     Report,
     ReportExport,
     ScreeningResult,
-    User,
 )
-from hirevion_core.reports.data import InterviewData, load_interview_data
+from hirevion_core.reports.data import InterviewData, load_interview_data, user_names
+from hirevion_core.reports.timeline import allowed_sources
 
 
 @dataclass(slots=True)
@@ -45,6 +45,8 @@ class Candidate360:
     """By application: the latest of each author."""
     history: dict[UUID, list[ApplicationStatusHistory]]
     people: dict[UUID, str] = field(default_factory=dict)
+    sources: frozenset[str] = frozenset()
+    """The timeline sources the reader's permissions cover (PRD §98)."""
 
     @property
     def application_ids(self) -> list[UUID]:
@@ -133,14 +135,7 @@ async def load_candidate_360(
         *(row.actor_id for rows in history.values() for row in rows if row.actor_id),
         *(row.requested_by for row in exports if row.requested_by),
     }
-    people = (
-        {
-            user.id: user.name
-            for user in await session.scalars(select(User).where(User.id.in_(user_ids)))
-        }
-        if user_ids
-        else {}
-    )
+    people = await user_names(session, user_ids)
     return Candidate360(
         detail=detail,
         screening=screening,
@@ -151,4 +146,5 @@ async def load_candidate_360(
         hiring_inputs=given,
         history=history,
         people=people,
+        sources=allowed_sources(permissions),
     )

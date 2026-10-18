@@ -37,6 +37,10 @@ def actor(org: UUID, user: UUID, *roles: str) -> Actor:
     return Actor(user, org, frozenset(permissions_for(roles)))
 
 
+# A recruiter sees the whole report: the proctoring signals and the people's side of the file.
+FULL = frozenset(permissions_for(["recruiter"]))
+
+
 async def evaluated(app_db: Database, scene: Any) -> None:
     ai = build_ai(AiSettings(profile="mock"), app_db)  # type: ignore[call-arg]
     await evaluate_interview(app_db, ai.llm, scene.organization_id, scene.interview_id)
@@ -59,7 +63,7 @@ async def test_the_interview_report_has_thirteen_sections_and_each_is_populated(
     org = await make_organization("Acme")
     scene, _, _ = await make_reviewed_interview(org)
     data = await load(app_db, scene)
-    doc = interview_report.interview_report(data)
+    doc = interview_report.interview_report(data, FULL)
     assert [s["key"] for s in doc["sections"]] == list(interview_report.SECTION_KEYS)
     assert len(doc["sections"]) == 13
     status = {s["key"]: s["status"] for s in doc["sections"]}
@@ -98,7 +102,7 @@ async def test_before_the_evaluation_its_sections_wait(
     org = await make_organization("Acme")
     scene = await make_completed_interview(org)
     await add_telemetry(scene)
-    doc = interview_report.interview_report(await load(app_db, scene))
+    doc = interview_report.interview_report(await load(app_db, scene), FULL)
     status = {s["key"]: s["status"] for s in doc["sections"]}
     for key in (
         "skill_evaluation",
@@ -110,6 +114,64 @@ async def test_before_the_evaluation_its_sections_wait(
     ):
         assert status[key] == "pending", key
     assert status["questions"] == status["answers"] == status["transcript"] == "populated"
+
+
+async def test_the_interview_report_leaves_out_what_its_reader_may_not_see(
+    app_db: Database,
+    make_organization: MakeOrganization,
+    make_completed_interview: Any,
+    add_telemetry: Any,
+    make_user: Any,
+    make_reviewed_interview: Any,
+) -> None:
+    org = await make_organization("Acme")
+    scene, _, _ = await make_reviewed_interview(org)
+    data = await load(app_db, scene)
+    everything = str(interview_report.interview_report(data, FULL))
+    interviewer = interview_report.interview_report(data, permissions_for(["interviewer"]))
+    limited = str(interviewer)
+    # An interviewer reads the interview; the integrity signals need the proctoring permission and
+    # the file's status, notes and decisions the candidate permissions.
+    assert len(interviewer["sections"]) == 13
+    assert "Integrity signals" in everything and "Integrity signals" not in limited
+
+    def summary_labels(doc: Any) -> list[str]:
+        section = next(s for s in doc["sections"] if s["key"] == "executive_summary")
+        return [row["label"] for row in section["blocks"][0]["rows"]]
+
+    assert "Hiring status" in summary_labels(interview_report.interview_report(data, FULL))
+    assert "Hiring status" not in summary_labels(interviewer)
+    for private in ("Phone seen in the camera", "Note added", "Hiring manager input"):
+        assert private in everything and private not in limited, private
+    assert "Evaluation completed" in limited  # the interview's own history stays
+
+
+async def test_a_score_that_was_zero_is_not_shown_as_missing(
+    app_db: Database,
+    make_organization: MakeOrganization,
+    make_completed_interview: Any,
+    add_telemetry: Any,
+    make_user: Any,
+    make_reviewed_interview: Any,
+) -> None:
+    from hirevion_core.hiring import scores
+
+    org = await make_organization("Acme")
+    scene, _, reviewer = await make_reviewed_interview(org)
+    async with app_db.tenant(org) as session:
+        interview = await session.get_one(Interview, scene.interview_id)
+        recruiter = actor(org, reviewer, "recruiter")
+        await scores.change_score(session, recruiter, interview, "overall", None, 0, "Zero")
+        await scores.change_score(session, recruiter, interview, "overall", None, 5, "Again")
+    doc = interview_report.interview_report(await load(app_db, scene), FULL)
+    skills = next(s for s in doc["sections"] if s["key"] == "skill_evaluation")
+    changes = next(
+        block
+        for block in skills["blocks"]
+        if block["type"] == "table" and block.get("caption") == "Changes"
+    )
+    from_zero = [row for row in changes["rows"] if row[5] == "Again"]
+    assert from_zero and from_zero[0][3] == "0.0"
 
 
 async def test_the_proctoring_report_has_fourteen_populated_sections_and_no_single_score(

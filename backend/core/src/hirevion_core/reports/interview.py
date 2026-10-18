@@ -6,6 +6,7 @@ change a person made, with the reason."""
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from datetime import datetime
 from typing import Any
 
@@ -20,7 +21,7 @@ from hirevion_core.reports.labels import (
     SEVERITY_LABELS,
     STATUS_LABELS,
 )
-from hirevion_core.reports.timeline import Entry, interview_entries
+from hirevion_core.reports.timeline import Entry, allowed_sources, interview_entries
 
 SECTION_KEYS = (
     "executive_summary",
@@ -93,14 +94,15 @@ def _score_text(value: Any) -> str:
     return f"{b.score(value.value)} (AI: {b.score(value.ai)})"
 
 
-def executive_summary(data: InterviewData) -> Section:
+def executive_summary(data: InterviewData, sources: Collection[str]) -> Section:
     interview, evaluation, view = data.interview, data.evaluation, data.scores
     rows: list[tuple[str, str | None]] = [
         ("Candidate", data.candidate.name),
         ("Role", f"{data.job.title}"),
         ("Interview", f"IV-{interview.number:04d} ({STATUS_LABELS.get(interview.status)})"),
-        ("Hiring status", HIRING_LABELS[data.application.hiring_status]),
     ]
+    if "recruiter" in sources:  # the people's side of the file: status, decisions, notes
+        rows.append(("Hiring status", HIRING_LABELS[data.application.hiring_status]))
     content: list[Block] = []
     if evaluation is None or view is None:
         content += [b.facts(rows), b.notice(NOT_EVALUATED)]
@@ -136,7 +138,8 @@ def executive_summary(data: InterviewData) -> Section:
                 b.text("Knowledge gaps"),
                 b.bullets([item["text"] for item in summary["knowledge_gaps"][:3]]),
             ]
-    content.append(b.text("Integrity signals: " + integrity_line(data), muted=True))
+    if "proctoring" in sources:
+        content.append(b.text("Integrity signals: " + integrity_line(data), muted=True))
     content.append(
         b.notice(
             "The scores and summaries were produced by AI from the transcript and checked "
@@ -277,7 +280,11 @@ def skill_evaluation(data: InterviewData) -> Section:
                         b.when(change.created_at, data.timezone),
                         data.person(change.changed_by),
                         change.target or b.label(change.scope),
-                        b.score(float(change.previous_score) if change.previous_score else None),
+                        b.score(
+                            float(change.previous_score)
+                            if change.previous_score is not None
+                            else None
+                        ),
                         b.score(float(change.new_score)),
                         change.reason,
                     ]
@@ -458,8 +465,10 @@ def timeline_rows(entries: list[Entry], data: InterviewData) -> list[list[str | 
     return rows
 
 
-def timeline(data: InterviewData) -> Section:
-    entries = interview_entries(data, TIMELINE_SOURCES, min_severity="WARNING")
+def timeline(data: InterviewData, sources: Collection[str]) -> Section:
+    entries = interview_entries(
+        data, [source for source in TIMELINE_SOURCES if source in sources], min_severity="WARNING"
+    )
     return b.section(
         "timeline",
         "Timeline",
@@ -473,9 +482,17 @@ def timeline(data: InterviewData) -> Section:
     )
 
 
-def interview_report(data: InterviewData, *, generated_at: datetime | None = None) -> Document:
+def interview_report(
+    data: InterviewData,
+    permissions: Collection[str],
+    *,
+    generated_at: datetime | None = None,
+) -> Document:
+    """The report for a reader holding `permissions`: the proctoring signals and the people's
+    side of the file (status, notes, decisions) appear only where those permissions allow."""
+    sources = allowed_sources(permissions)
     sections = [
-        executive_summary(data),
+        executive_summary(data, sources),
         interview_metadata(data),
         questions_section(data),
         answers_section(data),
@@ -487,7 +504,7 @@ def interview_report(data: InterviewData, *, generated_at: datetime | None = Non
         knowledge_gaps(data),
         follow_up_performance(data),
         transcript(data),
-        timeline(data),
+        timeline(data, sources),
     ]
     interview = data.interview
     return b.document(

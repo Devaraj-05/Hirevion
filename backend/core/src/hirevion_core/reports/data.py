@@ -6,6 +6,7 @@ leaves out what its reader's permissions don't cover."""
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
 from uuid import UUID
@@ -96,6 +97,15 @@ class InterviewData:
         return self.people.get(user_id, "A reviewer") if user_id is not None else "The system"
 
 
+async def user_names(session: AsyncSession, user_ids: Iterable[UUID | None]) -> dict[UUID, str]:
+    """Names of the users whose ids are given (the organisation's rows are all the session sees)."""
+    wanted = {user_id for user_id in user_ids if user_id is not None}
+    if not wanted:
+        return {}
+    rows = await session.execute(select(User.id, User.name).where(User.id.in_(wanted)))
+    return {user_id: name for user_id, name in rows}
+
+
 async def load_interview_data(
     session: AsyncSession, interview: Interview, *, with_transcript: bool = True
 ) -> InterviewData:
@@ -138,7 +148,9 @@ async def load_interview_data(
             select(QuestionEvaluation).where(QuestionEvaluation.evaluation_id == evaluation.id)
         ):
             question_evaluations[row.question_id] = row
-        score_view = await scores.score_view(session, interview)
+        score_view = await scores.score_view(
+            session, interview, evaluation=evaluation, question_evaluations=question_evaluations
+        )
     proctor = await session.scalar(
         select(ProctorSession).where(ProctorSession.interview_id == interview.id)
     )
@@ -189,12 +201,7 @@ async def load_interview_data(
         *(row.author_id for row in current_inputs),
         *(change.changed_by for change in (score_view.changes if score_view else [])),
     }
-    people: dict[UUID, str] = {}
-    if user_ids:
-        people = {
-            row.id: row.name
-            for row in await session.scalars(select(User).where(User.id.in_(user_ids)))
-        }
+    people = await user_names(session, user_ids)
     return InterviewData(
         interview=interview,
         candidate=candidate,

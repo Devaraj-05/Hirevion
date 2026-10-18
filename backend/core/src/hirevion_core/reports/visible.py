@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from hirevion_core.access.actor import Actor
 from hirevion_core.access.audit import record
 from hirevion_core.access.errors import Conflict, Invalid
+from hirevion_core.hiring.workflow import FINISHED
 from hirevion_core.models import Interview, Job, OrganizationSettings, Report
 from hirevion_core.reports import blocks as b
 from hirevion_core.reports.blocks import Document
@@ -46,7 +47,6 @@ DEFAULT_ITEMS = {
     "next_step": True,
 }
 TEXT_MAX = 4000
-FINISHED = ("completed", "evaluating", "evaluated")
 NEXT_STEP = {
     "under_review": "Thank you for your interview. We are reviewing it and will be in touch.",
     "shortlisted": "You remain on our shortlist. We will tell you what happens next.",

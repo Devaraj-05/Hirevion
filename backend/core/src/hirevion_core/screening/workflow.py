@@ -14,7 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from hirevion_core.access.actor import Actor
 from hirevion_core.access.audit import record
-from hirevion_core.access.errors import Invalid, NotFound
+from hirevion_core.access.errors import Conflict, Invalid, NotFound
+from hirevion_core.hiring.workflow import change_status, finished_interview
 from hirevion_core.models import Application, ScreeningResult, User
 from hirevion_core.screening.engine import record_stage
 
@@ -102,6 +103,16 @@ async def act(
     }
     for application in applications:
         if application.stage == target or application.stage == "uploaded":
+            continue
+        if application.hiring_status == "selected":
+            raise Conflict(
+                "application-selected",
+                "A candidate was selected for this job: change the hiring status to reopen it",
+            )
+        if action == "reject" and await finished_interview(session, application.id) is not None:
+            # After an interview a rejection is the final decision (PRD §72): it needs the
+            # permission to decide and is recorded as one.
+            await change_status(session, actor, application.id, "rejected", reason=reason)
             continue
         previous = application.stage
         score = (

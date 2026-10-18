@@ -9,7 +9,7 @@ from typing import Any
 from uuid import UUID
 
 import pytest
-from sqlalchemy import select, text
+from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from hirevion_core.access.actor import Actor
@@ -18,6 +18,7 @@ from hirevion_core.db.session import Database
 from hirevion_core.hiring import workflow
 from hirevion_core.identity.permissions import permissions_for
 from hirevion_core.models import Application, ApplicationStatusHistory, Interview
+from hirevion_core.screening import workflow as screening
 from hirevion_core.screening.engine import record_stage
 
 from .test_interviews_schema import insert_interview
@@ -312,6 +313,175 @@ async def test_a_decision_can_be_reversed_only_by_someone_who_may_decide(
             reason="The offer was withdrawn",
         )
         assert row.from_status == "selected" and row.decision is True
+
+
+async def test_assigning_someone_does_not_rewrite_a_status_that_is_further_along(
+    app_db: Database,
+    make_organization: MakeOrganization,
+    make_completed_interview: Any,
+    make_user: Any,
+) -> None:
+    org = await make_organization("Acme")
+    scene = await make_completed_interview(org)
+    hiring = scene.hiring
+    manager = await make_user(org, roles=["hiring_manager"])
+    async with app_db.tenant(org) as session:
+        await session.execute(
+            text(
+                "UPDATE applications SET stage='interviewed', hiring_status='additional_review' "
+                "WHERE id = :id"
+            ),
+            {"id": hiring.application_id},
+        )
+    async with app_db.tenant(org) as session:
+        await screening.act(
+            session,
+            actor(org, hiring.recruiter_id, "recruiter"),
+            hiring.job_id,
+            [hiring.application_id],
+            "assign_hiring_manager",
+            user_id=manager,
+        )
+        application = await session.get_one(Application, hiring.application_id)
+        assert application.hiring_manager_id == manager
+        assert application.hiring_status == "additional_review"
+    assert await history(app_db, org, hiring.application_id) == []
+
+
+async def test_a_status_another_request_changed_is_not_judged_from_a_stale_copy(
+    app_db: Database,
+    make_organization: MakeOrganization,
+    make_completed_interview: Any,
+    make_user: Any,
+) -> None:
+    org = await make_organization("Acme")
+    scene = await make_completed_interview(org)
+    application_id = scene.hiring.application_id
+    manager = await make_user(org, roles=["hiring_manager"])
+    async with app_db.tenant(org) as session:
+        await session.execute(
+            text(
+                "UPDATE applications SET stage='interviewed', "
+                "hiring_status='interview_completed' WHERE id = :id"
+            ),
+            {"id": application_id},
+        )
+    async with app_db.tenant(org) as session:
+        await session.get_one(Application, application_id)  # the route's copy: not yet decided
+        await session.execute(  # a decision lands meanwhile, outside this session's view
+            update(Application)
+            .where(Application.id == application_id)
+            .values(hiring_status="selected")
+            .execution_options(synchronize_session=False)
+        )
+        with pytest.raises(Refused) as refused:
+            await workflow.change_status(
+                session,
+                actor(org, manager, "hiring_manager"),
+                application_id,
+                "on_hold",
+                reason="Hmm",
+            )
+        assert refused.value.code == "decision-forbidden"
+
+
+async def test_the_screening_actions_cannot_decide_or_reopen_a_decision(
+    app_db: Database,
+    admin_engine: AsyncEngine,
+    make_organization: MakeOrganization,
+    make_completed_interview: Any,
+    make_user: Any,
+) -> None:
+    org = await make_organization("Acme")
+    scene = await make_completed_interview(org)
+    hiring = scene.hiring
+    async with app_db.tenant(org) as session:
+        await session.execute(
+            text(
+                "UPDATE applications SET stage='interviewed', "
+                "hiring_status='interview_completed' WHERE id = :id"
+            ),
+            {"id": hiring.application_id},
+        )
+    only_manages = Actor(hiring.recruiter_id, org, frozenset({"candidates.manage"}))
+    async with app_db.tenant(org) as session:
+        with pytest.raises(Refused) as refused:  # a rejection after an interview is a decision
+            await screening.act(
+                session, only_manages, hiring.job_id, [hiring.application_id], "reject", reason="No"
+            )
+        assert refused.value.code == "decision-forbidden"
+    async with app_db.tenant(org) as session:
+        await screening.act(
+            session,
+            actor(org, hiring.recruiter_id, "recruiter"),
+            hiring.job_id,
+            [hiring.application_id],
+            "reject",
+            reason="Weak answers on PostgreSQL",
+        )
+        application = await session.get_one(Application, hiring.application_id)
+        assert (application.stage, application.hiring_status) == ("rejected", "rejected")
+    last = (await history(app_db, org, hiring.application_id))[-1]
+    assert last.decision is True and last.reason == "Weak answers on PostgreSQL"
+    assert (await audited(admin_engine, org, "hiring.decided"))[-1]["details"]["to"] == "rejected"
+    # A selected application is only moved by changing its hiring status.
+    async with app_db.tenant(org) as session:
+        await session.execute(
+            text("UPDATE applications SET hiring_status='selected' WHERE id = :id"),
+            {"id": hiring.application_id},
+        )
+    async with app_db.tenant(org) as session:
+        with pytest.raises(Conflict) as conflict:
+            await screening.act(
+                session,
+                actor(org, hiring.recruiter_id, "recruiter"),
+                hiring.job_id,
+                [hiring.application_id],
+                "shortlist",
+            )
+        assert conflict.value.code == "application-selected"
+
+
+async def test_the_interview_does_not_undo_what_a_person_decided(
+    app_db: Database,
+    admin_engine: AsyncEngine,
+    make_organization: MakeOrganization,
+    make_hiring: Any,
+) -> None:
+    org = await make_organization("Acme")
+    hiring = await make_hiring(org, stage="interview")
+    interview_id = await insert_interview(admin_engine, hiring, status="in_progress")
+    for held in ("rejected", "on_hold", "additional_review"):
+        async with app_db.tenant(org) as session:
+            await session.execute(
+                text("UPDATE applications SET hiring_status = :held WHERE id = :id"),
+                {"held": held, "id": hiring.application_id},
+            )
+        async with app_db.tenant(org) as session:
+            interview = await session.get_one(Interview, interview_id)
+            application = await session.get_one(Application, hiring.application_id)
+            await workflow.sync_interview(session, interview)  # the candidate starts anyway
+            assert application.hiring_status == held
+            await record_stage(session, application, "interviewed", "interview_completed")
+            assert application.hiring_status == held  # nor does the stage the system sets
+            application.stage = "interview"
+    # A person's own stage move still goes through.
+    async with app_db.tenant(org) as session:
+        application = await session.get_one(Application, hiring.application_id)
+        await record_stage(
+            session, application, "shortlisted", "shortlist", actor_id=hiring.recruiter_id
+        )
+        assert application.hiring_status == "shortlisted"
+
+
+def test_the_menu_never_offers_a_move_the_server_would_refuse() -> None:
+    # Moving out of a decision is reopening it.
+    assert workflow.allowed_targets("rejected", can_decide=False, has_interview=True) == []
+    assert "under_review" in workflow.allowed_targets(
+        "rejected", can_decide=True, has_interview=True
+    )
+    # A rejection before any interview is the plain screening action.
+    assert workflow.allowed_targets("rejected", can_decide=False, has_interview=False)
 
 
 def test_what_a_person_can_choose_next() -> None:

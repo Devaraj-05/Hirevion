@@ -16,7 +16,7 @@ from fastapi import Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from hirevion_api.access.deps import own_tenant
+from hirevion_api.access.deps import own_tenant, scoped_interview
 from hirevion_api.authz import Principal, requires
 from hirevion_api.deps import get_storage
 from hirevion_api.review import schemas
@@ -26,7 +26,6 @@ from hirevion_core.access.errors import NotFound
 from hirevion_core.access.scope import ResourceScope, resource_scope, scope_clause
 from hirevion_core.candidates.candidates import get_candidate
 from hirevion_core.hiring import inputs, notes, scores, workflow
-from hirevion_core.interviews import assignment
 from hirevion_core.interviews.lifecycle import reference
 from hirevion_core.models import (
     Application,
@@ -36,11 +35,10 @@ from hirevion_core.models import (
     Interview,
     Job,
     ScoreChange,
-    User,
 )
 from hirevion_core.recordings.playback import DownloadSigner, url_lifetime
 from hirevion_core.reports import review
-from hirevion_core.reports.data import load_interview_data
+from hirevion_core.reports.data import load_interview_data, user_names
 from hirevion_core.storage.service import StorageService
 
 router = api_router(tags=["review"])
@@ -50,13 +48,6 @@ ViewsCandidates = Annotated[Principal, requires("candidates.view")]
 ManagesCandidates = Annotated[Principal, requires("candidates.manage")]
 ModifiesScores = Annotated[Principal, requires("reports.score.modify")]
 GivesInput = Annotated[Principal, requires("hiring.input")]
-
-
-async def _interview(session: AsyncSession, principal: Principal, interview_id: UUID) -> Interview:
-    scope = await resource_scope(session, principal.user_id)
-    return await assignment.get_interview(
-        session, interview_id, scope, reviewer_only=principal.reviewer_only
-    )
 
 
 async def _application(
@@ -78,13 +69,6 @@ async def _application(
     return row[0], row[1]
 
 
-async def _names(session: AsyncSession, ids: set[UUID | None]) -> dict[UUID, str]:
-    wanted = {i for i in ids if i is not None}
-    if not wanted:
-        return {}
-    return {u.id: u.name for u in await session.scalars(select(User).where(User.id.in_(wanted)))}
-
-
 # The player.
 
 
@@ -98,7 +82,7 @@ async def get_review_media(
     storage = get_storage(request)
     issued = datetime.now(UTC)
     async with own_tenant(request, principal) as session:
-        interview = await _interview(session, principal, interview_id)
+        interview = await scoped_interview(session, principal, interview_id)
         data = await load_interview_data(session, interview, with_transcript=False)
         found = await review.review_media(
             session,
@@ -163,9 +147,9 @@ async def list_interview_notes(
 ) -> schemas.NoteList:
     """The notes taken on this interview, newest first."""
     async with own_tenant(request, principal) as session:
-        interview = await _interview(session, principal, interview_id)
+        interview = await scoped_interview(session, principal, interview_id)
         rows = await notes.list_notes(session, interview.candidate_id, interview_id=interview.id)
-        people = await _names(session, {row.author_id for row in rows})
+        people = await user_names(session, {row.author_id for row in rows})
     return schemas.NoteList(items=[_note(row, people) for row in rows])
 
 
@@ -175,7 +159,7 @@ async def add_interview_note(
 ) -> schemas.NoteResponse:
     """Adds a note to the interview, optionally at a moment of it (milliseconds from its start)."""
     async with own_tenant(request, principal) as session:
-        interview = await _interview(session, principal, interview_id)
+        interview = await scoped_interview(session, principal, interview_id)
         row = await notes.add_note(
             session,
             principal.actor(request),
@@ -184,7 +168,7 @@ async def add_interview_note(
             body=body.body,
             at_ms=body.at_ms,
         )
-        people = await _names(session, {row.author_id})
+        people = await user_names(session, {row.author_id})
     return _note(row, people)
 
 
@@ -197,7 +181,7 @@ async def list_candidate_notes(
         scope = await resource_scope(session, principal.user_id)
         await get_candidate(session, candidate_id, scope)
         rows = await notes.list_notes(session, candidate_id)
-        people = await _names(session, {row.author_id for row in rows})
+        people = await user_names(session, {row.author_id for row in rows})
     return schemas.NoteList(items=[_note(row, people) for row in rows])
 
 
@@ -211,7 +195,7 @@ async def add_candidate_note(
         row = await notes.add_note(
             session, principal.actor(request), candidate_id=candidate_id, body=body.body
         )
-        people = await _names(session, {row.author_id})
+        people = await user_names(session, {row.author_id})
     return _note(row, people)
 
 
@@ -242,7 +226,7 @@ def _value(item: scores.ScoreValue, people: dict[UUID, str]) -> schemas.ScoreVal
 
 async def _scores(session: AsyncSession, interview: Interview) -> schemas.ScoresResponse:
     view = await scores.score_view(session, interview)
-    people = await _names(session, {change.changed_by for change in view.changes})
+    people = await user_names(session, {change.changed_by for change in view.changes})
     return schemas.ScoresResponse(
         interview_id=interview.id,
         evaluation_id=view.evaluation_id,
@@ -261,7 +245,7 @@ async def get_scores(
     """The evaluation's scores with the people's changes laid over the AI's, and every change
     with its reason."""
     async with own_tenant(request, principal) as session:
-        interview = await _interview(session, principal, interview_id)
+        interview = await scoped_interview(session, principal, interview_id)
         return await _scores(session, interview)
 
 
@@ -272,7 +256,7 @@ async def change_score(
     """Changes one score, with the reason. The AI's score stays on record; the change is
     audited as `score.modified`."""
     async with own_tenant(request, principal) as session:
-        interview = await _interview(session, principal, interview_id)
+        interview = await scoped_interview(session, principal, interview_id)
         await scores.change_score(
             session,
             principal.actor(request),
@@ -333,7 +317,7 @@ async def _hiring_state(
         ).all()
     )
     given = await inputs.current_inputs(session, application.id)
-    people = await _names(
+    people = await user_names(
         session,
         {*(row.actor_id for row in rows), *(row.author_id for row in given)},
     )
@@ -409,7 +393,7 @@ async def add_hiring_input(
             ratings=body.ratings,
             rationale=body.rationale,
         )
-        people = await _names(session, {row.author_id})
+        people = await user_names(session, {row.author_id})
     return _input(row, people)
 
 

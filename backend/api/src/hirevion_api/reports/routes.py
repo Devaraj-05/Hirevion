@@ -12,10 +12,9 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import Request, Response
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from hirevion_api.access.deps import own_tenant
+from hirevion_api.access.deps import own_tenant, scoped_interview
 from hirevion_api.authz import Principal, requires
 from hirevion_api.deps import get_db, get_redis, get_storage
 from hirevion_api.problems import ProblemError
@@ -36,17 +35,19 @@ from hirevion_api.routing import api_router
 from hirevion_core.access import audit
 from hirevion_core.access.errors import Conflict, Invalid, NotFound
 from hirevion_core.access.scope import resource_scope
+from hirevion_core.hiring import workflow
 from hirevion_core.interviews import assignment
 from hirevion_core.interviews.lifecycle import reference
-from hirevion_core.models import Interview, ReportExport, User
+from hirevion_core.models import ReportExport, User
 from hirevion_core.reports import candidate as candidate_report
 from hirevion_core.reports import coding, exports, visible
 from hirevion_core.reports import interview as interview_report
 from hirevion_core.reports import proctoring as proctoring_report
 from hirevion_core.reports.blocks import Document
 from hirevion_core.reports.candidate360 import load_candidate_360
-from hirevion_core.reports.data import InterviewData, load_interview_data
+from hirevion_core.reports.data import InterviewData, load_interview_data, user_names
 from hirevion_core.reports.pdf import PdfRenderer, PdfUnavailable
+from hirevion_core.reports.timeline import allowed_sources
 
 log = logging.getLogger(__name__)
 router = api_router(tags=["reports"])
@@ -70,16 +71,20 @@ KIND_PERMISSION = {
 }
 
 
-def _needs(principal: Principal, permission: str) -> None:
-    if permission not in principal.permissions:
+def _may_see(principal: Principal, kind: str) -> bool:
+    """Whether the reader may see a stored PDF of this kind. A stored interview report holds the
+    integrity signals and the people's side of the file whatever its reader asked for, so
+    it is for readers who may see both."""
+    if KIND_PERMISSION[kind] not in principal.permissions:
+        return False
+    if kind == "interview":
+        return {"proctoring", "recruiter"} <= allowed_sources(principal.permissions)
+    return True
+
+
+def _needs(principal: Principal, kind: str) -> None:
+    if not _may_see(principal, kind):
         raise ProblemError(403, "forbidden", "You don't have permission to do this")
-
-
-async def _interview(session: AsyncSession, principal: Principal, interview_id: UUID) -> Interview:
-    scope = await resource_scope(session, principal.user_id)
-    return await assignment.get_interview(
-        session, interview_id, scope, reviewer_only=principal.reviewer_only
-    )
 
 
 async def _viewed(
@@ -129,9 +134,9 @@ async def get_interview_report(
 ) -> ReportDocument:
     """The interview report: PRD §69's thirteen sections. Viewing it is audited."""
     async with own_tenant(request, principal) as session:
-        interview = await _interview(session, principal, interview_id)
+        interview = await scoped_interview(session, principal, interview_id)
         data = await load_interview_data(session, interview)
-        doc = interview_report.interview_report(data)
+        doc = interview_report.interview_report(data, principal.permissions)
         await _viewed(request, session, principal, "interview", "interview", interview.id)
     return schemas.document_of(doc)
 
@@ -143,7 +148,7 @@ async def get_proctoring_report_document(
     """The proctoring report: PRD §68's fourteen sections, with no single score. Viewing it is
     audited."""
     async with own_tenant(request, principal) as session:
-        interview = await _interview(session, principal, interview_id)
+        interview = await scoped_interview(session, principal, interview_id)
         data = await load_interview_data(session, interview)
         doc = proctoring_report.proctoring_report(data)
         await _viewed(request, session, principal, "proctoring", "interview", interview.id)
@@ -157,7 +162,7 @@ async def get_coding_report(
     """The coding report: what the interview recorded of its coding so far (the coding service
     is SP-16). Viewing it is audited."""
     async with own_tenant(request, principal) as session:
-        interview = await _interview(session, principal, interview_id)
+        interview = await scoped_interview(session, principal, interview_id)
         data = await load_interview_data(session, interview)
         doc = coding.coding_report(data)
         await _viewed(request, session, principal, "coding", "interview", interview.id)
@@ -207,8 +212,9 @@ async def _document_for(
         data = await load_interview_data(session, interview, with_transcript=False)
         return visible.visible_document(interview, data.job, report), ref
     data = await load_interview_data(session, interview)
+    if body.kind == "interview":
+        return interview_report.interview_report(data, principal.permissions), ref
     builders = {
-        "interview": interview_report.interview_report,
         "proctoring": proctoring_report.proctoring_report,
         "coding": coding.coding_report,
     }
@@ -231,10 +237,7 @@ def _export_response(row: ReportExport, people: dict[UUID, str]) -> ReportExport
 
 
 async def _names(session: AsyncSession, rows: list[ReportExport]) -> dict[UUID, str]:
-    ids = {row.requested_by for row in rows if row.requested_by}
-    if not ids:
-        return {}
-    return {u.id: u.name for u in await session.scalars(select(User).where(User.id.in_(ids)))}
+    return await user_names(session, [row.requested_by for row in rows])
 
 
 @router.post("/report-exports", status_code=201)
@@ -243,7 +246,7 @@ async def create_report_export(
 ) -> ReportExportResponse:
     """Renders a report to a PDF, keeps it and audits it. The reader needs the permission to see
     that kind of report as well as `reports.export`."""
-    _needs(principal, KIND_PERMISSION[body.kind])
+    _needs(principal, body.kind)
     renderer = _renderer(request)
     storage = get_storage(request)
     async with own_tenant(request, principal) as session:
@@ -299,7 +302,7 @@ async def list_report_exports(
         rows = await exports.list_exports(
             session, interview_id=interview_id, candidate_id=candidate_id
         )
-        rows = [r for r in rows if KIND_PERMISSION[r.kind] in principal.permissions]
+        rows = [r for r in rows if _may_see(principal, r.kind)]
         people = await _names(session, rows)
     return ReportExportList(items=[_export_response(row, people) for row in rows])
 
@@ -313,7 +316,7 @@ async def download_report_export(export_id: UUID, request: Request, principal: E
         row = await exports.get_export(session, export_id)
         if row.audience != "internal":
             raise NotFound("export-not-found", "No such export")
-        _needs(principal, KIND_PERMISSION[row.kind])
+        _needs(principal, row.kind)
         scope = await resource_scope(session, principal.user_id)
         if row.interview_id is not None:
             interview = await assignment.get_interview(
@@ -357,7 +360,7 @@ async def _state(
     interview = data.interview
     allowed = await visible.allowed_items(session, principal.organization_id)
     report = await visible.get_report(session, interview.id)
-    ready = interview.status in visible.FINISHED
+    ready = interview.status in workflow.FINISHED
     drafts = visible.draft_items(data) if ready else {}
     saved = report.items if report is not None else {}
     items = []
@@ -398,7 +401,7 @@ async def get_candidate_visible_report(
     """What the candidate may be shown (PRD §99): the draft, which items the organisation allows
     and, once approved, exactly what was released."""
     async with own_tenant(request, principal) as session:
-        interview = await _interview(session, principal, interview_id)
+        interview = await scoped_interview(session, principal, interview_id)
         data = await load_interview_data(session, interview, with_transcript=False)
         return await _state(session, principal, data)
 
@@ -409,7 +412,7 @@ async def save_candidate_visible_report(
 ) -> CandidateReportResponse:
     """Saves the recruiter's edits to the draft. A released report must be withdrawn first."""
     async with own_tenant(request, principal) as session:
-        interview = await _interview(session, principal, interview_id)
+        interview = await scoped_interview(session, principal, interview_id)
         data = await load_interview_data(session, interview, with_transcript=False)
         await visible.save_draft(
             session,
@@ -427,7 +430,7 @@ async def approve_candidate_visible_report(
     """Releases the report to the candidate's portal: what the organisation allows and the
     recruiter included, frozen as it reads now. Audited."""
     async with own_tenant(request, principal) as session:
-        interview = await _interview(session, principal, interview_id)
+        interview = await scoped_interview(session, principal, interview_id)
         data = await load_interview_data(session, interview, with_transcript=False)
         await visible.approve(session, principal.actor(request), data)
         return await _state(session, principal, data)
@@ -439,7 +442,7 @@ async def withdraw_candidate_visible_report(
 ) -> CandidateReportResponse:
     """Takes a released report off the candidate's portal, with the reason. Audited."""
     async with own_tenant(request, principal) as session:
-        interview = await _interview(session, principal, interview_id)
+        interview = await scoped_interview(session, principal, interview_id)
         data = await load_interview_data(session, interview, with_transcript=False)
         await visible.withdraw(session, principal.actor(request), interview, body.reason)
         return await _state(session, principal, data)

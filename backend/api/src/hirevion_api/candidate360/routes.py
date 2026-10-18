@@ -9,7 +9,6 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import Query, Request
-from sqlalchemy import select
 
 from hirevion_api.access.deps import own_tenant
 from hirevion_api.authz import Principal, requires
@@ -19,17 +18,20 @@ from hirevion_api.routing import api_router
 from hirevion_core.access.scope import resource_scope
 from hirevion_core.hiring.scores import ScoreValue
 from hirevion_core.interviews.lifecycle import reference
-from hirevion_core.models import Interview, User
 from hirevion_core.reports.candidate360 import Candidate360, load_candidate_360
 from hirevion_core.reports.data import InterviewData
 from hirevion_core.reports.review import track_kind
-from hirevion_core.reports.timeline import SOURCES, candidate_entries, track_label
+from hirevion_core.reports.timeline import (
+    SOURCES,
+    allowed_sources,
+    candidate_entries,
+    track_label,
+)
 
 router = api_router(tags=["candidates"])
 
 ViewsCandidates = Annotated[Principal, requires("candidates.view")]
 TIMELINE_LIMIT = 200
-INTERVIEW_SOURCES = frozenset({"interview", "transcript", "coding", "evaluation", "recording"})
 
 
 def _score_value(item: ScoreValue) -> ScoreValueResponse:
@@ -111,15 +113,7 @@ async def get_candidate_360(
         scope = await resource_scope(session, principal.user_id)
         c360 = await load_candidate_360(session, candidate_id, scope, principal.permissions)
         jobs = {application.id: job for application, job in c360.detail.applications}
-        authors = {note.author_id for note in c360.notes}
-        people = (
-            {
-                user.id: user.name
-                for user in await session.scalars(select(User).where(User.id.in_(authors)))
-            }
-            if authors
-            else {}
-        )
+        people = c360.people
         sees_interviews = "reports.interview.view" in principal.permissions
         interviews = [_interview_item(data, c360, principal) for data in c360.interviews]
         resume = {skill.name.casefold(): skill for skill in c360.detail.skills}
@@ -205,15 +199,6 @@ async def get_candidate_360(
         )
 
 
-def _allowed_sources(principal: Principal) -> set[str]:
-    allowed = {"screening", "recruiter"}
-    if "reports.interview.view" in principal.permissions:
-        allowed |= INTERVIEW_SOURCES
-    if "reports.proctoring.view" in principal.permissions:
-        allowed.add("proctoring")
-    return allowed
-
-
 @router.get("/candidates/{candidate_id}/timeline")
 async def get_candidate_timeline(
     candidate_id: UUID,
@@ -231,13 +216,13 @@ async def get_candidate_timeline(
     transcript, coding, proctoring, recordings, the evaluation and the recruiters' own actions
     (PRD §98). A reader sees only the sources their permissions cover."""
     wanted = set(source) if source else set(SOURCES)
-    sources = wanted & _allowed_sources(principal)
+    sources = wanted & allowed_sources(principal.permissions)
     async with own_tenant(request, principal) as session:
         scope = await resource_scope(session, principal.user_id)
         c360 = await load_candidate_360(session, candidate_id, scope, principal.permissions)
-        interviews: list[Interview] = [data.interview for data in c360.interviews]
+        interviews = c360.interviews
         if interview_id is not None:
-            interviews = [i for i in interviews if i.id == interview_id]
+            interviews = [data for data in interviews if data.interview.id == interview_id]
         entries = await candidate_entries(
             session,
             candidate_id,

@@ -28,10 +28,9 @@ from hirevion_core.models import (
     Report,
     ReportExport,
     ScreeningResult,
-    User,
 )
 from hirevion_core.proctoring.catalogue import RANK
-from hirevion_core.reports.data import InterviewData, load_interview_data
+from hirevion_core.reports.data import InterviewData, user_names
 from hirevion_core.reports.labels import (
     HIRING_LABELS,
     RECOMMENDATION_LABELS,
@@ -65,9 +64,26 @@ SOURCES = (
     "evaluation",
     "recruiter",
 )
+INTERVIEW_SOURCES = frozenset({"interview", "transcript", "coding", "evaluation", "recording"})
 SCREENING_STAGES = ("uploaded", "parsed", "screened", "ranked")
 TRACK_LABELS = {"mic": "Microphone", "camera": "Camera"}
 DETAIL_MAX = 240
+# An interview's closing events are written in the same moment as its end; anything later
+# (the evaluation, a reviewer's note) happened after the interview, not inside it.
+END_TOLERANCE_MS = 250
+
+
+def allowed_sources(permissions: Collection[str]) -> frozenset[str]:
+    """The sources a reader's permissions cover (PRD §98): the file's screening and the people's
+    actions, the interview itself, and proctoring, each behind its own permission."""
+    allowed: set[str] = set()
+    if "candidates.view" in permissions or "reports.candidate.view" in permissions:
+        allowed |= {"screening", "recruiter"}
+    if "reports.interview.view" in permissions:
+        allowed |= INTERVIEW_SOURCES
+    if "reports.proctoring.view" in permissions:
+        allowed.add("proctoring")
+    return frozenset(allowed)
 
 
 @dataclass(slots=True)
@@ -113,8 +129,16 @@ def track_label(track: str) -> str:
     return TRACK_LABELS.get(track, track)
 
 
-def track_name(track: str) -> str:
-    return track_label(track)
+def _offset(data: InterviewData, at: datetime, ref: dict[str, Any] | None) -> int | None:
+    """Where in the interview's clock an entry falls: a note says its own moment, and anything
+    written after the interview ended (the evaluation, a decision) is not inside it."""
+    if ref and isinstance(ref.get("at_ms"), int):
+        return int(ref["at_ms"])
+    offset = data.offset_ms(at)
+    end = data.offset_ms(data.interview.ended_at)
+    if offset is None or (end is not None and offset > end + END_TOLERANCE_MS):
+        return None
+    return offset
 
 
 def interview_entries(
@@ -122,8 +146,12 @@ def interview_entries(
     sources: Collection[str],
     *,
     min_severity: str = "INFO",
+    own_only: bool = False,
 ) -> list[Entry]:
-    """The interview's entries, in the order they happened (unsorted across sources)."""
+    """The interview's entries, in the order they happened (unsorted across sources).
+
+    `own_only` leaves out people's changes that belong to the application rather than to this
+    interview (a candidate's timeline lists those once, from `application_entries`)."""
     interview = data.interview
     entries: list[Entry] = []
 
@@ -137,6 +165,8 @@ def interview_entries(
     ) -> None:
         if at is None or source not in sources:
             return
+        if kind == "proctor_review" and "proctoring" not in sources:
+            return  # a review of a proctoring event shows what the event was
         entries.append(
             Entry(
                 at=at,
@@ -145,7 +175,7 @@ def interview_entries(
                 title=title,
                 detail=_short(detail) if detail else None,
                 interview_id=interview.id,
-                offset_ms=data.offset_ms(at),
+                offset_ms=_offset(data, at, more.get("ref")),
                 **more,
             )
         )
@@ -279,7 +309,7 @@ def interview_entries(
                     f"Hiring status: {HIRING_LABELS[row.to_status]}",
                 )
             continue
-        if row.interview_id not in (None, interview.id):
+        if row.interview_id != interview.id and (own_only or row.interview_id is not None):
             continue
         add(
             row.created_at,
@@ -290,7 +320,7 @@ def interview_entries(
             actor=data.person(row.actor_id),
         )
     for given in data.hiring_inputs:
-        if given.interview_id not in (None, interview.id):
+        if given.interview_id != interview.id and (own_only or given.interview_id is not None):
             continue
         add(
             given.created_at,
@@ -410,14 +440,7 @@ async def application_entries(
         *(row.approved_by for row in released if row.approved_by),
         *(row.withdrawn_by for row in released if row.withdrawn_by),
     }
-    people = (
-        {
-            user.id: user.name
-            for user in await session.scalars(select(User).where(User.id.in_(user_ids)))
-        }
-        if user_ids
-        else {}
-    )
+    people = await user_names(session, user_ids)
 
     def add(
         at: datetime | None,
@@ -539,14 +562,14 @@ async def candidate_entries(
     session: AsyncSession,
     candidate_id: UUID,
     application_ids: Sequence[UUID],
-    interviews: Sequence[Interview],
+    interviews: Sequence[InterviewData],
     sources: Collection[str],
     *,
     min_severity: str = "INFO",
 ) -> list[Entry]:
-    """Every entry for the candidate within `sources`, oldest first."""
+    """Every entry for the candidate within `sources`, oldest first. The interviews are already
+    loaded (Candidate 360 holds them), so nothing is read twice."""
     entries = await application_entries(session, candidate_id, application_ids, sources)
-    for interview in interviews:
-        data = await load_interview_data(session, interview, with_transcript=False)
-        entries += interview_entries(data, sources, min_severity=min_severity)
+    for data in interviews:
+        entries += interview_entries(data, sources, min_severity=min_severity, own_only=True)
     return sorted(entries, key=lambda entry: entry.at)

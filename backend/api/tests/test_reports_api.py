@@ -149,7 +149,11 @@ async def test_the_proctoring_report_has_fourteen_sections_and_follows_the_permi
             {"o": org, "i": scene.interview_id, "u": reviewer},
         )
     other = await signed_in(org, reviewer)
-    assert (await other.get(interview_url(scene, "/reports/interview"))).status_code == 200
+    shown = await other.get(interview_url(scene, "/reports/interview"))
+    assert shown.status_code == 200
+    # The interview report they may read holds no integrity signals, notes or decisions.
+    for private in ("Integrity signals", "Phone seen in the camera", "Note added"):
+        assert private not in str(shown.json()), private
     denied = await other.get(interview_url(scene, "/reports/proctoring"))
     assert denied.status_code == 403
     # Someone from another organisation finds nothing.

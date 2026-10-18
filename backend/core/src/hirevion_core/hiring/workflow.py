@@ -59,6 +59,8 @@ REASON_MAX = 1000
 FINISHED = ("completed", "evaluating", "evaluated")
 LIVE = ("in_progress", "interrupted")
 BEFORE_INTERVIEW = ("under_review", "shortlisted", "interview_invited", "interview_started")
+# What a person decided about an application: the system's facts about the interview don't undo it.
+HELD_BY_PEOPLE = frozenset({"rejected", "on_hold", "additional_review"})
 
 __all__ = [
     "DECISION_STATUSES",
@@ -110,24 +112,34 @@ async def sync_from_stage(
     actor_id: object | None = None,
     reason: str | None = None,
 ) -> None:
-    """Follows a change of the screening stage: called by `record_stage` once the stage is set."""
+    """Follows a change of the screening stage: called by `record_stage` once the stage changes.
+    A person's move names them; the system's own facts about the interview never undo what a
+    person decided (a rejection, a hold, a review request)."""
     target = STAGE_STATUS.get(application.stage)
     if target is None or target == application.hiring_status:
         return
-    if application.hiring_status == "selected":
+    current = application.hiring_status
+    if current == "selected":
+        return
+    if actor_id is None and target in SYSTEM_ONLY and current in HELD_BY_PEOPLE:
         return
     _add_history(session, application, target, actor_id=actor_id, reason=reason)
 
 
 async def sync_interview(session: AsyncSession, interview: Interview) -> None:
     """Follows the interview's lifecycle: running means `interview_started`, an abandoned one
-    goes back to `interview_invited` and a finished one is `interview_completed`."""
+    goes back to `interview_invited` and a finished one is `interview_completed`. An application
+    a person rejected, put on hold or sent to further review stays as they left it."""
     application = await session.get(Application, interview.application_id)
     if application is None or application.hiring_status == "selected":
         return
     current = application.hiring_status
     target: str | None = None
-    if interview.status in LIVE and current != "interview_started":
+    if (
+        interview.status in LIVE
+        and current != "interview_started"
+        and current not in HELD_BY_PEOPLE
+    ):
         target = "interview_started"
     elif interview.status == "abandoned" and current == "interview_started":
         target = "interview_invited"
@@ -155,7 +167,8 @@ def allowed_targets(
     """What a person may move an application at `current` to: the pipeline's menu."""
     if not can_manage:
         return []
-    if current == "selected" and not can_decide:
+    # Moving out of a decision is reopening it, which only someone who may decide can do.
+    if (current == "selected" or (current == "rejected" and has_interview)) and not can_decide:
         return []
     targets: list[str] = []
     for status in MANUAL_ORDER:
@@ -189,8 +202,13 @@ async def change_status(
         raise Conflict(
             "system-status", "That status follows the interview itself and can't be chosen"
         )
+    # Locked and re-read: a status another request just changed must not be judged from a stale
+    # copy (the route may have loaded the application already).
     application = await session.scalar(
-        select(Application).where(Application.id == application_id).with_for_update()
+        select(Application)
+        .where(Application.id == application_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
     )
     if application is None:
         raise NotFound("application-not-found", "No such application")

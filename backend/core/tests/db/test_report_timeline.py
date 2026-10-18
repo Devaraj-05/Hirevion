@@ -14,7 +14,13 @@ from hirevion_core.access.actor import Actor
 from hirevion_core.db.session import Database
 from hirevion_core.identity.permissions import permissions_for
 from hirevion_core.models import Application, Interview, ScreeningResult
-from hirevion_core.reports.timeline import SOURCES, candidate_entries
+from hirevion_core.reports.data import load_interview_data
+from hirevion_core.reports.timeline import (
+    SOURCES,
+    allowed_sources,
+    candidate_entries,
+    interview_entries,
+)
 
 pytestmark = pytest.mark.db
 
@@ -65,8 +71,9 @@ async def test_the_timeline_unifies_the_eight_sources_in_order(
             candidate_id=hiring.candidate_id,
             body="Referred by Priya.",
         )
+        data = await load_interview_data(session, interview, with_transcript=False)
         entries = await candidate_entries(
-            session, hiring.candidate_id, [application.id], [interview], SOURCES
+            session, hiring.candidate_id, [application.id], [data], SOURCES
         )
     assert {entry.source for entry in entries} == set(SOURCES)
     moments = [entry.at for entry in entries]
@@ -104,11 +111,12 @@ async def test_a_reader_sees_only_the_sources_they_may(
                 select(Application.id).where(Application.id == interview.application_id)
             )
         ).one()
+        data = await load_interview_data(session, interview, with_transcript=False)
         entries = await candidate_entries(
             session,
             scene.hiring.candidate_id,
             [application_id],
-            [interview],
+            [data],
             {"interview", "evaluation"},
             min_severity="CRITICAL",
         )
@@ -121,12 +129,60 @@ async def test_a_reader_sees_only_the_sources_they_may(
 async def _severities(app_db: Database, org: UUID, scene: Any, interview_id: UUID) -> set[str]:
     async with app_db.tenant(org) as session:
         interview = await session.get_one(Interview, interview_id)
+        data = await load_interview_data(session, interview, with_transcript=False)
         entries = await candidate_entries(
             session,
             scene.hiring.candidate_id,
             [],
-            [interview],
+            [data],
             {"proctoring"},
             min_severity="CRITICAL",
         )
     return {entry.severity for entry in entries if entry.severity}
+
+
+async def test_each_event_is_listed_once_and_only_moments_inside_the_interview_have_an_offset(
+    app_db: Database,
+    make_organization: MakeOrganization,
+    make_reviewed_interview: Any,
+) -> None:
+    org = await make_organization("Acme")
+    scene, _, _ = await make_reviewed_interview(org)
+    async with app_db.tenant(org) as session:
+        interview = await session.get_one(Interview, scene.interview_id)
+        data = await load_interview_data(session, interview, with_transcript=False)
+        entries = await candidate_entries(
+            session, scene.hiring.candidate_id, [interview.application_id], [data], SOURCES
+        )
+    # The Hiring Manager's input belongs to the application, so the candidate's timeline has it
+    # once, however many interviews there are.
+    assert len([entry for entry in entries if entry.kind == "hiring_input"]) == 1
+    # A note says which moment of the interview it is about; what was written afterwards (the
+    # evaluation, a changed score) is not inside the interview.
+    note = next(entry for entry in entries if entry.kind == "note")
+    assert note.offset_ms == 62_000
+    for kind in ("evaluated", "score_changed", "proctor_review"):
+        assert next(entry for entry in entries if entry.kind == kind).offset_ms is None, kind
+    assert next(entry for entry in entries if entry.kind == "phone_detected").offset_ms == 150_000
+
+
+async def test_a_reader_without_proctoring_or_the_files_people_side_sees_neither(
+    app_db: Database,
+    make_organization: MakeOrganization,
+    make_reviewed_interview: Any,
+) -> None:
+    org = await make_organization("Acme")
+    scene, _, _ = await make_reviewed_interview(org)
+    interviewer = allowed_sources(permissions_for(["interviewer"]))
+    assert "proctoring" not in interviewer and "recruiter" not in interviewer
+    assert "transcript" in interviewer and "evaluation" in interviewer
+    async with app_db.tenant(org) as session:
+        interview = await session.get_one(Interview, scene.interview_id)
+        data = await load_interview_data(session, interview, with_transcript=False)
+        entries = interview_entries(data, interviewer)
+        # A review of a proctoring event shows what the event was: it follows proctoring.
+        only_recruiter = interview_entries(data, {"recruiter"})
+        no_proctoring = interview_entries(data, {"recruiter", "interview"})
+    assert {entry.source for entry in entries} <= interviewer
+    assert not [entry for entry in no_proctoring if entry.kind == "proctor_review"]
+    assert [entry for entry in only_recruiter if entry.kind == "note"]

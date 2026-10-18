@@ -17,7 +17,7 @@ from hirevion_core.reports.labels import (
     RECOMMENDATION_LABELS,
     STATUS_LABELS,
 )
-from hirevion_core.reports.timeline import SOURCES, candidate_entries
+from hirevion_core.reports.timeline import candidate_entries
 
 SECTION_KEYS = (
     "profile",
@@ -47,7 +47,7 @@ def _profile(c360: Candidate360) -> Section:
                 ("Phone", candidate.phone),
                 ("Location", candidate.location),
                 ("Headline", candidate.headline),
-                ("Experience", f"{experience} years" if experience else None),
+                ("Experience", f"{experience} years" if experience is not None else None),
             ]
         )
     ]
@@ -64,7 +64,7 @@ def _applications(c360: Candidate360) -> Section:
                 f"{job.title}",
                 b.label(application.stage),
                 HIRING_LABELS[application.hiring_status],
-                str(application.rank) if application.rank else None,
+                str(application.rank) if application.rank is not None else None,
                 b.day(application.created_at),
             ]
         )
@@ -149,7 +149,11 @@ def _technical_skills(c360: Candidate360) -> Section:
     rows = []
     for name in sorted(names, key=str.casefold):
         skill = resume.get(name.casefold())
-        years = f"{float(skill.years):g} years" if skill is not None and skill.years else None
+        years = (
+            f"{float(skill.years):g} years"
+            if skill is not None and skill.years is not None
+            else None
+        )
         rows.append(
             [
                 name,
@@ -180,6 +184,17 @@ def _coding(c360: Candidate360) -> Section:
 
 
 def _proctoring(c360: Candidate360) -> Section:
+    if "proctoring" not in c360.sources:
+        return b.section(
+            "proctoring",
+            "Proctoring",
+            [
+                b.notice(
+                    "Proctoring results are shown only to people who may see proctoring reports."
+                )
+            ],
+            note="Not shown to this reader.",
+        )
     rows = []
     for data in c360.interviews:
         counts = {"CRITICAL": 0, "WARNING": 0, "INFO": 0}
@@ -274,13 +289,12 @@ def _decision(c360: Candidate360) -> Section:
 
 
 async def _timeline(session: Any, c360: Candidate360) -> Section:
-    interviews = [data.interview for data in c360.interviews]
     entries = await candidate_entries(
         session,
         c360.detail.candidate.id,
         c360.application_ids,
-        interviews,
-        SOURCES,
+        c360.interviews,
+        c360.sources,
         min_severity="WARNING",
     )
     rows = [

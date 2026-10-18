@@ -261,14 +261,19 @@ async def pipeline(
             .limit(per_column)
         )
         found = [(row[0], row[1], row[2]) for row in rows]
-        latest: dict[UUID, tuple[UUID, str]] = {}
+        # The card links to the newest finished interview (what there is to review), else the
+        # newest; a move that needs a finished interview checks the same one `change_status` does.
+        newest: dict[UUID, UUID] = {}
+        finished: dict[UUID, UUID] = {}
         if found:
             for application_id, interview_id, interview_status in await session.execute(
                 select(Interview.application_id, Interview.id, Interview.status)
                 .where(Interview.application_id.in_([a.id for a, *_ in found]))
                 .order_by(Interview.created_at)
             ):
-                latest[application_id] = (interview_id, interview_status)
+                newest[application_id] = interview_id
+                if interview_status in FINISHED:
+                    finished[application_id] = interview_id
         columns.append(
             Column(
                 status=status,
@@ -281,14 +286,11 @@ async def pipeline(
                         job_id=job.id,
                         job_title=job.title,
                         hiring_status=status,
-                        interview_id=latest[application.id][0]
-                        if application.id in latest
-                        else None,
+                        interview_id=finished.get(application.id) or newest.get(application.id),
                         moves=allowed_targets(
                             status,
                             can_decide=can_decide,
-                            has_interview=application.id in latest
-                            and latest[application.id][1] in FINISHED,
+                            has_interview=application.id in finished,
                             can_manage=can_manage,
                         ),
                     )

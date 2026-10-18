@@ -5,6 +5,7 @@ recompute the overall score: each score is its own to change."""
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
@@ -61,9 +62,16 @@ async def latest_evaluation(session: AsyncSession, interview_id: UUID) -> Evalua
 
 
 async def _ai_scores(
-    session: AsyncSession, evaluation: Evaluation
+    session: AsyncSession,
+    evaluation: Evaluation,
+    question_evaluations: Mapping[UUID, QuestionEvaluation] | None,
 ) -> tuple[dict[str, float | None], dict[str, float | None]]:
     skills = {str(item["skill"]): _number(item.get("score")) for item in evaluation.skills}
+    if question_evaluations is not None:
+        return skills, {
+            str(question): _number(row.overall_score)
+            for question, row in question_evaluations.items()
+        }
     rows = await session.execute(
         select(QuestionEvaluation.question_id, QuestionEvaluation.overall_score).where(
             QuestionEvaluation.evaluation_id == evaluation.id
@@ -85,12 +93,19 @@ def _value(ai: float | None, change: ScoreChange | None) -> ScoreValue:
     return ScoreValue(ai, float(change.new_score) if change is not None else ai, change)
 
 
-async def score_view(session: AsyncSession, interview: Interview) -> ScoreView:
-    """The evaluation's scores with the people's changes laid over them."""
-    evaluation = await latest_evaluation(session, interview.id)
+async def score_view(
+    session: AsyncSession,
+    interview: Interview,
+    *,
+    evaluation: Evaluation | None = None,
+    question_evaluations: Mapping[UUID, QuestionEvaluation] | None = None,
+) -> ScoreView:
+    """The evaluation's scores with the people's changes laid over them. A caller that has
+    already read the evaluation (and its questions') passes them in so they are read once."""
+    evaluation = evaluation or await latest_evaluation(session, interview.id)
     if evaluation is None:
         raise Conflict("not-evaluated", "The interview has no evaluation yet")
-    skills, questions = await _ai_scores(session, evaluation)
+    skills, questions = await _ai_scores(session, evaluation, question_evaluations)
     changes = await _changes(session, interview.id)
     latest: dict[tuple[str, str | None], ScoreChange] = {}
     for change in changes:  # newest first: the first seen is the latest
