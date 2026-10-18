@@ -65,7 +65,7 @@ function InterviewRows({ kind }: { kind: "interview" | "proctoring" }) {
                   <Link
                     href={`/reports/${kind}/${interview.id}`}
                     aria-label={t("open", { name: interview.candidate.name })}
-                    className="font-medium hover:underline"
+                    className="inline-flex min-h-6 items-center font-medium hover:underline"
                   >
                     {interview.candidate.name}
                   </Link>
@@ -133,14 +133,17 @@ function CandidateRows() {
                   <Link
                     href={`/reports/candidate/${candidate.id}`}
                     aria-label={t("open", { name: candidate.name })}
-                    className="font-medium hover:underline"
+                    className="inline-flex min-h-6 items-center font-medium hover:underline"
                   >
                     {candidate.name}
                   </Link>
                 </td>
                 <td className="px-3 py-2">{candidate.headline ?? ""}</td>
                 <td className="px-3 py-2">
-                  <Link href={`/candidates/${candidate.id}`} className="underline">
+                  <Link
+                    href={`/candidates/${candidate.id}`}
+                    className="inline-flex min-h-6 items-center underline"
+                  >
                     {t("view360")}
                   </Link>
                 </td>

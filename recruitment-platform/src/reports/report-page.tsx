@@ -96,12 +96,19 @@ export function ReportPage({
           {(["interview", "proctoring", "coding"] as const)
             .filter((other) => other !== kind)
             .map((other) => (
-              <Link key={other} href={`/reports/${other}/${interviewId}`} className="underline">
+              <Link
+                key={other}
+                href={`/reports/${other}/${interviewId}`}
+                className="inline-flex min-h-6 items-center underline"
+              >
                 {t(`page.open.${other}`)}
               </Link>
             ))}
           {canReview ? (
-            <Link href={`/interviews/${interviewId}/review`} className="underline">
+            <Link
+              href={`/interviews/${interviewId}/review`}
+              className="inline-flex min-h-6 items-center underline"
+            >
               {t("page.openReview")}
             </Link>
           ) : null}
@@ -179,7 +186,10 @@ function Exports({ kind, id }: { kind: Shown; id: string }) {
                     size: format.number(Math.max(1, Math.round(item.bytes / 1024))),
                   })}
                 </span>
-                <a href={downloadHref(item.id)} className="underline">
+                <a
+                  href={downloadHref(item.id)}
+                  className="inline-flex min-h-6 items-center underline"
+                >
                   {t("download")}
                 </a>
               </li>

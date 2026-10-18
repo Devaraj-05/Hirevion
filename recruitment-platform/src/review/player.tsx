@@ -105,13 +105,11 @@ export function MediaPlayer({
     if (at >= end) onPlayingChange(false);
   }
 
-  if (playable.length === 0) {
+  if (tracks.length === 0) {
     return (
       <section aria-label={t("title")} className="rounded-lg border border-border p-4">
         <h2 className="mb-2 font-semibold text-base">{t("title")}</h2>
-        <p className="text-muted-foreground text-sm">
-          {tracks.length === 0 ? t("none") : t("notReady")}
-        </p>
+        <p className="text-muted-foreground text-sm">{t("none")}</p>
       </section>
     );
   }
@@ -168,38 +166,42 @@ export function MediaPlayer({
           );
         })}
       </div>
-      <div className="flex items-center gap-3">
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => onPlayingChange(!playing)}
-          aria-label={playing ? t("pause") : t("play")}
-        >
-          {playing ? (
-            <Pause aria-hidden className="size-4" />
-          ) : (
-            <Play aria-hidden className="size-4" />
-          )}
-          {playing ? t("pause") : t("play")}
-        </Button>
-        <label htmlFor={sliderId} className="sr-only">
-          {t("position")}
-        </label>
-        <input
-          id={sliderId}
-          type="range"
-          min={0}
-          max={Math.max(1, end)}
-          step={1000}
-          value={Math.min(offset, Math.max(1, end))}
-          aria-valuetext={t("positionText", { at: clock(offset), end: clock(end) })}
-          onChange={(event) => onSeek(Number(event.target.value))}
-          className="h-2 flex-1 accent-accent"
-        />
-        <output className="whitespace-nowrap text-muted-foreground text-sm tabular-nums">
-          {t("positionText", { at: clock(offset), end: clock(end) })}
-        </output>
-      </div>
+      {playable.length === 0 ? (
+        <p className="text-muted-foreground text-sm">{t("notReady")}</p>
+      ) : (
+        <div className="flex items-center gap-3">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => onPlayingChange(!playing)}
+            aria-label={playing ? t("pause") : t("play")}
+          >
+            {playing ? (
+              <Pause aria-hidden className="size-4" />
+            ) : (
+              <Play aria-hidden className="size-4" />
+            )}
+            {playing ? t("pause") : t("play")}
+          </Button>
+          <label htmlFor={sliderId} className="sr-only">
+            {t("position")}
+          </label>
+          <input
+            id={sliderId}
+            type="range"
+            min={0}
+            max={Math.max(1, end)}
+            step={1000}
+            value={Math.min(offset, Math.max(1, end))}
+            aria-valuetext={t("positionText", { at: clock(offset), end: clock(end) })}
+            onChange={(event) => onSeek(Number(event.target.value))}
+            className="h-2 flex-1 accent-accent"
+          />
+          <output className="whitespace-nowrap text-muted-foreground text-sm tabular-nums">
+            {t("positionText", { at: clock(offset), end: clock(end) })}
+          </output>
+        </div>
+      )}
     </section>
   );
 }

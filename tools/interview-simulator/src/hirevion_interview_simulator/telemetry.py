@@ -79,7 +79,7 @@ async def send_telemetry(
             "seq": number,
             "event": name,
             "source": source,
-            "started_at": (now - timedelta(seconds=(len(SCRIPT) - number + 1) * 3)).isoformat(),
+            "started_at": (now - timedelta(milliseconds=(len(SCRIPT) - number) * 100)).isoformat(),
             **({"duration_ms": duration} if duration is not None else {}),
             "confidence": confidence,
             "details": details,

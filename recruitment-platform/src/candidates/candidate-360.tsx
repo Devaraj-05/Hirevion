@@ -208,7 +208,10 @@ export function CodingTab({ data }: { data: Candidate360 }) {
             <li key={item.interview_id} className="flex flex-wrap items-center gap-x-3">
               <span className="font-medium">{item.reference}</span>
               <span>{t("snapshots", { count: item.code_snapshots })}</span>
-              <Link href={`/reports/coding/${item.interview_id}`} className="underline">
+              <Link
+                href={`/reports/coding/${item.interview_id}`}
+                className="inline-flex min-h-6 items-center underline"
+              >
                 {t("open")}
               </Link>
             </li>
@@ -280,10 +283,16 @@ export function AiInterviewTab({ data }: { data: Candidate360 }) {
             </>
           )}
           <p className="flex gap-4">
-            <Link href={`/interviews/${item.interview_id}/review`} className="underline">
+            <Link
+              href={`/interviews/${item.interview_id}/review`}
+              className="inline-flex min-h-6 items-center underline"
+            >
               {t("review")}
             </Link>
-            <Link href={`/reports/interview/${item.interview_id}`} className="underline">
+            <Link
+              href={`/reports/interview/${item.interview_id}`}
+              className="inline-flex min-h-6 items-center underline"
+            >
               {t("report")}
             </Link>
           </p>
@@ -314,7 +323,10 @@ export function ProctoringTab({ data }: { data: Candidate360 }) {
             <td className="px-3 py-2">{item.proctoring?.info}</td>
             <td className="px-3 py-2">{item.proctoring?.reviewed}</td>
             <td className="px-3 py-2">
-              <Link href={`/reports/proctoring/${item.interview_id}`} className="underline">
+              <Link
+                href={`/reports/proctoring/${item.interview_id}`}
+                className="inline-flex min-h-6 items-center underline"
+              >
                 {t("open")}
               </Link>
             </td>
@@ -390,7 +402,7 @@ export function ReportsTab({ data }: { data: Candidate360 }) {
           <ul className="flex flex-wrap gap-x-4">
             {reportLinks(item).map(([kind, href]) => (
               <li key={kind}>
-                <Link href={href} className="underline">
+                <Link href={href} className="inline-flex min-h-6 items-center underline">
                   {t(kind)}
                 </Link>
               </li>
@@ -410,7 +422,10 @@ export function ReportsTab({ data }: { data: Candidate360 }) {
                       timeStyle: "short",
                     }),
                   })}{" "}
-                  <a href={downloadHref(made.id)} className="underline">
+                  <a
+                    href={downloadHref(made.id)}
+                    className="inline-flex min-h-6 items-center underline"
+                  >
                     {t("download")}
                   </a>
                 </li>

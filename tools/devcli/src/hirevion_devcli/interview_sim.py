@@ -28,13 +28,18 @@ class SimulationRun:
     interview_id: UUID
     interview_url: str
     telemetry: TelemetryReport | None = None
+    candidate_email: str = ""
 
 
-async def run_simulation(name: str, api_url: str, *, telemetry: bool = True) -> SimulationRun:
+async def run_simulation(
+    name: str, api_url: str, *, telemetry: bool = True, password: str | None = None
+) -> SimulationRun:
     """One simulated interview. With `telemetry` (the default) the desktop's proctoring events and
     recording segments are sent too, so the run has data for every part of the reports."""
     candidate = persona(name)
-    seed = await seed_development_interview(text_answers=True, password=secrets.token_urlsafe(18))
+    seed = await seed_development_interview(
+        text_answers=True, password=password or secrets.token_urlsafe(18)
+    )
     candidate.knowledge = dict(seed.knowledge)
     sent: list[TelemetryReport] = []
     async with httpx.AsyncClient(timeout=30) as http:
@@ -61,4 +66,4 @@ async def run_simulation(name: str, api_url: str, *, telemetry: bool = True) -> 
             after_start=after_start if telemetry else None,
         )
     url = f"{load_identity_settings().web_origin.rstrip('/')}/interviews/{seed.interview_id}"
-    return SimulationRun(report, seed.interview_id, url, sent[0] if sent else None)
+    return SimulationRun(report, seed.interview_id, url, sent[0] if sent else None, seed.email)

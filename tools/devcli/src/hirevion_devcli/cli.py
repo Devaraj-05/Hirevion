@@ -377,6 +377,13 @@ def interview_sim_command(
             help="Also send the desktop's proctoring events and recording segments.",
         ),
     ] = True,
+    password: Annotated[
+        str | None,
+        typer.Option(
+            help="The simulated candidate's password, to sign in to the portal as them "
+            "(a throwaway one is made otherwise).",
+        ),
+    ] = None,
 ) -> None:
     """Run one simulated candidate through a text-mode interview on the running API."""
     from .interview_sim import NotSeeded, run_simulation
@@ -386,7 +393,7 @@ def interview_sim_command(
         console.print("Refusing to simulate interviews with HV_ENVIRONMENT=production.")
         raise typer.Exit(code=1)
     try:
-        run = asyncio.run(run_simulation(persona_name, api, telemetry=telemetry))
+        run = asyncio.run(run_simulation(persona_name, api, telemetry=telemetry, password=password))
     except NotSeeded:
         console.print("Run `uv run hv seed-identity` first: the simulator uses its recruiter.")
         raise typer.Exit(code=1) from None
@@ -405,6 +412,7 @@ def interview_sim_command(
         )
     # Unwrapped, for scripts (the end-to-end suite reads it).
     typer.echo(f"interview_id={run.interview_id}")
+    typer.echo(f"candidate_email={run.candidate_email}")
     if not run.report.finished:
         raise typer.Exit(code=1)
 

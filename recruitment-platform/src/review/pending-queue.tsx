@@ -53,7 +53,7 @@ export function PendingQueue() {
                   <Link
                     href={`/interviews/${item.interview_id}/review`}
                     aria-label={t("review", { name: item.candidate_name })}
-                    className="font-medium hover:underline"
+                    className="inline-flex min-h-6 items-center font-medium hover:underline"
                   >
                     {item.candidate_name}
                   </Link>

@@ -30,7 +30,10 @@ export function ReportView({
           <ol className="grid list-decimal gap-1 pl-5 text-sm sm:grid-cols-2">
             {document.sections.map((section) => (
               <li key={section.key}>
-                <a href={`#${base}-${section.key}`} className="underline-offset-2 hover:underline">
+                <a
+                  href={`#${base}-${section.key}`}
+                  className="inline-flex min-h-6 items-center underline-offset-2 hover:underline"
+                >
                   {section.title}
                 </a>
               </li>
