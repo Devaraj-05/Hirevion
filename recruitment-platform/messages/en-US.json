@@ -124,7 +124,12 @@
         "coding": "Coding feedback",
         "nextStep": "Your next step"
       },
-      "notYet": "Nothing has been shared with you yet."
+      "notYet": "Nothing has been shared with you yet.",
+      "notYetHint": "When the organization shares feedback about your interview, it appears here.",
+      "loadFailed": "Your report isn't available right now. Try again in a moment.",
+      "reportTitle": "{job} ({reference})",
+      "released": "Shared on {when}",
+      "download": "Download {reference} as a PDF"
     },
     "requests": {
       "intro": "Ask the organization to reschedule, for help, for adjustments, or to exercise your data rights. We acknowledge each request by email.",
@@ -227,7 +232,13 @@
     "platformHealth": "Platform health",
     "account": "Account",
     "interviewsDetail": "Interview",
-    "candidatesRequests": "Candidate requests"
+    "candidatesRequests": "Candidate requests",
+    "reportsPending": "Pending review",
+    "reportsInterviewDetail": "Interview report",
+    "reportsProctoringDetail": "Proctoring report",
+    "reportsCodingDetail": "Coding report",
+    "reportsCandidateDetail": "Candidate report",
+    "interviewsReview": "Review"
   },
   "roles": {
     "super_admin": "Super admin",
@@ -330,7 +341,9 @@
         "selected": "Selected",
         "rejected": "Rejected",
         "on_hold": "On hold"
-      }
+      },
+      "move": "Move {name}",
+      "moveTo": "Move to…"
     },
     "interviewStatus": {
       "scheduled": "Scheduled",
@@ -381,7 +394,8 @@
       "interview": "Interview",
       "proctoring": "Proctoring",
       "candidate": "Candidate",
-      "analytics": "Analytics"
+      "analytics": "Analytics",
+      "pending": "Pending review"
     }
   },
   "placeholder": {
@@ -768,6 +782,7 @@
     "interviews": "Interviews",
     "questions": "Question library",
     "reports": "Reports",
+    "hiring": "Hiring decisions",
     "notifications": "Notifications",
     "account": "Own account",
     "admin": "Administration",
@@ -996,6 +1011,12 @@
         "saved": "Interview briefing saved",
         "loadFailed": "The interview briefing didn't load. Try again in a moment.",
         "retry": "Try again"
+      },
+      "candidateReport": {
+        "title": "What candidates may see of their report",
+        "hint": "Choose which of the five items a recruiter can release to a candidate. A recruiter still approves every release, and internal reports always stay confidential.",
+        "save": "Save",
+        "saved": "Candidate report settings saved."
       }
     },
     "departments": {
@@ -1158,7 +1179,17 @@
       "tabs": {
         "profile": "Profile",
         "resumes": "Resumes",
-        "applications": "Applications"
+        "applications": "Applications",
+        "screening": "Screening",
+        "history": "Interview history",
+        "skills": "Technical skills",
+        "coding": "Coding",
+        "ai": "AI interview",
+        "proctoring": "Proctoring",
+        "recordings": "Recordings",
+        "reports": "Reports",
+        "notes": "Recruiter notes",
+        "timeline": "Activity timeline"
       },
       "warnings": "Things to check"
     },
@@ -1196,7 +1227,8 @@
       "job": "Job",
       "stage": "Stage",
       "applied": "Applied",
-      "empty": "No applications."
+      "empty": "No applications.",
+      "hiringStatus": "Hiring status"
     },
     "stages": {
       "uploaded": "Uploaded",
@@ -1463,7 +1495,11 @@
         "unavailable": "Unavailable",
         "ended": "Interview over"
       },
-      "device": { "up": "On", "down": "Off", "unknown": "Unknown" },
+      "device": {
+        "up": "On",
+        "down": "Off",
+        "unknown": "Unknown"
+      },
       "voice": {
         "idle": "Waiting",
         "listening": "Listening",
@@ -1480,14 +1516,21 @@
         "interrupted": "Interrupted",
         "closed": "Closed"
       },
-      "severity": { "INFO": "Info", "WARNING": "Warning", "CRITICAL": "Critical" },
+      "severity": {
+        "INFO": "Info",
+        "WARNING": "Warning",
+        "CRITICAL": "Critical"
+      },
       "outcome": {
         "pending": "Not reviewed",
         "confirmed": "Confirmed",
         "false_positive": "False positive",
         "not_relevant": "Not relevant"
       },
-      "speaker": { "ai": "AI", "candidate": "Candidate" },
+      "speaker": {
+        "ai": "AI",
+        "candidate": "Candidate"
+      },
       "events": {
         "FACE_ABSENT": "Face not visible",
         "MULTIPLE_FACES": "More than one face",
@@ -1762,7 +1805,8 @@
       "emailAfterName": " · {email}",
       "windowValue": "{start} – {end} ({zone})",
       "emailLine": "{kind} · {to} · {when}",
-      "eventReason": "— {reason}"
+      "eventReason": "— {reason}",
+      "openReview": "Open the review workspace"
     },
     "assign": {
       "title": "{count, plural, one {Create an interview} other {Create # interviews}}",
@@ -1868,7 +1912,8 @@
           "moderate": "Moderate agreement",
           "weak": "Weak agreement"
         }
-      }
+      },
+      "jumpTo": "Jump to {time}"
     },
     "session": {
       "coverage": "Skill coverage",
@@ -1978,5 +2023,382 @@
     "save": "Save",
     "saved": "Request updated.",
     "closed": "This request is closed."
+  },
+  "reports": {
+    "page": {
+      "notFound": "This report doesn't exist, or you can't see it.",
+      "notFoundHint": "Check the link, or ask for access.",
+      "loadFailed": "This report couldn't be loaded.",
+      "loadFailedHint": "Try again in a moment.",
+      "back": {
+        "interview": "Interview reports",
+        "proctoring": "Proctoring reports",
+        "coding": "Interview reports",
+        "candidate": "Candidate reports"
+      },
+      "related": "Other reports of this interview",
+      "open": {
+        "interview": "Interview report",
+        "proctoring": "Proctoring report",
+        "coding": "Coding report"
+      },
+      "openReview": "Review workspace"
+    },
+    "view": {
+      "confidential": "Confidential: internal use only",
+      "contents": "Contents",
+      "status": {
+        "pending": "Pending",
+        "empty": "Empty"
+      },
+      "nothingToList": "Nothing to list."
+    },
+    "exports": {
+      "made": "The PDF is ready.",
+      "unavailable": "PDF export isn't available on this server. The web view still works.",
+      "exporting": "Preparing the PDF…",
+      "export": "Export as PDF",
+      "title": "PDFs of this report",
+      "none": "No PDF has been made of this report yet.",
+      "line": "{when} by {who} ({size} KB)",
+      "someone": "someone",
+      "download": "Download",
+      "audited": "Each export and each download is recorded in the audit log."
+    },
+    "list": {
+      "caption": {
+        "interview": "Finished interviews and their reports",
+        "proctoring": "Finished interviews and their proctoring reports",
+        "candidate": "Candidates and their reports"
+      },
+      "candidate": "Candidate",
+      "job": "Job",
+      "interview": "Interview",
+      "status": "Status",
+      "opened": "Window opened",
+      "open": "Open the report for {name}",
+      "noInterviews": "No finished interviews yet",
+      "noInterviewsHint": "Reports appear here once an interview has ended.",
+      "noCandidates": "No candidates yet",
+      "noCandidatesHint": "Upload resumes to a job to create candidates.",
+      "headline": "Headline",
+      "view360": "Candidate 360"
+    },
+    "candidateVisible": {
+      "title": "What the candidate sees",
+      "intro": "The candidate sees only the items the organization allows and you release. A release is frozen as it reads when you approve it.",
+      "status": {
+        "none": "Not started",
+        "draft": "Draft",
+        "released": "Released",
+        "withdrawn": "Withdrawn"
+      },
+      "notReady": "A report can be drafted once the interview has ended.",
+      "loadFailed": "The candidate's report couldn't be loaded.",
+      "releasedBy": "Released by {name} on {when}.",
+      "withdraw": "Withdraw",
+      "withdrawn": "Withdrawn: {reason}. Edit the draft and release it again.",
+      "notAllowed": "Your organization doesn't share this item with candidates.",
+      "text": "Text for {item}",
+      "include": "Include in the release",
+      "save": "Save draft",
+      "approve": "Approve and release",
+      "readOnly": "Only a recruiter can edit and release this report.",
+      "confirmTitle": "Release this report to the candidate?",
+      "confirmHint": "The candidate will see the items you included on their portal. You can withdraw it later.",
+      "confirm": "Release",
+      "close": "Close",
+      "saved": "Draft saved.",
+      "released": "Report released to the candidate.",
+      "withdrawnToast": "Report withdrawn.",
+      "withdrawTitle": "Withdraw this report",
+      "withdrawHint": "The candidate will no longer see it.",
+      "reason": "Why is it being withdrawn?",
+      "someone": "a recruiter",
+      "items": {
+        "completion": "Interview completion",
+        "general_feedback": "General feedback",
+        "technical_feedback": "Technical feedback",
+        "coding_feedback": "Coding feedback",
+        "next_step": "Next-step status"
+      }
+    }
+  },
+  "hiring": {
+    "title": "Hiring status",
+    "loadFailed": "The hiring status couldn't be loaded.",
+    "change": "Change status",
+    "status": "Status:",
+    "statuses": {
+      "under_review": "Under review",
+      "shortlisted": "Shortlisted",
+      "interview_invited": "Interview invited",
+      "interview_started": "Interview started",
+      "interview_completed": "Interview completed",
+      "additional_review": "Additional review",
+      "selected": "Selected",
+      "rejected": "Rejected",
+      "on_hold": "On hold"
+    },
+    "decided": "{decision} by {name} on {when}. {reason}",
+    "someone": "someone",
+    "system": "the system",
+    "inputs": "Hiring manager input",
+    "noInputs": "No hiring manager has given input yet.",
+    "inputLine": "{name}: {recommendation}",
+    "recommendations": {
+      "strong_hire": "Strong yes",
+      "hire": "Yes",
+      "hold": "Undecided",
+      "no_hire": "No",
+      "strong_no_hire": "Strong no"
+    },
+    "rating": "{name} {value}/5",
+    "ratings": {
+      "technical": "Technical",
+      "communication": "Communication",
+      "role_fit": "Role fit"
+    },
+    "history": "History ({count})",
+    "historyLine": "{when}: {from} to {to} by {who}. {reason}",
+    "giveInput": "Give your recommendation",
+    "recommendation": "Recommendation",
+    "unrated": "Not rated",
+    "rationale": "Your reasons",
+    "saveInput": "Save recommendation",
+    "inputSaved": "Recommendation saved.",
+    "moveTitle": "Change the hiring status",
+    "moveHint": "Every change is recorded with who made it and why.",
+    "moveTo": "Move to",
+    "reason": "Why?",
+    "reasonOptional": "Why? (optional)",
+    "decisionWarning": "This is the final decision. Only someone authorised to decide can make or reverse it, and the AI never does.",
+    "close": "Close",
+    "decide": "Make the decision",
+    "move": "Move",
+    "moved": "Moved to {status}.",
+    "notAllowed": "You aren't authorised to make or reverse a final decision."
+  },
+  "review": {
+    "back": "Back to the interview",
+    "pageTitle": "Review: {name} ({reference})",
+    "notFound": "This interview doesn't exist, or you can't see it.",
+    "notFoundHint": "Check the link, or ask for access.",
+    "loadFailed": "The review workspace couldn't be loaded.",
+    "loadFailedHint": "Try again in a moment.",
+    "openReport": "Interview report",
+    "openProctoring": "Proctoring report",
+    "mediaFailed": "The recordings couldn't be loaded.",
+    "player": {
+      "title": "Recordings",
+      "none": "This interview has no recordings.",
+      "notReady": "The recordings are still being prepared. Try again in a few minutes.",
+      "nothingHere": "Nothing recorded here",
+      "stalled": "This recording stopped arriving.",
+      "preparing": "Not ready yet ({status}).",
+      "play": "Play",
+      "pause": "Pause",
+      "position": "Position in the interview",
+      "positionText": "{at} of {end}"
+    },
+    "transcript": {
+      "title": "Transcript",
+      "empty": "There is no transcript.",
+      "jump": "Jump to {time}, {speaker}"
+    },
+    "events": {
+      "title": "Proctoring events",
+      "signals": "These are signals for a reviewer, not proof. A dismissed event stays in the report.",
+      "empty": "No proctoring events were recorded.",
+      "jump": "Jump to {name} at {time}",
+      "evidence": "{count, plural, one {# piece of evidence} other {# pieces of evidence}}",
+      "review": "Review",
+      "more": "Only the first hundred events are shown; the proctoring report has them all.",
+      "outcome": "What do you make of it?",
+      "reason": "Why?",
+      "save": "Save review",
+      "saved": "Review saved."
+    },
+    "notes": {
+      "title": "Notes",
+      "label": "Add a note",
+      "pin": "Note the moment ({time})",
+      "add": "Add note",
+      "added": "Note added.",
+      "by": "{name}, {when}",
+      "at": "at {time}",
+      "none": "No notes yet."
+    },
+    "screening": {
+      "title": "Screening result",
+      "score": "Match score: {score} of 100",
+      "strengths": "Strengths",
+      "concerns": "Concerns",
+      "missing": "Missing",
+      "none": "This application hasn't been screened."
+    },
+    "code": {
+      "title": "Code and test results"
+    },
+    "scores": {
+      "title": "Scores",
+      "notEvaluated": "The evaluation hasn't finished, so there are no scores yet.",
+      "loadFailed": "The scores couldn't be loaded.",
+      "overall": "Overall",
+      "communication": "Communication",
+      "change": "Change a score",
+      "caption": "The AI's scores and the scores now in force",
+      "what": "What",
+      "ai": "AI",
+      "now": "Now",
+      "why": "Changed by",
+      "changedBy": "{name}: {reason}",
+      "history": "{count, plural, one {# change} other {# changes}}",
+      "historyLine": "{when}: {name} changed {what} from {from} to {to}. {reason}",
+      "note": "The AI's own scores stay on record. Changing a skill doesn't recompute the overall score.",
+      "changeTitle": "Change a score",
+      "changeHint": "Say why. The change is recorded with your name.",
+      "close": "Close",
+      "newScore": "New score (0 to 10)",
+      "reason": "Why?",
+      "save": "Save change",
+      "saved": "Score changed."
+    },
+    "queue": {
+      "loadFailed": "The queue couldn't be loaded.",
+      "empty": "Nothing is waiting for review",
+      "emptyHint": "Interviews appear here once they have ended and no one has decided yet.",
+      "count": "{count, plural, one {# interview waits} other {# interviews wait}} for a decision.",
+      "caption": "Interviews waiting for a decision, longest waiting first",
+      "candidate": "Candidate",
+      "job": "Job",
+      "finished": "Finished",
+      "score": "Overall score",
+      "attention": "Needs a look",
+      "review": "Review {name}",
+      "notEvaluated": "Not evaluated",
+      "nothing": "None",
+      "critical": "{count, plural, one {# critical event} other {# critical events}} not reviewed"
+    },
+    "export": {
+      "title": "Export reports",
+      "hint": "Each PDF downloads as it is made. Exports and downloads are recorded in the audit log.",
+      "made": "The PDF is ready.",
+      "unavailable": "PDF export isn't available on this server.",
+      "kinds": {
+        "interview": "Interview report",
+        "proctoring": "Proctoring report",
+        "coding": "Coding report"
+      }
+    }
+  },
+  "candidate360": {
+    "adjusted": "{score} (AI: {ai})",
+    "screening": {
+      "none": "This candidate hasn't been screened.",
+      "score": "Match score: {score} of 100",
+      "rank": "rank {rank}",
+      "when": "screened {when}",
+      "strengths": "Strengths",
+      "concerns": "Concerns",
+      "missing": "Missing",
+      "knockouts": "Knockouts"
+    },
+    "history": {
+      "none": "No interviews yet.",
+      "caption": "The candidate's interviews",
+      "interview": "Interview",
+      "job": "Job",
+      "status": "Status",
+      "hiring": "Hiring status",
+      "date": "Date",
+      "overall": "Overall",
+      "flags": "Flags"
+    },
+    "skills": {
+      "none": "No skills to show.",
+      "caption": "Skills on the resume and skills shown in interviews",
+      "skill": "Skill",
+      "resume": "Resume",
+      "interviews": "Interviews",
+      "onResume": "On the resume",
+      "onResumeYears": "On the resume ({years} years)"
+    },
+    "coding": {
+      "pending": "Code runs, test results and coding grades arrive with the coding service (SP-16). Until then this shows what interviews recorded.",
+      "none": "No interviews yet.",
+      "snapshots": "{count, plural, one {# code snapshot saved} other {# code snapshots saved}}",
+      "open": "Coding report"
+    },
+    "ai": {
+      "none": "No interviews yet.",
+      "notEvaluated": "Not evaluated yet.",
+      "overall": "Overall",
+      "communication": "Communication",
+      "strengths": "Strengths",
+      "gaps": "Knowledge gaps",
+      "review": "Review workspace",
+      "report": "Interview report",
+      "heading": "{reference} · {job}"
+    },
+    "proctoring": {
+      "none": "No proctored interviews yet.",
+      "signals": "These are signals for a reviewer, not a verdict.",
+      "caption": "Proctoring events by interview",
+      "interview": "Interview",
+      "critical": "Critical",
+      "warnings": "Warnings",
+      "info": "Information",
+      "reviewed": "Reviewed",
+      "open": "Proctoring report"
+    },
+    "recordings": {
+      "none": "No interviews yet.",
+      "audited": "Playing a recording is recorded in the audit log.",
+      "play": "Open in the review workspace",
+      "noTracks": "No recordings.",
+      "track": "{label}: {status}, {length}"
+    },
+    "reports": {
+      "candidate": "Candidate report",
+      "interview": "Interview report",
+      "proctoring": "Proctoring report",
+      "coding": "Coding report",
+      "candidate_visible": "Candidate-visible report",
+      "status": {
+        "none": "not started",
+        "draft": "draft",
+        "released": "released",
+        "withdrawn": "withdrawn"
+      },
+      "candidateReport": "Candidate-visible report: {status}",
+      "pdf": "{kind}, PDF made {when}",
+      "download": "Download"
+    },
+    "notes": {
+      "label": "Add a note",
+      "add": "Add note",
+      "added": "Note added.",
+      "none": "No notes yet.",
+      "by": "{name}, {when}"
+    },
+    "timeline": {
+      "title": "Activity timeline",
+      "filterBy": "Show",
+      "none": "Nothing has happened yet.",
+      "older": "Show older",
+      "jump": "{title}: open the review at {time}",
+      "sources": {
+        "screening": "Screening",
+        "interview": "Interview",
+        "transcript": "Transcript",
+        "coding": "Coding",
+        "proctoring": "Proctoring",
+        "recording": "Recording",
+        "evaluation": "Evaluation",
+        "recruiter": "Recruiter actions"
+      }
+    },
+    "noScore": "—"
   }
 }

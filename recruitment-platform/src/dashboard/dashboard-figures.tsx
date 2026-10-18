@@ -46,6 +46,7 @@ export function DashboardFigures({ live }: { live: boolean }) {
         interviewsScheduled: figures.data.interviews_scheduled,
         liveInterviews: figures.data.live_interviews,
         completedInterviews: figures.data.completed_interviews,
+        pendingReviews: figures.data.pending_reviews,
       }
     : {};
   return <KpiGrid values={values} />;

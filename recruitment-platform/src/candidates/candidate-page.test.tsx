@@ -64,6 +64,7 @@ const CANDIDATE: api.Candidate = {
       job_reference: "JOB-0001",
       job_title: "Backend Engineer",
       stage: "parsed",
+      hiring_status: "under_review",
       created_at: "2026-10-03T00:00:00Z",
     },
   ],

@@ -59,4 +59,8 @@ export interface PipelineCard {
   id: string;
   name: string;
   job: string;
+  /** Where the card's name leads (the candidate's file). */
+  href?: string;
+  /** The statuses this reader may move the card to; none means it can't be moved. */
+  moves?: readonly PipelineStatus[];
 }

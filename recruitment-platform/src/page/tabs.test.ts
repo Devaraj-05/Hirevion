@@ -58,7 +58,10 @@ describe("tabsFor", () => {
   });
 
   it("leaves out tabs the session can't open", () => {
-    expect(keys(tabsFor("/reports", DEV_SESSIONS.interviewer, none))).toEqual(["interview"]);
+    expect(keys(tabsFor("/reports", DEV_SESSIONS.interviewer, none))).toEqual([
+      "pending",
+      "interview",
+    ]);
     expect(keys(tabsFor("/interviews", DEV_SESSIONS.interviewer, none))).not.toContain("templates");
   });
 });

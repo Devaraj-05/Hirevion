@@ -11,12 +11,26 @@ import {
   TabsList,
   TabsTrigger,
 } from "@hirevion/ui";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, SearchX } from "lucide-react";
 import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { type Candidate, downloadHref, getCandidate } from "./api";
+import {
+  AiInterviewTab,
+  ApplicationStatusAction,
+  CodingTab,
+  InterviewHistoryTab,
+  NotesTab,
+  ProctoringTab,
+  RecordingsTab,
+  ReportsTab,
+  ScreeningTab,
+  SkillsTab,
+  TimelineTab,
+  useCandidate360,
+} from "./candidate-360";
 import { FlagWarnings } from "./flags";
 import { keys } from "./queries";
 
@@ -58,12 +72,14 @@ interface Profile {
 
 const SAFE_LINK = /^https?:\/\//i;
 
-/** One candidate (PRD §19–20): the Profile, Resume and Applications tabs of Candidate 360;
- * SP-17 adds the rest. */
-export function CandidatePage({ id }: { id: string }) {
+/** One candidate (PRD §19–20): Candidate 360's thirteen tabs. Profile, Resume and Applications
+ * come from the candidate; the others from `GET /candidates/{id}/360`, and a tab the reader's
+ * permissions don't cover isn't shown. `canManage` adds the status action to the applications. */
+export function CandidatePage({ id, canManage = false }: { id: string; canManage?: boolean }) {
   const t = useTranslations("candidates");
   const titles = useTranslations("routes");
   const candidate = useQuery({ queryKey: keys.candidate(id), queryFn: () => getCandidate(id) });
+  const overview = useCandidate360(id);
   const placeholderTitle = <h1 className="sr-only">{titles("candidatesDetail")}</h1>;
 
   if (candidate.isPending) {
@@ -93,6 +109,7 @@ export function CandidatePage({ id }: { id: string }) {
   }
 
   const current = candidate.data;
+  const access = overview.data?.access;
   return (
     <div className="flex flex-col gap-4">
       <Link
@@ -110,10 +127,36 @@ export function CandidatePage({ id }: { id: string }) {
       </div>
       <FlagWarnings flags={current.flags} label={t("page.warnings")} />
       <Tabs defaultValue="profile">
-        <TabsList label={current.name}>
+        <TabsList label={current.name} className="flex-wrap">
           <TabsTrigger value="profile">{t("page.tabs.profile")}</TabsTrigger>
           <TabsTrigger value="resumes">{t("page.tabs.resumes")}</TabsTrigger>
           <TabsTrigger value="applications">{t("page.tabs.applications")}</TabsTrigger>
+          {overview.data ? (
+            <>
+              <TabsTrigger value="screening">{t("page.tabs.screening")}</TabsTrigger>
+              {access?.interviews ? (
+                <TabsTrigger value="history">{t("page.tabs.history")}</TabsTrigger>
+              ) : null}
+              <TabsTrigger value="skills">{t("page.tabs.skills")}</TabsTrigger>
+              {access?.interviews ? (
+                <>
+                  <TabsTrigger value="coding">{t("page.tabs.coding")}</TabsTrigger>
+                  <TabsTrigger value="ai">{t("page.tabs.ai")}</TabsTrigger>
+                </>
+              ) : null}
+              {access?.proctoring ? (
+                <TabsTrigger value="proctoring">{t("page.tabs.proctoring")}</TabsTrigger>
+              ) : null}
+              {access?.recordings ? (
+                <TabsTrigger value="recordings">{t("page.tabs.recordings")}</TabsTrigger>
+              ) : null}
+              {access?.reports || access?.interviews ? (
+                <TabsTrigger value="reports">{t("page.tabs.reports")}</TabsTrigger>
+              ) : null}
+              <TabsTrigger value="notes">{t("page.tabs.notes")}</TabsTrigger>
+              <TabsTrigger value="timeline">{t("page.tabs.timeline")}</TabsTrigger>
+            </>
+          ) : null}
         </TabsList>
         <TabsContent value="profile">
           <ProfileView candidate={current} />
@@ -122,8 +165,42 @@ export function CandidatePage({ id }: { id: string }) {
           <Documents candidate={current} />
         </TabsContent>
         <TabsContent value="applications">
-          <Applications candidate={current} />
+          <Applications candidate={current} canManage={canManage} />
         </TabsContent>
+        {overview.data ? (
+          <>
+            <TabsContent value="screening">
+              <ScreeningTab data={overview.data} />
+            </TabsContent>
+            <TabsContent value="history">
+              <InterviewHistoryTab data={overview.data} />
+            </TabsContent>
+            <TabsContent value="skills">
+              <SkillsTab data={overview.data} />
+            </TabsContent>
+            <TabsContent value="coding">
+              <CodingTab data={overview.data} />
+            </TabsContent>
+            <TabsContent value="ai">
+              <AiInterviewTab data={overview.data} />
+            </TabsContent>
+            <TabsContent value="proctoring">
+              <ProctoringTab data={overview.data} />
+            </TabsContent>
+            <TabsContent value="recordings">
+              <RecordingsTab data={overview.data} />
+            </TabsContent>
+            <TabsContent value="reports">
+              <ReportsTab data={overview.data} />
+            </TabsContent>
+            <TabsContent value="notes">
+              <NotesTab data={overview.data} />
+            </TabsContent>
+            <TabsContent value="timeline">
+              <TimelineTab candidateId={id} />
+            </TabsContent>
+          </>
+        ) : null}
       </Tabs>
     </div>
   );
@@ -344,10 +421,11 @@ function Documents({ candidate }: { candidate: Candidate }) {
   );
 }
 
-function Applications({ candidate }: { candidate: Candidate }) {
+function Applications({ candidate, canManage }: { candidate: Candidate; canManage: boolean }) {
   const t = useTranslations("candidates.applications");
   const stages = useTranslations("candidates.stages");
   const format = useFormatter();
+  const queryClient = useQueryClient();
   if (candidate.applications.length === 0) {
     return <p className="text-muted-foreground text-sm">{t("empty")}</p>;
   }
@@ -364,6 +442,9 @@ function Applications({ candidate }: { candidate: Candidate }) {
               {t("stage")}
             </th>
             <th scope="col" className="px-3 py-2 text-left font-medium">
+              {t("hiringStatus")}
+            </th>
+            <th scope="col" className="px-3 py-2 text-left font-medium">
               {t("applied")}
             </th>
           </tr>
@@ -378,6 +459,16 @@ function Applications({ candidate }: { candidate: Candidate }) {
               </td>
               <td className="px-3 py-2">
                 <Badge>{stages(application.stage)}</Badge>
+              </td>
+              <td className="px-3 py-2">
+                <ApplicationStatusAction
+                  applicationId={application.id}
+                  status={application.hiring_status}
+                  canManage={canManage}
+                  onChanged={() => {
+                    void queryClient.invalidateQueries({ queryKey: keys.candidates });
+                  }}
+                />
               </td>
               <td className="px-3 py-2">
                 {format.dateTime(new Date(application.created_at), { dateStyle: "medium" })}

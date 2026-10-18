@@ -16,6 +16,7 @@ export const PORTAL_SESSION_COOKIE = "__Host-hv_candidate_session";
 export type PortalSession = components["schemas"]["PortalSessionResponse"];
 export type PortalInterviews = components["schemas"]["PortalInterviewList"];
 export type PortalRequest = components["schemas"]["PortalRequestItem"];
+export type PortalReports = components["schemas"]["PortalReportList"];
 export type Notices = components["schemas"]["NoticesResponse"];
 export type Downloads = components["schemas"]["DownloadsResponse"];
 
@@ -66,6 +67,11 @@ export async function requirePortalSession(): Promise<PortalSession> {
 
 export async function getPortalInterviews(): Promise<PortalInterviews | null> {
   return portalGet<PortalInterviews>("/portal/interviews", await sessionCookie());
+}
+
+/** The reports a recruiter released to this candidate (PRD §99), and nothing else. */
+export async function getPortalReports(): Promise<PortalReports | null> {
+  return portalGet<PortalReports>("/portal/report", await sessionCookie());
 }
 
 export async function getPortalRequests(): Promise<PortalRequest[] | null> {

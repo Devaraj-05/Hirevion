@@ -17,6 +17,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useId, useState } from "react";
 import { useAdminProblem } from "@/admin/problems";
+import { useEvidenceJump } from "@/review/jump-context";
 import {
   type EvaluationBody,
   type EvaluationEvidence,
@@ -47,12 +48,24 @@ const POLL_MS = 5000;
 
 function Quotes({ items }: { items: EvaluationEvidence[] }) {
   const t = useTranslations("interviews.evaluation");
+  const jump = useEvidenceJump();
   if (items.length === 0) return <p className="text-muted-foreground text-xs">{t("noQuote")}</p>;
   return (
     <ul className="grid gap-1 text-xs">
       {items.map((item) => (
         <li key={`${item.seq}-${item.quote}`} className="text-muted-foreground">
-          <span className="tabular-nums">{clock(item.start_ms)}</span>
+          {jump ? (
+            <button
+              type="button"
+              className="min-h-6 min-w-6 tabular-nums underline"
+              aria-label={t("jumpTo", { time: clock(item.start_ms) })}
+              onClick={() => jump(item.start_ms)}
+            >
+              {clock(item.start_ms)}
+            </button>
+          ) : (
+            <span className="tabular-nums">{clock(item.start_ms)}</span>
+          )}
           {` “${item.quote}”`}
         </li>
       ))}

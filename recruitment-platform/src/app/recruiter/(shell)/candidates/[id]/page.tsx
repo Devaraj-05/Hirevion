@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { AdminDevNotice } from "@/admin/dev-notice";
 import { Forbidden } from "@/auth/forbidden";
+import { can } from "@/auth/permissions";
 import { requireRoute } from "@/auth/server";
 import { CandidatePage } from "@/candidates/candidate-page";
 import { routeMetadata } from "@/page/guarded-page";
@@ -22,5 +23,5 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
     );
   }
   const { id } = await params;
-  return <CandidatePage id={id} />;
+  return <CandidatePage id={id} canManage={can(session, "candidates.manage")} />;
 }

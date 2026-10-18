@@ -89,9 +89,11 @@ const TAB_SETS: readonly TabSet[] = [
       "/reports/interview",
       "/reports/proctoring",
       "/reports/candidate",
+      "/reports/pending",
       "/reports/analytics",
     ],
     tabs: [
+      { key: "pending", path: "/reports/pending" },
       { key: "interview", path: "/reports/interview" },
       { key: "proctoring", path: "/reports/proctoring" },
       { key: "candidate", path: "/reports/candidate" },

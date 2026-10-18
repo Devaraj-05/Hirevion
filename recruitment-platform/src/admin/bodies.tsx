@@ -9,6 +9,7 @@ import { ReleasesPanel } from "@/platform/desktop-releases/releases-panel";
 import { OrganizationsPanel } from "@/platform/organizations/organizations-panel";
 import { ScreeningDefaults } from "@/screening/settings-form";
 import { CandidateAccessCard } from "./organization/candidate-access-card";
+import { CandidateReportCard } from "./organization/candidate-report-card";
 import { InterviewBriefingCard } from "./organization/interview-briefing-card";
 import { OrganizationForm } from "./organization/organization-form";
 import { RolesPanel } from "./roles/roles-panel";
@@ -50,6 +51,7 @@ export async function OrganizationBody({ session }: PageBodyProps) {
       <OrganizationForm />
       <CandidateAccessCard />
       <InterviewBriefingCard />
+      <CandidateReportCard />
       <ScreeningDefaults />
       <InterviewDefaultsCard />
     </div>

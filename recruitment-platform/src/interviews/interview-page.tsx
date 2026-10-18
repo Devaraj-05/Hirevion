@@ -144,6 +144,11 @@ export function InterviewPage({
       />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Badge tone={STATUS_TONES[data.status]}>{statuses(data.status)}</Badge>
+        {canReview && EVALUATED.has(data.status) ? (
+          <Button asChild size="sm" variant="secondary">
+            <Link href={`/interviews/${id}/review`}>{t("openReview")}</Link>
+          </Button>
+        ) : null}
         {actions.invite ? (
           <Button size="sm" disabled={invite.isPending} onClick={() => invite.mutate()}>
             {data.status === "scheduled" ? t("sendInvitation") : t("resendInvitation")}
