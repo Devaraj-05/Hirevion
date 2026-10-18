@@ -3,6 +3,7 @@ start, then the persona answers every question until the interview completes."""
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -37,8 +38,15 @@ class SimulationReport:
 
 
 async def simulate(
-    client: DesktopClient, interview_id: str, candidate: Persona, *, max_turns: int = MAX_TURNS
+    client: DesktopClient,
+    interview_id: str,
+    candidate: Persona,
+    *,
+    max_turns: int = MAX_TURNS,
+    after_start: Callable[[DesktopClient, str], Awaitable[None]] | None = None,
 ) -> SimulationReport:
+    """`after_start` runs once the interview is in progress: the desktop's other traffic (the
+    proctoring telemetry and the recording segments) goes there."""
     report = SimulationReport(candidate.name, interview_id)
     briefing = await client.briefing(interview_id)
     if briefing["answer_mode"] != "text":
@@ -47,6 +55,8 @@ async def simulate(
     consent = await client.consent(interview_id, briefing["notice"])
     started = await client.start(interview_id, check["id"], consent["id"])
     state = started["state"]
+    if after_start is not None:
+        await after_start(client, interview_id)
     previous: str | None = None
     for _ in range(max_turns):
         if state["status"] != "in_progress":

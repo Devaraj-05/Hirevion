@@ -370,6 +370,13 @@ def interview_sim_command(
         typer.Option("--persona", help="strong, partial, weak, silent, adversarial or cheating."),
     ] = "strong",
     api: Annotated[str, typer.Option(help="The running API (`hv api`).")] = "http://127.0.0.1:8000",
+    telemetry: Annotated[
+        bool,
+        typer.Option(
+            "--telemetry/--no-telemetry",
+            help="Also send the desktop's proctoring events and recording segments.",
+        ),
+    ] = True,
 ) -> None:
     """Run one simulated candidate through a text-mode interview on the running API."""
     from .interview_sim import NotSeeded, run_simulation
@@ -379,7 +386,7 @@ def interview_sim_command(
         console.print("Refusing to simulate interviews with HV_ENVIRONMENT=production.")
         raise typer.Exit(code=1)
     try:
-        run = asyncio.run(run_simulation(persona_name, api))
+        run = asyncio.run(run_simulation(persona_name, api, telemetry=telemetry))
     except NotSeeded:
         console.print("Run `uv run hv seed-identity` first: the simulator uses its recruiter.")
         raise typer.Exit(code=1) from None
@@ -391,10 +398,46 @@ def interview_sim_command(
         table.add_row(str(index), exchange.question[:70], exchange.answer[:50] or "(silence)")
     console.print(table)
     console.print(f"{run.report.persona}: {run.report.status}. Transcript: {run.interview_url}")
+    if run.telemetry is not None:
+        console.print(
+            f"Sent {run.telemetry.events} proctoring events and "
+            f"{run.telemetry.segments} recording segments."
+        )
     # Unwrapped, for scripts (the end-to-end suite reads it).
     typer.echo(f"interview_id={run.interview_id}")
     if not run.report.finished:
         raise typer.Exit(code=1)
+
+
+@app.command("audit-tail")
+def audit_tail_command(
+    action: Annotated[
+        str | None, typer.Option(help="Only this action, e.g. report.viewed.")
+    ] = None,
+    resource: Annotated[
+        str | None, typer.Option(help="Only entries about this resource id.")
+    ] = None,
+    limit: Annotated[int, typer.Option(min=1, max=500)] = 50,
+    json_output: Annotated[bool, typer.Option("--json", help="Print JSON for scripts.")] = False,
+) -> None:
+    """Show the development organisation's newest audit-log entries (read-only)."""
+    from .audit_tail import as_json, audit_tail
+
+    _require_env(repo_root())
+    rows = asyncio.run(audit_tail(action=action, resource=resource, limit=limit))
+    if json_output:
+        typer.echo(as_json(rows))
+        return
+    table = Table("#", "When", "Action", "Actor", "Resource")
+    for row in rows:
+        table.add_row(
+            str(row.seq),
+            row.occurred_at[:19],
+            row.action,
+            f"{row.actor_type}:{(row.actor_id or '')[:8]}",
+            f"{row.resource_type}:{(row.resource_id or '')[:8]}",
+        )
+    console.print(table)
 
 
 @app.command("eval-resumes")

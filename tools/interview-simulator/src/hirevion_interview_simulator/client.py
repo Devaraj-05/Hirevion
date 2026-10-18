@@ -183,6 +183,56 @@ class DesktopClient:
         }
         return await self.interview("POST", interview_id, "workspace", body)
 
+    async def session_call(
+        self, method: str, interview_id: str, path: str, json: dict[str, Any] | None = None
+    ) -> httpx.Response:
+        """A call outside `/interviews/{id}/...` (proctoring, recordings) with the interview's
+        session token, as the desktop makes them."""
+        token = self.session_tokens.get(interview_id) or await self.session_token(interview_id)
+        return await self.call(method, path, json=json, token=token)
+
+    async def open_proctor_session(self, interview_id: str, app_version: str | None = None) -> Any:
+        body = {"interview_id": interview_id, "app_version": app_version or self.app_version}
+        return await self._ok(
+            await self.session_call("POST", interview_id, "/proctoring/session", body)
+        )
+
+    async def proctor_events(
+        self, interview_id: str, proctor_session_id: str, events: list[dict[str, Any]]
+    ) -> Any:
+        body = {"proctor_session_id": proctor_session_id, "events": events}
+        return await self._ok(
+            await self.session_call("POST", interview_id, "/proctoring/events", body)
+        )
+
+    async def proctor_heartbeat(
+        self, interview_id: str, proctor_session_id: str, **changes: Any
+    ) -> Any:
+        body = {
+            "proctor_session_id": proctor_session_id,
+            "seq_high": 0,
+            "camera": "on",
+            "mic": "on",
+            "screen": "capturing",
+            "third_eye": "not_required",
+            "displays": 1,
+            **changes,
+        }
+        return await self._ok(
+            await self.session_call("POST", interview_id, "/proctoring/heartbeat", body)
+        )
+
+    async def ask_segment_upload(self, interview_id: str, body: dict[str, Any]) -> Any:
+        return await self._ok(
+            await self.session_call("POST", interview_id, "/recordings/segments", body)
+        )
+
+    async def acknowledge_segment(self, interview_id: str, segment_id: str, sha256: str) -> Any:
+        path = f"/recordings/segments/{segment_id}/ack"
+        return await self._ok(
+            await self.session_call("POST", interview_id, path, {"sha256": sha256})
+        )
+
     async def complete(self, interview_id: str, reason: str = "finished") -> Any:
         body = {"reason": reason}
         return await self._ok(await self.interview("POST", interview_id, "complete", body))
