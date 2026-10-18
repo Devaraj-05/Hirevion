@@ -485,6 +485,23 @@ How it works is in [ADR-0032](../architecture/adr/0032-proctoring-engine.md); th
 - **Measuring the latency:** `uv run pytest backend/api/tests/test_proctoring_api.py -k 95th -s` prints the median, p95 and maximum from the desktop's POST to the dashboard's websocket.
 - **Tests on a busy PC:** several test runs at once share the test database and Valkey database 15. Set `HV_TEST_DATABASE=<your own database>` (create it once) and `HV_TEST_VALKEY_DB=<0-14>` to keep a run to yourself.
 
+### Reports, review and Candidate 360 (SP-17)
+
+How it works is in [ADR-0023](../architecture/adr/0023-reports-review-and-hiring-workflow.md).
+
+- **PDFs need Chromium on the API's side.** Run `uv run playwright install chromium` once (the Python package is pinned to the same Playwright version as the web suite, so the browsers installed for end-to-end tests serve both). Without it the web views work and an export answers `503 pdf-unavailable`; the report tests that render a PDF skip with that hint.
+- **Where things are:**
+  - Reports: `/reports/interview/<interview id>`, `/reports/proctoring/<id>`, `/reports/coding/<id>`; the internal candidate report is the Reports tab of Candidate 360; the candidate-visible one is the "What the candidate sees" card of the review workspace.
+  - The review workspace is `/interviews/<id>/review`, the pending-review queue `/reports/pending` (also the Reports page's "Pending review" tab and the dashboard's count).
+  - Candidate 360 is `/candidates/<id>`, thirteen tabs; a tab the reader's role may not see is left out.
+- **What the candidate sees:** an organisation admin picks which of the five items may ever be shown (Administration, Organisation, "Candidate report"; completion and next step are on by default). A recruiter edits the draft, then "Approve and release"; the portal's `/report` shows only that frozen release and a PDF of it. "Withdraw" hides it again. Nothing internal (scores, flags, proctoring, notes, hiring-manager input) can be put in a release.
+- **The hiring status** is on the review workspace and, per application, on Candidate 360 and the pipeline board's card menu. `interview_invited`, `interview_started` and `interview_completed` follow the interview and cannot be chosen. `selected`, and a rejection after an interview, are the final decision: they need `hiring.decide` (organisation admins and recruiters) and a reason. Hiring managers recommend with `hiring.input`; that never moves a status.
+- **Playing recordings:** the workspace asks for five-minute read links to each assembled track and audits every play (`recording.viewed`). Assembly needs `ffmpeg`; without it (a plain Windows dev machine) the tiles say "Not ready yet (assembly-pending)" and the transcript, events, scores and notes still work.
+- **Feed it without the desktop:** `uv run hv interview-sim --persona partial` now also opens a proctor session, sends one scripted event for each event section of the proctoring report, a heartbeat and camera, microphone and screen segments (`--no-telemetry` for the old behaviour). `--password <text>` sets the candidate's portal password, and the run prints `candidate_email=` beside `interview_id=`.
+- **Reading the audit log:** `uv run hv audit-tail [--action report.viewed] [--resource <id>] [--limit 50] [--json]`. Report, recording, score, note, hiring and release actions are listed in ADR-0023; a reviewed proctoring event is recorded against the event, with the interview in its details.
+- **The golden path (Playwright, needs the stack and the real API):** create a database (`CREATE DATABASE hirevion_e2e_<you>`), then with `POSTGRES_DB=hirevion_e2e_<you>`, `HV_AI_PROFILE=mock`, `HV_AI_MOCK_SCRIPTS=recruitment-platform/e2e/auth/ai-scripts.json`, `HV_WEB_ORIGIN=http://app.hirevion.localhost:3100`, `HV_MEDIA_BACKEND=fake` and `HV_HIBP_ENABLED=false` start `uv run hv api --no-reload`, and run `pnpm --filter @hirevion/recruitment-platform exec playwright test e2e/auth/golden-path.spec.ts --workers=1` with `HV_E2E_API=1`. It takes about a minute and a half.
+- **Tests on a busy PC:** the same as for proctoring: your own `HV_TEST_DATABASE` and `HV_TEST_VALKEY_DB`.
+
 ## Desktop app (`ai-interviewer-desktop`)
 
 The candidate app is Tauri 2: a React webview (`src/`) plus Rust (`src-tauri/`), which also

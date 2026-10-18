@@ -23,6 +23,7 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 | C5 SP-14 | Proctoring pipeline, severity rules, evidence and snapshots, server-observed state, live dashboard, event review | #13 / ADR-0032 |
 | A3 SP-07b | Candidate portal: own cookies and CSRF, invitation link, sign-in and resets, interviews with countdowns, download, §83 notices, report placeholder, requests acted on at `/candidates/requests` | #15 / ADR-0022 |
 | B3 SP-08c | Per-user installer (x64), signed updater, crash reports, desktop e2e; open items moved to B4/B5 | #14 / ADR-0019 |
+| A5 SP-17 | Reports, review and Candidate 360: five reports as a web view and a stored PDF, the review workspace (11 actions, synchronised recordings), score changes with reasons, Hiring Manager input, the nine hiring statuses and the human decision, the candidate-visible report with a recruiter's release, 13 Candidate 360 tabs with one timeline, the pending-review queue, pipeline moves; CP3 golden path e2e | pending / ADR-0023 |
 | D3 SP-13 | Third eye: single-use QR pairing, the phone page (permission guidance, placement, 720p/15 fps rear camera, Wake Lock, pause on lock, reconnect), LiveKit-observed status into proctoring, the `start` gate; Egress of the conversation audio and the third-eye video into playback | #17 / ADR-0040 |
 
 ## In progress (unmerged worktree branches)
@@ -32,7 +33,7 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 
 ## Remaining, in priority order (dependency in brackets)
 
-- **P0:** D1 rest: CI gates, code review, dashboard KPIs [none] · A5 SP-17 reports [ready: C4, C5, D2 merged]
+- **P0:** D1 rest: CI gates, code review, dashboard KPIs [none]
 - **P1:** A4 SP-18 notifications/webhooks [A1] · C6 SP-16 coding server [C3] · C7 vision agent [C5, D3] · B4 desktop coding/third-eye/advanced CV [B3, C6, D3]
 - **P2:** D4 SP-19 enterprise identity [SP-02] · D5 SP-22 admin/governance [A5, C5] · A6 SP-21 analytics [A5] · D6 SP-20 ATS/public API [A4, A5]
 - **P3:** D7 SP-23 automated hardening [all] · B5 Windows golden path and chaos drills [B3, B4]

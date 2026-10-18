@@ -151,7 +151,7 @@ A box is ticked in the PR that merges the part. Deliverables are in MASTER §14;
   - Exit (Playwright): invitation email → set password → the interview is listed; a reschedule request reaches the recruiter.
 - [ ] **A4 SP-18 Notifications and webhooks.** Depends on: SP-01, A1 (takes over A1's scheduler loop). See MASTER §14 SP-18.
   - Exit: the reference receiver verifies signatures; retry and dead-letter work; a replayed delivery is refused.
-- [ ] **A5 SP-17 Reports, review and Candidate 360.** Depends on: C4, C5, D2. See MASTER §14 SP-17.
+- [x] **A5 SP-17 Reports, review and Candidate 360.** Depends on: C4, C5, D2. See MASTER §14 SP-17.
   - Exit: the CP3 golden path passes; every report section is populated from a simulator run; views, downloads and score changes are audited.
 - [ ] **A6 SP-21 Analytics and KPIs.** Depends on: A5. See MASTER §14 SP-21.
   - Exit: every metric is defined and tested against seed data; every chart passes axe.
@@ -278,7 +278,7 @@ pnpm --filter @hirevion/ai-interviewer-desktop tauri dev       # the candidate a
 - **D3 (SP-13):** done (ADR-0040): the pairing check at `start`. Left for B4: the desktop's pairing screen, placement guide and third-eye status (contract "Changes", 2026-10-17).
 - **C5 (SP-14):** `Conductor.note_proctor_event` fills §34's proctor summary and the CRITICAL-event reminder; `/ws/proctoring` and `/ws/recruiter`.
 - **C5 (SP-14) and D5 (SP-22):** proctoring presets become editable policies.
-- **A5 (SP-17):** moving cards on the pipeline board; the remaining Candidate 360 tabs.
+- **A5 (SP-17):** done (ADR-0023): pipeline-board moves, all thirteen Candidate 360 tabs, the five reports, the review workspace and the hiring workflow. Left for C6 (SP-16): the coding report's test results and grading (the pages say so); for SP-18: the `report.ready` notification; for SP-22: retention of `report_exports` and an audit-log viewer.
 - **A4 (SP-18):** the notification centre's content; the scheduler.
 - **D4 (SP-19):** MFA, moved from SP-02.
 - **D5 (SP-22):**
