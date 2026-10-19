@@ -28,9 +28,9 @@ import { AssignDialog } from "@/interviews/assign-dialog";
 import { getJobChoices } from "@/jobs/api";
 import {
   type Action,
+  type ApplicationScreening,
   actOnApplications,
   exportRanking,
-  type ApplicationScreening,
   getApplicationScreening,
   getScreeningSummary,
   listScreeningResults,
@@ -44,6 +44,21 @@ const SETTLE_POLLS = 2;
 const PAGE_SIZE = 50;
 const STAGE_ACTIONS = ["shortlist", "hold", "review", "reject"] as const;
 const ASSIGN_ACTIONS = ["assign_recruiter", "assign_hiring_manager"] as const;
+/** The history actions that have words of their own; any other is shown as the API sent it. */
+const HISTORY_ACTIONS = [
+  "screened",
+  "ranked",
+  "shortlist",
+  "reject",
+  "hold",
+  "review",
+  "assign_recruiter",
+  "assign_hiring_manager",
+  "interview_invited",
+  "interview_cancelled",
+  "interview_completed",
+  "screening_failed",
+] as const;
 
 export const keys = {
   summary: (jobId: string) => ["jobs", "detail", jobId, "screening-summary"] as const,
@@ -108,6 +123,7 @@ export function RankingPanel({
   // Screening again changes no candidate's stage when their results are still current, so
   // "nobody is waiting" is true from the first moment: the run is over once it has had time to
   // work through the queue (and nobody waits), and the results are read again on every poll.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new reading of the summary (`updatedAt`) is what triggers the next check
   useEffect(() => {
     if (!running) return;
     void queryClient.invalidateQueries({ queryKey: keys.results(jobId) });
@@ -515,8 +531,8 @@ function History({ entries }: { entries: ApplicationScreening["history"] }) {
         {entries.map((entry) => (
           <li key={`${entry.created_at}-${entry.action}`}>
             {t("evidence.historyEntry", {
-              action: t.has(`evidence.historyActions.${entry.action}`)
-                ? t(`evidence.historyActions.${entry.action}`)
+              action: (HISTORY_ACTIONS as readonly string[]).includes(entry.action)
+                ? t(`evidence.historyActions.${entry.action as (typeof HISTORY_ACTIONS)[number]}`)
                 : entry.action,
               from: stage(entry.from_stage),
               to: stage(entry.to_stage),

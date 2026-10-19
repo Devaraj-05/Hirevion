@@ -101,7 +101,7 @@ export function JobPage({
   }
 
   const current = job.data;
-  const keep = (tab: string) => (opened.has(tab) ? true : undefined);
+  const keep = (tab: string) => (opened.has(tab) ? { forceMount: true as const } : {});
   return (
     <div className="flex flex-col gap-4">
       <Link
@@ -145,7 +145,7 @@ export function JobPage({
       ) : null}
       {archiving ? (
         <Dialog open onOpenChange={(open) => (open ? undefined : setArchiving(false))}>
-          <DialogContent title={t("archiveConfirm.title")} closeLabel={t("archiveConfirm.cancel")}>
+          <DialogContent title={t("archiveConfirm.title")} closeLabel={t("archiveConfirm.close")}>
             <p className="text-sm">{t("archiveConfirm.body")}</p>
             <div className="mt-4 flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setArchiving(false)}>
@@ -181,21 +181,21 @@ export function JobPage({
           <TabsTrigger value="screening">{t("page.tabs.screening")}</TabsTrigger>
           <TabsTrigger value="history">{t("page.tabs.history")}</TabsTrigger>
         </TabsList>
-        <TabsContent value="details" forceMount={keep("details")}>
+        <TabsContent value="details" {...keep("details")}>
           <JobForm key={current.version} job={current} readOnly={!canEdit} />
         </TabsContent>
-        <TabsContent value="description" forceMount={keep("description")}>
+        <TabsContent value="description" {...keep("description")}>
           <DescriptionPanel job={current} canEdit={canEdit} />
         </TabsContent>
         {canViewCandidates ? (
           <>
-            <TabsContent value="resumes" forceMount={keep("resumes")}>
+            <TabsContent value="resumes" {...keep("resumes")}>
               <ResumesPanel jobId={id} canUpload={canManageCandidates} />
             </TabsContent>
-            <TabsContent value="candidates" forceMount={keep("candidates")}>
+            <TabsContent value="candidates" {...keep("candidates")}>
               <ApplicationsPanel jobId={id} />
             </TabsContent>
-            <TabsContent value="ranking" forceMount={keep("ranking")}>
+            <TabsContent value="ranking" {...keep("ranking")}>
               <RankingPanel
                 canCreateInterviews={canManageInterviews}
                 interviewTemplateId={current.interview_template_id}
@@ -206,10 +206,10 @@ export function JobPage({
             </TabsContent>
           </>
         ) : null}
-        <TabsContent value="screening" forceMount={keep("screening")}>
+        <TabsContent value="screening" {...keep("screening")}>
           <JobScreeningSettings jobId={id} canEdit={canEdit} />
         </TabsContent>
-        <TabsContent value="history" forceMount={keep("history")}>
+        <TabsContent value="history" {...keep("history")}>
           <HistoryPanel jobId={id} />
         </TabsContent>
       </Tabs>

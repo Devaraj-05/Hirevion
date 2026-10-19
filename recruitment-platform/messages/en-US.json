@@ -651,7 +651,8 @@
       "title": "Archive this job?",
       "body": "An archived job can't be reopened.",
       "confirm": "Archive",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "close": "Close"
     }
   },
   "auth": {
