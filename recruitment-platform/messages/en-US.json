@@ -435,8 +435,7 @@
       "noMatchHint": "Try another search or status.",
       "search": "Search by title or JOB-0042",
       "new": "New job",
-      "anyDepartment": "All departments",
-      "open": "Open {title}"
+      "anyDepartment": "All departments"
     },
     "statuses": {
       "draft": "Draft",
@@ -1180,7 +1179,6 @@
       "search": "Search by name, email or phone",
       "anyJob": "All jobs",
       "job": "Job",
-      "open": "Open {name}",
       "emptyTitle": "No candidates yet",
       "emptyHint": "Upload resumes on a job's Resumes tab.",
       "noMatchTitle": "No candidates match",
@@ -1316,7 +1314,6 @@
       "experience": "Experience",
       "stage": "Stage",
       "flags": "Flags",
-      "open": "Explain {name}'s ranking",
       "selected": "{count, plural, one {# selected} other {# selected}}",
       "export": "Export",
       "exportCsv": "Download CSV",
@@ -1326,7 +1323,8 @@
       "createInterview": "Create interview",
       "blindNote": "Screened blind: the AI did not see names or personal details.",
       "notBlind": "Names and personal details were shown to the AI for some of these results.",
-      "notBlindBadge": "Names shown"
+      "notBlindBadge": "Names shown",
+      "openHint": "Explain the ranking"
     },
     "actions": {
       "shortlist": "Shortlist",
@@ -1441,7 +1439,6 @@
     },
     "table": {
       "question": "Question",
-      "open": "Open question: {text}",
       "status": "Status",
       "updated": "Updated",
       "search": "Search questions",
@@ -1688,7 +1685,10 @@
         "difficulty": "The difficulty mix must add up to 100 (now {total}).",
         "types": "Choose at least one question type.",
         "coding": "Choose a language and 5 to 90 minutes.",
-        "rubric": "The rubric must add up to 100 (now {total})."
+        "rubric": "The rubric must add up to 100 (now {total}).",
+        "difficultyRange": "Each share is a whole number from 0 to 100.",
+        "rubricRange": "Each weight is a whole number from 0 to 100.",
+        "codingTime": "The coding time can't be longer than the interview."
       }
     },
     "templates": {
@@ -1740,7 +1740,6 @@
       },
       "versionLine": "Version {version} · {date}",
       "versionSummary": "{minutes} minutes · {count} questions · {proctoring} proctoring · Third eye: {thirdEye}",
-      "open": "Open {name}",
       "length": "Length",
       "lengthValue": "{minutes} min · {count} questions",
       "withCoding": "Coding",
@@ -1753,7 +1752,10 @@
       "noMatchTitle": "No templates match",
       "noMatchHint": "Try other words, or show the active templates.",
       "emptyTitle": "No templates yet",
-      "emptyHint": "Create a template to set how interviews run."
+      "emptyHint": "Create a template to set how interviews run.",
+      "questionUnavailable": "This question can't be shown.",
+      "pinNamed": "Pin: {text}",
+      "unpinNamed": "Unpin: {text}"
     },
     "matrix": {
       "title": "Skill matrix",

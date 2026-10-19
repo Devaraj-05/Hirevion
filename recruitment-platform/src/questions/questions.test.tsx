@@ -78,7 +78,7 @@ describe("QuestionLibrary", () => {
     vi.mocked(api.approveQuestion).mockResolvedValue(question({ status: "approved" }));
     renderAdmin(<QuestionLibrary canManage />);
 
-    const open = await screen.findByRole("button", { name: /Open question: How would you/ });
+    const open = await screen.findByRole("button", { name: /How would you profile/ });
     const row = open.closest("tr") as HTMLElement;
     expect(within(row).getByText("Draft")).toBeInTheDocument();
     expect(within(row).getByText("AI draft")).toBeInTheDocument();
@@ -179,7 +179,7 @@ describe("QuestionLibrary", () => {
     );
     vi.mocked(api.updateQuestion).mockResolvedValue(question({ version: 2 }));
     renderAdmin(<QuestionLibrary canManage />);
-    await user.click(await screen.findByRole("button", { name: /Open question/ }));
+    await user.click(await screen.findByRole("button", { name: /How would you profile/ }));
     const sheet = await screen.findByRole("dialog", { name: "Question" });
     await user.type(within(sheet).getByLabelText("Question"), " (updated)");
     // Editing one kind of follow-up replaces that kind; the others keep everything they had.
@@ -206,7 +206,7 @@ describe("QuestionLibrary", () => {
   it("does not approve over edits that are not saved", async () => {
     const user = userEvent.setup();
     renderAdmin(<QuestionLibrary canManage />);
-    await user.click(await screen.findByRole("button", { name: /Open question/ }));
+    await user.click(await screen.findByRole("button", { name: /How would you profile/ }));
     const sheet = await screen.findByRole("dialog", { name: "Question" });
     expect(within(sheet).getByRole("button", { name: "Approve" })).toBeEnabled();
     await user.type(within(sheet).getByLabelText("Question"), " Also, why?");
@@ -220,7 +220,7 @@ describe("QuestionLibrary", () => {
       question({ status: "approved", source: "manual", type: "coding" }),
     );
     renderAdmin(<QuestionLibrary canManage />);
-    await user.click(await screen.findByRole("button", { name: /Open question/ }));
+    await user.click(await screen.findByRole("button", { name: /How would you profile/ }));
     const sheet = await screen.findByRole("dialog", { name: "Question" });
     for (const language of ["Python"]) {
       await user.click(within(sheet).getByRole("checkbox", { name: language }));
@@ -244,7 +244,7 @@ describe("QuestionLibrary", () => {
     const user = userEvent.setup();
     vi.mocked(api.getQuestion).mockRejectedValue(new Error("offline"));
     renderAdmin(<QuestionLibrary canManage />);
-    await user.click(await screen.findByRole("button", { name: /Open question/ }));
+    await user.click(await screen.findByRole("button", { name: /How would you profile/ }));
     const sheet = await screen.findByRole("dialog", { name: "Question" });
     expect(await within(sheet).findByRole("alert")).toHaveTextContent(/couldn't be loaded/);
   });
@@ -274,7 +274,7 @@ describe("QuestionLibrary", () => {
 
   it("is read-only without the manage permission", async () => {
     renderAdmin(<QuestionLibrary canManage={false} />);
-    await screen.findByRole("button", { name: /Open question/ });
+    await screen.findByRole("button", { name: /How would you profile/ });
     expect(screen.queryByRole("button", { name: "New question" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Generate with AI" })).not.toBeInTheDocument();
   });

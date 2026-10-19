@@ -44,7 +44,7 @@ test("a recruiter screens a job's candidates, reads why, and shortlists one", as
   await page.getByRole("tab", { name: "Ranking" }).click();
   await page.getByRole("button", { name: "Screen candidates" }).click();
   await expect(page.getByText("1 of 1 screened")).toBeVisible({ timeout: 60_000 });
-  const explain = page.getByRole("button", { name: "Explain Meera Iyer's ranking" });
+  const explain = page.getByRole("button", { name: /Meera Iyer.*Explain the ranking/ });
   await expect(explain).toBeVisible({ timeout: 30_000 });
   await noAxeViolations(page);
 

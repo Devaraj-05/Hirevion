@@ -16,7 +16,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, SearchX } from "lucide-react";
 import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
+import { useState } from "react";
 import { useAdminProblem } from "@/admin/problems";
+import { QueryFailed } from "@/data/query-failed";
 import { getSkillMatrix, getTemplate, listTemplateVersions, setTemplateArchived } from "./api";
 import { keys, MatrixTable, TemplateForm } from "./template-form";
 
@@ -28,6 +30,9 @@ export function TemplatePage({ id, canManage }: { id: string; canManage: boolean
   const problems = useAdminProblem();
   const queryClient = useQueryClient();
   const template = useQuery({ queryKey: keys.template(id), queryFn: () => getTemplate(id) });
+  // A tab is mounted when first opened and kept, so settings half-edited survive a look at
+  // another tab.
+  const [opened, setOpened] = useState<ReadonlySet<string>>(new Set(["settings"]));
   const archive = useMutation({
     mutationFn: (archived: boolean) => setTemplateArchived(id, archived),
     onSuccess: (saved) => {
@@ -67,6 +72,7 @@ export function TemplatePage({ id, canManage }: { id: string; canManage: boolean
 
   const current = template.data;
   const archived = current.status === "archived";
+  const keep = (tab: string) => (opened.has(tab) ? { forceMount: true as const } : {});
   return (
     <div className="flex flex-col gap-4">
       <Link
@@ -95,19 +101,22 @@ export function TemplatePage({ id, canManage }: { id: string; canManage: boolean
         ) : null}
       </div>
       {archived ? <p className="text-muted-foreground text-sm">{t("archivedNote")}</p> : null}
-      <Tabs defaultValue="settings">
+      <Tabs
+        defaultValue="settings"
+        onValueChange={(value) => setOpened((previous) => new Set(previous).add(value))}
+      >
         <TabsList label={current.name}>
           <TabsTrigger value="settings">{t("tabs.settings")}</TabsTrigger>
           <TabsTrigger value="matrix">{t("tabs.matrix")}</TabsTrigger>
           <TabsTrigger value="versions">{t("tabs.versions")}</TabsTrigger>
         </TabsList>
-        <TabsContent value="settings">
+        <TabsContent value="settings" {...keep("settings")}>
           <TemplateForm template={current} canManage={canManage} />
         </TabsContent>
-        <TabsContent value="matrix">
+        <TabsContent value="matrix" {...keep("matrix")}>
           <SavedMatrix id={id} version={current.version} />
         </TabsContent>
-        <TabsContent value="versions">
+        <TabsContent value="versions" {...keep("versions")}>
           <Versions id={id} />
         </TabsContent>
       </Tabs>
@@ -120,7 +129,7 @@ function SavedMatrix({ id, version }: { id: string; version: number }) {
     queryKey: [...keys.matrix(id), version],
     queryFn: () => getSkillMatrix(id),
   });
-  return <MatrixTable rows={rows.data} pending={rows.isPending} />;
+  return <MatrixTable rows={rows.data} pending={rows.isPending} failed={rows.isError} />;
 }
 
 function Versions({ id }: { id: string }) {
@@ -131,6 +140,7 @@ function Versions({ id }: { id: string }) {
     queryKey: keys.versions(id),
     queryFn: () => listTemplateVersions(id),
   });
+  if (versions.isError) return <QueryFailed onRetry={() => void versions.refetch()} />;
   if (!versions.data) return <Skeleton className="h-32 w-full" />;
   return (
     <ol className="grid gap-3" aria-label={t("tabs.versions")}>

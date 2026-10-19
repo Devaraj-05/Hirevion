@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useState } from "react";
 import { useAdminProblem } from "@/admin/problems";
+import { QueryFailed } from "@/data/query-failed";
 import { getInterviewDefaults, type InterviewDefaults, saveInterviewDefaults } from "./api";
 import { SettingsFields, settingsBody, settingsOf, settingsProblems } from "./settings-fields";
 import { keys } from "./template-form";
@@ -20,6 +21,8 @@ export function InterviewDefaultsCard() {
       <p className="text-muted-foreground text-sm">{t("intro")}</p>
       {defaults.data ? (
         <DefaultsForm key={JSON.stringify(defaults.data)} value={defaults.data} />
+      ) : defaults.isError ? (
+        <QueryFailed onRetry={() => void defaults.refetch()} />
       ) : (
         <Skeleton className="h-48 w-full" />
       )}

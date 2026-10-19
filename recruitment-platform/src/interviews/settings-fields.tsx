@@ -106,19 +106,26 @@ const within = (text: string, low: number, high: number) => {
 
 export type SettingsProblem = "duration" | "count" | "difficulty" | "types" | "coding" | "rubric";
 
-/** What's wrong with the settings, by field (the messages under `interviews.settings.problems`). */
+const everyShare = (values: Record<string, string>) =>
+  Object.values(values).every((text) => within(text, 0, 100));
+
+/** What's wrong with the settings, by field; each value is a message under
+ * `interviews.settings.problems`. */
 export function settingsProblems(settings: Settings): Partial<Record<SettingsProblem, string>> {
   const found: Partial<Record<SettingsProblem, string>> = {};
   if (!within(settings.duration_minutes, 15, 180)) found.duration = "duration";
   if (!within(settings.question_count, 1, 50)) found.count = "count";
-  if (total(settings.difficulty) !== 100) found.difficulty = "difficulty";
+  if (!everyShare(settings.difficulty)) found.difficulty = "difficultyRange";
+  else if (total(settings.difficulty) !== 100) found.difficulty = "difficulty";
   if (settings.question_types.length === 0) found.types = "types";
-  if (
-    settings.coding.enabled &&
-    (settings.coding.languages.length === 0 || !within(settings.coding.minutes, 5, 90))
-  )
-    found.coding = "coding";
-  if (total(settings.rubric) !== 100) found.rubric = "rubric";
+  if (settings.coding.enabled) {
+    if (settings.coding.languages.length === 0 || !within(settings.coding.minutes, 5, 90))
+      found.coding = "coding";
+    else if (whole(settings.coding.minutes) > whole(settings.duration_minutes))
+      found.coding = "codingTime";
+  }
+  if (!everyShare(settings.rubric)) found.rubric = "rubricRange";
+  else if (total(settings.rubric) !== 100) found.rubric = "rubric";
   return found;
 }
 
@@ -139,7 +146,11 @@ export function settingsBody(settings: Settings) {
     coding: {
       enabled: settings.coding.enabled,
       languages: settings.coding.languages.length ? settings.coding.languages : ["python" as const],
-      minutes: whole(settings.coding.minutes) || 20,
+      // Coding that is switched off keeps a time the API accepts, whatever was typed before.
+      minutes:
+        settings.coding.enabled || within(settings.coding.minutes, 5, 90)
+          ? whole(settings.coding.minutes) || 20
+          : 20,
     },
     proctoring_level: settings.proctoring_level,
     third_eye: settings.third_eye,
@@ -173,12 +184,15 @@ export function SettingsFields({
     onChange({ ...value, [field]: next });
   const problem = (field: SettingsProblem) =>
     showProblems && found[field] ? (
-      <p role="alert" className="text-danger text-xs">
-        {t(`problems.${field}`, {
+      <p id={`${id}-${field}-problem`} role="alert" className="text-danger text-xs">
+        {t(`problems.${found[field] as "duration"}`, {
           total: field === "difficulty" ? total(value.difficulty) : total(value.rubric),
         })}
       </p>
     ) : null;
+  // Ties a problem's message to what it is about, for a screen reader.
+  const about = (field: SettingsProblem) =>
+    showProblems && found[field] ? `${id}-${field}-problem` : undefined;
   const preset = presets?.[value.proctoring_level];
 
   return (
@@ -194,6 +208,7 @@ export function SettingsFields({
             max={180}
             value={value.duration_minutes}
             aria-invalid={showProblems && Boolean(found.duration)}
+            aria-describedby={about("duration")}
             onChange={(event) => set("duration_minutes", event.target.value)}
           />
           {problem("duration")}
@@ -208,13 +223,18 @@ export function SettingsFields({
             max={50}
             value={value.question_count}
             aria-invalid={showProblems && Boolean(found.count)}
+            aria-describedby={about("count")}
             onChange={(event) => set("question_count", event.target.value)}
           />
           {problem("count")}
         </div>
       </div>
 
-      <fieldset className="grid gap-2">
+      <fieldset
+        className="grid gap-2"
+        aria-invalid={showProblems && Boolean(found.difficulty)}
+        aria-describedby={about("difficulty")}
+      >
         <legend className="mb-1 font-medium text-sm">{t("difficulty")}</legend>
         <div className="grid gap-3 sm:grid-cols-3">
           {DIFFICULTIES.map((level) => (
@@ -307,6 +327,8 @@ export function SettingsFields({
                 min={5}
                 max={90}
                 value={value.coding.minutes}
+                aria-invalid={showProblems && Boolean(found.coding)}
+                aria-describedby={about("coding")}
                 onChange={(event) =>
                   set("coding", { ...value.coding, minutes: event.target.value })
                 }
@@ -374,7 +396,11 @@ export function SettingsFields({
         </div>
       </fieldset>
 
-      <fieldset className="grid gap-2">
+      <fieldset
+        className="grid gap-2"
+        aria-invalid={showProblems && Boolean(found.rubric)}
+        aria-describedby={about("rubric")}
+      >
         <legend className="mb-1 font-medium text-sm">{t("rubric")}</legend>
         <p className="text-muted-foreground text-xs">{t("rubricHint")}</p>
         <div className="grid gap-3 sm:grid-cols-4">

@@ -148,7 +148,82 @@ describe("TemplateForm", () => {
   });
 });
 
+describe("settings checks", () => {
+  it("sends a valid coding time even when coding is switched off over a typo", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.saveInterviewDefaults).mockResolvedValue(DEFAULTS);
+    renderAdmin(<InterviewDefaultsCard />);
+    await user.click(await screen.findByLabelText("Include a coding exercise"));
+    const minutes = await screen.findByLabelText("Minutes for coding");
+    await user.clear(minutes);
+    await user.type(minutes, "200");
+    await user.click(screen.getByLabelText("Include a coding exercise"));
+    await user.click(screen.getByRole("button", { name: "Save defaults" }));
+    await waitFor(() => expect(api.saveInterviewDefaults).toHaveBeenCalled());
+    const [body] = vi.mocked(api.saveInterviewDefaults).mock.calls[0] ?? [];
+    expect(body?.coding).toMatchObject({ enabled: false, minutes: 20 });
+  });
+
+  it("explains a share outside 0 to 100 even when the total is 100, and coding longer than the interview", async () => {
+    const user = userEvent.setup();
+    renderAdmin(<InterviewDefaultsCard />);
+    const easy = await screen.findByLabelText("Easy");
+    await user.clear(easy);
+    await user.type(easy, "-20");
+    await user.clear(screen.getByLabelText("Medium"));
+    await user.type(screen.getByLabelText("Medium"), "90");
+    await user.clear(screen.getByLabelText("Hard"));
+    await user.type(screen.getByLabelText("Hard"), "30");
+    const duration = screen.getByLabelText("Duration in minutes");
+    await user.clear(duration);
+    await user.type(duration, "15");
+    await user.click(screen.getByLabelText("Include a coding exercise"));
+    const minutes = await screen.findByLabelText("Minutes for coding");
+    await user.clear(minutes);
+    await user.type(minutes, "60");
+    await user.click(screen.getByRole("button", { name: "Save defaults" }));
+    const alerts = screen.getAllByRole("alert").map((alert) => alert.textContent);
+    expect(alerts).toContain("Each share is a whole number from 0 to 100.");
+    expect(alerts).toContain("The coding time can't be longer than the interview.");
+    expect(api.saveInterviewDefaults).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Minutes for coding")).toHaveAccessibleDescription(
+      "The coding time can't be longer than the interview.",
+    );
+  });
+
+  it("says when the defaults could not be loaded", async () => {
+    vi.mocked(api.getInterviewDefaults).mockRejectedValue(new Error("offline"));
+    renderAdmin(<InterviewDefaultsCard />);
+    expect(await screen.findByRole("alert")).toHaveTextContent(/couldn't be loaded/);
+  });
+});
+
 describe("TemplatePage", () => {
+  it("keeps half-edited settings when you look at the versions", async () => {
+    const user = userEvent.setup();
+    resetNavigation("/interviews/templates/t-1");
+    vi.mocked(api.getTemplate).mockResolvedValue(template());
+    vi.mocked(api.listTemplateVersions).mockResolvedValue([template().current]);
+    renderAdmin(<TemplatePage id="t-1" canManage />);
+    const duration = await screen.findByLabelText("Duration in minutes");
+    await user.clear(duration);
+    await user.type(duration, "75");
+    await user.click(screen.getByRole("tab", { name: "Versions" }));
+    await screen.findByRole("list", { name: "Versions" });
+    await user.click(screen.getByRole("tab", { name: "Settings" }));
+    expect(screen.getByLabelText("Duration in minutes")).toHaveValue(75);
+  });
+
+  it("says when the skill matrix could not be loaded, not that it is empty", async () => {
+    const user = userEvent.setup();
+    resetNavigation("/interviews/templates/t-1");
+    vi.mocked(api.getTemplate).mockResolvedValue(template());
+    vi.mocked(api.getSkillMatrix).mockRejectedValue(new Error("offline"));
+    renderAdmin(<TemplatePage id="t-1" canManage />);
+    await user.click(await screen.findByRole("tab", { name: "Skill matrix" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/couldn't be loaded/);
+  });
+
   it("saves an edit as the next version and keeps the old ones listed", async () => {
     const user = userEvent.setup();
     resetNavigation("/interviews/templates/t-1");

@@ -327,7 +327,6 @@ export function RankingPanel({
                     <button
                       type="button"
                       onClick={() => setOpen(row)}
-                      aria-label={t("ranking.open", { name: row.candidate.name })}
                       className="grid text-left hover:underline focus-visible:underline"
                     >
                       <span className="font-medium">{row.candidate.name}</span>
@@ -336,6 +335,7 @@ export function RankingPanel({
                           {row.candidate.headline}
                         </span>
                       ) : null}
+                      <span className="sr-only">{t("ranking.openHint")}</span>
                     </button>
                     <div className="mt-1 flex flex-wrap gap-1">
                       {row.knockouts.length > 0 ? (

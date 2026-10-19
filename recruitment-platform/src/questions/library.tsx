@@ -87,7 +87,6 @@ export function QuestionLibrary({
           <button
             type="button"
             onClick={() => setOpen(question.id)}
-            aria-label={t("table.open", { text: question.text.slice(0, 60) })}
             className="grid max-w-xl text-left hover:underline focus-visible:underline"
           >
             <span className="line-clamp-2">{question.text}</span>

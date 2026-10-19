@@ -40,7 +40,7 @@ test("a recruiter approves an AI draft, pins it in a template, and edits the tem
   await expect(page).not.toHaveURL(/status=/);
   await page.getByRole("searchbox", { name: "Search questions" }).fill("slow production endpoint");
   await page.getByRole("searchbox", { name: "Search questions" }).press("Enter");
-  await page.getByRole("button", { name: `Open question: ${GENERATED.slice(0, 60)}` }).click();
+  await page.getByRole("button", { name: GENERATED.slice(0, 60) }).click();
   const sheet = page.getByRole("dialog", { name: "Question" });
   await expect(sheet.getByLabel("Question")).toHaveValue(GENERATED);
   await noAxeViolations(page);

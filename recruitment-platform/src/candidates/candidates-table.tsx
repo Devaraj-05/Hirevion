@@ -62,7 +62,6 @@ export function CandidatesTable() {
           <div className="grid gap-1">
             <Link
               href={`/candidates/${candidate.id}`}
-              aria-label={t("open", { name: candidate.name })}
               className="grid hover:underline focus-visible:underline"
             >
               <span className="font-medium">{candidate.name}</span>

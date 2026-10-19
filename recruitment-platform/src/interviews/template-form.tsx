@@ -5,8 +5,10 @@ import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/rea
 import { Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { type FormEvent, useEffect, useId, useRef, useState } from "react";
+import { type FormEvent, useEffect, useId, useState } from "react";
 import { useAdminProblem } from "@/admin/problems";
+import { useIdempotencyKey } from "@/data/idempotency";
+import { QueryFailed } from "@/data/query-failed";
 import { getQuestion, listQuestions } from "@/questions/api";
 import {
   createTemplate,
@@ -65,6 +67,7 @@ export function TemplateForm({ template, canManage }: { template?: Template; can
       />
     );
   }
+  if (defaults.isError) return <QueryFailed onRetry={() => void defaults.refetch()} />;
   if (!defaults.data) return <Skeleton className="h-96 w-full" />;
   return (
     <Editor
@@ -91,7 +94,7 @@ function Editor({
   const router = useRouter();
   const queryClient = useQueryClient();
   const id = useId();
-  const key = useRef(crypto.randomUUID());
+  const key = useIdempotencyKey();
   const [name, setName] = useState(template?.name ?? "");
   const [description, setDescription] = useState(template?.description ?? "");
   const [skills, setSkills] = useState<SkillRow[]>(() =>
@@ -127,7 +130,7 @@ function Editor({
         questions: pinned,
         ...settingsBody(settings),
       };
-      return template ? updateTemplate(template.id, body) : createTemplate(body, key.current);
+      return template ? updateTemplate(template.id, body) : createTemplate(body, key.current());
     },
     onSuccess: (saved) => {
       queryClient.setQueryData(keys.template(saved.id), saved);
@@ -355,7 +358,10 @@ function PinnedQuestions({
                 className="flex items-start justify-between gap-2 rounded-md border border-border p-2 text-sm"
               >
                 <span className="grid gap-0.5">
-                  <span className="line-clamp-2">{detail?.text ?? t("loadingQuestion")}</span>
+                  <span className="line-clamp-2">
+                    {detail?.text ??
+                      (details[index]?.isError ? t("questionUnavailable") : t("loadingQuestion"))}
+                  </span>
                   <span className="text-muted-foreground text-xs">
                     {t("pinnedVersion", { version: item.version })}
                     {detail && detail.version !== item.version
@@ -367,7 +373,9 @@ function PinnedQuestions({
                   <Button
                     type="button"
                     variant="ghost"
-                    aria-label={t("unpin")}
+                    aria-label={
+                      detail ? t("unpinNamed", { text: detail.text.slice(0, 60) }) : t("unpin")
+                    }
                     onClick={() =>
                       onChange(pinned.filter((other) => other.question_id !== item.question_id))
                     }
@@ -402,6 +410,9 @@ function PinnedQuestions({
                   <Button
                     type="button"
                     variant="secondary"
+                    aria-label={t("pinNamed", {
+                      text: Array.from(question.text).slice(0, 60).join(""),
+                    })}
                     onClick={() =>
                       onChange([...pinned, { question_id: question.id, version: question.version }])
                     }
@@ -437,7 +448,9 @@ function MatrixPreviewPanel({ preview }: { preview: MatrixPreview | null }) {
     queryFn: () => previewSkillMatrix(settled as MatrixPreview),
     enabled: settled !== null && settled.skills.length > 0,
   });
-  return <MatrixTable rows={rows.data} pending={rows.isFetching && !rows.data} />;
+  return (
+    <MatrixTable rows={rows.data} pending={rows.isFetching && !rows.data} failed={rows.isError} />
+  );
 }
 
 /** The skill matrix (PRD §34): each skill's questions by difficulty, against the approved
@@ -445,9 +458,12 @@ function MatrixPreviewPanel({ preview }: { preview: MatrixPreview | null }) {
 export function MatrixTable({
   rows,
   pending = false,
+  failed = false,
 }: {
   rows: MatrixRow[] | undefined;
   pending?: boolean;
+  /** The matrix could not be loaded: not the same as having no rows. */
+  failed?: boolean;
 }) {
   const t = useTranslations("interviews.matrix");
   const questions = useTranslations("questions");
@@ -513,7 +529,9 @@ export function MatrixTable({
             </tbody>
           </table>
         </div>
-      ) : pending ? null : (
+      ) : pending ? null : failed ? (
+        <QueryFailed />
+      ) : (
         <p className="text-muted-foreground text-sm">{t("empty")}</p>
       )}
     </section>

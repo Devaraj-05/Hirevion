@@ -56,7 +56,6 @@ export function TemplatesTable({ canManage }: { canManage: boolean }) {
         cell: (template) => (
           <Link
             href={`/interviews/templates/${template.id}`}
-            aria-label={t("open", { name: template.name })}
             className="grid hover:underline focus-visible:underline"
           >
             <span className="font-medium">{template.name}</span>

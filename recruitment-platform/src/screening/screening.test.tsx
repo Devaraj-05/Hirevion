@@ -200,7 +200,7 @@ describe("RankingPanel", () => {
     });
     renderAdmin(<RankingPanel jobId="j-1" jobReference="JOB-0001" canManage={false} />);
 
-    await user.click(await screen.findByRole("button", { name: "Explain Asha Rao's ranking" }));
+    await user.click(await screen.findByRole("button", { name: /Asha Rao.*Explain the ranking/ }));
     const sheet = await screen.findByRole("dialog", { name: "Why Asha Rao ranks #1" });
     expect(within(sheet).getByText("From the resume: “Python”")).toBeInTheDocument();
     expect(within(sheet).getByText(/score capped/)).toBeInTheDocument();
@@ -266,7 +266,7 @@ describe("RankingPanel", () => {
     const user = userEvent.setup();
     vi.mocked(api.getApplicationScreening).mockRejectedValue(new Error("offline"));
     renderAdmin(<RankingPanel jobId="j-1" jobReference="JOB-0001" canManage={false} />);
-    await user.click(await screen.findByRole("button", { name: "Explain Asha Rao's ranking" }));
+    await user.click(await screen.findByRole("button", { name: /Asha Rao.*Explain the ranking/ }));
     const sheet = await screen.findByRole("dialog", { name: "Why Asha Rao ranks #1" });
     expect(await within(sheet).findByRole("alert")).toHaveTextContent(/couldn't be loaded/);
     expect(within(sheet).queryByText("Not screened yet.")).not.toBeInTheDocument();
@@ -296,7 +296,7 @@ describe("RankingPanel", () => {
       ],
     });
     renderAdmin(<RankingPanel jobId="j-1" jobReference="JOB-0001" canManage={false} />);
-    await user.click(await screen.findByRole("button", { name: "Explain Asha Rao's ranking" }));
+    await user.click(await screen.findByRole("button", { name: /Asha Rao.*Explain the ranking/ }));
     const sheet = await screen.findByRole("dialog", { name: "Why Asha Rao ranks #1" });
     expect(await within(sheet).findByText(/Screening could not be completed:/)).toBeInTheDocument();
     expect(within(sheet).queryByText(/screening_failed/)).not.toBeInTheDocument();

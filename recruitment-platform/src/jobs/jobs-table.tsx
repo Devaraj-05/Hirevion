@@ -62,11 +62,7 @@ export function JobsTable({ canCreate }: { canCreate: boolean }) {
         header: t("title"),
         hideable: false,
         cell: (job) => (
-          <Link
-            href={`/jobs/${job.id}`}
-            aria-label={t("open", { title: job.title })}
-            className="grid hover:underline focus-visible:underline"
-          >
+          <Link href={`/jobs/${job.id}`} className="grid hover:underline focus-visible:underline">
             <span className="font-medium">{job.title}</span>
             <span className="text-muted-foreground text-xs">{job.reference}</span>
           </Link>
