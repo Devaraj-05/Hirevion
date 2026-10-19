@@ -39,12 +39,15 @@ export function JobPage({
   canViewCandidates = false,
   canManageCandidates = false,
   canManageInterviews = false,
+  canChangeBlind = false,
 }: {
   id: string;
   canEdit: boolean;
   canViewCandidates?: boolean;
   canManageCandidates?: boolean;
   canManageInterviews?: boolean;
+  /** `admin.organization.manage`: turning blind screening off is the organisation's decision. */
+  canChangeBlind?: boolean;
 }) {
   const t = useTranslations("jobs");
   const titles = useTranslations("routes");
@@ -207,7 +210,7 @@ export function JobPage({
           </>
         ) : null}
         <TabsContent value="screening" {...keep("screening")}>
-          <JobScreeningSettings jobId={id} canEdit={canEdit} />
+          <JobScreeningSettings jobId={id} canEdit={canEdit} canChangeBlind={canChangeBlind} />
         </TabsContent>
         <TabsContent value="history" {...keep("history")}>
           <HistoryPanel jobId={id} />

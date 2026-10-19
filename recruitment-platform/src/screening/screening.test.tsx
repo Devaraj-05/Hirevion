@@ -121,6 +121,32 @@ describe("JobScreeningSettings", () => {
   });
 });
 
+describe("blind screening", () => {
+  it("is switched off only by someone who may change it, with a warning when it is off", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.getJobScreeningConfig).mockResolvedValue(CONFIG);
+    const view = renderAdmin(<JobScreeningSettings jobId="j-1" canEdit />);
+    const locked = await screen.findByRole("switch", { name: /Blind screening/ });
+    expect(locked).toBeDisabled();
+    expect(screen.getByText(/Only an organisation administrator can turn blind/)).toBeVisible();
+    view.unmount();
+
+    vi.mocked(api.getJobScreeningConfig).mockResolvedValue({ ...CONFIG, blind: false });
+    renderAdmin(<JobScreeningSettings jobId="j-1" canEdit canChangeBlind />);
+    expect(await screen.findByRole("status")).toHaveTextContent(/AI sees each candidate's name/);
+    const open = screen.getByRole("switch", { name: /Blind screening/ });
+    expect(open).toBeEnabled();
+    await user.click(open);
+    expect(screen.queryByText(/AI sees each candidate's name/)).not.toBeInTheDocument();
+  });
+
+  it("says when the job's settings could not be loaded", async () => {
+    vi.mocked(api.getJobScreeningConfig).mockRejectedValue(new Error("offline"));
+    renderAdmin(<JobScreeningSettings jobId="j-1" canEdit />);
+    expect(await screen.findByRole("alert")).toHaveTextContent(/couldn't be loaded/);
+  });
+});
+
 describe("RankingPanel", () => {
   it("acts on the selected candidates in bulk", async () => {
     const user = userEvent.setup();

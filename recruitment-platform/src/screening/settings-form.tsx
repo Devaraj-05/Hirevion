@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useId, useState } from "react";
 import { useAdminProblem } from "@/admin/problems";
+import { QueryFailed } from "@/data/query-failed";
 import {
   getJobScreeningConfig,
   getScreeningDefaults,
@@ -37,11 +38,14 @@ export function SettingsForm({
   onSave,
   saving,
   readOnly = false,
+  canChangeBlind = false,
 }: {
   value: ScreeningConfig;
   onSave: (body: ScreeningConfigUpdate) => void;
   saving: boolean;
   readOnly?: boolean;
+  /** Whether the reader may turn blind screening off (an organisation administrator). */
+  canChangeBlind?: boolean;
 }) {
   const t = useTranslations("screening");
   const id = useId();
@@ -122,7 +126,7 @@ export function SettingsForm({
           <Switch
             id={`${id}-blind`}
             checked={blind}
-            disabled={readOnly}
+            disabled={readOnly || (blind && !canChangeBlind)}
             onCheckedChange={setBlind}
             aria-describedby={`${id}-blind-hint`}
           />
@@ -131,6 +135,14 @@ export function SettingsForm({
         <p id={`${id}-blind-hint`} className="text-muted-foreground text-xs">
           {t("settings.blindHint")}
         </p>
+        {!blind ? (
+          <p role="status" className="text-warning text-xs">
+            {t("settings.blindOffWarning")}
+          </p>
+        ) : null}
+        {blind && !canChangeBlind && !readOnly ? (
+          <p className="text-muted-foreground text-xs">{t("settings.blindLocked")}</p>
+        ) : null}
       </div>
       {readOnly ? null : (
         <Button type="submit" className="w-fit" disabled={!valid || saving}>
@@ -142,7 +154,15 @@ export function SettingsForm({
 }
 
 /** A job's Screening tab: its own settings, or the default it inherits. */
-export function JobScreeningSettings({ jobId, canEdit }: { jobId: string; canEdit: boolean }) {
+export function JobScreeningSettings({
+  jobId,
+  canEdit,
+  canChangeBlind = false,
+}: {
+  jobId: string;
+  canEdit: boolean;
+  canChangeBlind?: boolean;
+}) {
   const t = useTranslations("screening.settings");
   const problems = useAdminProblem();
   const queryClient = useQueryClient();
@@ -168,6 +188,7 @@ export function JobScreeningSettings({ jobId, canEdit }: { jobId: string; canEdi
   });
 
   if (settings.isPending) return <Skeleton className="h-64 w-full" />;
+  if (settings.isError) return <QueryFailed onRetry={() => void settings.refetch()} />;
   if (!settings.data) return null;
   const current = settings.data;
   return (
@@ -188,6 +209,7 @@ export function JobScreeningSettings({ jobId, canEdit }: { jobId: string; canEdi
         onSave={(body) => save.mutate(body)}
         saving={save.isPending}
         readOnly={!canEdit}
+        canChangeBlind={canChangeBlind}
       />
       {canEdit && !current.inherited ? (
         <Button
@@ -227,7 +249,10 @@ export function ScreeningDefaults() {
           value={settings.data}
           onSave={(body) => save.mutate(body)}
           saving={save.isPending}
+          canChangeBlind
         />
+      ) : settings.isError ? (
+        <QueryFailed onRetry={() => void settings.refetch()} />
       ) : (
         <Skeleton className="h-48 w-full" />
       )}

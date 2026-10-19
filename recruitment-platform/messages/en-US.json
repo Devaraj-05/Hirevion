@@ -1295,7 +1295,9 @@
       "reset": "Use the default settings",
       "resetDone": "This job uses the default settings again.",
       "readOnly": "You can see these settings, but changing them needs the Create and edit jobs permission.",
-      "version": "Version {version}"
+      "version": "Version {version}",
+      "blindOffWarning": "Blind screening is off: the AI sees each candidate's name and personal details.",
+      "blindLocked": "Only an organisation administrator can turn blind screening off."
     },
     "ranking": {
       "screen": "Screen candidates",
