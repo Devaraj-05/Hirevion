@@ -2,7 +2,7 @@
 
 import { isApiProblem } from "@hirevion/api-client";
 import { Badge, type BadgeTone, Button, Skeleton } from "@hirevion/ui";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Upload } from "lucide-react";
 import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
@@ -11,6 +11,7 @@ import { useAdminProblem } from "@/admin/problems";
 import { listResumes, type ResumeDocument, uploadResume } from "@/candidates/api";
 import { FlagBadges } from "@/candidates/flags";
 import { keys } from "@/candidates/queries";
+import { QueryFailed } from "@/data/query-failed";
 import { retryDocument } from "./api";
 
 const POLL_MS = 2_000;
@@ -29,6 +30,14 @@ const ERRORS = [
   "image-too-large",
   "archive-too-large",
   "archive-bomb",
+] as const;
+/** Why a file was refused at the door, in words (anything else is shown as the API said it). */
+const REJECTIONS = [
+  "empty",
+  "too-large",
+  "unsupported-type",
+  "archive-bomb",
+  "unreadable",
 ] as const;
 const TONES: Record<string, BadgeTone> = {
   parsed: "success",
@@ -62,16 +71,23 @@ export function ResumesPanel({
   const [uploads, setUploads] = useState<Sending[]>([]);
   const [dragging, setDragging] = useState(false);
 
-  const resumes = useQuery({
+  const resumes = useInfiniteQuery({
     queryKey: keys.resumes(jobId),
-    queryFn: () => listResumes(jobId, { limit: LIST_SIZE }),
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam }) => listResumes(jobId, { limit: LIST_SIZE, cursor: pageParam }),
+    getNextPageParam: (last) => last.next_cursor,
     refetchInterval: (query) =>
-      query.state.data?.items.some((item) => !FINAL.has(item.status)) ? pollMs : false,
+      query.state.data?.pages.some((page) => page.items.some((item) => !FINAL.has(item.status)))
+        ? pollMs
+        : false,
   });
 
+  // New resumes become candidates, applications and screening work: all of the job's views of
+  // them are read again.
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ["jobs", "detail", jobId] });
   const retry = useMutation({
     mutationFn: (document: ResumeDocument) => retryDocument(document.id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.resumes(jobId) }),
+    onSuccess: refresh,
     onError: problems.show,
   });
 
@@ -79,6 +95,13 @@ export function ResumesPanel({
     setUploads((previous) =>
       previous.map((upload) => (upload.id === id ? { ...upload, ...changes } : upload)),
     );
+  }
+
+  function reasonOf(error: unknown): string {
+    if (!isApiProblem(error)) return t("networkFailed");
+    return (REJECTIONS as readonly string[]).includes(error.code)
+      ? t(`rejections.${error.code as (typeof REJECTIONS)[number]}`)
+      : (error.detail ?? error.title);
   }
 
   async function send(files: File[]) {
@@ -101,10 +124,9 @@ export function ResumesPanel({
           await uploadResume(jobId, item.file, item.key);
           update(item.id, { state: "sent" });
         } catch (error) {
-          const reason = isApiProblem(error) ? (error.detail ?? error.title) : String(error);
-          update(item.id, { state: "failed", reason });
+          update(item.id, { state: "failed", reason: reasonOf(error) });
         }
-        void queryClient.invalidateQueries({ queryKey: keys.resumes(jobId) });
+        void refresh();
       }
     }
     await Promise.all(Array.from({ length: Math.min(PARALLEL, queued.length) }, worker));
@@ -118,7 +140,7 @@ export function ResumesPanel({
     }
   }
 
-  const items = resumes.data?.items ?? [];
+  const items = resumes.data?.pages.flatMap((page) => page.items) ?? [];
   const children = new Map<string, ResumeDocument[]>();
   for (const item of items) {
     if (item.parent_id)
@@ -212,24 +234,24 @@ export function ResumesPanel({
           }`}
         >
           <Upload className="size-6 text-muted-foreground" aria-hidden />
-          <label
-            htmlFor={inputId}
-            className="cursor-pointer rounded-md bg-accent px-3 py-2 font-medium text-accent-foreground text-sm"
-          >
-            {t("choose")}
-          </label>
           <input
             id={inputId}
             type="file"
             multiple
             accept={ACCEPT}
-            className="sr-only"
+            className="peer sr-only"
             onChange={(event) => {
               const files = [...(event.target.files ?? [])];
               event.target.value = "";
               if (files.length > 0) void send(files);
             }}
           />
+          <label
+            htmlFor={inputId}
+            className="cursor-pointer rounded-md bg-accent px-3 py-2 font-medium text-accent-foreground text-sm peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring"
+          >
+            {t("choose")}
+          </label>
           <span className="text-muted-foreground text-xs">{t("drop")}</span>
         </section>
       ) : (
@@ -256,6 +278,8 @@ export function ResumesPanel({
       ) : null}
       {resumes.isPending ? (
         <Skeleton className="h-32 w-full" />
+      ) : resumes.isError && items.length === 0 ? (
+        <QueryFailed onRetry={() => void resumes.refetch()} />
       ) : items.length === 0 ? (
         <p className="text-muted-foreground text-sm">{t("empty")}</p>
       ) : (
@@ -290,6 +314,16 @@ export function ResumesPanel({
           </table>
         </div>
       )}
+      {resumes.hasNextPage ? (
+        <Button
+          variant="secondary"
+          className="w-fit"
+          disabled={resumes.isFetchingNextPage}
+          onClick={() => void resumes.fetchNextPage()}
+        >
+          {t("more")}
+        </Button>
+      ) : null}
     </div>
   );
 }

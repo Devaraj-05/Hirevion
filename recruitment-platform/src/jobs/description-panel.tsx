@@ -14,8 +14,10 @@ import {
 } from "@hirevion/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { type FormEvent, useId, useRef, useState } from "react";
+import { type FormEvent, useId, useState } from "react";
 import { useAdminProblem } from "@/admin/problems";
+import { useIdempotencyKey } from "@/data/idempotency";
+import { QueryFailed } from "@/data/query-failed";
 import {
   applyDescription,
   getDescription,
@@ -56,6 +58,8 @@ interface Extraction {
   location: string | null;
   work_model: (typeof WORK_MODELS)[number] | null;
   dropped: number;
+  /** The description was longer than the AI is given, so its end wasn't read. */
+  truncated?: boolean;
 }
 
 /** The job's description (PRD §12): send one, follow it being read, then review and apply. */
@@ -80,16 +84,22 @@ export function DescriptionPanel({
   });
 
   if (description.isPending) return <Skeleton className="h-40 w-full" />;
+  // A failed load is not "no description": the upload form would invite replacing one.
+  if (description.isError) return <QueryFailed onRetry={() => void description.refetch()} />;
   const current = description.data ?? null;
   const intro = <p className="text-muted-foreground text-sm">{t("intro")}</p>;
   if (current === null || replacing) {
     return canEdit ? (
       <div className="grid max-w-3xl gap-4">
         {intro}
-        <SubmitForm jobId={job.id} onSent={() => setReplacing(false)} />
+        <SubmitForm
+          jobId={job.id}
+          onSent={() => setReplacing(false)}
+          onCancel={current === null ? undefined : () => setReplacing(false)}
+        />
       </div>
     ) : (
-      intro
+      <p className="text-muted-foreground text-sm">{t("none")}</p>
     );
   }
 
@@ -160,12 +170,21 @@ function Progress({ document, canEdit }: { document: JobDescription; canEdit: bo
   );
 }
 
-function SubmitForm({ jobId, onSent }: { jobId: string; onSent: () => void }) {
+function SubmitForm({
+  jobId,
+  onSent,
+  onCancel,
+}: {
+  jobId: string;
+  onSent: () => void;
+  /** Present when there is a description to go back to. */
+  onCancel?: (() => void) | undefined;
+}) {
   const t = useTranslations("jobs.description");
   const problems = useAdminProblem();
   const queryClient = useQueryClient();
   const id = useId();
-  const key = useRef(crypto.randomUUID());
+  const key = useIdempotencyKey();
   const [mode, setMode] = useState<"paste" | "upload">("paste");
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -190,9 +209,9 @@ function SubmitForm({ jobId, onSent }: { jobId: string; onSent: () => void }) {
       await submitDescription(
         jobId,
         mode === "paste" || !file ? { text: text.trim() } : { file },
-        key.current,
+        key.current(),
       );
-      key.current = crypto.randomUUID();
+      key.renew();
       toast.success(t("submitted"), {});
       await queryClient.invalidateQueries({ queryKey: keys.description(jobId) });
       onSent();
@@ -253,9 +272,16 @@ function SubmitForm({ jobId, onSent }: { jobId: string; onSent: () => void }) {
           {error}
         </p>
       ) : null}
-      <Button type="submit" className="w-fit" disabled={sending}>
-        {t("submit")}
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" className="w-fit" disabled={sending}>
+          {t("submit")}
+        </Button>
+        {onCancel ? (
+          <Button type="button" variant="ghost" onClick={onCancel}>
+            {t("keepCurrent")}
+          </Button>
+        ) : null}
+      </div>
     </form>
   );
 }
@@ -277,6 +303,10 @@ function ReviewForm({ job, document }: { job: Job; document: JobDescription }) {
 
   const [title, setTitle] = useState(found.title ?? job.title);
   const [kept, setKept] = useState(() => new Set(extracted.map((skill) => skill.name)));
+  // What the reviewer decided each skill is: as found, unless they change it.
+  const [importance, setImportance] = useState<Record<string, "required" | "preferred">>(() =>
+    Object.fromEntries(extracted.map((skill) => [skill.name, skill.importance])),
+  );
   const [experienceMin, setExperienceMin] = useState(
     String(found.experience_min ?? job.experience_min ?? ""),
   );
@@ -303,7 +333,11 @@ function ReviewForm({ job, document }: { job: Job; document: JobDescription }) {
       const taken = new Set(own.map((skill) => skill.name.toLowerCase()));
       const added: SkillValue[] = extracted
         .filter((skill) => kept.has(skill.name) && !taken.has(skill.name.toLowerCase()))
-        .map((skill) => ({ name: skill.name, importance: skill.importance, min_years: null }));
+        .map((skill) => ({
+          name: skill.name,
+          importance: importance[skill.name] ?? skill.importance,
+          min_years: null,
+        }));
       const split = (text: string) =>
         text
           .split("\n")
@@ -367,6 +401,7 @@ function ReviewForm({ job, document }: { job: Job; document: JobDescription }) {
         {found.dropped > 0 ? (
           <p className="text-sm text-warning">{t("dropped", { count: found.dropped })}</p>
         ) : null}
+        {found.truncated ? <p className="text-sm text-warning">{t("truncated")}</p> : null}
       </div>
       {field(
         form("title"),
@@ -375,17 +410,18 @@ function ReviewForm({ job, document }: { job: Job; document: JobDescription }) {
         ),
         "title",
       )}
-      {(["required", "preferred"] as const).map((importance) => {
-        const skills = extracted.filter((skill) => skill.importance === importance);
+      {(["required", "preferred"] as const).map((group) => {
+        const skills = extracted.filter((skill) => skill.importance === group);
         if (skills.length === 0) return null;
         return (
-          <fieldset key={importance} className="grid gap-2">
+          <fieldset key={group} className="grid gap-2">
             <legend className="mb-1 font-medium text-sm">
-              {t(importance === "required" ? "requiredSkills" : "preferredSkills")}
+              {t(group === "required" ? "requiredSkills" : "preferredSkills")}
             </legend>
             <ul className="grid gap-2">
-              {skills.map((skill) => {
-                const control = `${id}-skill-${skill.name}`;
+              {skills.map((skill, position) => {
+                // (A skill's name may have spaces; an id may not.)
+                const control = `${id}-skill-${group}-${position}`;
                 return (
                   <li key={skill.name} className="flex items-start gap-2">
                     <Checkbox
@@ -410,6 +446,21 @@ function ReviewForm({ job, document }: { job: Job; document: JobDescription }) {
                         {t("quote", { quote: skill.quote })}
                       </span>
                     </div>
+                    <NativeSelect
+                      aria-label={t("treatAs", { name: skill.name })}
+                      className="ml-auto w-32"
+                      value={importance[skill.name] ?? skill.importance}
+                      onChange={(event) =>
+                        setImportance((previous) => ({
+                          ...previous,
+                          [skill.name]: event.target.value as "required" | "preferred",
+                        }))
+                      }
+                      options={[
+                        { value: "required", label: t("required") },
+                        { value: "preferred", label: t("preferred") },
+                      ]}
+                    />
                   </li>
                 );
               })}

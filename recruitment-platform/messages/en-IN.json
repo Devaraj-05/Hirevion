@@ -601,8 +601,14 @@
         "preferredSkills": "Preferred skills",
         "apply": "Apply to job",
         "applied": "The description was applied to the job.",
-        "nothing": "Nothing was found to apply."
-      }
+        "nothing": "Nothing was found to apply.",
+        "truncated": "The description is long: only its first part was read, so requirements further down may be missing.",
+        "treatAs": "{name}: treat as",
+        "required": "Required",
+        "preferred": "Preferred"
+      },
+      "none": "This job has no description yet.",
+      "keepCurrent": "Keep the current description"
     },
     "resumes": {
       "intro": "Upload resumes as PDF, Word (.docx), text, JPG, PNG or TIFF files of up to 10 MB each, or a ZIP of them up to 50 MB. Each is read in the background into a candidate for this job.",
@@ -636,7 +642,16 @@
       },
       "failedReason": "Couldn't be read: {reason}",
       "quarantinedHint": "Flagged as unsafe and set aside",
-      "dropZone": "Resume uploads"
+      "dropZone": "Resume uploads",
+      "more": "Show more resumes",
+      "networkFailed": "couldn't reach the server; try again",
+      "rejections": {
+        "empty": "the file is empty",
+        "too-large": "the file is too large (10 MB for one resume, 50 MB for a ZIP)",
+        "unsupported-type": "this isn't a kind of file we read (PDF, Word, text, JPG, PNG, TIFF or a ZIP of them)",
+        "archive-bomb": "the file expands to an unreasonable size",
+        "unreadable": "the file can't be read"
+      }
     },
     "applications": {
       "caption": "Candidates for this job",

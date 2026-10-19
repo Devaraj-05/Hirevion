@@ -127,6 +127,63 @@ describe("DescriptionPanel", () => {
     await waitFor(() => expect(api.retryDocument).toHaveBeenCalledWith("doc-1"));
   });
 
+  it("says when the description could not be loaded, rather than offering to replace it", async () => {
+    vi.mocked(api.getDescription).mockRejectedValue(new Error("offline"));
+    renderAdmin(<DescriptionPanel job={job()} canEdit />);
+    expect(await screen.findByRole("alert")).toHaveTextContent(/couldn't be loaded/);
+    expect(screen.queryByRole("button", { name: "Read description" })).not.toBeInTheDocument();
+  });
+
+  it("goes back to the current description from Replace", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.getDescription).mockResolvedValue(description());
+    renderAdmin(<DescriptionPanel job={job()} canEdit />);
+    await user.click(await screen.findByRole("button", { name: "Send a new description" }));
+    expect(screen.queryByText("Review what was found")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Keep the current description" }));
+    expect(await screen.findByText("Review what was found")).toBeInTheDocument();
+  });
+
+  it("tells a reader who cannot edit that there is no description, without telling them to send one", async () => {
+    vi.mocked(api.getDescription).mockResolvedValue(null);
+    renderAdmin(<DescriptionPanel job={job()} canEdit={false} />);
+    expect(await screen.findByText("This job has no description yet.")).toBeInTheDocument();
+    expect(screen.queryByText(/Paste the job description or upload/)).not.toBeInTheDocument();
+  });
+
+  it("links a multi-word skill to the words it was found in", async () => {
+    const found = description();
+    found.extraction = {
+      ...(found.extraction as object),
+      required_skills: [{ name: "Machine Learning", skill_id: null, quote: "ML models in prod" }],
+      preferred_skills: [],
+    } as typeof found.extraction;
+    vi.mocked(api.getDescription).mockResolvedValue(found);
+    renderAdmin(<DescriptionPanel job={job()} canEdit />);
+    const box = await screen.findByRole("checkbox", { name: "Machine Learning" });
+    const described = box.getAttribute("aria-describedby") ?? "";
+    expect(described).not.toMatch(/\s/);
+    expect(document.getElementById(described)).toHaveTextContent("ML models in prod");
+  });
+
+  it("lets the reviewer change a skill from preferred to required, and warns of a cut-off description", async () => {
+    const user = userEvent.setup();
+    const found = description();
+    found.extraction = {
+      ...(found.extraction as object),
+      truncated: true,
+    } as typeof found.extraction;
+    vi.mocked(api.getDescription).mockResolvedValue(found);
+    vi.mocked(api.applyDescription).mockResolvedValue(job());
+    renderAdmin(<DescriptionPanel job={job()} canEdit />);
+    expect(await screen.findByText(/only its first part was read/)).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("Go: treat as"), "Required");
+    await user.click(screen.getByRole("button", { name: "Apply to job" }));
+    await waitFor(() => expect(api.applyDescription).toHaveBeenCalled());
+    const [, body] = vi.mocked(api.applyDescription).mock.calls[0] ?? [];
+    expect(body?.skills).toContainEqual({ name: "Go", importance: "required", min_years: null });
+  });
+
   it("sends a pasted description", async () => {
     const user = userEvent.setup();
     vi.mocked(api.getDescription).mockResolvedValue(null);

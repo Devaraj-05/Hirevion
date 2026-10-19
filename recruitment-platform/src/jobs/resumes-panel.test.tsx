@@ -1,3 +1,4 @@
+import { ApiProblem } from "@hirevion/api-client";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -111,6 +112,59 @@ describe("ResumesPanel", () => {
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Try asha.pdf again" }));
     await waitFor(() => expect(jobsApi.retryDocument).toHaveBeenCalledWith("doc-2"));
+  });
+
+  it("shows every page of resumes, not just the first", async () => {
+    const user = userEvent.setup();
+    vi.mocked(candidatesApi.listResumes)
+      .mockResolvedValueOnce({
+        items: [resume({ id: "doc-1", filename: "first.pdf" })],
+        next_cursor: "page-2",
+      })
+      .mockResolvedValue({
+        items: [resume({ id: "doc-2", filename: "second.pdf", candidate: null })],
+        next_cursor: null,
+      });
+    renderAdmin(<ResumesPanel jobId="j-1" canUpload />);
+    expect(await screen.findByText("first.pdf")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Show more resumes" }));
+    expect(await screen.findByText("second.pdf")).toBeInTheDocument();
+    expect(screen.getByText("first.pdf")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Show more resumes" })).not.toBeInTheDocument();
+    expect(candidatesApi.listResumes).toHaveBeenLastCalledWith(
+      "j-1",
+      expect.objectContaining({ cursor: "page-2" }),
+    );
+  });
+
+  it("says why a file was refused, in words, and when the network failed", async () => {
+    const user = userEvent.setup();
+    vi.mocked(candidatesApi.listResumes).mockResolvedValue({ items: [], next_cursor: null });
+    vi.mocked(candidatesApi.uploadResume)
+      .mockRejectedValueOnce(
+        new ApiProblem({
+          type: "about:blank",
+          status: 422,
+          code: "unsupported-type",
+          title: "Unsupported",
+          detail: "Upload a PDF, Word (.docx), text, JPG, PNG or TIFF file, or a ZIP of them",
+        }),
+      )
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    renderAdmin(<ResumesPanel jobId="j-1" canUpload />);
+    await user.upload(screen.getByLabelText("Choose files"), [
+      new File(["x"], "song.txt"),
+      new File(["y"], "asha.pdf"),
+    ]);
+    expect(await screen.findByText(/isn't a kind of file we read/)).toBeInTheDocument();
+    expect(await screen.findByText(/couldn't reach the server/)).toBeInTheDocument();
+    expect(screen.queryByText(/TypeError|Failed to fetch/)).not.toBeInTheDocument();
+  });
+
+  it("says when the resumes could not be loaded", async () => {
+    vi.mocked(candidatesApi.listResumes).mockRejectedValue(new Error("offline"));
+    renderAdmin(<ResumesPanel jobId="j-1" canUpload />);
+    expect(await screen.findByRole("alert")).toHaveTextContent(/couldn't be loaded/);
   });
 
   it("lets someone without the permission look but not upload", async () => {
