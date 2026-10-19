@@ -76,6 +76,11 @@ def candidates_statement(scope: ResourceScope, filters: CandidateFilters) -> Sel
         )
     if filters.job_id is not None or filters.stage_group is not None:
         applied = select(Application.id).where(Application.candidate_id == Candidate.id)
+        if not scope.organization_wide:
+            # A filter must not show that a candidate applied to a job the reader cannot see.
+            applied = applied.join(Job, Job.id == Application.job_id).where(
+                scope_clause(scope, team_column=Job.team_id, owner_column=Job.recruiter_id)
+            )
         if filters.job_id is not None:
             applied = applied.where(Application.job_id == filters.job_id)
         if filters.stage_group is not None:
@@ -119,11 +124,17 @@ async def get_candidate(
             scope_clause(scope, team_column=Job.team_id, owner_column=Job.recruiter_id)
         )
     applications = [(row[0], row[1]) for row in await session.execute(applications_query)]
-    documents = await session.scalars(
+    documents_query = (
         select(Document)
         .where(Document.candidate_id == candidate.id)
         .order_by(Document.created_at.desc())
     )
+    if not scope.organization_wide:
+        reachable_jobs = select(Job.id).where(
+            scope_clause(scope, team_column=Job.team_id, owner_column=Job.recruiter_id)
+        )
+        documents_query = documents_query.where(Document.job_id.in_(reachable_jobs))
+    documents = await session.scalars(documents_query)
     return CandidateDetail(candidate, list(skills.all()), applications, list(documents.all()))
 
 

@@ -104,8 +104,11 @@ async def build(
     profile = result.profile
     email = _value(profile, "email")
     phone = normalise_phone(_value(profile, "phone") or "")
-    name = _value(profile, "name") or PurePath(document.filename or "").stem or "Unnamed candidate"
-    found = await match(session, email=email, phone=phone, name=name)
+    parsed_name = _value(profile, "name")
+    # A name taken from the file's name stands in until the candidate has a real one; it never
+    # matches anyone (every "resume.pdf" would be the same person).
+    stand_in = PurePath(document.filename or "").stem or "Unnamed candidate"
+    found = await match(session, email=email, phone=phone, name=parsed_name)
     candidate_flags = {**flags}
     if found.possible_duplicate_of is not None:
         candidate_flags["possible_duplicate_of"] = str(found.possible_duplicate_of)
@@ -114,10 +117,12 @@ async def build(
     action = "candidate.merged" if candidate is not None else "candidate.created"
     if candidate is None:
         candidate = Candidate(
-            organization_id=document.organization_id, name=name, created_by=document.created_by
+            organization_id=document.organization_id,
+            name=parsed_name or stand_in,
+            created_by=document.created_by,
         )
         session.add(candidate)
-    candidate.name = name
+    candidate.name = parsed_name or candidate.name
     candidate.email = email or candidate.email
     candidate.phone = phone or candidate.phone
     candidate.location = _value(profile, "location") or candidate.location

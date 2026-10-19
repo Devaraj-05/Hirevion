@@ -1,10 +1,10 @@
 """Is this resume someone we already have? (ADR-0015)
 
 In order: the same email, the same phone, then a near-identical name (trigram similarity of at
-least 0.92) whose candidate has no conflicting email or phone. A similar name with a conflicting
-contact is a different person as far as we can tell, but is flagged as a possible duplicate for
-a recruiter to look at. A file already parsed (the same SHA-256) is found before any of this, so
-it costs no second AI call.
+least 0.92) whose candidate has no conflicting email or phone. A shared phone or a similar name
+with a conflicting contact is a different person as far as we can tell (an agency's switchboard
+is on many resumes), but is flagged as a possible duplicate for a recruiter to look at. A file
+already parsed (the same SHA-256) is found before any of this, so it costs no second AI call.
 """
 
 from __future__ import annotations
@@ -42,13 +42,19 @@ async def match(
             select(Candidate).where(Candidate.phone == digits).order_by(Candidate.created_at)
         )
         if found is not None:
+            if email and found.email and found.email.lower() != email.strip().lower():
+                return Match(None, possible_duplicate_of=found.id)
             return Match(found, "phone")
     if name and name.strip():
         cleaned = " ".join(name.split())
+        # `%` (unlike a comparison of `similarity()`) is answered from the trigram index.
+        await session.execute(
+            select(func.set_config("pg_trgm.similarity_threshold", str(NAME_SIMILARITY), True))
+        )
         similarity = func.similarity(Candidate.name, cleaned)
         found = await session.scalar(
             select(Candidate)
-            .where(similarity >= NAME_SIMILARITY)
+            .where(Candidate.name.op("%")(cleaned))
             .order_by(similarity.desc(), Candidate.created_at)
             .limit(1)
         )

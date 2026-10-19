@@ -8,8 +8,12 @@ import unicodedata
 from dataclasses import dataclass
 
 # Invisible characters that hide or reorder text: zero-width ones, bidi overrides and isolates,
-# the word joiner and the byte-order mark. Resumes use them to smuggle keywords (SP-04b flags).
-_HIDDEN = re.compile("[​-‏‪-‮⁠-⁤⁦-⁩﻿]")
+# the word joiner, the byte-order mark, and the ones that carry a message without showing: Unicode
+# tag characters (a hidden ASCII alphabet), variation selectors, the soft hyphen, fillers and the
+# deprecated formatting controls. Resumes use them to smuggle keywords (SP-04b flags).
+_HIDDEN = re.compile("[­͏؜ᅟᅠ឴឵᠋-᠎​-‏‪-‮⁠-⁯⠀ㅤ︀-️﻿ﾠ\U000e0000-\U000e007f\U000e0100-\U000e01ef]")
+# Control characters other than the tab, line breaks and the form feed (a page break).
+_CONTROL = re.compile("[\x00-\x08\x0e-\x1f\x7f-\x9f]")
 
 # Headings, by the section they open. Matched on a line of their own, any case, with an
 # optional colon.
@@ -76,11 +80,12 @@ class Section:
 
 def normalise(text: str) -> tuple[str, int]:
     """NFKC text with unified line breaks, single spaces and at most one blank line in a row,
-    and how many hidden characters were removed."""
+    and how many hidden characters were removed. Control characters are dropped (PostgreSQL
+    refuses a NUL in text), and a form feed, the page break, becomes a blank line."""
     hidden = len(_HIDDEN.findall(text))
-    text = _HIDDEN.sub("", text)
+    text = _CONTROL.sub("", _HIDDEN.sub("", text))
     text = unicodedata.normalize("NFKC", text).replace("\r\n", "\n").replace("\r", "\n")
-    lines = [" ".join(line.split()) for line in text.replace("\f", "\n\f\n").split("\n")]
+    lines = [" ".join(line.split()) for line in text.replace("\f", "\n\n").split("\n")]
     text = "\n".join(lines)
     text = re.sub(r"\n{3,}", "\n\n", text).strip()
     return text, hidden

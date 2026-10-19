@@ -1,9 +1,11 @@
 """Personal data in resumes (ADR-0015): built-in recognisers for Indian identity numbers and
 contact details, and the masking applied before text is stored or sent to an AI service.
 
-Aadhaar numbers (12 digits, the first 2 to 9, Verhoeff-valid) and PANs keep only their last four
-characters. Phones, emails and dates of birth are found (for checking parsed contact details,
-and for SP-05's blind mode) but left in place.
+Aadhaar numbers (12 digits, the first 2 to 9, Verhoeff-valid, or any 12 digits after the word
+Aadhaar, since a scan misreads digits), virtual IDs, PANs, and passport, voter ID and bank account
+numbers written after their label keep only their last four characters. Phones, emails and dates
+of birth are found (for checking parsed contact details, and for SP-05's blind mode) but left in
+place.
 """
 
 from __future__ import annotations
@@ -37,11 +39,39 @@ _P = (
 )
 _INV = (0, 4, 3, 2, 1, 5, 6, 7, 8, 9)
 
-# 12 digits, ungrouped or in 4-4-4 groups, not inside a longer number.
-_AADHAAR = re.compile(r"(?<![\dX])([2-9]\d{3})[ -]?(\d{4})[ -]?(\d{4})(?!\d)")
+# 12 digits, ungrouped or in 4-4-4 groups (split by spaces, dashes, dots, slashes or a line
+# break), not inside a longer number.
+_GROUP = r"[\s.\-/]{0,3}"
+_AADHAAR = re.compile(rf"(?<![\dX])([2-9]\d{{3}}){_GROUP}(\d{{4}}){_GROUP}(\d{{4}})(?!\d)")
+# A number right after its label is masked whether or not it passes a check, since a scan
+# misreads digits and these are what the label says they are.
+_AADHAAR_LABELLED = re.compile(
+    rf"\b(?:aadhaar|aadhar|adhaar|uidai?)\b[^\n\d]{{0,25}}?"
+    rf"(\d{{4}}{_GROUP}\d{{4}}{_GROUP}\d{{4}})(?!\d)",
+    re.IGNORECASE,
+)
+_LABELLED = {
+    "vid": re.compile(
+        rf"\b(?:virtual\s+id|vid)\b[^\n\d]{{0,10}}?"
+        rf"(\d{{4}}{_GROUP}\d{{4}}{_GROUP}\d{{4}}{_GROUP}\d{{4}})(?!\d)",
+        re.IGNORECASE,
+    ),
+    "passport": re.compile(
+        r"\bpassport(?:\s+(?:no|number))?\.?[:\s#-]*([A-Z]\d{7})\b", re.IGNORECASE
+    ),
+    "voter_id": re.compile(
+        r"\b(?:voter\s*id|epic)(?:\s+(?:no|number))?\.?[:\s#-]*([A-Z]{3}\d{7})\b",
+        re.IGNORECASE,
+    ),
+    "bank_account": re.compile(
+        r"\b(?:bank\s+)?(?:account|a/c)(?:\s+(?:no|number))?\.?[:\s#-]*(\d{9,18})\b",
+        re.IGNORECASE,
+    ),
+}
 # Holder types in the fourth letter: P(erson), C(ompany), H(UF), F(irm), A(OP), T(rust),
 # B(OI), L(ocal authority), J(uridical person), G(overnment).
-_PAN = re.compile(r"\b[A-Z]{3}[ABCFGHJLPT][A-Z][0-9]{4}[A-Z]\b")
+_PAN = re.compile(r"\b[A-Z]{3}[ABCFGHJLPT][A-Z][0-9]{4}[A-Z]\b", re.IGNORECASE)
+_MASKED_KINDS = frozenset({"aadhaar", "pan", *_LABELLED})
 _EMAIL = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 _PHONE = re.compile(
     r"(?<![\w+])(?:(?:\+?91)[\s-]?|0)?[6-9]\d{4}[\s-]?\d{5}(?!\d)"  # Indian mobiles
@@ -102,13 +132,19 @@ def normalise_phone(value: str) -> str | None:
 
 def find(text: str) -> list[PiiMatch]:
     """Every recognised item, in text order."""
-    found: list[PiiMatch] = []
+    found: list[PiiMatch] = [
+        PiiMatch("aadhaar", m.start(1), m.end(1), m.group(1))
+        for m in _AADHAAR_LABELLED.finditer(text)
+    ]
+    for kind, pattern in _LABELLED.items():
+        found += [PiiMatch(kind, m.start(1), m.end(1), m.group(1)) for m in pattern.finditer(text)]
     for match in _AADHAAR.finditer(text):
-        if verhoeff_valid("".join(match.groups())):
+        overlaps = any(m.start < match.end() and match.start() < m.end for m in found)
+        if not overlaps and verhoeff_valid("".join(match.groups())):
             found.append(PiiMatch("aadhaar", match.start(), match.end(), match.group()))
     found += [PiiMatch("pan", m.start(), m.end(), m.group()) for m in _PAN.finditer(text)]
     found += [PiiMatch("email", m.start(), m.end(), m.group()) for m in _EMAIL.finditer(text)]
-    taken = [(m.start, m.end) for m in found if m.kind == "aadhaar"]
+    taken = [(m.start, m.end) for m in found if m.kind in _MASKED_KINDS]
     for match in _PHONE.finditer(text):
         if not any(start < match.end() and match.start() < end for start, end in taken):
             found.append(PiiMatch("phone", match.start(), match.end(), match.group().strip()))
@@ -116,20 +152,29 @@ def find(text: str) -> list[PiiMatch]:
     return sorted(found, key=lambda m: m.start)
 
 
+def _masked(match: PiiMatch) -> str:
+    characters = re.sub(r"[^0-9A-Za-z]", "", match.value)
+    kept = characters[-4:]
+    if match.kind == "aadhaar":
+        return f"XXXX XXXX {kept}"
+    if match.kind == "vid":
+        return f"XXXX XXXX XXXX {kept}"
+    if match.kind == "pan":
+        return f"XXXXXX{kept}"
+    return "X" * max(len(characters) - 4, 4) + kept
+
+
 def mask(text: str) -> Masked:
-    """`text` with Aadhaar numbers and PANs masked, and a count of each kind found."""
+    """`text` with identity numbers masked to their last four characters, and a count of each
+    kind found."""
     counts: dict[str, int] = {}
     pieces: list[str] = []
     position = 0
     for match in find(text):
         counts[match.kind] = counts.get(match.kind, 0) + 1
-        if match.kind not in ("aadhaar", "pan") or match.start < position:
+        if match.kind not in _MASKED_KINDS or match.start < position:
             continue
-        digits = re.sub(r"\D", "", match.value)
-        replacement = (
-            f"XXXX XXXX {digits[-4:]}" if match.kind == "aadhaar" else f"XXXXXX{match.value[-4:]}"
-        )
-        pieces += [text[position : match.start], replacement]
+        pieces += [text[position : match.start], _masked(match)]
         position = match.end
     pieces.append(text[position:])
     return Masked("".join(pieces), counts)

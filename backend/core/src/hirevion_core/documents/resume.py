@@ -11,12 +11,14 @@ from importlib.resources import files
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from hirevion_core.ai.types import AiContext, ChatMessage, LLMService
 from hirevion_core.documents import pii
+from hirevion_core.documents.prompt_text import fence
 from hirevion_core.documents.quotes import fold, verified
 from hirevion_core.documents.sections import Section, detect
+from hirevion_core.documents.trimmed import Trimmed
 
 PROMPT_VERSION = "resume-parse-v1"
 PURPOSE = "resume.parse"
@@ -28,7 +30,7 @@ _TEXT = 500
 _YEARS = Field(None, ge=0, le=60)
 
 
-class Quoted(BaseModel):
+class Quoted(Trimmed):
     quote: str = Field(max_length=_TEXT)
 
 
@@ -80,7 +82,7 @@ class Link(Quoted):
     url: str = Field(max_length=500)
 
 
-class ResumeExtraction(BaseModel):
+class ResumeExtraction(Trimmed):
     name: QuotedValue | None = None
     email: QuotedValue | None = None
     phone: QuotedValue | None = None
@@ -98,6 +100,17 @@ class ResumeExtraction(BaseModel):
 
 
 SINGLE_FIELDS = ("name", "email", "phone", "location", "summary")
+# What each kind of item says about itself: its quote has to be about at least one of these.
+TIED_FIELDS: dict[str, tuple[str, ...]] = {
+    "skills": ("name",),
+    "positions": ("title", "company"),
+    "education": ("institution", "degree", "field"),
+    "certifications": ("name", "issuer"),
+    "projects": ("name",),
+    "achievements": ("text",),
+    "languages": ("name",),
+    "links": ("url",),
+}
 LIST_FIELDS = (
     "skills",
     "positions",
@@ -127,8 +140,8 @@ class _Evidence:
         self.pages = [fold(page) for page in page_texts]
         self.sections: list[Section] = detect(text)
 
-    def found(self, quote: str) -> bool:
-        return verified(quote, self.text, folded_text=self.folded)
+    def found(self, quote: str, values: Sequence[str] = ()) -> bool:
+        return verified(quote, self.text, folded_text=self.folded, values=values)
 
     def locate(self, quote: str) -> dict[str, Any]:
         needle = fold(quote)
@@ -168,8 +181,8 @@ async def parse_resume(
     document_id: UUID,
 ) -> ResumeResult:
     """`text` is the resume's visible, normalised text (masked here, again, to be sure)."""
-    sample = pii.mask(text).text[:MAX_CHARACTERS]
-    pages = [pii.mask(page).text for page in page_texts]
+    sample = fence(pii.mask(text).text[:MAX_CHARACTERS])
+    pages = [fence(pii.mask(page).text) for page in page_texts]
     messages: list[ChatMessage] = [
         {"role": "system", "content": _PROMPT},
         {"role": "user", "content": f"<resume>\n{sample}\n</resume>"},
@@ -191,7 +204,7 @@ async def parse_resume(
         item: QuotedValue | None = getattr(raw, name)
         if item is None:
             profile[name] = None
-        elif evidence.found(item.quote) and _contact_ok(name, item.value, contacts):
+        elif evidence.found(item.quote, [item.value]) and _contact_ok(name, item.value, contacts):
             profile[name] = {**item.model_dump(), **evidence.locate(item.quote)}
         else:
             profile[name] = None
@@ -199,7 +212,8 @@ async def parse_resume(
     for name in LIST_FIELDS:
         kept = []
         for entry in getattr(raw, name):
-            if evidence.found(entry.quote):
+            values = [str(getattr(entry, field) or "") for field in TIED_FIELDS[name]]
+            if evidence.found(entry.quote, values):
                 kept.append({**entry.model_dump(), **evidence.locate(entry.quote)})
             else:
                 dropped += 1

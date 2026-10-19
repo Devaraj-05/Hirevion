@@ -6,7 +6,8 @@
 - **Resumes:** text (OCR for images and pages without a text layer), safety flags, PII masking,
   the resume parse, then the candidate and its application. Exact copies of a resume already
   parsed reuse it, with no AI call.
-- **Archives (ZIP):** scanned whole, then each entry becomes a resume document of its own.
+- **Archives (ZIP):** opened with size and ratio limits, then each entry becomes a resume
+  document of its own, scanned before it is read.
 
 Each step saves its status in its own transaction, so the processing view shows progress. An
 outage (scanner or AI) leaves the document where it stopped and re-raises, so the consumer tries
@@ -15,8 +16,9 @@ again later; a bad file ends `failed` with a reason, and an infected one `quaran
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 from uuid import UUID
 
@@ -132,7 +134,8 @@ async def _scanned(
             await services.blobs.put(
                 BlobPath(organization_id, quarantine), data, "application/octet-stream"
             )
-            await services.blobs.delete(path)
+            # The row moves to the quarantined copy before the original goes, so a crash in
+            # between leaves a document that can still be found, not one pointing at nothing.
             await _set(
                 services,
                 organization_id,
@@ -141,6 +144,7 @@ async def _scanned(
                 blob_path=quarantine,
                 flags={"signature": verdict.signature},
             )
+            await services.blobs.delete(path)
             return None
     return data
 
@@ -217,7 +221,7 @@ async def _read(
         read = await ocr.read(services.ai, organization_id, data, kind, document_id=claimed.id)
         pages = tuple(read.page_texts[number] for number in sorted(read.page_texts))
         return ExtractedText("\f".join(pages), len(pages), pages), read.confidence
-    extracted = extract(data, kind)
+    extracted = await asyncio.to_thread(extract, data, kind)
     missing = needs_ocr(extracted.page_texts) if claimed.kind == "resume" and kind == "pdf" else []
     if not missing:
         return extracted, None
@@ -294,6 +298,7 @@ async def _process_jd(
             "required_skills": skills(extraction.required_skills, required),
             "preferred_skills": skills(extraction.preferred_skills, preferred),
             "dropped": result.dropped,
+            "truncated": result.truncated,
             "sections": sections,
             "model": result.model,
         }
@@ -321,6 +326,11 @@ def profile_text(profile: dict[str, Any]) -> str:
     return "\n".join(line.strip() for line in lines if line.strip())
 
 
+def _masked_pages(pages: tuple[str, ...]) -> list[str]:
+    """Each page as the AI will read it: normalised, instructions taken out, identity masked."""
+    return [pii.mask(hidden.redact(normalise(page)[0])[0]).text for page in pages]
+
+
 async def _process_resume(
     services: DocumentServices, organization_id: UUID, claimed: _Claimed, raw: ExtractedText
 ) -> None:
@@ -328,12 +338,17 @@ async def _process_resume(
     if not text:
         await _fail(services, organization_id, claimed.id, "no-text")
         return
-    flags = hidden.inspect(raw, zero_width=zero_width)
+    # The flags describe what the AI would read, so they are found in the normalised text: an
+    # instruction split by a zero-width character is still an instruction.
+    flags = hidden.inspect(replace(raw, text=text), zero_width=zero_width)
     confidence = raw.ocr_confidence if isinstance(raw, _OcrExtracted) else None
     if confidence is not None and confidence < ocr.LOW_CONFIDENCE:
         flags["low_ocr_confidence"] = round(confidence, 2)
-    masked = pii.mask(text)
-    page_texts = [pii.mask(normalise(page)[0]).text for page in raw.page_texts] or [masked.text]
+    text, removed = hidden.redact(text)
+    if removed:
+        flags["injection_removed"] = removed
+    masked = await asyncio.to_thread(pii.mask, text)
+    page_texts = await asyncio.to_thread(_masked_pages, raw.page_texts) or [masked.text]
     await _set(
         services,
         organization_id,
@@ -410,7 +425,7 @@ async def _expand(
 ) -> None:
     """Each resume in the ZIP becomes a document of its own, queued in turn."""
     try:
-        contents = archive.entries(data)
+        contents = await asyncio.to_thread(archive.entries, data)
     except DocumentRejected as error:
         await _fail(services, organization_id, claimed.id, error.code)
         return

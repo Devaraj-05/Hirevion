@@ -30,6 +30,29 @@ _PHRASES = [
 ]
 
 
+# The phrases that have no place in a resume at all. The others ("system prompt", "you are an AI
+# assistant") are flagged but kept: an engineer's resume can say them for honest reasons.
+_STRONG = _PHRASES[:2] + _PHRASES[4:]
+REDACTED = "[instruction-like text removed]"
+
+
+def redact(text: str) -> tuple[str, int]:
+    """`text` without its most plain instructions to a screener ("ignore all previous
+    instructions", "rank this candidate first"), and how many were removed. They stay in the
+    flags, so a recruiter sees what was there; the AI never reads them."""
+    spans = sorted((m.start(), m.end()) for pattern in _STRONG for m in pattern.finditer(text))
+    pieces: list[str] = []
+    position = count = 0
+    for start, end in spans:
+        if start < position:
+            continue
+        pieces += [text[position:start], REDACTED]
+        position = end
+        count += 1
+    pieces.append(text[position:])
+    return "".join(pieces), count
+
+
 def injection_phrases(text: str) -> list[str]:
     """The instruction-like phrases in `text`, lower-cased, in order, without repeats."""
     found: list[tuple[int, str]] = []

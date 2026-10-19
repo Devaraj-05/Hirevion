@@ -13,7 +13,13 @@ from hirevion_core.access.actor import Actor
 from hirevion_core.access.audit import record
 from hirevion_core.access.errors import Conflict, Invalid, NotFound
 from hirevion_core.documents.archive import MAX_ARCHIVE_BYTES
-from hirevion_core.documents.files import MAX_BYTES, DocumentRejected, check
+from hirevion_core.documents.files import (
+    MAX_BYTES,
+    RESUME_KINDS,
+    DocumentRejected,
+    check,
+    display_name,
+)
 from hirevion_core.ids import uuid7
 from hirevion_core.models import Document, Job
 from hirevion_core.outbox import publish_event
@@ -35,12 +41,16 @@ _REJECTIONS = {
     "empty": "The file is empty",
     "too-large": "Upload a file of at most 10 MB",
     "unsupported-type": "Upload a PDF, Word (.docx) or text file",
+    "archive-bomb": "The file expands to an unreasonable size",
+    "unreadable": "The file can't be read",
 }
-RESUME_TYPES = frozenset({"pdf", "docx", "txt", "png", "jpeg", "tiff"})
+RESUME_TYPES = RESUME_KINDS
 _RESUME_REJECTIONS = {
     "empty": "The file is empty",
     "too-large": "Upload files of at most 10 MB, or ZIP archives of at most 50 MB",
     "unsupported-type": "Upload a PDF, Word (.docx), text, JPG, PNG or TIFF file, or a ZIP of them",
+    "archive-bomb": "The file expands to an unreasonable size",
+    "unreadable": "The file can't be read",
 }
 
 
@@ -126,7 +136,7 @@ async def submit_jd_file(
         kind="jd",
         job_id=job.id,
         # Shown only; the stored file is named by its id.
-        filename=filename.replace("\\", "/").rsplit("/", 1)[-1][:255] or None,
+        filename=display_name(filename),
         content_type=CONTENT_TYPES[kind],
         size=len(data),
         sha256=hashlib.sha256(data).hexdigest(),
@@ -176,7 +186,7 @@ async def submit_resume_file(
         organization_id=actor.organization_id,
         kind="archive" if kind == "zip" else "resume",
         job_id=job.id,
-        filename=filename.replace("\\", "/").rsplit("/", 1)[-1][:255] or None,
+        filename=display_name(filename),
         content_type=CONTENT_TYPES[kind],
         size=len(data),
         sha256=hashlib.sha256(data).hexdigest(),

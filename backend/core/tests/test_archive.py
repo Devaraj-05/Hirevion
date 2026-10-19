@@ -45,10 +45,11 @@ def test_resumes_come_out_and_the_rest_is_skipped_with_reasons(
     }
 
 
-def test_a_zip_bomb_is_refused() -> None:
-    with pytest.raises(DocumentRejected) as refusal:
-        archive.entries(zipped({"bomb.txt": b"0" * (5 * 1024 * 1024)}))
-    assert refusal.value.code == "archive-bomb"
+def test_a_zip_bomb_is_never_expanded() -> None:
+    # Skipped with its reason (and so reported to the recruiter), never read.
+    contents = archive.entries(zipped({"bomb.txt": b"0" * (5 * 1024 * 1024)}))
+    assert contents.entries == []
+    assert contents.skipped == [{"name": "bomb.txt", "reason": "compressed-like-a-bomb"}]
 
 
 def test_too_many_entries_are_refused() -> None:

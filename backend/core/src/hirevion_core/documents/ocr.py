@@ -8,13 +8,14 @@ call's record keeps no text.
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Sequence
 from dataclasses import dataclass
 from io import BytesIO
 from uuid import UUID
 
 import pypdfium2 as pdfium
-from PIL import Image, ImageSequence, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from hirevion_core.ai import AiServices
 from hirevion_core.ai.types import AiContext
@@ -22,6 +23,9 @@ from hirevion_core.documents.files import DocumentRejected
 
 PURPOSE = "resume.ocr"
 MAX_PIXELS = 25_000_000
+MAX_FRAMES = 50
+# The longest side sent to the OCR service: a phone photo is far sharper than a page needs.
+MAX_SIDE = 3_000
 RENDER_SCALE = 200 / 72
 LOW_CONFIDENCE = 0.6
 
@@ -30,15 +34,29 @@ LOW_CONFIDENCE = 0.6
 class OcrText:
     page_texts: dict[int, str]
     """Page number (from 1) to its text."""
-    confidence: float
-    """The mean over the pages read."""
+    confidence: float | None
+    """The mean over the pages that had text; None when none did (a blank page is not a poor
+    reading)."""
+
+
+def _flattened(image: Image.Image) -> Image.Image:
+    """The frame as a reader sees it: turned upright as its camera says, transparency laid on
+    white (not black), 16-bit grays squeezed to 8, and no larger than OCR needs."""
+    image = ImageOps.exif_transpose(image)
+    if image.mode in ("RGBA", "LA", "PA") or "transparency" in image.info:
+        rgba = image.convert("RGBA")
+        image = Image.alpha_composite(Image.new("RGBA", rgba.size, "white"), rgba)
+    if image.mode.startswith(("I", "F")):
+        image = image.convert("I").point(lambda value: value / 256).convert("L")
+    image.thumbnail((MAX_SIDE, MAX_SIDE))
+    return image.convert("L" if image.mode in ("1", "L") else "RGB")
 
 
 def _png(image: Image.Image) -> bytes:
     if image.width * image.height > MAX_PIXELS:
         raise DocumentRejected("image-too-large")
     out = BytesIO()
-    image.convert("L" if image.mode in ("1", "L", "LA", "I;16") else "RGB").save(out, "PNG")
+    _flattened(image).save(out, "PNG")
     return out.getvalue()
 
 
@@ -48,8 +66,17 @@ def _image_pages(data: bytes) -> list[bytes]:
             # The header alone tells the size: refuse before decoding a bomb.
             if image.width * image.height > MAX_PIXELS:
                 raise DocumentRejected("image-too-large")
-            return [_png(frame.copy()) for frame in ImageSequence.Iterator(image)]
-    except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as error:
+            frames = getattr(image, "n_frames", 1)
+            if frames > MAX_FRAMES:  # each frame is a paid OCR call
+                raise DocumentRejected("too-many-pages")
+            pages = []
+            for number in range(frames):
+                image.seek(number)
+                if image.width * image.height > MAX_PIXELS:
+                    raise DocumentRejected("image-too-large")
+                pages.append(_png(image.copy()))
+            return pages
+    except (UnidentifiedImageError, OSError, SyntaxError, Image.DecompressionBombError) as error:
         raise DocumentRejected("unreadable") from error
 
 
@@ -67,6 +94,8 @@ def _pdf_pages(data: bytes, pages: Sequence[int]) -> list[bytes]:
                 raise DocumentRejected("image-too-large")
             rendered.append(_png(page.render(scale=RENDER_SCALE).to_pil()))
         return rendered
+    except (pdfium.PdfiumError, IndexError, ValueError) as error:
+        raise DocumentRejected("unreadable") from error
     finally:
         document.close()
 
@@ -83,9 +112,9 @@ async def read(
     """The text of an image file's frames, or of the given (1-based) pages of a PDF."""
     if kind == "pdf":
         numbers = list(pages or [])
-        images = _pdf_pages(data, numbers)
+        images = await asyncio.to_thread(_pdf_pages, data, numbers)
     elif kind in ("png", "jpeg", "tiff"):
-        images = _image_pages(data)
+        images = await asyncio.to_thread(_image_pages, data)
         numbers = list(range(1, len(images) + 1))
     else:
         raise DocumentRejected("unsupported-type")
@@ -100,6 +129,7 @@ async def read(
         )
         page = await ai.ocr.read_page(context, image, "image/png")
         texts[number] = page.text
-        confidences.append(page.confidence)
-    confidence = sum(confidences) / len(confidences) if confidences else 1.0
+        if page.text.strip():
+            confidences.append(page.confidence)
+    confidence = sum(confidences) / len(confidences) if confidences else None
     return OcrText(texts, confidence)

@@ -1,20 +1,32 @@
 """ZIP uploads of resumes (PRD §13 bulk upload). Entries are read in memory, each bounded, and
-never written to disk; the archive as a whole is refused when it is too big or compressed like a
-bomb, and entries we won't take are skipped with a reason."""
+never written to disk; the archive as a whole is refused when it has too many records or is too
+big, and entries we won't take (encrypted, too big, compressed like a bomb, damaged, not a
+resume) are skipped with a reason, so one bad file doesn't sink the rest."""
 
 from __future__ import annotations
 
+import lzma
 import zipfile
+import zlib
 from dataclasses import dataclass, field
 from io import BytesIO
 
-from hirevion_core.documents.files import MAX_BYTES, DocumentRejected, FileKind, sniff
+from hirevion_core.documents.files import (
+    MAX_BYTES,
+    RESUME_KINDS,
+    DocumentRejected,
+    FileKind,
+    display_name,
+    sniff,
+)
 
 MAX_ARCHIVE_BYTES = 50 * 1024 * 1024
 MAX_ENTRIES = 200
 MAX_UNCOMPRESSED = 200 * 1024 * 1024
 MAX_RATIO = 100
-RESUME_KINDS: frozenset[str] = frozenset({"pdf", "docx", "txt", "png", "jpeg", "tiff"})
+# The records a ZIP's directory may hold before it is opened: the entries, folders and the
+# macOS junk that travels with them. Reading the directory costs memory per record.
+MAX_RECORDS = 4 * MAX_ENTRIES
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,32 +47,53 @@ def _junk(path: str) -> bool:
     return path.startswith("__MACOSX/") or path.rsplit("/", 1)[-1].startswith(".")
 
 
+def _declared_records(data: bytes) -> int | None:
+    """How many records the archive's end-of-directory says it has, without opening it."""
+    tail = data[-(65_535 + 22) :]
+    index = tail.rfind(b"PK\x05\x06")
+    if index < 0 or len(tail) - index < 22:
+        return None
+    return int.from_bytes(tail[index + 10 : index + 12], "little")
+
+
 def entries(data: bytes) -> ArchiveContents:
+    declared = _declared_records(data)
+    if declared is not None and declared > MAX_RECORDS:
+        raise DocumentRejected("archive-too-large")
     try:
         bundle = zipfile.ZipFile(BytesIO(data))
         infos = [info for info in bundle.infolist() if not info.is_dir()]
-    except (zipfile.BadZipFile, ValueError) as error:
+    except (zipfile.BadZipFile, ValueError, NotImplementedError) as error:
         raise DocumentRejected("unreadable") from error
     files = [info for info in infos if not _junk(info.filename)]
     if len(files) > MAX_ENTRIES or sum(info.file_size for info in files) > MAX_UNCOMPRESSED:
         raise DocumentRejected("archive-too-large")
-    for info in files:
-        if info.file_size > MAX_RATIO * max(info.compress_size, 1):
-            raise DocumentRejected("archive-bomb")
 
     contents = ArchiveContents()
     for info in files:
-        name = info.filename.rsplit("/", 1)[-1]
+        name = display_name(info.filename) or "resume"
         if info.flag_bits & 0x1:
             contents.skipped.append({"name": name, "reason": "encrypted"})
             continue
         if info.file_size > MAX_BYTES:
             contents.skipped.append({"name": name, "reason": "too-large"})
             continue
+        if info.file_size > MAX_RATIO * max(info.compress_size, 1):
+            contents.skipped.append({"name": name, "reason": "compressed-like-a-bomb"})
+            continue
         try:
             with bundle.open(info) as stream:
                 content = stream.read(MAX_BYTES + 1)  # the declared size may lie
-        except (zipfile.BadZipFile, RuntimeError, OSError, EOFError):
+        except (
+            zipfile.BadZipFile,
+            RuntimeError,
+            OSError,
+            EOFError,
+            zlib.error,
+            lzma.LZMAError,
+            NotImplementedError,
+            ValueError,
+        ):
             contents.skipped.append({"name": name, "reason": "unreadable"})
             continue
         if len(content) > MAX_BYTES:
