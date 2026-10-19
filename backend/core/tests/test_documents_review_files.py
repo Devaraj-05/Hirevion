@@ -2,13 +2,19 @@
 images sent to OCR."""
 
 from io import BytesIO
+from types import SimpleNamespace
+from typing import Any
+from uuid import UUID
 from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
 import pytest
 from PIL import Image
 
+from hirevion_core.ai.types import OcrPage
 from hirevion_core.documents import archive, ocr
 from hirevion_core.documents.files import DocumentRejected, display_name
+from hirevion_core.documents.jd import JdExtraction
+from hirevion_core.documents.resume import ResumeExtraction
 
 
 def zipped(entries: dict[str, bytes], *, store: bool = False) -> bytes:
@@ -83,3 +89,45 @@ def test_a_tiff_with_too_many_frames_is_refused_before_any_is_read() -> None:
     with pytest.raises(DocumentRejected) as refusal:
         ocr._image_pages(out.getvalue())
     assert refusal.value.code == "too-many-pages"
+
+
+class Reader:
+    def __init__(self, pages: list[tuple[str, float]]) -> None:
+        self.pages = iter(pages)
+
+    async def read_page(self, context: object, image: bytes, content_type: str) -> OcrPage:
+        text, confidence = next(self.pages)
+        return OcrPage(text, confidence, "fake")
+
+
+def tiff(frames: int) -> bytes:
+    pages = [Image.new("L", (8, 8), 255) for _ in range(frames)]
+    out = BytesIO()
+    pages[0].save(out, "TIFF", save_all=frames > 1, append_images=pages[1:])
+    return out.getvalue()
+
+
+async def test_a_blank_page_is_not_a_poor_reading() -> None:
+    mixed: Any = SimpleNamespace(ocr=Reader([("Asha Rao, Python developer", 0.95), ("", 0.0)]))
+    read = await ocr.read(mixed, UUID(int=1), tiff(2), "tiff", document_id=UUID(int=2))
+    assert read.confidence == pytest.approx(0.95)
+    blank: Any = SimpleNamespace(ocr=Reader([("", 0.0)]))
+    nothing = await ocr.read(blank, UUID(int=1), tiff(1), "tiff", document_id=UUID(int=2))
+    assert nothing.confidence is None
+
+
+def test_an_answer_with_too_much_is_trimmed_not_refused() -> None:
+    resume = ResumeExtraction.model_validate(
+        {
+            "name": {"value": "x" * 3000, "quote": "y" * 600},
+            "achievements": [{"text": "t" * 900, "quote": "q" * 900}] * 55,
+            "skills": [{"name": "Python", "quote": "Python"}] * 200,
+        }
+    )
+    assert len(resume.achievements) == 40 and len(resume.skills) == 150
+    assert resume.name is not None and len(resume.name.quote) == 500
+    assert len(resume.name.value) == 2000
+    jd = JdExtraction.model_validate(
+        {"domain": [{"text": "d", "quote": "dd"}] * 30, "location": "l" * 300}
+    )
+    assert len(jd.domain) == 20 and jd.location is not None and len(jd.location) == 200
