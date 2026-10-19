@@ -59,7 +59,7 @@ class SignsUrls(Protocol):
 
 
 async def _job_in_scope(session: AsyncSession, principal: Principal, job_id: UUID) -> None:
-    await jobs.get_job(session, job_id, await resource_scope(session, principal.user_id))
+    await jobs.require_in_scope(session, job_id, await resource_scope(session, principal.user_id))
 
 
 async def _summaries(

@@ -9,7 +9,8 @@ from uuid import UUID
 import pytest
 from httpx import AsyncClient
 from openpyxl import load_workbook
-from sqlalchemy import select
+from sqlalchemy import select, text
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 from hirevion_core.ai import build_ai
 from hirevion_core.ai.mock import MockLLM
@@ -107,12 +108,19 @@ async def test_configuration_inherits_and_validates(
         json={"weights": {**inherited["weights"], "experience": 50}},
     )
     assert (bad.status_code, bad.json()["code"]) == (422, "weights-total")
-    own = await recruiter.put(f"/api/v1/jobs/{job_id}/screening-config", json={"blind": False})
+    # Blind screening is on by default and only an organisation administrator turns it off.
+    locked = await recruiter.put(f"/api/v1/jobs/{job_id}/screening-config", json={"blind": False})
+    assert (locked.status_code, locked.json()["code"]) == (403, "blind-screening-locked")
+    kept = await recruiter.put(
+        f"/api/v1/jobs/{job_id}/screening-config", json={"knockouts": {"min_experience": False}}
+    )
+    assert (kept.json()["inherited"], kept.json()["blind"]) == (False, True)
+    admin = await signed_in(acme, await make_user(acme, roles=["org_admin"]))
+    own = await admin.put(f"/api/v1/jobs/{job_id}/screening-config", json={"blind": False})
     assert (own.json()["inherited"], own.json()["blind"]) == (False, False)
     reset = await recruiter.delete(f"/api/v1/jobs/{job_id}/screening-config")
     assert reset.json()["inherited"] is True
 
-    admin = await signed_in(acme, await make_user(acme, roles=["org_admin"]))
     default = await admin.put("/api/v1/screening-config", json={"blind": False})
     assert (default.status_code, default.json()["source"]) == (200, "organization")
     assert (await recruiter.get(f"/api/v1/jobs/{job_id}/screening-config")).json()["blind"] is False
@@ -186,7 +194,8 @@ async def test_export_needs_a_recent_password_and_neutralises_formulas(
 
     as_csv = await fresh.get(f"/api/v1/jobs/{job_id}/screening-results/export")
     assert as_csv.headers["content-type"].startswith("text/csv")
-    rows = list(csv.reader(StringIO(as_csv.text)))
+    assert as_csv.content.startswith(b"\xef\xbb\xbf")  # a BOM, so Excel reads UTF-8
+    rows = list(csv.reader(StringIO(as_csv.text.lstrip("\ufeff"))))
     assert rows[0][:3] == ["Rank", "Candidate", "Match score"]
     assert rows[1][1] == "'=Asha Rao"  # a leading = would run as a formula in a spreadsheet
 
@@ -194,4 +203,32 @@ async def test_export_needs_a_recent_password_and_neutralises_formulas(
         f"/api/v1/jobs/{job_id}/screening-results/export", params={"format": "xlsx"}
     )
     sheet = load_workbook(BytesIO(as_xlsx.content)).active
-    assert sheet is not None and sheet["B2"].value == "'=Asha Rao"
+    assert sheet is not None
+    # Text typed as text (no apostrophe to see, no formula to run); numbers stay numbers.
+    assert (sheet["B2"].value, sheet["B2"].data_type) == ("=Asha Rao", "s")
+    assert isinstance(sheet["A2"].value, int) and isinstance(sheet["C2"].value, int)
+
+
+async def test_a_job_or_application_out_of_reach_does_not_exist(
+    recruiter: AsyncClient,
+    signed_in,
+    acme: UUID,
+    make_user,
+    app_db: Database,
+    admin_engine: AsyncEngine,
+) -> None:
+    job_id = await job_with_candidates(recruiter, app_db, acme)
+    await screen(recruiter, app_db, acme, job_id)
+    application = (await recruiter.get(f"/api/v1/jobs/{job_id}/screening-results")).json()["items"][
+        0
+    ]["application_id"]
+    outsider_id = await make_user(acme, roles=["recruiter"])
+    async with admin_engine.begin() as conn:
+        await conn.execute(
+            text("UPDATE users SET access_scope = 'teams' WHERE id = :id"), {"id": outsider_id}
+        )
+    outsider = await signed_in(acme, outsider_id)
+    unknown = await outsider.get(f"/api/v1/applications/{UUID(int=3)}/screening")
+    hidden = await outsider.get(f"/api/v1/applications/{application}/screening")
+    assert (hidden.status_code, hidden.json()["code"]) == (404, "application-not-found")
+    assert hidden.json()["code"] == unknown.json()["code"]  # the same answer as for no such id

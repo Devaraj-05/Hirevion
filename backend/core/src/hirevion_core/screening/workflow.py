@@ -16,7 +16,8 @@ from hirevion_core.access.actor import Actor
 from hirevion_core.access.audit import record
 from hirevion_core.access.errors import Conflict, Invalid, NotFound
 from hirevion_core.hiring.workflow import change_status, finished_interview
-from hirevion_core.models import Application, ScreeningResult, User
+from hirevion_core.models import Application, Interview, ScreeningResult, User
+from hirevion_core.models.interview import ACTIVE_STATUSES
 from hirevion_core.screening.engine import record_stage
 
 STAGE_ACTIONS = {
@@ -29,6 +30,9 @@ ASSIGN_ACTIONS = {
     "assign_recruiter": "recruiter_id",
     "assign_hiring_manager": "hiring_manager_id",
 }
+# The hiring status a screening action asks for, when it reopens a decision made after an
+# interview.
+STATUS_FOR_ACTION = {"shortlist": "shortlisted", "hold": "on_hold", "review": "under_review"}
 ACTIONS = tuple(STAGE_ACTIONS) + tuple(ASSIGN_ACTIONS)
 MAX_BULK = 500
 REASON_MAX = 1000
@@ -62,10 +66,15 @@ async def act(
             "invalid-selection", f"Choose 1 to {MAX_BULK} candidates", field="application_ids"
         )
     reason = (reason or "").strip()[:REASON_MAX] or None
+    # Locked: two actions on the same candidates at once take turns, each seeing the other's.
     applications = list(
         (
             await session.scalars(
-                select(Application).where(Application.id.in_(ids), Application.job_id == job_id)
+                select(Application)
+                .where(Application.id.in_(ids), Application.job_id == job_id)
+                .order_by(Application.id)
+                .with_for_update()
+                .execution_options(populate_existing=True)
             )
         ).all()
     )
@@ -76,6 +85,11 @@ async def act(
         return await _assign(session, actor, job_id, applications, action, user_id)
 
     target, audit_action = STAGE_ACTIONS[action]
+    # What would change: an application already there (or not yet read) is left alone, so
+    # sending an action again needs no reason and does nothing.
+    changing = [a for a in applications if a.stage != target and a.stage != "uploaded"]
+    if not changing:
+        return applications
     ranked = int(
         await session.scalar(
             select(func.count())
@@ -84,7 +98,7 @@ async def act(
         )
         or 0
     )
-    overrides = {app.id: _is_override(action, app.rank, ranked) for app in applications}
+    overrides = {app.id: _is_override(action, app.rank, ranked) for app in changing}
     if not reason and (action == "reject" or any(overrides.values())):
         raise Invalid(
             "reason-required",
@@ -101,18 +115,32 @@ async def act(
             )
         )
     }
-    for application in applications:
-        if application.stage == target or application.stage == "uploaded":
-            continue
-        if application.hiring_status == "selected":
-            raise Conflict(
-                "application-selected",
-                "A candidate was selected for this job: change the hiring status to reopen it",
+    movable = [a for a in changing if a.hiring_status != "selected"]
+    if not movable:  # nothing in the selection could be moved: say why
+        raise Conflict(
+            "application-selected",
+            "A candidate was selected for this job: change the hiring status to reopen it",
+        )
+    for application in movable:  # (a selected one among others is left as it is)
+        live = await session.scalar(
+            select(Interview.id)
+            .where(
+                Interview.application_id == application.id, Interview.status.in_(ACTIVE_STATUSES)
             )
-        if action == "reject" and await finished_interview(session, application.id) is not None:
-            # After an interview a rejection is the final decision (PRD §72): it needs the
-            # permission to decide and is recorded as one.
-            await change_status(session, actor, application.id, "rejected", reason=reason)
+            .limit(1)
+        )
+        if live is not None:  # the stage and the interview would part ways
+            raise Conflict(
+                "interview-active",
+                "This candidate has an interview scheduled or under way: cancel it first",
+            )
+        if await finished_interview(session, application.id) is not None and (
+            action == "reject" or application.hiring_status == "rejected"
+        ):
+            # After an interview a rejection is the final decision (PRD §72), and reopening it
+            # is a decision too: both need the permission to decide and are recorded as such.
+            status = "rejected" if action == "reject" else STATUS_FOR_ACTION[action]
+            await change_status(session, actor, application.id, status, reason=reason)
             continue
         previous = application.stage
         score = (

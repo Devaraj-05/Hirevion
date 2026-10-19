@@ -6,6 +6,7 @@ version, the configuration's version, the prompt and the model (master plan §6.
 from __future__ import annotations
 
 import hashlib
+import json
 import math
 from collections.abc import Sequence
 from typing import Any
@@ -17,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from hirevion_core.ai import AiServices
 from hirevion_core.db.session import Database
 from hirevion_core.hiring.workflow import sync_from_stage
+from hirevion_core.jobs.synonyms import related_terms
 from hirevion_core.models import (
     Application,
     ApplicationHistory,
@@ -29,7 +31,7 @@ from hirevion_core.models import (
 )
 from hirevion_core.screening import config
 from hirevion_core.screening.assess import PROMPT_VERSION, assess
-from hirevion_core.screening.blind import blind_text
+from hirevion_core.screening.blind import BLIND_VERSION, blind_text
 from hirevion_core.screening.factors import (
     CandidateSkillIn,
     JobSkillIn,
@@ -50,12 +52,39 @@ def model_name(ai: AiServices) -> str:
     return f"{settings.profile}:{settings.llm_model_strong}"
 
 
-def cache_key(document: Document | None, job: Job, version: str, model: str) -> str:
+class InputsChanged(Exception):
+    """The resume or the candidate's profile changed while the AI was reading it: the result
+    would describe something that is no longer there. The consumer tries again."""
+
+
+def candidate_fingerprint(candidate: Candidate, skills: Sequence[CandidateSkill]) -> str:
+    """The parts of a candidate that scoring reads, as a hash."""
+    content = {
+        "profile": candidate.profile,
+        "skills": [(skill.name, str(skill.years)) for skill in skills],
+    }
+    return hashlib.sha256(json.dumps(content, sort_keys=True, default=str).encode()).hexdigest()
+
+
+def cache_key(
+    document: Document | None,
+    application_id: UUID,
+    job: Job,
+    settings: config.Config,
+    candidate_hash: str,
+    model: str,
+) -> str:
+    """Identifies a result by everything it depends on, so a stale one is never reused: the
+    resume, the application (two with no resume must not share a key), the job's version, what
+    the configuration says, the candidate's profile, the blind rules, the prompt and the model."""
     parts = [
-        document.sha256 if document and document.sha256 else "no-resume",
+        document.sha256 if document and document.sha256 else f"no-resume-{application_id}",
+        str(application_id),
         str(job.id),
         str(job.version),
-        version,
+        config.fingerprint(settings),
+        candidate_hash,
+        BLIND_VERSION if settings.blind else "open",
         PROMPT_VERSION,
         model,
     ]
@@ -100,11 +129,20 @@ def cosine(a: Sequence[float] | None, b: Sequence[float] | None) -> float | None
 
 
 def _skill_quotes(profile: dict[str, Any], names: Sequence[str]) -> list[str]:
-    wanted = {name.lower() for name in names}
+    """The resume's own words for the skills matched. A job's "JavaScript" is matched by a resume's
+    "JS", so a candidate's skill counts when it is one of the same skill's spellings."""
+    wanted: set[str] = set()
+    for name in names:
+        wanted.add(name.lower())
+        wanted |= {spelling.lower() for spelling in related_terms(name)}
     return [
         str(skill["quote"])
         for skill in profile.get("skills") or []
-        if str(skill.get("name", "")).lower() in wanted and skill.get("quote")
+        if skill.get("quote")
+        and (
+            str(skill.get("name", "")).lower() in wanted
+            or related_terms(str(skill.get("name", ""))) & wanted
+        )
     ][:5]
 
 
@@ -207,7 +245,15 @@ async def screen_application(
             else None
         )
         settings = await config.effective(session, job.id)
-        key = cache_key(document, job, f"{settings.source}:{settings.version}", model)
+        candidate_skills = list(
+            (
+                await session.scalars(
+                    select(CandidateSkill).where(CandidateSkill.candidate_id == candidate.id)
+                )
+            ).all()
+        )
+        candidate_hash = candidate_fingerprint(candidate, candidate_skills)
+        key = cache_key(document, application.id, job, settings, candidate_hash, model)
         cached = await session.scalar(
             select(ScreeningResult).where(
                 ScreeningResult.cache_key == key, ScreeningResult.application_id == application.id
@@ -219,21 +265,27 @@ async def screen_application(
         job_skills = list(
             (await session.scalars(select(JobSkill).where(JobSkill.job_id == job.id))).all()
         )
-        candidate_skills = list(
-            (
-                await session.scalars(
-                    select(CandidateSkill).where(CandidateSkill.candidate_id == candidate.id)
-                )
-            ).all()
-        )
         text = (document.text if document else None) or ""
-        resume = blind_text(text, candidate.profile) if settings.blind else text
+        resume = (
+            blind_text(text, candidate.profile, extra_names=[candidate.name])
+            if settings.blind
+            else text
+        )
         about_job = job_text(job, job_skills)
         profile = dict(candidate.profile)
         semantic = cosine(job.embedding, candidate.embedding)
 
+    # A job that asks nothing of education or of a place leaves those factors without quotes.
+    optional = {"education"} if not job.qualifications else set()
+    if not job.location:
+        optional.add("location")
     assessment = await assess(
-        ai.llm, organization_id, about_job, resume, application_id=application_id
+        ai.llm,
+        organization_id,
+        about_job,
+        resume,
+        application_id=application_id,
+        evidence_optional=optional,
     )
     match = skill_match(
         [JobSkillIn(s.name, s.skill_id, s.importance, s.min_years) for s in job_skills],
@@ -241,7 +293,7 @@ async def screen_application(
     )
     total_years = profile.get("total_experience_years")
     years = experience_score(
-        job.experience_min, job.experience_max, float(total_years) if total_years else None
+        job.experience_min, job.experience_max, None if total_years is None else float(total_years)
     )
     factors = _factors(match, years, assessment.factors, profile)
     score = weighted(factors, settings.weights)
@@ -261,6 +313,19 @@ async def screen_application(
 
     async with db.tenant(organization_id) as session:
         application = await session.get_one(Application, application_id)
+        current = await session.get_one(Candidate, candidate.id)
+        current_skills = list(
+            (
+                await session.scalars(
+                    select(CandidateSkill).where(CandidateSkill.candidate_id == candidate.id)
+                )
+            ).all()
+        )
+        if (
+            application.document_id != (document.id if document else None)
+            or candidate_fingerprint(current, current_skills) != candidate_hash
+        ):
+            raise InputsChanged(f"application {application_id} changed while it was screened")
         result = ScreeningResult(
             organization_id=organization_id,
             application_id=application.id,

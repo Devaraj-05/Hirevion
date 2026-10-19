@@ -546,11 +546,18 @@ def jobs_statement(scope: ResourceScope, filters: JobFilters) -> Select[Job]:
     return statement
 
 
-async def get_job(session: AsyncSession, job_id: UUID, scope: ResourceScope) -> JobDetail:
-    """The job, if `scope` reaches it (otherwise it doesn't exist for this reader)."""
+async def require_in_scope(session: AsyncSession, job_id: UUID, scope: ResourceScope) -> Job:
+    """The job, if `scope` reaches it (otherwise it doesn't exist for this reader). Routes that
+    only need to know the job is theirs use this: one query, not the job's whole detail."""
     job = await session.scalar(jobs_statement(scope, JobFilters()).where(Job.id == job_id))
     if job is None:
         raise NotFound("job-not-found", "No such job")
+    return job
+
+
+async def get_job(session: AsyncSession, job_id: UUID, scope: ResourceScope) -> JobDetail:
+    """The job, with its skills, names and latest description, if `scope` reaches it."""
+    job = await require_in_scope(session, job_id, scope)
 
     async def name_of(
         model: type[Department | Team | User | InterviewTemplate], row_id: UUID | None

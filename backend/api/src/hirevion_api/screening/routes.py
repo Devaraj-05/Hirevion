@@ -20,6 +20,7 @@ from hirevion_api.access.deps import own_tenant
 from hirevion_api.authz import Principal, requires
 from hirevion_api.jobs.routes import reference
 from hirevion_api.pagination import Page, PageParams, page_params, paginate
+from hirevion_api.problems import ProblemError
 from hirevion_api.routing import api_router
 from hirevion_api.screening.schemas import (
     ActionRequest,
@@ -42,7 +43,13 @@ from hirevion_core.access.audit import record
 from hirevion_core.access.errors import NotFound
 from hirevion_core.access.scope import resource_scope
 from hirevion_core.jobs import jobs
-from hirevion_core.models import Application, ApplicationHistory, Candidate, ScreeningResult
+from hirevion_core.models import (
+    Application,
+    ApplicationHistory,
+    Candidate,
+    Job,
+    ScreeningResult,
+)
 from hirevion_core.screening import config, runner, workflow
 from hirevion_core.screening.config import Config
 
@@ -94,8 +101,10 @@ def _changes(body: ScreeningConfigUpdate) -> dict[str, Any]:
     }
 
 
-async def _job_in_scope(session: AsyncSession, principal: Principal, job_id: UUID) -> None:
-    await jobs.get_job(session, job_id, await resource_scope(session, principal.user_id))
+async def _job_in_scope(session: AsyncSession, principal: Principal, job_id: UUID) -> Job:
+    return await jobs.require_in_scope(
+        session, job_id, await resource_scope(session, principal.user_id)
+    )
 
 
 def _brief(candidate: Candidate) -> CandidateBrief:
@@ -148,7 +157,14 @@ async def get_job_screening_config(
 async def update_job_screening_config(
     job_id: UUID, body: ScreeningConfigUpdate, request: Request, principal: ManagesJobs
 ) -> ScreeningConfigResponse:
-    """Gives the job its own configuration (starting from what it inherited)."""
+    """Gives the job its own configuration (starting from what it inherited). Turning blind
+    screening off is the organisation's decision: it needs `admin.organization.manage`."""
+    if body.blind is False and "admin.organization.manage" not in principal.permissions:
+        raise ProblemError(
+            403,
+            "blind-screening-locked",
+            "Only an organisation administrator can turn blind screening off",
+        )
     async with own_tenant(request, principal) as session:
         await _job_in_scope(session, principal, job_id)
         saved = await config.save(session, principal.actor(request), job_id, **_changes(body))
@@ -289,7 +305,10 @@ async def application_screening(
         application = await session.get(Application, application_id)
         if application is None:
             raise NotFound("application-not-found", "No such application")
-        await _job_in_scope(session, principal, application.job_id)
+        try:
+            await _job_in_scope(session, principal, application.job_id)
+        except NotFound:  # out of reach looks the same as missing
+            raise NotFound("application-not-found", "No such application") from None
         candidate = await session.get_one(Candidate, application.candidate_id)
         result = (
             await session.get(ScreeningResult, application.screening_result_id)
@@ -380,15 +399,18 @@ async def reject_candidate(
 # Export
 
 
-def _cell(value: Any) -> str:
-    """Text a spreadsheet won't run as a formula (CSV/formula injection)."""
+def _cell(value: Any) -> Any:
+    """A number stays a number (it sorts and filters as one); text a spreadsheet would run as
+    a formula (CSV/formula injection) is prefixed so it can't."""
+    if isinstance(value, int | float) and not isinstance(value, bool):
+        return value
     text = "" if value is None else str(value)
     return f"'{text}" if text.startswith(_FORMULA_STARTS) else text
 
 
 def _rows(
     ranked: Sequence[tuple[Application, ScreeningResult | None, Candidate]],
-) -> list[list[str]]:
+) -> list[list[Any]]:
     rows = []
     for application, result, candidate in ranked:
         skills = result.skill_match if result else {}
@@ -410,6 +432,13 @@ def _rows(
     return rows
 
 
+def _plain(value: Any) -> Any:
+    """The cell as a spreadsheet cell: text needs no guard there (it is typed as text)."""
+    if isinstance(value, str) and value.startswith("'") and value[1:].startswith(_FORMULA_STARTS):
+        return value[1:]
+    return value
+
+
 @router.get("/jobs/{job_id}/screening-results/export")
 async def export_screening_results(
     job_id: UUID,
@@ -419,9 +448,7 @@ async def export_screening_results(
 ) -> Response:
     """The ranking as CSV or XLSX (PRD §18 "Export"); needs a recent password, and is audited."""
     async with own_tenant(request, principal) as session:
-        detail = await jobs.get_job(
-            session, job_id, await resource_scope(session, principal.user_id)
-        )
+        job = await _job_in_scope(session, principal, job_id)
         rows = _rows(await runner.ranking(session, job_id))
         await record(
             session,
@@ -431,14 +458,17 @@ async def export_screening_results(
             job_id,
             details={"format": format, "rows": len(rows)},
         )
-    name = f"{reference(detail.job.number)}-ranking.{format}"
+    name = f"{reference(job.number)}-ranking.{format}"
     headers = {"Content-Disposition": f'attachment; filename="{name}"'}
     if format == "csv":
         out = StringIO()
         writer = csv.writer(out)
         writer.writerow(EXPORT_COLUMNS)
         writer.writerows(rows)
-        return Response(out.getvalue(), media_type="text/csv; charset=utf-8", headers=headers)
+        # A byte-order mark, so Excel reads names with accents as UTF-8.
+        return Response(
+            "\ufeff" + out.getvalue(), media_type="text/csv; charset=utf-8", headers=headers
+        )
     workbook = Workbook()
     sheet = workbook.active
     if sheet is None:  # a new workbook always has its first sheet
@@ -446,7 +476,11 @@ async def export_screening_results(
     sheet.title = "Ranking"
     sheet.append(list(EXPORT_COLUMNS))
     for row in rows:
-        sheet.append(row)
+        sheet.append([_plain(value) for value in row])
+    for cells in sheet.iter_rows(min_row=2):
+        for cell in cells:
+            if isinstance(cell.value, str):
+                cell.data_type = "s"  # text, even if it starts with "=": never a formula
     data = BytesIO()
     workbook.save(data)
     return Response(

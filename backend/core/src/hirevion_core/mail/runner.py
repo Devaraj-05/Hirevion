@@ -45,7 +45,11 @@ from hirevion_core.proctoring.store import NOTED_TOPIC
 from hirevion_core.proctoring.watcher import GAP_TOPIC, ProctorWatcher, handle_gap, handle_noted
 from hirevion_core.recordings.settings import load_recording_settings
 from hirevion_core.recordings.worker import media_workers
-from hirevion_core.screening.runner import SCREENING_TOPIC, handle_screening_event
+from hirevion_core.screening.runner import (
+    SCREENING_TOPIC,
+    give_up_screening,
+    handle_screening_event,
+)
 from hirevion_core.settings import CoreSettings
 from hirevion_core.storage.paths import BlobPath
 from hirevion_core.storage.service import load_optional_storage
@@ -135,6 +139,7 @@ async def run_workers(
                 redis,
                 partial(handle_screening_event, app_db, services.ai),
                 topic=SCREENING_TOPIC,
+                on_give_up=partial(give_up_screening, app_db),
             )
             workers.append(screening.run_forever(stop))
             # Evaluations of completed interviews (SP-10).

@@ -3,6 +3,8 @@ its own configuration if it has one, else the organisation's default, else the b
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
@@ -63,7 +65,21 @@ def _config(row: ScreeningConfig, *, inherited: bool) -> Config:
     )
 
 
-BUILT_IN = Config(dict(DEFAULT_WEIGHTS), dict(DEFAULT_KNOCKOUTS), True, 0, True, "default")
+def built_in() -> Config:
+    """The configuration of an organisation that never set one (a fresh copy each time)."""
+    return Config(dict(DEFAULT_WEIGHTS), dict(DEFAULT_KNOCKOUTS), True, 0, True, "default")
+
+
+def fingerprint(settings: Config) -> str:
+    """What screening depends on in a configuration, as a hash. Versions restart when a job's own
+    configuration is reset, so a result is reused by what the configuration says, not by its
+    version."""
+    content = {
+        "weights": settings.weights,
+        "knockouts": settings.knockouts,
+        "blind": settings.blind,
+    }
+    return hashlib.sha256(json.dumps(content, sort_keys=True).encode()).hexdigest()
 
 
 async def _row(session: AsyncSession, job_id: UUID | None) -> ScreeningConfig | None:
@@ -81,7 +97,7 @@ async def effective(session: AsyncSession, job_id: UUID | None) -> Config:
         if own is not None:
             return _config(own, inherited=False)
     default = await _row(session, None)
-    return _config(default, inherited=True) if default is not None else BUILT_IN
+    return _config(default, inherited=True) if default is not None else built_in()
 
 
 def _weights(weights: dict[str, Any]) -> dict[str, int]:
@@ -111,19 +127,24 @@ async def save(
     blind: bool | Unset = UNSET,
 ) -> Config:
     """Saves the organisation's default (`job_id` None) or a job's own configuration, which
-    starts from what the job used until now."""
+    starts from what the job used until now. Saving nothing changes nothing, and makes no
+    configuration of its own."""
+    if all(isinstance(given, Unset) for given in (weights, knockouts, blind)):
+        return await effective(session, job_id)
     row = await _row(session, job_id)
+    created = row is None
     if row is None:
         start = await effective(session, job_id)
         row = ScreeningConfig(
             organization_id=actor.organization_id,
             job_id=job_id,
-            weights=start.weights,
-            knockouts=start.knockouts,
+            weights=dict(start.weights),
+            knockouts=dict(start.knockouts),
             blind=start.blind,
             version=0,
         )
         session.add(row)
+    before = (dict(row.weights), dict(row.knockouts), row.blind)
     if not isinstance(weights, Unset):
         row.weights = _weights(weights)
     if not isinstance(knockouts, Unset):
@@ -133,6 +154,8 @@ async def save(
         row.knockouts = {**DEFAULT_KNOCKOUTS, **row.knockouts, **knockouts}
     if not isinstance(blind, Unset):
         row.blind = blind
+    if not created and (row.weights, row.knockouts, row.blind) == before:
+        return _config(row, inherited=False)  # nothing changed: no new version, no re-screening
     row.version += 1
     row.updated_by = actor.user_id
     await session.flush()
@@ -154,6 +177,23 @@ async def save(
 
 async def reset(session: AsyncSession, actor: Actor, job_id: UUID) -> Config:
     """Drops a job's own configuration, so it uses the organisation's default again."""
+    dropped = await _row(session, job_id)
     await session.execute(delete(ScreeningConfig).where(ScreeningConfig.job_id == job_id))
-    await record(session, actor, "screening.config_reset", "job", job_id)
+    await record(
+        session,
+        actor,
+        "screening.config_reset",
+        "job",
+        job_id,
+        details=(
+            None
+            if dropped is None
+            else {
+                "version": dropped.version,
+                "weights": dropped.weights,
+                "knockouts": dropped.knockouts,
+                "blind": dropped.blind,
+            }
+        ),
+    )
     return await effective(session, job_id)

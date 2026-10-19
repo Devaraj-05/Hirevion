@@ -257,6 +257,15 @@ async def _set_reviewers(
     await session.flush()
 
 
+async def _require_open_application(session: AsyncSession, interview: Interview) -> None:
+    """An interview is not (re)sent for a candidate who has been rejected since it was made."""
+    application = await session.get_one(Application, interview.application_id)
+    if application.stage in UNASSIGNABLE_STAGES:
+        raise Conflict(
+            "application-closed", "This candidate was rejected: reopen them before inviting"
+        )
+
+
 async def invite(
     session: AsyncSession,
     actor: Actor | None,
@@ -273,6 +282,8 @@ async def invite(
         raise Conflict(
             "not-invitable", "Only a scheduled or invited interview can be sent its invitation"
         )
+    if interview.status == "scheduled":
+        await _require_open_application(session, interview)
     sent = await invitations.send(
         session,
         interview,
@@ -623,6 +634,7 @@ async def reschedule(
         )
     check_window(starts_at, expires_at, interview.duration_minutes, now=moment)
     if interview.status == "expired":
+        await _require_open_application(session, interview)
         # The candidate may have been given another interview since this one expired.
         other = await session.scalar(
             select(Interview.id).where(

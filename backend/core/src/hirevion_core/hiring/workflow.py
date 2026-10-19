@@ -21,7 +21,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from hirevion_core.access.actor import Actor
 from hirevion_core.access.audit import record
 from hirevion_core.access.errors import Conflict, Invalid, NotFound, Refused
-from hirevion_core.models import Application, ApplicationStatusHistory, Interview
+from hirevion_core.models import (
+    Application,
+    ApplicationStatusHistory,
+    Interview,
+    ScreeningResult,
+)
 from hirevion_core.models.candidate import HIRING_STATUSES
 
 SYSTEM_ONLY = frozenset({"interview_invited", "interview_started", "interview_completed"})
@@ -241,8 +246,24 @@ async def change_status(
         if stage is not None:
             from hirevion_core.screening.engine import record_stage
 
+            score = (
+                await session.scalar(
+                    select(ScreeningResult.score).where(
+                        ScreeningResult.id == application.screening_result_id
+                    )
+                )
+                if application.screening_result_id
+                else None
+            )
             await record_stage(
-                session, application, stage[0], stage[1], actor_id=actor.user_id, reason=note
+                session,
+                application,
+                stage[0],
+                stage[1],
+                actor_id=actor.user_id,
+                reason=note,
+                score=score,
+                rank=application.rank,
             )
     elif stage is not None:  # every other target is a screening action
         from hirevion_core.screening.workflow import act
