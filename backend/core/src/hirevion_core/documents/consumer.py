@@ -2,8 +2,10 @@
 
 Delivery is at least once. A failed event stays pending and is claimed again after
 `retry_idle_ms`; after `max_deliveries` attempts it moves to a dead-letter stream and
-`on_give_up` runs (the document is marked failed). The outbox may publish an event twice, so a
-handled event's id is remembered for a week and a repeat is dropped.
+`on_give_up` runs (the document is marked failed). The outbox may publish an event twice, so an
+event's id is claimed before its handler runs and remembered for a week once it is handled: a
+repeat, even one read by another consumer while the first is still working, is dropped. An entry
+that can't be read at all is set aside in the dead-letter stream, so it never stalls the rest.
 """
 
 from __future__ import annotations
@@ -28,6 +30,13 @@ log = logging.getLogger(__name__)
 DOCUMENTS_STREAM = stream_name(DOCUMENTS_TOPIC)
 DEAD_LETTER_STREAM = "hv:dead:documents"
 _DONE_TTL_SECONDS = 7 * 86_400
+# A claim on an event ends before a lost consumer's message is claimed again (`retry_idle_ms`), so
+# a crash never makes an event look handled.
+_CLAIM_SHARE = 0.9
+# Reading a document can take minutes (up to 50 scanned pages, one paid OCR call each), so the
+# documents consumer waits this long before it takes an event from a consumer that went quiet:
+# at the default minute, a slow document was started a second time while the first was working.
+DOCUMENT_RETRY_IDLE_MS = 10 * 60_000
 _BATCH = 10
 
 Handler = Callable[[UUID, dict[str, Any]], Awaitable[None]]
@@ -70,6 +79,7 @@ class StreamConsumer:
         self._group = group
         self._consumer = consumer or f"{socket.gethostname()}-{os.getpid()}"
         self._retry_idle_ms = retry_idle_ms
+        self._claim_seconds = max(1, int(retry_idle_ms / 1000 * _CLAIM_SHARE))
         self._max_deliveries = max_deliveries
         self._group_ready = False
 
@@ -87,22 +97,27 @@ class StreamConsumer:
         """Retries stale pending events, then reads new ones; returns how many were handled."""
         await self._ensure_group()
         handled = 0
-        claimed: Any = await self._redis.xautoclaim(
-            self._stream,
-            self._group,
-            self._consumer,
-            min_idle_time=self._retry_idle_ms,
-            start_id="0-0",
-            count=_BATCH,
-        )
-        for message_id, fields in claimed[1]:
-            handled += await self._handle(_text(message_id), fields)
-        fresh: Any = await self._redis.xreadgroup(
-            self._group, self._consumer, {self._stream: ">"}, count=_BATCH, block=block_ms
-        )
-        for _stream, messages in fresh or []:
-            for message_id, fields in messages:
+        try:
+            claimed: Any = await self._redis.xautoclaim(
+                self._stream,
+                self._group,
+                self._consumer,
+                min_idle_time=self._retry_idle_ms,
+                start_id="0-0",
+                count=_BATCH,
+            )
+            for message_id, fields in claimed[1]:
                 handled += await self._handle(_text(message_id), fields)
+            fresh: Any = await self._redis.xreadgroup(
+                self._group, self._consumer, {self._stream: ">"}, count=_BATCH, block=block_ms
+            )
+            for _stream, messages in fresh or []:
+                for message_id, fields in messages:
+                    handled += await self._handle(_text(message_id), fields)
+        except ResponseError as error:
+            if "NOGROUP" in str(error):  # the stream was lost (a restart without persistence)
+                self._group_ready = False  # the next pass creates the group again
+            raise
         return handled
 
     async def run_forever(self, stop: asyncio.Event, block_ms: int = 1000) -> None:
@@ -116,13 +131,33 @@ class StreamConsumer:
     async def _handle(self, message_id: str, raw: Mapping[Any, Any]) -> int:
         fields = {_text(key): _text(value) for key, value in raw.items()}
         event_id = fields.get("id", message_id)
-        organization_id = UUID(fields["org"])
-        payload: dict[str, Any] = json.loads(fields["payload"])
+        try:
+            organization_id = UUID(fields["org"])
+            payload: dict[str, Any] = json.loads(fields["payload"])
+            if not isinstance(payload, dict):
+                raise TypeError("the payload is not an object")
+        except (KeyError, ValueError, TypeError):
+            log.error("Set aside an unreadable %s entry %s", self._topic, event_id)
+            await self._redis.xadd(
+                self._dead_letter, dict(fields) or {"raw": ""}, maxlen=10_000, approximate=True
+            )
+            await self._finish(message_id)
+            return 0
         if await self._deliveries(message_id) > self._max_deliveries:
+            if self._on_give_up is not None:
+                try:
+                    await self._on_give_up(organization_id, payload)
+                except Exception:
+                    # Left pending, so the hook runs again; nothing is dead-lettered twice.
+                    log.warning(
+                        "The give-up step for %s event %s failed",
+                        self._topic,
+                        event_id,
+                        exc_info=True,
+                    )
+                    return 0
             entry: dict[Any, Any] = dict(fields)
             await self._redis.xadd(self._dead_letter, entry, maxlen=10_000, approximate=True)
-            if self._on_give_up is not None:
-                await self._on_give_up(organization_id, payload)
             await self._finish(message_id)
             log.error(
                 "Gave up on %s event %s after %d attempts",
@@ -132,7 +167,10 @@ class StreamConsumer:
             )
             return 0
         done_key = self._done_prefix + event_id
-        if await self._redis.exists(done_key):
+        if not await self._redis.set(done_key, "claimed", nx=True, ex=self._claim_seconds):
+            # Handled already, or being handled right now by another consumer: either way this
+            # copy has nothing left to do. (A consumer that dies mid-way leaves a claim that
+            # expires before its message is claimed again, so the event is not lost.)
             await self._finish(message_id)
             return 0
         try:
@@ -141,6 +179,7 @@ class StreamConsumer:
             log.warning(
                 "%s event %s failed; it will be retried", self._topic, event_id, exc_info=True
             )
+            await self._redis.delete(done_key)
             return 0
         await self._redis.set(done_key, "1", ex=_DONE_TTL_SECONDS)
         await self._finish(message_id)

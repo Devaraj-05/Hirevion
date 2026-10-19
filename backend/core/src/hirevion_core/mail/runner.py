@@ -18,7 +18,11 @@ from redis.asyncio import Redis
 from hirevion_core.ai import build_ai
 from hirevion_core.ai.settings import load_ai_settings
 from hirevion_core.db.session import create_database
-from hirevion_core.documents.consumer import DocumentConsumer, StreamConsumer
+from hirevion_core.documents.consumer import (
+    DOCUMENT_RETRY_IDLE_MS,
+    DocumentConsumer,
+    StreamConsumer,
+)
 from hirevion_core.documents.pipeline import DocumentServices, give_up, handle_event
 from hirevion_core.documents.scan import ClamdScanner
 from hirevion_core.documents.settings import load_document_settings
@@ -121,7 +125,10 @@ async def run_workers(
             log.exception("Documents won't be processed: their services can't start")
         else:
             consumer = DocumentConsumer(
-                redis, partial(handle_event, services), on_give_up=partial(give_up, services)
+                redis,
+                partial(handle_event, services),
+                on_give_up=partial(give_up, services),
+                retry_idle_ms=DOCUMENT_RETRY_IDLE_MS,
             )
             workers.append(consumer.run_forever(stop))
             screening = StreamConsumer(

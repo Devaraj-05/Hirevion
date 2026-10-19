@@ -18,7 +18,7 @@ from hirevion_core.ai.types import ChatMessage
 from hirevion_core.db.session import Database
 from hirevion_core.documents.pipeline import DocumentServices, process_document
 from hirevion_core.documents.scan import FakeScanner
-from hirevion_core.storage.paths import BlobPath
+from hirevion_core.storage.paths import BlobPath, safe_filename
 
 pytestmark = pytest.mark.db
 
@@ -73,6 +73,8 @@ class MemoryBlobs:
     def download_url(
         self, organization_id: UUID, path: BlobPath, expires: Any = None, filename: Any = None
     ) -> str:
+        if filename is not None:
+            safe_filename(filename)  # the real service refuses a name it can't put in a header
         return f"https://storage.test/{path}?download={filename}"
 
 
@@ -176,12 +178,55 @@ async def test_a_resume_downloads_through_a_signed_link(
 ) -> None:
     job_id = await new_job(recruiter)
     document = await upload(recruiter, job_id, "asha.txt", ASHA.encode())
+    await process_document(services, acme, UUID(document["id"]))
     answer_ = await recruiter.get(
         f"/api/v1/documents/{document['id']}/download", follow_redirects=False
     )
     assert answer_.status_code == 307
     assert answer_.headers["location"].startswith("https://storage.test/")
     assert "download=asha.txt" in answer_.headers["location"]
+
+
+@pytest.mark.parametrize(
+    ("name", "offered"),
+    [
+        ("Asha Rao - Résumé (1).txt", "Asha_Rao_-_Resume_1.txt"),
+        ("résumé.txt", "resume.txt"),
+        ("简历.txt", "resume.txt"),
+        ("...", "resume"),
+    ],
+)
+async def test_a_resume_with_an_ordinary_file_name_downloads(
+    recruiter: AsyncClient, services: DocumentServices, acme: UUID, name: str, offered: str
+) -> None:
+    job_id = await new_job(recruiter)
+    document = await upload(recruiter, job_id, name, ASHA.encode())
+    await process_document(services, acme, UUID(document["id"]))
+    answer_ = await recruiter.get(
+        f"/api/v1/documents/{document['id']}/download", follow_redirects=False
+    )
+    assert answer_.status_code == 307
+    assert answer_.headers["location"].endswith(f"download={offered}")
+
+
+async def test_a_file_that_has_not_been_scanned_cannot_be_downloaded(
+    recruiter: AsyncClient, services: DocumentServices, acme: UUID
+) -> None:
+    job_id = await new_job(recruiter)
+    document = await upload(recruiter, job_id, "asha.txt", ASHA.encode())
+    waiting = await recruiter.get(
+        f"/api/v1/documents/{document['id']}/download", follow_redirects=False
+    )
+    assert (waiting.status_code, waiting.json()["code"]) == (409, "not-scanned")
+    bundle = BytesIO()
+    with zipfile.ZipFile(bundle, "w") as archive:
+        archive.writestr("asha.txt", ASHA)
+    zipped = await upload(recruiter, job_id, "batch.zip", bundle.getvalue())
+    await process_document(services, acme, UUID(zipped["id"]))  # opened, never scanned whole
+    container = await recruiter.get(
+        f"/api/v1/documents/{zipped['id']}/download", follow_redirects=False
+    )
+    assert (container.status_code, container.json()["code"]) == (409, "not-scanned")
 
 
 async def test_unsupported_files_are_refused_with_a_reason(recruiter: AsyncClient) -> None:

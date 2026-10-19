@@ -11,6 +11,7 @@ climb out of its organisation's prefix.
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass
 from typing import Literal, get_args
 from uuid import UUID
@@ -26,6 +27,20 @@ def safe_filename(filename: str) -> str:
     if not _FILENAME.fullmatch(filename) or ".." in filename:
         raise ValueError(f"not a safe file name: {filename!r}")
     return filename
+
+
+def download_name(original: str | None, fallback: str) -> str:
+    """A file name safe to offer for a download, as close to the name a person gave as the rules
+    for `safe_filename` allow: accents dropped, other characters made underscores. Nothing usable
+    left (a name in another script, only dots) gives `fallback`, with the original extension."""
+    plain = unicodedata.normalize("NFKD", original or "").encode("ascii", "ignore").decode()
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", plain)
+    stem, dot, ending = cleaned.rpartition(".")
+    if not dot:
+        stem, ending = cleaned, ""
+    extension = f".{ending}" if re.fullmatch(r"[A-Za-z0-9]{1,8}", ending) else ""
+    stem = stem.strip("._-")[:150] or fallback
+    return f"{stem}{extension}"
 
 
 @dataclass(frozen=True, slots=True)

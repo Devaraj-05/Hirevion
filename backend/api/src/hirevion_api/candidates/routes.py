@@ -40,7 +40,7 @@ from hirevion_core.documents import intake
 from hirevion_core.documents.archive import MAX_ARCHIVE_BYTES
 from hirevion_core.jobs import jobs
 from hirevion_core.models import Application, Candidate, CandidateSkill, Document
-from hirevion_core.storage.paths import BlobPath
+from hirevion_core.storage.paths import BlobPath, download_name
 
 router = api_router(tags=["candidates"])
 
@@ -306,6 +306,21 @@ async def get_candidate(
 
 # Downloads
 
+# Statuses a document reaches only after its file was scanned and found clean.
+_AFTER_THE_SCAN = frozenset({"extracting", "ocr", "parsing", "parsed"})
+# Why a document fails before the scan finished: the scanner was down for good.
+_BEFORE_THE_SCAN = frozenset({"retries-exhausted"})
+
+
+def scanned(document: Document) -> bool:
+    """Whether the file was scanned and found clean. An archive is opened, never scanned whole
+    (its entries are, one by one), so only the entries can be downloaded."""
+    if document.kind == "archive":
+        return False
+    if document.status in _AFTER_THE_SCAN:
+        return True
+    return document.status == "failed" and document.error_code not in _BEFORE_THE_SCAN | {None}
+
 
 @router.get("/documents/{document_id}/download", status_code=307)
 async def download_document(
@@ -324,6 +339,8 @@ async def download_document(
             raise Conflict("quarantined", "This file was flagged as unsafe and can't be opened")
         if document.blob_path is None:
             raise NotFound("no-file", "This description was pasted, so there's no file")
+        if not scanned(document):
+            raise Conflict("not-scanned", "This file hasn't been checked for viruses yet")
         if document.kind != "jd":
             await record(
                 session,
@@ -339,6 +356,8 @@ async def download_document(
         url = signer.download_url(
             principal.organization_id,
             BlobPath(principal.organization_id, document.blob_path),
-            filename=document.filename,
+            filename=download_name(
+                document.filename, "description" if document.kind == "jd" else "resume"
+            ),
         )
     return RedirectResponse(url, status_code=307)
