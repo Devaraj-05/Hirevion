@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 /** The flags the pipeline sets that a recruiter should see, most serious first. */
 const SHOWN = [
   "injection",
+  "injection_removed",
   "hidden_text",
   "metadata_text",
   "possible_duplicate_of",
@@ -14,13 +15,22 @@ const SHOWN = [
   "duplicate_of",
 ] as const;
 type Shown = (typeof SHOWN)[number];
-const WARNINGS: ReadonlySet<Shown> = new Set(["injection", "hidden_text", "metadata_text"]);
+const WARNINGS: ReadonlySet<Shown> = new Set([
+  "injection",
+  "injection_removed",
+  "hidden_text",
+  "metadata_text",
+]);
+/** Flags that are counts: none of them is nothing to show. (A confidence of 0 is the worst
+ * reading, and is shown.) */
+const COUNTS: ReadonlySet<Shown> = new Set(["injection_removed", "zero_width"]);
 
 export function shownFlags(flags: Record<string, unknown> | null | undefined): Shown[] {
   if (!flags) return [];
   return SHOWN.filter((flag) => {
     const value = flags[flag];
-    return value !== undefined && value !== null && value !== false && value !== 0;
+    if (value === undefined || value === null || value === false) return false;
+    return !(COUNTS.has(flag) && value === 0);
   });
 }
 

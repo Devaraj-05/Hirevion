@@ -5,10 +5,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { type ReactNode, useMemo, useRef } from "react";
+import { type ReactNode, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { useAdminProblem } from "@/admin/problems";
 import { z } from "@/config/zod";
+import { useIdempotencyKey } from "@/data/idempotency";
 import { createJob, type Job, type JobFields, updateJob } from "./api";
 import { keys, useJobChoices } from "./queries";
 import { IMPORTANCES, SkillPicker, type SkillValue } from "./skill-picker";
@@ -86,7 +87,7 @@ export function JobForm({ job, readOnly = false }: { job?: Job; readOnly?: boole
   const router = useRouter();
   const queryClient = useQueryClient();
   const choices = useJobChoices();
-  const key = useRef(crypto.randomUUID());
+  const key = useIdempotencyKey();
 
   const schema = useMemo(() => {
     const years = z
@@ -169,10 +170,11 @@ export function JobForm({ job, readOnly = false }: { job?: Job; readOnly?: boole
         const saved = await updateJob(job.id, body);
         queryClient.setQueryData(keys.job(job.id), saved);
         void queryClient.invalidateQueries({ queryKey: keys.list });
+        void queryClient.invalidateQueries({ queryKey: keys.versions(job.id) });
         form.reset(defaults(saved));
         toast.success(t("saved"), {});
       } else {
-        const created = await createJob(body, key.current);
+        const created = await createJob(body, key.current());
         void queryClient.invalidateQueries({ queryKey: keys.list });
         toast.success(t("created", { reference: created.reference }), {});
         router.push(`/jobs/${created.id}`);
@@ -182,9 +184,18 @@ export function JobForm({ job, readOnly = false }: { job?: Job; readOnly?: boole
     }
   }
 
-  const options = (rows: readonly { id: string; name: string }[] | undefined) => [
+  // A person, department or template the job already has stays selectable even when it is no
+  // longer offered (someone left, a department was archived): the form must not show "none"
+  // for what the job still has, nor drop it on the next save.
+  const options = (
+    rows: readonly { id: string; name: string }[] | undefined,
+    current?: { id: string | null | undefined; name: string | null | undefined },
+  ) => [
     { value: NONE, label: t("none") },
     ...(rows ?? []).map((row) => ({ value: row.id, label: row.name })),
+    ...(current?.id && !(rows ?? []).some((row) => row.id === current.id)
+      ? [{ value: current.id, label: current.name ?? current.id }]
+      : []),
   ];
   const select = (
     name:
@@ -279,14 +290,39 @@ export function JobForm({ job, readOnly = false }: { job?: Job; readOnly?: boole
       </Section>
       <Section title={t("assignment")}>
         <div className="grid gap-4 sm:grid-cols-2">
-          {select("department_id", t("department"), options(choices.data?.departments))}
-          {select("team_id", t("team"), options(choices.data?.teams))}
-          {select("recruiter_id", t("recruiter"), options(choices.data?.people))}
-          {select("hiring_manager_id", t("hiringManager"), options(choices.data?.people))}
+          {select(
+            "department_id",
+            t("department"),
+            options(choices.data?.departments, {
+              id: job?.department_id,
+              name: job?.department_name,
+            }),
+          )}
+          {select(
+            "team_id",
+            t("team"),
+            options(choices.data?.teams, { id: job?.team_id, name: job?.team_name }),
+          )}
+          {select(
+            "recruiter_id",
+            t("recruiter"),
+            options(choices.data?.people, { id: job?.recruiter_id, name: job?.recruiter_name }),
+          )}
+          {select(
+            "hiring_manager_id",
+            t("hiringManager"),
+            options(choices.data?.people, {
+              id: job?.hiring_manager_id,
+              name: job?.hiring_manager_name,
+            }),
+          )}
           {select(
             "interview_template_id",
             t("interviewTemplate"),
-            options(choices.data?.interview_templates),
+            options(choices.data?.interview_templates, {
+              id: job?.interview_template_id,
+              name: job?.interview_template_name,
+            }),
           )}
         </div>
       </Section>

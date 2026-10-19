@@ -87,7 +87,8 @@ describe("QuestionLibrary", () => {
     const sheet = await screen.findByRole("dialog", { name: "Question" });
     expect(within(sheet).getByLabelText("Question")).toHaveValue(question().text);
     await user.click(within(sheet).getByRole("button", { name: "Approve" }));
-    await waitFor(() => expect(api.approveQuestion).toHaveBeenCalledWith("q-1"));
+    // The version that was read is the version approved.
+    await waitFor(() => expect(api.approveQuestion).toHaveBeenCalledWith("q-1", 1));
   });
 
   it("checks a new question's rubric before saving it as a draft", async () => {
@@ -140,21 +141,135 @@ describe("QuestionLibrary", () => {
     await user.selectOptions(within(dialog).getByLabelText("Experience level"), "senior");
     await user.click(within(dialog).getByRole("button", { name: "Generate drafts" }));
     await waitFor(() =>
-      expect(api.generateQuestions).toHaveBeenCalledWith({
-        skills: ["Python", "SQL"],
-        count: 3,
-        experience_level: "senior",
-        job_id: null,
-        candidate_id: null,
-        template_id: null,
-        types: [],
-      }),
+      expect(api.generateQuestions).toHaveBeenCalledWith(
+        {
+          skills: ["Python", "SQL"],
+          count: 3,
+          experience_level: "senior",
+          job_id: null,
+          candidate_id: null,
+          template_id: null,
+          types: [],
+        },
+        expect.any(String),
+      ),
     );
     await waitFor(() =>
       expect(router.replace).toHaveBeenCalledWith(expect.stringContaining("status=draft"), {
         scroll: false,
       }),
     );
+  });
+
+  it("keeps what the form has no field for when a question is saved again", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.getQuestion).mockResolvedValue(
+      question({
+        status: "approved",
+        source: "manual",
+        type: "coding",
+        rubric: [{ criterion: "Correctness", weight: 100, description: "Runs on the samples" }],
+        follow_up_rules: [
+          { when: "weak", prompt: "Which tool would you start with?" },
+          { when: "weak", prompt: "What would you measure first?" },
+          { when: "strong", prompt: "How would it scale?" },
+        ],
+        coding: { languages: ["python", "sql"], starter_code: { python: "def solve():\n  pass" } },
+      }),
+    );
+    vi.mocked(api.updateQuestion).mockResolvedValue(question({ version: 2 }));
+    renderAdmin(<QuestionLibrary canManage />);
+    await user.click(await screen.findByRole("button", { name: /Open question/ }));
+    const sheet = await screen.findByRole("dialog", { name: "Question" });
+    await user.type(within(sheet).getByLabelText("Question"), " (updated)");
+    // Editing one kind of follow-up replaces that kind; the others keep everything they had.
+    const strong = within(sheet).getByLabelText(/strong/i);
+    await user.clear(strong);
+    await user.type(strong, "How would it scale to 10x traffic?");
+    await user.click(within(sheet).getByRole("button", { name: "Save as a new version" }));
+    await waitFor(() => expect(api.updateQuestion).toHaveBeenCalled());
+    const [, body] = vi.mocked(api.updateQuestion).mock.calls[0] ?? [];
+    expect(body?.rubric).toEqual([
+      { criterion: "Correctness", weight: 100, description: "Runs on the samples" },
+    ]);
+    expect(body?.follow_up_rules).toEqual([
+      { when: "strong", prompt: "How would it scale to 10x traffic?" },
+      { when: "weak", prompt: "Which tool would you start with?" },
+      { when: "weak", prompt: "What would you measure first?" },
+    ]);
+    expect(body?.coding).toEqual({
+      languages: ["python", "sql"],
+      starter_code: { python: "def solve():\n  pass" },
+    });
+  });
+
+  it("does not approve over edits that are not saved", async () => {
+    const user = userEvent.setup();
+    renderAdmin(<QuestionLibrary canManage />);
+    await user.click(await screen.findByRole("button", { name: /Open question/ }));
+    const sheet = await screen.findByRole("dialog", { name: "Question" });
+    expect(within(sheet).getByRole("button", { name: "Approve" })).toBeEnabled();
+    await user.type(within(sheet).getByLabelText("Question"), " Also, why?");
+    expect(within(sheet).getByRole("button", { name: "Approve" })).toBeDisabled();
+    expect(within(sheet).getByText("Save your changes first, then approve.")).toBeInTheDocument();
+  });
+
+  it("explains a rubric weight outside 1 to 100 and a coding question without a language", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.getQuestion).mockResolvedValue(
+      question({ status: "approved", source: "manual", type: "coding" }),
+    );
+    renderAdmin(<QuestionLibrary canManage />);
+    await user.click(await screen.findByRole("button", { name: /Open question/ }));
+    const sheet = await screen.findByRole("dialog", { name: "Question" });
+    for (const language of ["Python"]) {
+      await user.click(within(sheet).getByRole("checkbox", { name: language }));
+    }
+    await user.clear(within(sheet).getByLabelText("Weight of criterion 1"));
+    await user.type(within(sheet).getByLabelText("Weight of criterion 1"), "0");
+    await user.click(within(sheet).getByRole("button", { name: "Save as a new version" }));
+    const alerts = within(sheet)
+      .getAllByRole("alert")
+      .map((alert) => alert.textContent);
+    expect(alerts).toContain("Each weight is a whole number from 1 to 100.");
+    expect(alerts).toContain("Choose at least one language.");
+    expect(api.updateQuestion).not.toHaveBeenCalled();
+    // And each problem is tied to its field for a screen reader.
+    expect(within(sheet).getByRole("group", { name: "Rubric" })).toHaveAccessibleDescription(
+      "Each weight is a whole number from 1 to 100.",
+    );
+  });
+
+  it("says when a question could not be loaded", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.getQuestion).mockRejectedValue(new Error("offline"));
+    renderAdmin(<QuestionLibrary canManage />);
+    await user.click(await screen.findByRole("button", { name: /Open question/ }));
+    const sheet = await screen.findByRole("dialog", { name: "Question" });
+    expect(await within(sheet).findByRole("alert")).toHaveTextContent(/couldn't be loaded/);
+  });
+
+  it("shows new drafts whatever the library was filtered by, and offers only choices the reader may read", async () => {
+    const user = userEvent.setup();
+    resetNavigation("/questions", "type=coding&q=sql");
+    vi.mocked(api.generateQuestions).mockResolvedValue({
+      drafts: [question()],
+      skipped: 0,
+      model: "mock-llm",
+    });
+    renderAdmin(<QuestionLibrary canManage canViewJobs={false} canViewCandidates={false} />);
+    await user.click(await screen.findByRole("button", { name: "Generate with AI" }));
+    const dialog = await screen.findByRole("dialog", { name: "Generate questions with AI" });
+    expect(within(dialog).queryByLabelText("Job")).not.toBeInTheDocument();
+    expect(within(dialog).queryByLabelText(/Candidate/)).not.toBeInTheDocument();
+    expect(listJobs).not.toHaveBeenCalled();
+    expect(listCandidates).not.toHaveBeenCalled();
+    await user.type(within(dialog).getByLabelText("Skills (separate with commas)"), "Python");
+    await user.click(within(dialog).getByRole("button", { name: "Generate drafts" }));
+    await waitFor(() => expect(router.replace).toHaveBeenCalled());
+    const [url] = vi.mocked(router.replace).mock.calls.at(-1) ?? [];
+    expect(String(url)).toContain("status=draft");
+    expect(String(url)).not.toMatch(/type=|q=/);
   });
 
   it("is read-only without the manage permission", async () => {

@@ -15,9 +15,11 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, X } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { useId, useRef, useState } from "react";
+import { useId, useState } from "react";
 import { CheckboxGroup } from "@/admin/fields";
 import { useAdminProblem } from "@/admin/problems";
+import { useIdempotencyKey } from "@/data/idempotency";
+import { QueryFailed } from "@/data/query-failed";
 import {
   approveQuestion,
   archiveQuestion,
@@ -59,9 +61,15 @@ interface Draft {
   difficulty: Difficulty;
   time_limit: string;
   concepts: string;
-  rubric: { criterion: string; weight: string }[];
+  rubric: { criterion: string; weight: string; description: string }[];
   follow_ups: Record<FollowUp, string>;
   languages: CodingLanguage[];
+  /** What the form has no field for, kept as it was so a save doesn't lose it: the rules beyond
+   * the first of each kind, and the coding question's starter code. */
+  kept: {
+    rules: { when: string; prompt: string }[];
+    starter: Record<string, string>;
+  };
 }
 
 function draftOf(question: Question | undefined): Draft {
@@ -71,9 +79,14 @@ function draftOf(question: Question | undefined): Draft {
   >;
   for (const rule of question?.follow_up_rules ?? []) {
     const when = rule.when as FollowUp;
-    if (FOLLOW_UPS.includes(when)) prompts[when] = String(rule.prompt ?? "");
+    // The first of each kind is the one the form shows; the rest are kept (`rulesOf`).
+    if (FOLLOW_UPS.includes(when) && !prompts[when]) prompts[when] = String(rule.prompt ?? "");
   }
   const languages = (question?.coding?.languages as CodingLanguage[] | undefined) ?? ["python"];
+  const rules = (question?.follow_up_rules ?? []).map((rule) => ({
+    when: String(rule.when ?? ""),
+    prompt: String(rule.prompt ?? ""),
+  }));
   return {
     text: question?.text ?? "",
     skill_name: question?.skill_name ?? "",
@@ -86,29 +99,53 @@ function draftOf(question: Question | undefined): Draft {
     rubric: (question?.rubric ?? []).map((item) => ({
       criterion: String(item.criterion ?? ""),
       weight: String(item.weight ?? ""),
+      description: String(item.description ?? ""),
     })),
     follow_ups: prompts,
     languages,
+    kept: {
+      rules,
+      starter: (question?.coding?.starter_code as Record<string, string> | undefined) ?? {},
+    },
   };
 }
 
+/** The follow-up rules to save: each kind the reviewer did not touch keeps all it had; one they
+ * edited becomes the one prompt they wrote (or none, if they cleared it). */
+function rulesOf(draft: Draft): { when: FollowUp; prompt: string }[] {
+  const out: { when: FollowUp; prompt: string }[] = [];
+  for (const when of FOLLOW_UPS) {
+    const had = draft.kept.rules.filter((rule) => rule.when === when);
+    const written = draft.follow_ups[when].trim();
+    if (had.length > 0 && written === had[0]?.prompt.trim()) {
+      out.push(...had.map((rule) => ({ when, prompt: rule.prompt })));
+    } else if (written) out.push({ when, prompt: written });
+  }
+  return out;
+}
+
 /** What's wrong with a draft, by field; empty when it can be saved. */
-export function problemsOf(
-  draft: Draft,
-): Partial<Record<"text" | "skill" | "rubric" | "time", string>> {
-  const found: Partial<Record<"text" | "skill" | "rubric" | "time", string>> = {};
+type Field = "text" | "skill" | "rubric" | "time" | "languages" | "concepts";
+
+export function problemsOf(draft: Draft): Partial<Record<Field, string>> {
+  const found: Partial<Record<Field, string>> = {};
   if (draft.text.trim().length < 10) found.text = "textTooShort";
   if (!draft.skill_name.trim()) found.skill = "skillRequired";
   const time = draft.time_limit.trim();
-  if (time && !(Number(time) >= 30 && Number(time) <= 3600)) found.time = "timeRange";
+  if (time && !(Number.isInteger(Number(time)) && Number(time) >= 30 && Number(time) <= 3600))
+    found.time = "timeRange";
   if (draft.rubric.length > 0) {
-    const total = draft.rubric.reduce(
-      (sum, row) => sum + (Number.parseInt(row.weight, 10) || 0),
-      0,
-    );
-    if (total !== 100 || draft.rubric.some((row) => !row.criterion.trim()))
+    const weights = draft.rubric.map((row) => Number(row.weight));
+    const total = weights.reduce((sum, weight) => sum + (Number.isInteger(weight) ? weight : 0), 0);
+    if (weights.some((weight) => !Number.isInteger(weight) || weight < 1 || weight > 100))
+      found.rubric = "rubricWeight";
+    else if (total !== 100 || draft.rubric.some((row) => !row.criterion.trim()))
       found.rubric = "rubricTotal";
   }
+  if (draft.type === "coding" && draft.languages.length === 0)
+    found.languages = "languagesRequired";
+  if (draft.concepts.split("\n").filter((line) => line.trim()).length > 20)
+    found.concepts = "conceptsTooMany";
   return found;
 }
 
@@ -128,13 +165,20 @@ function bodyOf(draft: Draft): QuestionBody {
     rubric: draft.rubric.map((row) => ({
       criterion: row.criterion.trim(),
       weight: Number.parseInt(row.weight, 10) || 0,
-      description: "",
+      description: row.description,
     })),
-    follow_up_rules: FOLLOW_UPS.filter((when) => draft.follow_ups[when].trim()).map((when) => ({
-      when,
-      prompt: draft.follow_ups[when].trim(),
-    })),
-    coding: draft.type === "coding" ? { languages: draft.languages, starter_code: {} } : null,
+    follow_up_rules: rulesOf(draft),
+    coding:
+      draft.type === "coding"
+        ? {
+            languages: draft.languages,
+            starter_code: Object.fromEntries(
+              Object.entries(draft.kept.starter).filter(([language]) =>
+                (draft.languages as string[]).includes(language),
+              ),
+            ),
+          }
+        : null,
   };
 }
 
@@ -170,9 +214,7 @@ export function QuestionEditor({
             onDone={onClose}
           />
         ) : question.isError ? (
-          <p role="alert" className="text-danger text-sm">
-            {common("loadFailed")}
-          </p>
+          <QueryFailed onRetry={() => void question.refetch()} />
         ) : (
           <Skeleton className="h-96 w-full" />
         )}
@@ -195,8 +237,11 @@ function QuestionForm({
   const problems = useAdminProblem();
   const queryClient = useQueryClient();
   const id = useId();
-  const key = useRef(crypto.randomUUID());
+  const key = useIdempotencyKey();
   const [draft, setDraft] = useState(() => draftOf(question));
+  const [saved] = useState(() => JSON.stringify(draftOf(question)));
+  // Unsaved edits: approving would approve the saved wording, not what is on screen.
+  const dirty = question !== undefined && JSON.stringify(draft) !== saved;
   const [tried, setTried] = useState(false);
   const found = problemsOf(draft);
   const valid = Object.keys(found).length === 0;
@@ -216,7 +261,7 @@ function QuestionForm({
     mutationFn: (status: "draft" | "approved") =>
       question
         ? updateQuestion(question.id, bodyOf(draft))
-        : createQuestion({ ...bodyOf(draft), status }, key.current),
+        : createQuestion({ ...bodyOf(draft), status }, key.current()),
     onSuccess: (saved) => {
       changed(saved);
       toast.success(
@@ -230,7 +275,7 @@ function QuestionForm({
   const move = useMutation({
     mutationFn: (action: "approve" | "archive" | "restore") => {
       const target = question as Question;
-      if (action === "approve") return approveQuestion(target.id);
+      if (action === "approve") return approveQuestion(target.id, target.version);
       if (action === "archive") return archiveQuestion(target.id);
       return restoreQuestion(target.id);
     },
@@ -250,12 +295,15 @@ function QuestionForm({
     if (valid) save.mutate(status);
   }
 
-  const error = (field: keyof typeof found) =>
+  // A problem's message is tied to its field, so a screen reader says why it is invalid.
+  const error = (field: Field) =>
     tried && found[field] ? (
-      <p role="alert" className="text-danger text-xs">
+      <p id={`${id}-${field}-error`} role="alert" className="text-danger text-xs">
         {t(`editor.${found[field]}` as "editor.textTooShort")}
       </p>
     ) : null;
+  const describedBy = (field: Field) =>
+    tried && found[field] ? `${id}-${field}-error` : undefined;
   const rubricTotal = draft.rubric.reduce(
     (sum, row) => sum + (Number.parseInt(row.weight, 10) || 0),
     0,
@@ -283,6 +331,7 @@ function QuestionForm({
             rows={4}
             value={draft.text}
             aria-invalid={tried && Boolean(found.text)}
+            aria-describedby={describedBy("text")}
             onChange={(event) => set("text", event.target.value)}
           />
           {error("text")}
@@ -294,6 +343,7 @@ function QuestionForm({
               id={`${id}-skill`}
               value={draft.skill_name}
               aria-invalid={tried && Boolean(found.skill)}
+              aria-describedby={describedBy("skill")}
               onChange={(event) => set("skill_name", event.target.value)}
             />
             {error("skill")}
@@ -352,6 +402,7 @@ function QuestionForm({
               max={3600}
               value={draft.time_limit}
               aria-invalid={tried && Boolean(found.time)}
+              aria-describedby={describedBy("time")}
               onChange={(event) => set("time_limit", event.target.value)}
             />
             {error("time")}
@@ -368,20 +419,27 @@ function QuestionForm({
             onChange={(languages) => set("languages", languages as CodingLanguage[])}
           />
         ) : null}
+        {error("languages")}
         <div className="grid gap-1.5">
           <Label htmlFor={`${id}-concepts`}>{t("fields.concepts")}</Label>
           <Textarea
             id={`${id}-concepts`}
             rows={3}
             value={draft.concepts}
-            aria-describedby={`${id}-concepts-hint`}
+            aria-invalid={tried && Boolean(found.concepts)}
+            aria-describedby={`${id}-concepts-hint ${describedBy("concepts") ?? ""}`.trim()}
             onChange={(event) => set("concepts", event.target.value)}
           />
           <p id={`${id}-concepts-hint`} className="text-muted-foreground text-xs">
             {t("editor.onePerLine")}
           </p>
+          {error("concepts")}
         </div>
-        <fieldset className="grid gap-2">
+        <fieldset
+          className="grid gap-2"
+          aria-invalid={tried && Boolean(found.rubric)}
+          aria-describedby={describedBy("rubric")}
+        >
           <legend className="mb-1 font-medium text-sm">{t("fields.rubric")}</legend>
           {draft.rubric.map((row, index) => (
             // Rows have no identity of their own; their position is their key while editing.
@@ -447,7 +505,9 @@ function QuestionForm({
                 type="button"
                 variant="secondary"
                 className="w-fit"
-                onClick={() => set("rubric", [...draft.rubric, { criterion: "", weight: "" }])}
+                onClick={() =>
+                  set("rubric", [...draft.rubric, { criterion: "", weight: "", description: "" }])
+                }
               >
                 <Plus className="size-4" aria-hidden />
                 {t("editor.addCriterion")}
@@ -499,14 +559,25 @@ function QuestionForm({
                 </Button>
               )}
               {question?.status === "draft" ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={move.isPending}
-                  onClick={() => move.mutate("approve")}
-                >
-                  {t("editor.approve")}
-                </Button>
+                <>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={move.isPending || dirty}
+                    aria-describedby={dirty ? `${id}-approve-hint` : undefined}
+                    onClick={() => move.mutate("approve")}
+                  >
+                    {t("editor.approve")}
+                  </Button>
+                  {dirty ? (
+                    <span
+                      id={`${id}-approve-hint`}
+                      className="self-center text-muted-foreground text-xs"
+                    >
+                      {t("editor.saveBeforeApproving")}
+                    </span>
+                  ) : null}
+                </>
               ) : null}
               {question ? (
                 <Button

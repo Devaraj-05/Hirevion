@@ -1193,7 +1193,8 @@
       "zero_width": "Has invisible characters",
       "low_ocr_confidence": "Scanned text may be inaccurate",
       "possible_duplicate_of": "May be a duplicate of another candidate",
-      "duplicate_of": "Same file as an earlier upload"
+      "duplicate_of": "Same file as an earlier upload",
+      "injection_removed": "Instructions to the screener were removed before the AI read the resume"
     },
     "page": {
       "back": "All candidates",
@@ -1484,7 +1485,11 @@
       "approve": "Approve",
       "archive": "Archive",
       "versions": "Versions",
-      "versionLine": "Version {version} · {date}"
+      "versionLine": "Version {version} · {date}",
+      "rubricWeight": "Each weight is a whole number from 1 to 100.",
+      "languagesRequired": "Choose at least one language.",
+      "conceptsTooMany": "List at most 20 expected concepts.",
+      "saveBeforeApproving": "Save your changes first, then approve."
     },
     "generate": {
       "title": "Generate questions with AI",

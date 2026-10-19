@@ -7,5 +7,12 @@ import { QuestionLibrary } from "./library";
  * they see the notice instead. */
 export async function QuestionsBody({ session }: PageBodyProps) {
   if (session.source === "dev") return <AdminDevNotice />;
-  return <QuestionLibrary canManage={can(session, "questions.manage")} />;
+  return (
+    <QuestionLibrary
+      canManage={can(session, "questions.manage")}
+      canViewJobs={can(session, "jobs.view")}
+      canViewCandidates={can(session, "candidates.view")}
+      canViewTemplates={can(session, "interviews.templates.view")}
+    />
+  );
 }

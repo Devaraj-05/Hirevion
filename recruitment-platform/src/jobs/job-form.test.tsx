@@ -37,6 +37,21 @@ beforeEach(() => {
 });
 
 describe("JobForm", () => {
+  it("keeps showing a recruiter who is no longer offered, and sends them back unchanged", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.updateJob).mockResolvedValue(job());
+    renderAdmin(
+      <JobForm job={job({ recruiter_id: "u-left", recruiter_name: "Meera Iyer (left)" })} />,
+    );
+    const recruiter = await screen.findByLabelText("Recruiter");
+    await waitFor(() => expect(recruiter).toHaveDisplayValue("Meera Iyer (left)"));
+    await user.type(screen.getByLabelText("Location"), "Pune");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(api.updateJob).toHaveBeenCalled());
+    const [, body] = vi.mocked(api.updateJob).mock.calls[0] ?? [];
+    expect(body?.recruiter_id).toBe("u-left");
+  });
+
   it("needs a title, then creates the job and opens it", async () => {
     const user = userEvent.setup();
     vi.mocked(api.createJob).mockResolvedValue(job({ id: "j-new", reference: "JOB-0007" }));

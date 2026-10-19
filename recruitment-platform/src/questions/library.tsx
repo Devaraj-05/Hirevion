@@ -39,7 +39,18 @@ const questionText = (question: Question) => question.text;
 
 /** The question library (PRD §7, §22): the category tab, status, type, difficulty and search
  * live in the URL. Drafts, including the AI's, wait for approval before anything can use them. */
-export function QuestionLibrary({ canManage }: { canManage: boolean }) {
+export function QuestionLibrary({
+  canManage,
+  canViewJobs = true,
+  canViewCandidates = true,
+  canViewTemplates = true,
+}: {
+  canManage: boolean;
+  /** What the reader may read, so the AI-draft dialog offers only choices it can load. */
+  canViewJobs?: boolean;
+  canViewCandidates?: boolean;
+  canViewTemplates?: boolean;
+}) {
   const t = useTranslations("questions");
   const format = useFormatter();
   const labels = useTableLabels(questionText);
@@ -209,9 +220,14 @@ export function QuestionLibrary({ canManage }: { canManage: boolean }) {
       {generating ? (
         <GenerateDialog
           onClose={() => setGenerating(false)}
+          canViewJobs={canViewJobs}
+          canViewCandidates={canViewCandidates}
+          canViewTemplates={canViewTemplates}
           onGenerated={() => {
+            // The new drafts show whatever filter was set before.
             setGenerating(false);
-            setFilters({ ...filters, status: "draft" });
+            setSearch("");
+            setFilters({ status: "draft" });
           }}
         />
       ) : null}

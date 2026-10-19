@@ -7,6 +7,7 @@ import { type FormEvent, useId, useState } from "react";
 import { CheckboxGroup } from "@/admin/fields";
 import { useAdminProblem } from "@/admin/problems";
 import { listCandidates } from "@/candidates/api";
+import { useIdempotencyKey } from "@/data/idempotency";
 import { listTemplates } from "@/interviews/api";
 import { listJobs } from "@/jobs/api";
 import {
@@ -27,9 +28,15 @@ const CHOICES = 100;
 export function GenerateDialog({
   onClose,
   onGenerated,
+  canViewJobs = true,
+  canViewCandidates = true,
+  canViewTemplates = true,
 }: {
   onClose: () => void;
   onGenerated: (result: GenerateResult) => void;
+  canViewJobs?: boolean;
+  canViewCandidates?: boolean;
+  canViewTemplates?: boolean;
 }) {
   const t = useTranslations("questions.generate");
   const labels = useTranslations("questions");
@@ -45,17 +52,21 @@ export function GenerateDialog({
   const [templateId, setTemplateId] = useState(NONE);
   const [types, setTypes] = useState<QuestionType[]>([]);
   const [tried, setTried] = useState(false);
+  const key = useIdempotencyKey();
   const jobs = useQuery({
     queryKey: ["jobs", "list", "choices"],
     queryFn: () => listJobs({ limit: CHOICES }),
+    enabled: canViewJobs,
   });
   const candidates = useQuery({
     queryKey: ["candidates", "list", "choices", jobId],
     queryFn: () => listCandidates({ limit: CHOICES, job_id: jobId || undefined }),
+    enabled: canViewCandidates,
   });
   const templates = useQuery({
     queryKey: ["interview-templates", "list", "choices"],
     queryFn: () => listTemplates({ limit: CHOICES }),
+    enabled: canViewTemplates,
   });
 
   const skillList = skills
@@ -68,16 +79,20 @@ export function GenerateDialog({
 
   const generate = useMutation({
     mutationFn: () =>
-      generateQuestions({
-        skills: skillList,
-        count: number,
-        experience_level: level,
-        job_id: jobId || null,
-        candidate_id: candidateId || null,
-        template_id: templateId || null,
-        types,
-      }),
+      generateQuestions(
+        {
+          skills: skillList,
+          count: number,
+          experience_level: level,
+          job_id: jobId || null,
+          candidate_id: candidateId || null,
+          template_id: templateId || null,
+          types,
+        },
+        key.current(),
+      ),
     onSuccess: (result) => {
+      key.renew();
       void queryClient.invalidateQueries({ queryKey: keys.list });
       toast.success(t("done", { count: result.drafts.length, skipped: result.skipped }), {});
       onGenerated(result);
@@ -138,56 +153,63 @@ export function GenerateDialog({
                 options={LEVELS.map((value) => ({ value, label: t(`levels.${value}`) }))}
               />
             </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor={`${id}-job`}>{t("job")}</Label>
-              <NativeSelect
-                id={`${id}-job`}
-                value={jobId}
-                onChange={(event) => {
-                  setJobId(event.target.value);
-                  setCandidateId(NONE);
-                }}
-                options={[
-                  { value: NONE, label: t("none") },
-                  ...(jobs.data?.items ?? []).map((job) => ({ value: job.id, label: job.title })),
-                ]}
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor={`${id}-candidate`}>{t("candidate")}</Label>
-              <NativeSelect
-                id={`${id}-candidate`}
-                value={candidateId}
-                aria-describedby={`${id}-candidate-hint`}
-                onChange={(event) => setCandidateId(event.target.value)}
-                options={[
-                  { value: NONE, label: t("none") },
-                  ...(candidates.data?.items ?? []).map((person) => ({
-                    value: person.id,
-                    label: person.name,
-                  })),
-                ]}
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor={`${id}-template`}>{t("template")}</Label>
-              <NativeSelect
-                id={`${id}-template`}
-                value={templateId}
-                onChange={(event) => setTemplateId(event.target.value)}
-                options={[
-                  { value: NONE, label: t("none") },
-                  ...(templates.data?.items ?? []).map((template) => ({
-                    value: template.id,
-                    label: template.name,
-                  })),
-                ]}
-              />
-            </div>
+            {canViewJobs ? (
+              <div className="grid gap-1.5">
+                <Label htmlFor={`${id}-job`}>{t("job")}</Label>
+                <NativeSelect
+                  id={`${id}-job`}
+                  value={jobId}
+                  onChange={(event) => {
+                    setJobId(event.target.value);
+                    setCandidateId(NONE);
+                  }}
+                  options={[
+                    { value: NONE, label: t("none") },
+                    ...(jobs.data?.items ?? []).map((job) => ({ value: job.id, label: job.title })),
+                  ]}
+                />
+              </div>
+            ) : null}
+            {canViewCandidates ? (
+              <div className="grid gap-1.5">
+                <Label htmlFor={`${id}-candidate`}>{t("candidate")}</Label>
+                <NativeSelect
+                  id={`${id}-candidate`}
+                  value={candidateId}
+                  onChange={(event) => setCandidateId(event.target.value)}
+                  options={[
+                    { value: NONE, label: t("none") },
+                    ...(candidates.data?.items ?? []).map((person) => ({
+                      value: person.id,
+                      label: person.name,
+                    })),
+                  ]}
+                />
+              </div>
+            ) : null}
+            {canViewTemplates ? (
+              <div className="grid gap-1.5">
+                <Label htmlFor={`${id}-template`}>{t("template")}</Label>
+                <NativeSelect
+                  id={`${id}-template`}
+                  value={templateId}
+                  onChange={(event) => setTemplateId(event.target.value)}
+                  options={[
+                    { value: NONE, label: t("none") },
+                    ...(templates.data?.items ?? []).map((template) => ({
+                      value: template.id,
+                      label: template.name,
+                    })),
+                  ]}
+                />
+              </div>
+            ) : null}
           </div>
-          <p id={`${id}-candidate-hint`} className="text-muted-foreground text-xs">
-            {t("candidateHint")}
-          </p>
+          {canViewCandidates ? (
+            <p id={`${id}-candidate-hint`} className="text-muted-foreground text-xs">
+              {t("candidateHint")}
+            </p>
+          ) : null}
           <CheckboxGroup
             legend={t("types")}
             options={QUESTION_TYPES.map((type) => ({

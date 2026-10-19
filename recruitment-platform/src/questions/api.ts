@@ -106,9 +106,15 @@ export async function listQuestionVersions(id: string): Promise<QuestionVersion[
   );
 }
 
-export async function approveQuestion(id: string): Promise<Question> {
+/** Approves the question's current version; `version` is the one the reviewer read, and the API
+ * refuses if the question was edited since. */
+export async function approveQuestion(id: string, version?: number): Promise<Question> {
   return required(
-    (await apiClient().POST("/api/v1/questions/{question_id}/approve", { params: one(id) })).data,
+    (
+      await apiClient().POST("/api/v1/questions/{question_id}/approve", {
+        params: { path: { question_id: id }, query: version === undefined ? {} : { version } },
+      })
+    ).data,
   );
 }
 
@@ -125,6 +131,16 @@ export async function restoreQuestion(id: string): Promise<Question> {
 }
 
 /** Drafts questions with AI; a recruiter approves each before it can be used. */
-export async function generateQuestions(body: GenerateRequest): Promise<GenerateResult> {
-  return required((await apiClient().POST("/api/v1/questions/generate", { body })).data);
+export async function generateQuestions(
+  body: GenerateRequest,
+  key: string,
+): Promise<GenerateResult> {
+  return required(
+    (
+      await apiClient().POST("/api/v1/questions/generate", {
+        body,
+        params: { header: { "Idempotency-Key": key } },
+      })
+    ).data,
+  );
 }
