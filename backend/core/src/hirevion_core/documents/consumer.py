@@ -138,9 +138,8 @@ class StreamConsumer:
                 raise TypeError("the payload is not an object")
         except (KeyError, ValueError, TypeError):
             log.error("Set aside an unreadable %s entry %s", self._topic, event_id)
-            await self._redis.xadd(
-                self._dead_letter, dict(fields) or {"raw": ""}, maxlen=10_000, approximate=True
-            )
+            unreadable: dict[Any, Any] = dict(fields) or {"raw": ""}
+            await self._redis.xadd(self._dead_letter, unreadable, maxlen=10_000, approximate=True)
             await self._finish(message_id)
             return 0
         if await self._deliveries(message_id) > self._max_deliveries:
