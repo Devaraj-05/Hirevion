@@ -37,9 +37,12 @@ hirevion-voice-bench = { workspace = true }
 
 [dependency-groups]
 dev = [
+  "bandit>=1.9.4",
   "mypy>=1.11",
+  "pip-licenses>=5.5.5",
   "pytest>=8.3",
   "pytest-asyncio>=0.24",
+  "pytest-cov>=7.1.0",
   "respx>=0.21",
   "ruff>=0.6",
   "types-openpyxl>=3.1",
@@ -93,3 +96,12 @@ strict = true
 # pypdfium2 and reportlab ship no type information.
 module = ["pypdfium2", "pypdfium2.*", "reportlab", "reportlab.*"]
 ignore_missing_imports = true
+
+[tool.coverage.run]
+source_pkgs = ["hirevion_core"]
+# SQLAlchemy's async engine runs on greenlets; without this their lines read as not run.
+concurrency = ["greenlet", "thread"]
+
+[tool.coverage.report]
+fail_under = 85
+skip_covered = true

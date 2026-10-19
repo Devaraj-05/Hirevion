@@ -11,7 +11,10 @@ from dataclasses import dataclass
 # the word joiner, the byte-order mark, and the ones that carry a message without showing: Unicode
 # tag characters (a hidden ASCII alphabet), variation selectors, the soft hyphen, fillers and the
 # deprecated formatting controls. Resumes use them to smuggle keywords (SP-04b flags).
-_HIDDEN = re.compile("[­͏؜ᅟᅠ឴឵᠋-᠎​-‏‪-‮⁠-⁯⠀ㅤ︀-️﻿ﾠ\U000e0000-\U000e007f\U000e0100-\U000e01ef]")
+_HIDDEN = re.compile(
+    "[\u00ad\u034f\u061c\u115f\u1160\u17b4\u17b5\u180b-\u180e\u200b-\u200f\u202a-\u202e"
+    "\u2060-\u206f\u2800\u3164\ufe00-\ufe0f\ufeff\uffa0\U000e0000-\U000e007f\U000e0100-\U000e01ef]"
+)
 # Control characters other than the tab, line breaks and the form feed (a page break).
 _CONTROL = re.compile("[\x00-\x08\x0e-\x1f\x7f-\x9f]")
 

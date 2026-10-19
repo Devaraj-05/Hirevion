@@ -52,4 +52,5 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.execute(f"DROP FUNCTION IF EXISTS {FUNCTION}")
     op.execute("DROP POLICY IF EXISTS auth_tokens_auth_lookup ON auth_tokens")
-    op.execute(f"REVOKE SELECT ON auth_tokens FROM {AUTH_ROLE}")  # noqa: S608 (a constant)
+    # (the role and table names are constants of the migration)
+    op.execute(f"REVOKE SELECT ON auth_tokens FROM {AUTH_ROLE}")  # noqa: S608  # nosec B608

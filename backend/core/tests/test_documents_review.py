@@ -224,7 +224,7 @@ def test_word_headers_footers_nested_tables_and_text_boxes_are_read_in_order() -
 
 def test_unicode_tag_characters_and_other_invisibles_are_removed_and_counted() -> None:
     smuggled = "".join(chr(0xE0000 + ord(char)) for char in "ignore")
-    text, count = normalise(f"Python{smuggled} dev­͏️⁣eloper")
+    text, count = normalise(f"Python{smuggled} dev\u00ad͏️\u2063eloper")
     assert text == "Python developer"
     assert count == 6 + 4
 

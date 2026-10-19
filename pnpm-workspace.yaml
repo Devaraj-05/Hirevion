@@ -9,3 +9,7 @@ packages:
 allowBuilds:
   '@parcel/watcher': false
   '@swc/core': false
+# GHSA-68fv-2mgg-jv7q: source-map-js before 1.2.2. It comes through PostCSS, Tailwind and jsdom,
+# which pin 1.2.1 loosely; the fixed release changes nothing they use.
+overrides:
+  source-map-js: 1.2.2

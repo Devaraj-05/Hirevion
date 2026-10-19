@@ -1,0 +1,32 @@
+# osv-scanner's accepted findings (the `osv` gate, scripts/gates.sh). Every entry says why, and
+# expires: an ignore is a decision to look at again, not a permanent pass.
+
+# The desktop app ships for Windows only (`cargo deny` builds its graph for the two Windows
+# targets, ai-interviewer-desktop/src-tauri/deny.toml). These crates come from Tauri's Linux-only
+# GTK and D-Bus stack and are not in the Windows build: `cargo tree --target
+# x86_64-pc-windows-msvc -i <crate>` finds none of them.
+
+[[IgnoredVulns]]
+id = "GHSA-wrw7-89jp-8q8g"
+ignoreUntil = 2027-04-19
+reason = "glib 0.18 (also RUSTSEC-2024-0429) is in Tauri's Linux GTK stack only; the app ships for Windows (checked with cargo tree)"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0370"
+ignoreUntil = 2027-04-19
+reason = "proc-macro-error is unmaintained, with no fix; it is a build-time macro of the Linux GTK stack and not in the Windows graph"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0371"
+ignoreUntil = 2027-04-19
+reason = "zbus_names is Tauri's Linux D-Bus stack; not in the Windows graph"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0370"
+ignoreUntil = 2027-04-19
+reason = "zvariant is Tauri's Linux D-Bus stack; not in the Windows graph"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0372"
+ignoreUntil = 2027-04-19
+reason = "zvariant_derive is Tauri's Linux D-Bus stack; not in the Windows graph"

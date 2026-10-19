@@ -413,7 +413,8 @@ def downgrade() -> None:
     for function in (*SCHEDULER_FUNCTIONS, *AUTH_FUNCTIONS):
         op.execute(f"DROP FUNCTION IF EXISTS {function}")
     op.execute("DROP POLICY IF EXISTS organizations_scheduler ON organizations")
-    op.execute(f"REVOKE SELECT ON organizations FROM {SCHEDULER_ROLE}")  # noqa: S608 (a constant)
+    # (the role and table names are constants of the migration)
+    op.execute(f"REVOKE SELECT ON organizations FROM {SCHEDULER_ROLE}")  # noqa: S608  # nosec B608
     op.drop_table("invitations")
     op.drop_table("interview_reviewers")
     op.drop_table("interview_events")
