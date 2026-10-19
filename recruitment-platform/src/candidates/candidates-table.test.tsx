@@ -1,4 +1,5 @@
 import { screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as jobsApi from "@/jobs/api";
 import { resetNavigation } from "@/test/navigation";
@@ -53,20 +54,28 @@ describe("CandidatesTable", () => {
     );
   });
 
-  it("filters by the stage tab, and explains the tabs interviews will fill", async () => {
-    resetNavigation("/candidates", "stage=shortlisted");
-    const first = renderAdmin(<CandidatesTable />);
-    await waitFor(() =>
-      expect(api.listCandidates).toHaveBeenCalledWith(
-        expect.objectContaining({ stage_group: "shortlisted" }),
-      ),
-    );
-    first.unmount();
+  it("filters by every stage tab, the interview ones included", async () => {
+    for (const stage of ["shortlisted", "interview", "completed", "decision"]) {
+      vi.mocked(api.listCandidates).mockClear();
+      resetNavigation("/candidates", `stage=${stage}`);
+      const view = renderAdmin(<CandidatesTable />);
+      await waitFor(() =>
+        expect(api.listCandidates).toHaveBeenCalledWith(
+          expect.objectContaining({ stage_group: stage }),
+        ),
+      );
+      expect(await screen.findByRole("link", { name: /Asha Rao/ })).toBeInTheDocument();
+      view.unmount();
+    }
+  });
 
-    vi.mocked(api.listCandidates).mockClear();
-    resetNavigation("/candidates", "stage=interview");
+  it("says when the list could not be loaded, and tries again, instead of saying it is empty", async () => {
+    vi.mocked(api.listCandidates).mockRejectedValueOnce(new Error("offline"));
+    resetNavigation("/candidates", "");
     renderAdmin(<CandidatesTable />);
-    expect(await screen.findByText(/once interviews arrive/)).toBeInTheDocument();
-    expect(api.listCandidates).not.toHaveBeenCalled();
+    expect(await screen.findByRole("alert")).toHaveTextContent(/couldn't be loaded/);
+    expect(screen.queryByText(/No candidates yet/i)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("link", { name: /Asha Rao/ })).toBeInTheDocument();
   });
 });

@@ -20,6 +20,7 @@ from hirevion_core.access.actor import Actor
 from hirevion_core.access.audit import record
 from hirevion_core.access.errors import Conflict, Invalid, NotFound
 from hirevion_core.access.scope import ResourceScope, job_scope_clause
+from hirevion_core.db.search import like_escape
 from hirevion_core.documents.intake import DOCUMENTS_TOPIC
 from hirevion_core.jobs.taxonomy import resolve_skills
 from hirevion_core.models import (
@@ -428,11 +429,24 @@ async def _job(session: AsyncSession, job_id: UUID) -> Job:
     return job
 
 
-async def _require_complete(session: AsyncSession, job: Job) -> None:
+async def _require_complete(
+    session: AsyncSession, job: Job, touched: Sequence[str] | None = None
+) -> None:
     """A job that is open (or about to be) has what screening needs: a title, a description and
-    a required skill."""
-    missing = [name for name in ("title", "description") if not getattr(job, name).strip()]
-    if not any(skill.importance == "required" for skill in await _skills(session, job.id)):
+    a required skill. After an edit only what the edit touched is checked, so a job that was
+    already short of something can still be given a recruiter or a template."""
+
+    def checked(name: str) -> bool:
+        return touched is None or name in touched
+
+    missing = [
+        name
+        for name in ("title", "description")
+        if checked(name) and not getattr(job, name).strip()
+    ]
+    if checked("skills") and not any(
+        skill.importance == "required" for skill in await _skills(session, job.id)
+    ):
         missing.append("required skills")
     if missing:
         raise Invalid(
@@ -457,7 +471,7 @@ async def update_job(session: AsyncSession, actor: Actor, job_id: UUID, changes:
     changed = await _apply(session, job, changes)
     if changed:
         if job.status == "open":
-            await _require_complete(session, job)
+            await _require_complete(session, job, changed)
         await bump(session, actor, job, "edited")
         await record(session, actor, "job.updated", "job", job.id, details={"fields": changed})
         await _ask_for_embedding(session, job, changed)
@@ -506,7 +520,7 @@ async def apply_jd(
         return job  # the same description with nothing new: no version, no second embedding
     job.jd_document_id = document.id
     if job.status == "open":
-        await _require_complete(session, job)
+        await _require_complete(session, job, changed)
     await bump(session, actor, job, "jd-applied")
     await record(
         session,
@@ -537,7 +551,7 @@ def jobs_statement(scope: ResourceScope, filters: JobFilters) -> Select[Job]:
         statement = statement.where(Job.recruiter_id == filters.recruiter_id)
     if filters.query and filters.query.strip():
         query = filters.query.strip()
-        escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        escaped = like_escape(query)
         conditions: list[ColumnElement[bool]] = [Job.title.ilike(f"%{escaped}%", escape="\\")]
         number = re.fullmatch(r"(?:JOB-)?0*(\d{1,9})", query, re.IGNORECASE)
         if number:

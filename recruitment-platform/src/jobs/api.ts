@@ -104,11 +104,18 @@ export async function setJobStatus(id: string, status: JobStatus): Promise<Job> 
   );
 }
 
-export async function listJobVersions(id: string): Promise<JobVersion[]> {
-  const { data } = await apiClient().GET("/api/v1/jobs/{job_id}/versions", {
-    params: { path: { job_id: id } },
-  });
-  return data ?? [];
+/** The job's history, newest version first, a page at a time. */
+export async function listJobVersions(
+  id: string,
+  query: { cursor?: string | null | undefined; limit?: number } = {},
+): Promise<Page<JobVersion>> {
+  return required(
+    (
+      await apiClient().GET("/api/v1/jobs/{job_id}/versions", {
+        params: { path: { job_id: id }, query: cleanQuery(query) },
+      })
+    ).data,
+  );
 }
 
 /** Sends a description as a file or as pasted text; it's read in the background. */

@@ -21,6 +21,7 @@ from hirevion_core.access.actor import Actor
 from hirevion_core.access.audit import record
 from hirevion_core.access.errors import Conflict, Invalid, NotFound
 from hirevion_core.access.users import Invitation, create_invitation
+from hirevion_core.db.search import like_escape
 from hirevion_core.db.session import switch_tenant
 from hirevion_core.identity import PLATFORM_ORGANIZATION_ID
 from hirevion_core.identity.roles import ensure_system_roles
@@ -69,7 +70,7 @@ async def list_organizations(
     previous page."""
     pattern = None
     if query and query.strip():
-        escaped = query.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        escaped = like_escape(query.strip())
         pattern = f"%{escaped}%"
     rows = await session.execute(
         _LISTING,

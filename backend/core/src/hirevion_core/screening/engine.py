@@ -336,6 +336,7 @@ async def screen_application(
             config_version=settings.version,
             prompt_version=PROMPT_VERSION,
             model=assessment.model,
+            blind=settings.blind,
             score=score,
             factors=factors,
             skill_match={

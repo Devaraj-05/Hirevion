@@ -1,7 +1,8 @@
 """The question library (PRD §22): each question a stable identity with immutable versions. An
 edit writes the next version; nothing rewrites an old one, so interviews that used it keep it
 (PRD §80). Only approved questions can be used by templates and interviews; AI drafts wait for a
-recruiter (PRD §23)."""
+recruiter (PRD §23). A person approves a version: it, and the versions written after it, can be
+used; the ones before it (an AI draft's raw first wording) never can."""
 
 from __future__ import annotations
 
@@ -12,12 +13,13 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Select, and_, func, or_, select
+from sqlalchemy import Select, and_, func, or_, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from hirevion_core.access.actor import Actor
 from hirevion_core.access.audit import record
 from hirevion_core.access.errors import Conflict, Invalid, NotFound
+from hirevion_core.db.search import like_escape
 from hirevion_core.jobs.taxonomy import resolve_skills
 from hirevion_core.models import Question, QuestionVersion
 from hirevion_core.models.interview_config import (
@@ -90,13 +92,21 @@ class _Clean:
     coding: dict[str, Any] | None = field(default=None)
 
 
+def _no_controls(value: str, field: str) -> str:
+    """PostgreSQL text can't hold a NUL; other control characters are never meant."""
+    if any((ord(char) < 32 and char not in "\n\t") or char == "\x7f" for char in value):
+        raise Invalid("invalid-characters", "Remove the control characters", field=field)
+    return value
+
+
 def _check(fields: QuestionFields) -> _Clean:
+    _no_controls(fields.text, "text")
     text = " ".join(fields.text.split()) if "\n" not in fields.text else fields.text.strip()
     if len(text) < TEXT_MIN:
         raise Invalid("text-too-short", "Write the question in full", field="text")
     if len(text) > TEXT_MAX:
         raise Invalid("too-long", f"Use at most {TEXT_MAX} characters", field="text")
-    skill = " ".join(fields.skill_name.split())
+    skill = " ".join(_no_controls(fields.skill_name, "skill_name").split())
     if not skill or len(skill) > 100:
         raise Invalid("skill-required", "Name the skill it tests", field="skill_name")
     if fields.type not in QUESTION_TYPES:
@@ -106,7 +116,11 @@ def _check(fields: QuestionFields) -> _Clean:
     category = fields.category or CATEGORY_OF_TYPE[fields.type]
     if category not in QUESTION_CATEGORIES:
         raise Invalid("invalid-category", "Choose a category", field="category")
-    concepts = [c.strip()[:200] for c in fields.expected_concepts if c.strip()]
+    concepts = [
+        _no_controls(c, "expected_concepts").strip()[:200]
+        for c in fields.expected_concepts
+        if c.strip()
+    ]
     if len(concepts) > 20:
         raise Invalid("too-many", "Up to 20 expected concepts", field="expected_concepts")
     rubric: list[dict[str, Any]] = []
@@ -158,7 +172,7 @@ def _check(fields: QuestionFields) -> _Clean:
                 if lang in languages
             },
         }
-    topic = (fields.topic or "").strip()[:100] or None
+    topic = _no_controls(fields.topic or "", "topic").strip()[:100] or None
     return _Clean(
         text,
         skill,
@@ -216,6 +230,8 @@ async def create_question(
     generation: dict[str, Any] | None = None,
 ) -> QuestionDetail:
     clean = _check(fields)
+    if source == "ai":  # what the AI writes waits for a person, whatever the caller asked for
+        status = "draft"
     approved = status == "approved"
     question = Question(
         organization_id=actor.organization_id,
@@ -226,6 +242,7 @@ async def create_question(
         created_by=actor.user_id,
         approved_by=actor.user_id if approved else None,
         approved_at=datetime.now(UTC) if approved else None,
+        approved_version=1 if approved else None,
     )
     session.add(question)
     await session.flush()
@@ -241,8 +258,9 @@ async def create_question(
     return QuestionDetail(question, version)
 
 
-async def _question(session: AsyncSession, question_id: UUID) -> Question:
-    question = await session.get(Question, question_id)
+async def _question(session: AsyncSession, question_id: UUID, *, lock: bool = False) -> Question:
+    """The question; with `lock`, held until the transaction ends so two edits take turns."""
+    question = await session.get(Question, question_id, with_for_update=lock)
     if question is None:
         raise NotFound("question-not-found", "No such question")
     return question
@@ -261,7 +279,7 @@ async def update_question(
     session: AsyncSession, actor: Actor, question_id: UUID, fields: QuestionFields
 ) -> QuestionDetail:
     """Writes the next version; the question keeps its status."""
-    question = await _question(session, question_id)
+    question = await _question(session, question_id, lock=True)
     if question.status == "archived":
         raise Conflict("question-archived", "Restore the question before editing it")
     clean = _check(fields)
@@ -276,14 +294,30 @@ async def update_question(
     return QuestionDetail(question, version)
 
 
-async def approve(session: AsyncSession, actor: Actor, question_id: UUID) -> Question:
-    question = await _question(session, question_id)
+async def approve(
+    session: AsyncSession, actor: Actor, question_id: UUID, version: int | None = None
+) -> Question:
+    """Approves the question's current version. `version` is the one the reviewer read: if the
+    question was edited since, nothing is approved, so no one approves wording they never saw."""
+    question = await _question(session, question_id, lock=True)
     if question.status == "archived":
         raise Conflict("question-archived", "Restore the question before approving it")
-    if question.status != "approved":
+    if version is not None and version != question.current_version:
+        raise Conflict(
+            "question-changed", "The question was edited after you opened it: read the new version"
+        )
+    if question.status != "approved" or question.approved_version != question.current_version:
         question.status = "approved"
         question.approved_by, question.approved_at = actor.user_id, datetime.now(UTC)
-        await record(session, actor, "question.approved", "question", question.id)
+        question.approved_version = question.current_version
+        await record(
+            session,
+            actor,
+            "question.approved",
+            "question",
+            question.id,
+            details={"version": question.current_version},
+        )
     await session.flush()
     return question
 
@@ -302,6 +336,7 @@ async def restore(session: AsyncSession, actor: Actor, question_id: UUID) -> Que
     question = await _question(session, question_id)
     if question.status == "archived":
         question.status = "draft"
+        question.approved_by = question.approved_at = question.approved_version = None
         await record(session, actor, "question.restored", "question", question.id)
     await session.flush()
     return question
@@ -315,10 +350,6 @@ async def list_versions(session: AsyncSession, question_id: UUID) -> list[Questi
         .order_by(QuestionVersion.version)
     )
     return list(rows.all())
-
-
-def _escaped(value: str) -> str:
-    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 def questions_statement(filters: QuestionFilters) -> Select[Question]:
@@ -348,8 +379,8 @@ def questions_statement(filters: QuestionFilters) -> Select[Question]:
             and_(
                 *(
                     or_(
-                        QuestionVersion.text.ilike(f"%{_escaped(word)}%", escape="\\"),
-                        QuestionVersion.topic.ilike(f"%{_escaped(word)}%", escape="\\"),
+                        QuestionVersion.text.ilike(f"%{like_escape(word)}%", escape="\\"),
+                        QuestionVersion.topic.ilike(f"%{like_escape(word)}%", escape="\\"),
                     )
                     for word in words
                 )
@@ -367,14 +398,8 @@ async def describe(session: AsyncSession, rows: Sequence[Question]) -> list[Ques
         for version in (
             await session.scalars(
                 select(QuestionVersion).where(
-                    or_(
-                        *(
-                            and_(
-                                QuestionVersion.question_id == q.id,
-                                QuestionVersion.version == q.current_version,
-                            )
-                            for q in rows
-                        )
+                    tuple_(QuestionVersion.question_id, QuestionVersion.version).in_(
+                        [(q.id, q.current_version) for q in rows]
                     )
                 )
             )
@@ -384,15 +409,35 @@ async def describe(session: AsyncSession, rows: Sequence[Question]) -> list[Ques
 
 
 async def require_usable(session: AsyncSession, refs: Sequence[tuple[UUID, int]]) -> None:
-    """Every (question, version) exists and the question is approved."""
+    """Every (question, version) exists, its question is approved, and the version is the one a
+    person approved or a later one."""
+    if not refs:
+        return
+    rows = {
+        q.id: q
+        for q in (
+            await session.scalars(select(Question).where(Question.id.in_({r[0] for r in refs})))
+        ).all()
+    }
+    found = {
+        (row[0], row[1])
+        for row in await session.execute(
+            select(QuestionVersion.question_id, QuestionVersion.version).where(
+                tuple_(QuestionVersion.question_id, QuestionVersion.version).in_(list(refs))
+            )
+        )
+    }
     for question_id, number in refs:
-        question = await session.get(Question, question_id)
-        version = await session.get(QuestionVersion, (question_id, number))
-        if question is None or version is None:
+        question = rows.get(question_id)
+        if question is None or (question_id, number) not in found:
             raise Invalid(
                 "question-not-found", "A chosen question doesn't exist", field="questions"
             )
-        if question.status != "approved":
+        if (
+            question.status != "approved"
+            or question.approved_version is None
+            or number < question.approved_version
+        ):
             raise Invalid(
                 "question-not-approved",
                 "Only approved questions can be used; approve the draft first",

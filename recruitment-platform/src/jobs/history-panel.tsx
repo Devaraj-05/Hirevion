@@ -1,26 +1,30 @@
 "use client";
 
 import { Skeleton } from "@hirevion/ui";
-import { useQuery } from "@tanstack/react-query";
 import { useFormatter, useTranslations } from "next-intl";
+import { Pager } from "@/data/pager";
+import { QueryFailed } from "@/data/query-failed";
+import { useCursorPage } from "@/data/use-cursor-page";
 import { listJobVersions } from "./api";
 import { keys } from "./queries";
 
 const REASONS = ["created", "edited", "status", "jd-applied"] as const;
+const PAGE_SIZE = 25;
 
 /** Every version of the job, newest first: each change writes one (PRD §12, §97). */
 export function HistoryPanel({ jobId }: { jobId: string }) {
   const t = useTranslations("jobs.history");
   const format = useFormatter();
-  const versions = useQuery({
-    queryKey: keys.versions(jobId),
-    queryFn: () => listJobVersions(jobId),
-  });
+  const page = useCursorPage(keys.versions(jobId), (cursor) =>
+    listJobVersions(jobId, { cursor, limit: PAGE_SIZE }),
+  );
 
-  if (versions.isPending) return <Skeleton className="h-32 w-full" />;
-  const rows = [...(versions.data ?? [])].reverse();
+  if (page.isLoading) return <Skeleton className="h-32 w-full" />;
+  if (page.error && page.rows.length === 0) return <QueryFailed onRetry={page.refetch} />;
+  const rows = page.rows;
   if (rows.length === 0) return <p className="text-muted-foreground text-sm">{t("empty")}</p>;
   return (
+    <div className="grid gap-2">
     <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full text-sm">
         <caption className="sr-only">{t("caption")}</caption>
@@ -56,6 +60,13 @@ export function HistoryPanel({ jobId }: { jobId: string }) {
           ))}
         </tbody>
       </table>
+    </div>
+    <Pager
+      hasPrevious={page.hasPrevious}
+      hasNext={page.hasNext}
+      onPrevious={page.previousPage}
+      onNext={page.nextPage}
+    />
     </div>
   );
 }

@@ -298,7 +298,9 @@
     "problem": {
       "reference": "Reference: {traceId}",
       "unknown": "Something went wrong. Please try again."
-    }
+    },
+    "loadFailed": "This couldn't be loaded. Try again in a moment.",
+    "retry": "Try again"
   },
   "dashboard": {
     "kpis": {
@@ -644,6 +646,12 @@
       "stage": "Stage",
       "applied": "Added",
       "empty": "No candidates yet. Upload resumes on the Resumes tab."
+    },
+    "archiveConfirm": {
+      "title": "Archive this job?",
+      "body": "An archived job can't be reopened.",
+      "confirm": "Archive",
+      "cancel": "Cancel"
     }
   },
   "auth": {
@@ -1160,8 +1168,7 @@
       "emptyTitle": "No candidates yet",
       "emptyHint": "Upload resumes on a job's Resumes tab.",
       "noMatchTitle": "No candidates match",
-      "noMatchHint": "Try another search or job.",
-      "stageLater": "Candidates reach this stage once interviews arrive (SP-07)."
+      "noMatchHint": "Try another search or job."
     },
     "flags": {
       "injection": "Contains instructions aimed at AI screening",
@@ -1299,7 +1306,10 @@
       "exportXlsx": "Download Excel",
       "knockout": "Flagged",
       "semantic": "Similarity {value}",
-      "createInterview": "Create interview"
+      "createInterview": "Create interview",
+      "blindNote": "Screened blind: the AI did not see names or personal details.",
+      "notBlind": "Names and personal details were shown to the AI for some of these results.",
+      "notBlindBadge": "Names shown"
     },
     "actions": {
       "shortlist": "Shortlist",
@@ -1334,7 +1344,29 @@
       "noResult": "Not screened yet.",
       "close": "Close",
       "historyEntry": "{action}: {from} → {to}",
-      "override": "against the ranking"
+      "override": "against the ranking",
+      "similarity": "Similarity to the job: {value}",
+      "blind": "Screened blind: the AI did not see the name or personal details.",
+      "notBlind": "Not blind: the AI saw the name and personal details.",
+      "historyActions": {
+        "screened": "Screened",
+        "ranked": "Ranked",
+        "shortlist": "Shortlisted",
+        "reject": "Rejected",
+        "hold": "Put on hold",
+        "review": "Marked for review",
+        "assign_recruiter": "Recruiter assigned",
+        "assign_hiring_manager": "Hiring manager assigned",
+        "interview_invited": "Invited to interview",
+        "interview_cancelled": "Interview cancelled",
+        "interview_completed": "Interview completed",
+        "screening_failed": "Screening could not be completed"
+      }
+    },
+    "assign": {
+      "person": "Person",
+      "nobody": "Nobody (clear the assignment)",
+      "confirm": "Assign"
     }
   },
   "questions": {

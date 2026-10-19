@@ -8,6 +8,7 @@ import {
   Dialog,
   DialogContent,
   Label,
+  NativeSelect,
   Sheet,
   SheetContent,
   Skeleton,
@@ -21,12 +22,15 @@ import { useAdminProblem } from "@/admin/problems";
 import { useStepUp } from "@/admin/step-up";
 import { FlagBadges } from "@/candidates/flags";
 import { Pager } from "@/data/pager";
+import { QueryFailed } from "@/data/query-failed";
 import { useCursorPage } from "@/data/use-cursor-page";
 import { AssignDialog } from "@/interviews/assign-dialog";
+import { getJobChoices } from "@/jobs/api";
 import {
   type Action,
   actOnApplications,
   exportRanking,
+  type ApplicationScreening,
   getApplicationScreening,
   getScreeningSummary,
   listScreeningResults,
@@ -36,8 +40,10 @@ import {
 import { FACTORS } from "./settings-form";
 
 const POLL_MS = 2_000;
+const SETTLE_POLLS = 2;
 const PAGE_SIZE = 50;
 const STAGE_ACTIONS = ["shortlist", "hold", "review", "reject"] as const;
+const ASSIGN_ACTIONS = ["assign_recruiter", "assign_hiring_manager"] as const;
 
 export const keys = {
   summary: (jobId: string) => ["jobs", "detail", jobId, "screening-summary"] as const,
@@ -84,22 +90,30 @@ export function RankingPanel({
   const [running, setRunning] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState<RankedApplication | null>(null);
+  const [startedAt, setStartedAt] = useState(0);
   const [asking, setAsking] = useState<{ action: Action; ids: string[] } | null>(null);
   const [assigning, setAssigning] = useState<string[] | null>(null);
+  const [choosing, setChoosing] = useState<{
+    action: (typeof ASSIGN_ACTIONS)[number];
+    ids: string[];
+  } | null>(null);
 
   const summary = useQuery({
     queryKey: keys.summary(jobId),
     queryFn: () => getScreeningSummary(jobId),
-    refetchInterval: (query) => (running && (query.state.data?.waiting ?? 1) > 0 ? pollMs : false),
+    refetchInterval: running ? pollMs : false,
   });
   const waiting = summary.data?.waiting;
+  const updatedAt = summary.dataUpdatedAt;
+  // Screening again changes no candidate's stage when their results are still current, so
+  // "nobody is waiting" is true from the first moment: the run is over once it has had time to
+  // work through the queue (and nobody waits), and the results are read again on every poll.
   useEffect(() => {
-    if (running && waiting === 0) {
-      setRunning(false);
-      void queryClient.invalidateQueries({ queryKey: keys.results(jobId) });
-    }
-  }, [running, waiting, queryClient, jobId]);
-  const page = useCursorPage([...keys.results(jobId), running], (cursor) =>
+    if (!running) return;
+    void queryClient.invalidateQueries({ queryKey: keys.results(jobId) });
+    if (waiting === 0 && Date.now() - startedAt >= pollMs * SETTLE_POLLS) setRunning(false);
+  }, [running, waiting, updatedAt, startedAt, pollMs, queryClient, jobId]);
+  const page = useCursorPage(keys.results(jobId), (cursor) =>
     listScreeningResults(jobId, { cursor, limit: PAGE_SIZE }),
   );
 
@@ -107,6 +121,7 @@ export function RankingPanel({
     mutationFn: () => screenJob(jobId),
     onSuccess: (queued) => {
       toast.success(t("ranking.queued", { count: queued }), {});
+      setStartedAt(Date.now());
       setRunning(true);
       void queryClient.invalidateQueries({ queryKey: keys.summary(jobId) });
     },
@@ -114,18 +129,22 @@ export function RankingPanel({
   });
 
   const act = useMutation({
-    mutationFn: (input: { action: Action; ids: string[]; reason?: string }) =>
+    mutationFn: (input: { action: Action; ids: string[]; reason?: string; userId?: string }) =>
       actOnApplications(jobId, {
         application_ids: input.ids,
         action: input.action,
         ...(input.reason ? { reason: input.reason } : {}),
+        ...(input.userId !== undefined ? { user_id: input.userId || null } : {}),
       }),
     onSuccess: (changed) => {
       toast.success(t("actions.done", { count: changed.length }), {});
       setSelected(new Set());
       setAsking(null);
+      setChoosing(null);
       void queryClient.invalidateQueries({ queryKey: keys.results(jobId) });
       void queryClient.invalidateQueries({ queryKey: keys.summary(jobId) });
+      // Each candidate's own history changed too.
+      void queryClient.invalidateQueries({ queryKey: ["applications"] });
     },
     onError: (error, input) => {
       if (isApiProblem(error) && error.code === "reason-required" && !input.reason) {
@@ -149,6 +168,8 @@ export function RankingPanel({
   }
 
   const rows = page.rows;
+  const shownBlind = rows.length > 0 && rows.every((row) => row.blind === true);
+  const shownOpen = rows.some((row) => row.blind === false);
   const allSelected = rows.length > 0 && rows.every((row) => selected.has(row.application_id));
   const toggle = (id: string) =>
     setSelected((previous) => {
@@ -210,6 +231,17 @@ export function RankingPanel({
               {t(`actions.${action}`)}
             </Button>
           ))}
+          {ASSIGN_ACTIONS.map((action) => (
+            <Button
+              key={action}
+              size="sm"
+              variant="secondary"
+              disabled={act.isPending}
+              onClick={() => setChoosing({ action, ids: [...selected] })}
+            >
+              {t(`actions.${action}`)}
+            </Button>
+          ))}
           {canCreateInterviews ? (
             <Button size="sm" variant="secondary" onClick={() => setAssigning([...selected])}>
               {t("ranking.createInterview")}
@@ -218,8 +250,18 @@ export function RankingPanel({
         </section>
       ) : null}
 
+      {shownBlind ? (
+        <p className="text-muted-foreground text-xs">{t("ranking.blindNote")}</p>
+      ) : null}
+      {shownOpen ? (
+        <p role="status" className="text-warning text-xs">
+          {t("ranking.notBlind")}
+        </p>
+      ) : null}
       {page.isLoading ? (
         <Skeleton className="h-40 w-full" />
+      ) : page.error && rows.length === 0 ? (
+        <QueryFailed onRetry={page.refetch} />
       ) : rows.length === 0 ? (
         <p className="text-muted-foreground text-sm">{t("ranking.empty")}</p>
       ) : (
@@ -283,6 +325,9 @@ export function RankingPanel({
                       {row.knockouts.length > 0 ? (
                         <Badge tone="warning">{t("ranking.knockout")}</Badge>
                       ) : null}
+                      {row.blind === false ? (
+                        <Badge tone="warning">{t("ranking.notBlindBadge")}</Badge>
+                      ) : null}
                       <FlagBadges flags={row.candidate.flags} />
                     </div>
                   </td>
@@ -290,6 +335,11 @@ export function RankingPanel({
                     <Badge tone={(row.score ?? 0) >= 75 ? "success" : "neutral"}>
                       {row.score ?? "—"}
                     </Badge>
+                    {row.semantic_similarity != null ? (
+                      <span className="mt-1 block text-muted-foreground text-xs">
+                        {t("ranking.semantic", { value: row.semantic_similarity.toFixed(2) })}
+                      </span>
+                    ) : null}
                   </td>
                   <td className="px-3 py-2">{shown(row.skill_match.required_score)}</td>
                   <td className="px-3 py-2">{shown(row.experience.score)}</td>
@@ -330,6 +380,14 @@ export function RankingPanel({
           }}
         />
       ) : null}
+      {choosing ? (
+        <PersonDialog
+          action={choosing.action}
+          busy={act.isPending}
+          onCancel={() => setChoosing(null)}
+          onConfirm={(userId) => act.mutate({ action: choosing.action, ids: choosing.ids, userId })}
+        />
+      ) : null}
       {asking ? (
         <ReasonDialog
           action={asking.action}
@@ -339,6 +397,60 @@ export function RankingPanel({
         />
       ) : null}
     </div>
+  );
+}
+
+/** Who a bulk "assign recruiter" or "assign hiring manager" gives the candidates to. */
+function PersonDialog({
+  action,
+  busy,
+  onCancel,
+  onConfirm,
+}: {
+  action: (typeof ASSIGN_ACTIONS)[number];
+  busy: boolean;
+  onCancel: () => void;
+  onConfirm: (userId: string) => void;
+}) {
+  const t = useTranslations("screening");
+  const id = useId();
+  const [person, setPerson] = useState("");
+  const choices = useQuery({ queryKey: ["jobs", "choices"], queryFn: getJobChoices });
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    onConfirm(person);
+  }
+  return (
+    <Dialog open onOpenChange={(open) => (open ? undefined : onCancel())}>
+      <DialogContent title={t(`actions.${action}`)} closeLabel={t("actions.cancel")}>
+        <form noValidate onSubmit={submit} className="grid gap-3">
+          {choices.isError ? <QueryFailed onRetry={() => void choices.refetch()} /> : null}
+          <div className="grid gap-1.5">
+            <Label htmlFor={`${id}-person`}>{t("assign.person")}</Label>
+            <NativeSelect
+              id={`${id}-person`}
+              value={person}
+              onChange={(event) => setPerson(event.target.value)}
+              options={[
+                { value: "", label: t("assign.nobody") },
+                ...(choices.data?.people ?? []).map((user) => ({
+                  value: user.id,
+                  label: user.name,
+                })),
+              ]}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={onCancel}>
+              {t("actions.cancel")}
+            </Button>
+            <Button type="submit" disabled={busy}>
+              {t("assign.confirm")}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -388,6 +500,36 @@ function ReasonDialog({
   );
 }
 
+/** What happened to the candidate, in words: each stage change, who gave a reason, and whether
+ * it went against the ranking. */
+function History({ entries }: { entries: ApplicationScreening["history"] }) {
+  const t = useTranslations("screening");
+  const stages = useTranslations("candidates.stages");
+  if (entries.length === 0) return null;
+  const stage = (value: string | null) =>
+    value ? stages(value as RankedApplication["stage"]) : "—";
+  return (
+    <section className="grid gap-1">
+      <h3 className="font-medium">{t("evidence.history")}</h3>
+      <ul className="grid gap-1 text-xs">
+        {entries.map((entry) => (
+          <li key={`${entry.created_at}-${entry.action}`}>
+            {t("evidence.historyEntry", {
+              action: t.has(`evidence.historyActions.${entry.action}`)
+                ? t(`evidence.historyActions.${entry.action}`)
+                : entry.action,
+              from: stage(entry.from_stage),
+              to: stage(entry.to_stage),
+            })}
+            {entry.override ? ` (${t("evidence.override")})` : null}
+            {entry.reason ? ` — ${entry.reason}` : null}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function EvidenceSheet({
   application,
   canManage,
@@ -400,7 +542,6 @@ function EvidenceSheet({
   onClose: () => void;
 }) {
   const t = useTranslations("screening");
-  const stages = useTranslations("candidates.stages");
   const detail = useQuery({
     queryKey: keys.application(application.application_id),
     queryFn: () => getApplicationScreening(application.application_id),
@@ -436,8 +577,13 @@ function EvidenceSheet({
       >
         {detail.isPending ? (
           <Skeleton className="h-64 w-full" />
+        ) : detail.isError ? (
+          <QueryFailed onRetry={() => void detail.refetch()} />
         ) : !result ? (
-          <p className="text-sm">{t("evidence.noResult")}</p>
+          <div className="grid gap-4 text-sm">
+            <p>{t("evidence.noResult")}</p>
+            <History entries={detail.data?.history ?? []} />
+          </div>
         ) : (
           <div className="grid gap-4 text-sm">
             <ul className="grid gap-3">
@@ -507,27 +653,16 @@ function EvidenceSheet({
                 </section>
               ) : null,
             )}
-            {detail.data && detail.data.history.length > 0 ? (
-              <section className="grid gap-1">
-                <h3 className="font-medium">{t("evidence.history")}</h3>
-                <ul className="grid gap-1 text-xs">
-                  {detail.data.history.map((entry) => (
-                    <li key={`${entry.created_at}-${entry.action}`}>
-                      {t("evidence.historyEntry", {
-                        action: entry.action,
-                        from: entry.from_stage
-                          ? stages(entry.from_stage as RankedApplication["stage"])
-                          : "—",
-                        to: entry.to_stage
-                          ? stages(entry.to_stage as RankedApplication["stage"])
-                          : "—",
-                      })}
-                      {entry.override ? ` (${t("evidence.override")})` : null}
-                      {entry.reason ? ` — ${entry.reason}` : null}
-                    </li>
-                  ))}
-                </ul>
-              </section>
+            <History entries={detail.data?.history ?? []} />
+            {result.semantic_similarity != null ? (
+              <p className="text-muted-foreground text-xs">
+                {t("evidence.similarity", { value: result.semantic_similarity.toFixed(2) })}
+              </p>
+            ) : null}
+            {result.blind != null ? (
+              <p className="text-muted-foreground text-xs">
+                {result.blind ? t("evidence.blind") : t("evidence.notBlind")}
+              </p>
             ) : null}
             <p className="text-muted-foreground text-xs">
               {t("evidence.model", { model: result.model, prompt: result.prompt_version })}

@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 QuestionType = Literal[
     "technical",
@@ -112,7 +112,9 @@ class QuestionVersionResponse(BaseModel):
 class GenerateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    skills: list[str] = Field(min_length=1, max_length=10)
+    skills: list[Annotated[str, Field(min_length=1, max_length=100)]] = Field(
+        min_length=1, max_length=10
+    )
     count: int = Field(5, ge=1, le=10)
     experience_level: Literal["junior", "mid", "senior", "lead"] = "mid"
     job_id: UUID | None = None
@@ -232,6 +234,15 @@ class MatrixPreview(BaseModel):
     question_count: int = Field(ge=1, le=50)
     skills: list[SkillWeight] = Field(min_length=1, max_length=20)
     difficulty: dict[Difficulty, int]
+
+    @model_validator(mode="after")
+    def _mix_adds_up(self) -> MatrixPreview:
+        if (
+            any(value < 0 for value in self.difficulty.values())
+            or sum(self.difficulty.values()) != 100
+        ):
+            raise ValueError("the difficulty mix must be percentages that add up to 100")
+        return self
 
 
 class MatrixRowResponse(BaseModel):

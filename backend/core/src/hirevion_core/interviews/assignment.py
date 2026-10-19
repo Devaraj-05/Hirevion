@@ -23,6 +23,7 @@ from hirevion_core.access.actor import Actor
 from hirevion_core.access.audit import record
 from hirevion_core.access.errors import Conflict, Invalid, NotFound
 from hirevion_core.access.scope import ResourceScope, job_scope_clause, scope_clause
+from hirevion_core.db.search import like_escape
 from hirevion_core.identity.settings import IdentitySettings
 from hirevion_core.interviews import invitations
 from hirevion_core.interviews.lifecycle import STATUS_GROUPS, By, record_event, transition
@@ -520,7 +521,7 @@ def interviews_statement(
         statement = statement.where(Interview.candidate_id == filters.candidate_id)
     if filters.query and filters.query.strip():
         query = filters.query.strip()
-        escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        escaped = like_escape(query)
         conditions: list[ColumnElement[bool]] = [
             exists(
                 select(Candidate.id).where(

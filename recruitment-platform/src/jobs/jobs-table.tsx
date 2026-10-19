@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 import { type FormEvent, useMemo, useState } from "react";
 import { Pager } from "@/data/pager";
+import { QueryFailed } from "@/data/query-failed";
 import { useCursorPage } from "@/data/use-cursor-page";
 import { useUrlTableState } from "@/data/use-url-table-state";
 import { useTableLabels } from "@/page/use-table-labels";
@@ -135,7 +136,9 @@ export function JobsTable({ canCreate }: { canCreate: boolean }) {
         onFiltersChange={setFilters}
         viewStore={viewStore}
         emptyState={
-          page.isLoading ? null : (
+          page.isLoading ? null : page.error ? (
+            <QueryFailed onRetry={page.refetch} />
+          ) : (
             <EmptyState
               icon={<Briefcase />}
               title={filtered ? t("noMatchTitle") : t("emptyTitle")}

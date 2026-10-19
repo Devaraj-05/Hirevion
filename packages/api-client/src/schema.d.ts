@@ -2008,7 +2008,8 @@ export interface paths {
         get: operations["get_job_screening_config"];
         /**
          * Update Job Screening Config
-         * @description Gives the job its own configuration (starting from what it inherited).
+         * @description Gives the job its own configuration (starting from what it inherited). Turning blind
+         *     screening off is the organisation's decision: it needs `admin.organization.manage`.
          */
         put: operations["update_job_screening_config"];
         post?: never;
@@ -2109,7 +2110,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Job Versions */
+        /**
+         * List Job Versions
+         * @description The job's history, newest version first.
+         */
         get: operations["list_job_versions"];
         put?: never;
         post?: never;
@@ -2891,7 +2895,8 @@ export interface paths {
          * Generate Questions
          * @description Drafts questions with AI from the job, a candidate's work history, the skills, the level
          *     and a template (PRD §23). They're saved as drafts: none is used until a recruiter approves
-         *     it. The AI call happens outside any database transaction.
+         *     it. A job or candidate must be one the caller may read. The AI call happens outside any
+         *     database transaction, and a retry with the same `Idempotency-Key` costs nothing.
          */
         post: operations["generate_questions"];
         delete?: never;
@@ -2932,7 +2937,7 @@ export interface paths {
         put?: never;
         /**
          * Approve Question
-         * @description Makes a draft usable in templates and interviews.
+         * @description Makes the question's current version usable in templates and interviews.
          */
         post: operations["approve_question"];
         delete?: never;
@@ -4059,7 +4064,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "uploaded" | "scanning" | "extracting" | "parsing" | "parsed" | "quarantined" | "failed";
+            status: "uploaded" | "scanning" | "extracting" | "ocr" | "parsing" | "parsed" | "quarantined" | "failed";
         };
         /** CandidateInterview */
         CandidateInterview: {
@@ -4606,7 +4611,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "uploaded" | "scanning" | "extracting" | "parsing" | "parsed" | "quarantined" | "failed";
+            status: "uploaded" | "scanning" | "extracting" | "ocr" | "parsing" | "parsed" | "quarantined" | "failed";
             /**
              * Updated At
              * Format: date-time
@@ -5822,7 +5827,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "uploaded" | "scanning" | "extracting" | "parsing" | "parsed" | "quarantined" | "failed";
+            status: "uploaded" | "scanning" | "extracting" | "ocr" | "parsing" | "parsed" | "quarantined" | "failed";
             /** Text */
             text: string | null;
             /**
@@ -6558,6 +6563,16 @@ export interface components {
         Page_JobSummary_: {
             /** Items */
             items: components["schemas"]["JobSummary"][];
+            /**
+             * Next Cursor
+             * @description Pass as `cursor` to get the next page; null on the last page.
+             */
+            next_cursor: string | null;
+        };
+        /** Page[JobVersionResponse] */
+        Page_JobVersionResponse_: {
+            /** Items */
+            items: components["schemas"]["JobVersionResponse"][];
             /**
              * Next Cursor
              * @description Pass as `cursor` to get the next page; null on the last page.
@@ -7544,6 +7559,8 @@ export interface components {
              * Format: uuid
              */
             application_id: string;
+            /** Blind */
+            blind: boolean | null;
             candidate: components["schemas"]["CandidateBrief"];
             /** Experience */
             experience: {
@@ -7973,7 +7990,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "uploaded" | "scanning" | "extracting" | "parsing" | "parsed" | "quarantined" | "failed";
+            status: "uploaded" | "scanning" | "extracting" | "ocr" | "parsing" | "parsed" | "quarantined" | "failed";
             /**
              * Updated At
              * Format: date-time
@@ -8288,6 +8305,8 @@ export interface components {
         };
         /** ScreeningResultResponse */
         ScreeningResultResponse: {
+            /** Blind */
+            blind: boolean | null;
             /** Concerns */
             concerns: string[];
             /** Config Version */
@@ -13840,7 +13859,10 @@ export interface operations {
     apply_job_description: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Required. A unique value (a UUID is ideal) per logical create; send the same value when retrying it. */
+                "Idempotency-Key"?: string | null;
+            };
             path: {
                 job_id: string;
             };
@@ -13884,7 +13906,7 @@ export interface operations {
     list_resumes: {
         parameters: {
             query?: {
-                status?: ("uploaded" | "scanning" | "extracting" | "parsing" | "parsed" | "quarantined" | "failed") | null;
+                status?: ("uploaded" | "scanning" | "extracting" | "ocr" | "parsing" | "parsed" | "quarantined" | "failed") | null;
                 /** @description Only this archive's entries. */
                 parent_id?: string | null;
                 /** @description How many items to return. */
@@ -14318,7 +14340,12 @@ export interface operations {
     };
     list_job_versions: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description How many items to return. */
+                limit?: number;
+                /** @description `next_cursor` from the previous page. */
+                cursor?: string | null;
+            };
             header?: never;
             path: {
                 job_id: string;
@@ -14333,7 +14360,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["JobVersionResponse"][];
+                    "application/json": components["schemas"]["Page_JobVersionResponse_"];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */
@@ -16167,7 +16194,10 @@ export interface operations {
     generate_questions: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Required. A unique value (a UUID is ideal) per logical create; send the same value when retrying it. */
+                "Idempotency-Key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -16292,7 +16322,10 @@ export interface operations {
     };
     approve_question: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description The version the reviewer read; refused if it has changed. */
+                version?: number | null;
+            };
             header?: never;
             path: {
                 question_id: string;

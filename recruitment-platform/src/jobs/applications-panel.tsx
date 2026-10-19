@@ -7,6 +7,7 @@ import { listApplications } from "@/candidates/api";
 import { FlagBadges } from "@/candidates/flags";
 import { keys } from "@/candidates/queries";
 import { Pager } from "@/data/pager";
+import { QueryFailed } from "@/data/query-failed";
 import { useCursorPage } from "@/data/use-cursor-page";
 
 const PAGE_SIZE = 25;
@@ -21,6 +22,7 @@ export function ApplicationsPanel({ jobId }: { jobId: string }) {
   );
 
   if (page.isLoading) return <Skeleton className="h-32 w-full" />;
+  if (page.error && page.rows.length === 0) return <QueryFailed onRetry={page.refetch} />;
   if (page.rows.length === 0) return <p className="text-muted-foreground text-sm">{t("empty")}</p>;
   return (
     <div className="grid gap-2">

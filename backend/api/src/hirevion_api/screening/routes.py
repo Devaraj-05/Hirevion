@@ -130,6 +130,7 @@ def _ranked(
         experience=result.experience if result else {},
         knockouts=result.knockouts if result else [],
         semantic_similarity=result.semantic_similarity if result else None,
+        blind=result.blind if result else None,
         recruiter_id=application.recruiter_id,
         hiring_manager_id=application.hiring_manager_id,
         screened_at=result.created_at if result else None,

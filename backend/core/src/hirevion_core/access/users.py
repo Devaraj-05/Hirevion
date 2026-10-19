@@ -24,6 +24,7 @@ from hirevion_core.access import UNSET, Unset, admin_role_key
 from hirevion_core.access.actor import Actor
 from hirevion_core.access.audit import record
 from hirevion_core.access.errors import Conflict, Invalid, NotFound, Refused
+from hirevion_core.db.search import like_escape
 from hirevion_core.identity.grants import load_grants
 from hirevion_core.identity.permissions import permissions_for
 from hirevion_core.identity.sessions import revoke_all_sessions
@@ -76,7 +77,7 @@ def _now() -> datetime:
 
 
 def _like(text: str) -> str:
-    escaped = text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    escaped = like_escape(text)
     return f"%{escaped}%"
 
 

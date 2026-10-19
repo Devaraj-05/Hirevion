@@ -12,13 +12,15 @@ from dataclasses import dataclass, field, fields
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Select, and_, func, or_, select
+from sqlalchemy import Select, func, select, tuple_
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from hirevion_core.access.actor import Actor
 from hirevion_core.access.audit import record
 from hirevion_core.access.errors import Conflict, Invalid, NotFound
+from hirevion_core.db.search import like_escape
 from hirevion_core.interviews.questions import CODING_LANGUAGES, require_usable
 from hirevion_core.jobs.taxonomy import resolve_skills
 from hirevion_core.models import (
@@ -172,7 +174,7 @@ def _check_settings(values: dict[str, Any]) -> dict[str, Any]:
     if any(t not in QUESTION_TYPES for t in types):
         raise Invalid("invalid-type", "Unknown question type", field="question_types")
     coding = values["coding"]
-    languages = [str(lang).lower() for lang in coding.get("languages", [])]
+    languages = list(dict.fromkeys(str(lang).lower() for lang in coding.get("languages", [])))
     if any(lang not in CODING_LANGUAGES for lang in languages) or (
         coding.get("enabled") and not languages
     ):
@@ -187,6 +189,12 @@ def _check_settings(values: dict[str, Any]) -> dict[str, Any]:
         "Use 5 to 90 minutes",
         "coding",
     )
+    if coding.get("enabled") and minutes > duration:
+        raise Invalid(
+            "invalid-coding-minutes",
+            "The coding time can't be longer than the interview",
+            field="coding",
+        )
     if values["proctoring_level"] not in PROCTORING_LEVELS:
         raise Invalid("invalid-proctoring", "Choose a proctoring level", field="proctoring_level")
     if values["third_eye"] not in THIRD_EYE_MODES:
@@ -195,6 +203,9 @@ def _check_settings(values: dict[str, Any]) -> dict[str, Any]:
         key: bool(values["recording"].get(key, True)) for key in ("screen", "camera", "audio")
     }
     rubric = []
+    named = [item.get("dimension") for item in values["rubric"]]
+    if len(set(named)) != len(named):
+        raise Invalid("invalid-rubric", "Each rubric dimension can be listed once", field="rubric")
     for item in values["rubric"]:
         if item.get("dimension") not in RUBRIC_DIMENSIONS:
             raise Invalid("invalid-rubric", "Unknown rubric dimension", field="rubric")
@@ -258,19 +269,52 @@ async def interview_defaults(session: AsyncSession) -> dict[str, Any]:
     return {key: saved.get(key, BUILT_IN_DEFAULTS[key]) for key in DEFAULT_KEYS}
 
 
+# Settings made of several parts: a change names the parts to change and leaves the rest.
+NESTED = ("coding", "recording")
+
+
+def _overlaid(base: dict[str, Any], changes: dict[str, Any]) -> dict[str, Any]:
+    """`changes` over `base`; a nested setting is merged key by key (`recording` with only
+    `audio` set leaves `screen` and `camera` as they were)."""
+    merged = {**base, **changes}
+    for key in NESTED:
+        if isinstance(changes.get(key), dict) and isinstance(base.get(key), dict):
+            merged[key] = {**base[key], **changes[key]}
+    return merged
+
+
 async def save_interview_defaults(
     session: AsyncSession, actor: Actor, changes: dict[str, Any]
 ) -> dict[str, Any]:
     unknown = set(changes) - set(DEFAULT_KEYS)
     if unknown:
         raise Invalid("unknown-setting", "Unknown interview default", field="interview_defaults")
-    merged = _check_settings({**(await interview_defaults(session)), **changes})
-    row = await session.scalar(select(OrganizationSettings))
-    if row is None:
-        row = OrganizationSettings(organization_id=actor.organization_id)
-        session.add(row)
-    row.interview_defaults = merged
+    # The row is made if it isn't there (two first saves at once make one) and held for the save.
+    await session.execute(
+        pg_insert(OrganizationSettings)
+        .values(organization_id=actor.organization_id)
+        .on_conflict_do_nothing()
+    )
+    row = await session.scalar(
+        select(OrganizationSettings).with_for_update().execution_options(populate_existing=True)
+    )
+    if row is None:  # the tenant's own row is always there once inserted
+        raise NotFound("settings-not-found", "No settings for this organisation")
+    saved = dict(row.interview_defaults or {})
+    before = {key: saved.get(key, BUILT_IN_DEFAULTS[key]) for key in DEFAULT_KEYS}
+    merged = _check_settings(_overlaid(before, changes))
+    changed = {
+        key: {"from": before[key], "to": merged[key]}
+        for key in changes
+        if merged[key] != before[key]
+    }
+    if not changed:
+        return merged
+    # Only what was set is stored: a built-in default that later changes still reaches an
+    # organisation that never chose its own.
+    row.interview_defaults = {**saved, **{key: merged[key] for key in changed}}
     row.updated_by = actor.user_id
+    row.updated_at = func.now()
     await session.flush()
     await record(
         session,
@@ -278,7 +322,7 @@ async def save_interview_defaults(
         "interview_defaults.changed",
         "organization",
         actor.organization_id,
-        details={"changed": sorted(changes)},
+        details={"changed": changed},
     )
     return merged
 
@@ -300,7 +344,9 @@ async def _prepare(
         for f in fields(changes)
         if getattr(changes, f.name) is not None
     }
-    settings = _check_settings({**base, **{k: v for k, v in given.items() if k in DEFAULT_KEYS}})
+    settings = _check_settings(
+        _overlaid(base, {k: v for k, v in given.items() if k in DEFAULT_KEYS})
+    )
     if changes.skills is not None:
         skills = await _skills(session, changes.skills)
     elif base_skills is not None:
@@ -309,16 +355,22 @@ async def _prepare(
         raise Invalid("skills-required", "Choose 1 to 20 skills", field="skills")
     if changes.questions is not None:
         refs = list(dict.fromkeys(changes.questions))
-        if len(refs) > settings["question_count"]:
+        if len({q for q, _ in refs}) != len(refs):
             raise Invalid(
-                "too-many-questions",
-                "Pin no more questions than the template asks",
+                "duplicate-question",
+                "A question can be pinned once: choose one version of it",
                 field="questions",
             )
         await require_usable(session, refs)
         pinned = [{"question_id": str(q), "version": v} for q, v in refs]
     else:
         pinned = base_questions
+    if len(pinned) > settings["question_count"]:  # also when the count was lowered
+        raise Invalid(
+            "too-many-questions",
+            "Pin no more questions than the template asks",
+            field="questions",
+        )
     return {**settings, "skills": skills, "questions": pinned}
 
 
@@ -359,7 +411,11 @@ async def _named(session: AsyncSession, change: Callable[[], None]) -> None:
             await session.flush()
     except IntegrityError as error:
         if "uq_interview_templates_organization_id_name" in str(error.orig):
-            raise Conflict("name-taken", "Another template has this name", field="name") from error
+            raise Conflict(
+                "name-taken",
+                "Another template, perhaps an archived one, has this name",
+                field="name",
+            ) from error
         raise
 
 
@@ -388,8 +444,11 @@ async def create_template(
     return TemplateDetail(template, version)
 
 
-async def _template(session: AsyncSession, template_id: UUID) -> InterviewTemplate:
-    template = await session.get(InterviewTemplate, template_id)
+async def _template(
+    session: AsyncSession, template_id: UUID, *, lock: bool = False
+) -> InterviewTemplate:
+    """The template; with `lock`, held until the transaction ends so two edits take turns."""
+    template = await session.get(InterviewTemplate, template_id, with_for_update=lock)
     if template is None:
         raise NotFound("template-not-found", "No such template")
     return template
@@ -408,13 +467,19 @@ async def update_template(
     session: AsyncSession, actor: Actor, template_id: UUID, changes: TemplateFields
 ) -> TemplateDetail:
     """Writes the next version; the previous ones stay exactly as they were (PRD §80)."""
-    template = await _template(session, template_id)
+    template = await _template(session, template_id, lock=True)
     if template.status == "archived":
         raise Conflict("template-archived", "Restore the template before editing it")
     previous = await current(session, template)
+    unchanged = {
+        **_values(previous),
+        "skills": list(previous.skills),
+        "questions": list(previous.questions),
+    }
     prepared = await _prepare(
         session, _values(previous), list(previous.skills), list(previous.questions), changes
     )
+    renamed = changes.name is not None and _name(changes.name) != template.name
     if changes.name is not None:
         name = _name(changes.name)
 
@@ -422,8 +487,26 @@ async def update_template(
             template.name = name
 
         await _named(session, rename)
+    described = (
+        changes.description is not None
+        and changes.description.strip()[:2000] != template.description
+    )
     if changes.description is not None:
         template.description = changes.description.strip()[:2000]
+    if prepared == unchanged:
+        # Nothing the interview is made of changed (a name or a description is the template's,
+        # not a version's): no new version, so no copy of the last one.
+        if renamed or described:
+            await session.flush()
+            await record(
+                session,
+                actor,
+                "template.updated",
+                "interview_template",
+                template.id,
+                details={"renamed": renamed, "described": described},
+            )
+        return TemplateDetail(template, previous)
     number = template.current_version + 1
     version = await _insert(session, actor, template, number, prepared)
     template.current_version = number
@@ -478,15 +561,9 @@ async def describe(
         for version in (
             await session.scalars(
                 select(InterviewTemplateVersion).where(
-                    or_(
-                        *(
-                            and_(
-                                InterviewTemplateVersion.template_id == t.id,
-                                InterviewTemplateVersion.version == t.current_version,
-                            )
-                            for t in rows
-                        )
-                    )
+                    tuple_(
+                        InterviewTemplateVersion.template_id, InterviewTemplateVersion.version
+                    ).in_([(t.id, t.current_version) for t in rows])
                 )
             )
         ).all()
@@ -497,7 +574,7 @@ async def describe(
 def templates_statement(status: str | None, query: str | None) -> Select[InterviewTemplate]:
     statement = select(InterviewTemplate).where(InterviewTemplate.status == (status or "active"))
     if query and query.strip():
-        escaped = query.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        escaped = like_escape(query.strip())
         statement = statement.where(InterviewTemplate.name.ilike(f"%{escaped}%", escape="\\"))
     return statement
 
@@ -507,9 +584,8 @@ async def skill_matrix(session: AsyncSession, version: InterviewTemplateVersion)
     library questions available for it."""
     names = [str(item["name"]) for item in version.skills]
     counts = allocate(version.question_count, [int(item["weight"]) for item in version.skills])
-    current_version = and_(
-        QuestionVersion.question_id == Question.id,
-        QuestionVersion.version == Question.current_version,
+    current_version = (QuestionVersion.question_id == Question.id) & (
+        QuestionVersion.version == Question.current_version
     )
     available: dict[tuple[str, str], int] = {
         (str(row[0]), str(row[1])): int(row[2])
@@ -519,6 +595,7 @@ async def skill_matrix(session: AsyncSession, version: InterviewTemplateVersion)
             .join(QuestionVersion, current_version)
             .where(
                 Question.status == "approved",
+                QuestionVersion.type.in_(list(version.question_types or QUESTION_TYPES)),
                 func.lower(QuestionVersion.skill_name).in_([n.lower() for n in names]),
             )
             .group_by(func.lower(QuestionVersion.skill_name), QuestionVersion.difficulty)

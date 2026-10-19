@@ -89,6 +89,9 @@ class ScreeningResult(IdMixin, TenantMixin, Base):
     config_version: Mapped[int] = mapped_column(Integer, server_default=text("1"))
     prompt_version: Mapped[str] = mapped_column(Text, server_default="")
     model: Mapped[str] = mapped_column(Text, server_default="")
+    # Whether the AI read a blind resume (no name or personal details); null for results made
+    # before this was recorded.
+    blind: Mapped[bool | None] = mapped_column(Boolean)
     score: Mapped[int] = mapped_column(Integer)
     factors: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
     skill_match: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))

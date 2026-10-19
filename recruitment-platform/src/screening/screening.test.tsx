@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as jobsApi from "@/jobs/api";
 import { resetNavigation } from "@/test/navigation";
 import { renderAdmin } from "@/test/render";
 import * as api from "./api";
@@ -20,6 +21,11 @@ vi.mock("./api", async (importOriginal) => ({
   actOnApplications: vi.fn(),
   screenJob: vi.fn(),
   exportRanking: vi.fn(),
+}));
+
+vi.mock("@/jobs/api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/jobs/api")>()),
+  getJobChoices: vi.fn(),
 }));
 
 const CONFIG: api.ScreeningConfig = {
@@ -56,6 +62,7 @@ function ranked(overrides: Partial<api.RankedApplication>): api.RankedApplicatio
     experience: { score: 90 },
     knockouts: [],
     semantic_similarity: 0.8,
+    blind: true,
     recruiter_id: null,
     hiring_manager_id: null,
     screened_at: "2026-10-05T00:00:00Z",
@@ -182,6 +189,7 @@ describe("RankingPanel", () => {
         missing: [],
         knockouts: [],
         semantic_similarity: 0.8,
+        blind: true,
         job_version: 1,
         config_version: 1,
         prompt_version: "screening-assess-v1",
@@ -198,6 +206,100 @@ describe("RankingPanel", () => {
     expect(within(sheet).getByText(/score capped/)).toBeInTheDocument();
     expect(within(sheet).getByText("Payments experience")).toBeInTheDocument();
     expect(screen.queryByRole("checkbox", { name: "Select Asha Rao" })).not.toBeInTheDocument();
+  });
+
+  it("reads the results again after screening again, though nobody was waiting", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.screenJob).mockResolvedValue(2);
+    renderAdmin(<RankingPanel jobId="j-1" jobReference="JOB-0001" canManage pollMs={20} />);
+    const again = await screen.findByRole("button", { name: "Screen again" });
+    await waitFor(() => expect(api.listScreeningResults).toHaveBeenCalled());
+    const before = vi.mocked(api.listScreeningResults).mock.calls.length;
+    await user.click(again);
+    await waitFor(() => expect(api.screenJob).toHaveBeenCalledWith("j-1"));
+    // The panel reads the results again, though no candidate was waiting, then lets go.
+    await waitFor(() =>
+      expect(vi.mocked(api.listScreeningResults).mock.calls.length).toBeGreaterThan(before),
+    );
+    await waitFor(() => expect(screen.getByRole("button", { name: "Screen again" })).toBeEnabled());
+  });
+
+  it("assigns a recruiter to the selected candidates", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.actOnApplications).mockResolvedValue([]);
+    vi.mocked(jobsApi.getJobChoices).mockResolvedValue({
+      departments: [],
+      teams: [],
+      interview_templates: [],
+      people: [{ id: "u-9", name: "Meera Iyer" }],
+    });
+    renderAdmin(<RankingPanel jobId="j-1" jobReference="JOB-0001" canManage />);
+    await user.click(await screen.findByRole("checkbox", { name: "Select Asha Rao" }));
+    await user.click(screen.getByRole("button", { name: "Assign recruiter" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.selectOptions(await within(dialog).findByLabelText("Person"), "Meera Iyer");
+    await user.click(within(dialog).getByRole("button", { name: "Assign" }));
+    await waitFor(() =>
+      expect(api.actOnApplications).toHaveBeenCalledWith("j-1", {
+        application_ids: ["a-1"],
+        action: "assign_recruiter",
+        user_id: "u-9",
+      }),
+    );
+  });
+
+  it("says whether the results were screened blind", async () => {
+    const view = renderAdmin(<RankingPanel jobId="j-1" jobReference="JOB-0001" canManage />);
+    expect(await screen.findByText(/Screened blind: the AI did not see names/)).toBeInTheDocument();
+    view.unmount();
+    vi.mocked(api.listScreeningResults).mockResolvedValue({
+      items: [ranked({}), ranked({ application_id: "a-2", blind: false })],
+      next_cursor: null,
+    });
+    renderAdmin(<RankingPanel jobId="j-1" jobReference="JOB-0001" canManage />);
+    expect(await screen.findByRole("status")).toHaveTextContent(/shown to the AI/);
+    expect(screen.getByText("Names shown")).toBeInTheDocument();
+    expect(screen.queryByText(/Screened blind: the AI did not see names/)).not.toBeInTheDocument();
+  });
+
+  it("says when a candidate's screening could not be loaded, not that there is none", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.getApplicationScreening).mockRejectedValue(new Error("offline"));
+    renderAdmin(<RankingPanel jobId="j-1" jobReference="JOB-0001" canManage={false} />);
+    await user.click(await screen.findByRole("button", { name: "Explain Asha Rao's ranking" }));
+    const sheet = await screen.findByRole("dialog", { name: "Why Asha Rao ranks #1" });
+    expect(await within(sheet).findByRole("alert")).toHaveTextContent(/couldn't be loaded/);
+    expect(within(sheet).queryByText("Not screened yet.")).not.toBeInTheDocument();
+  });
+
+  it("shows what happened to a candidate in words", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.getApplicationScreening).mockResolvedValue({
+      application_id: "a-1",
+      job_id: "j-1",
+      stage: "review",
+      rank: null,
+      candidate: ranked({}).candidate,
+      result: null,
+      history: [
+        {
+          from_stage: "parsed",
+          to_stage: "review",
+          action: "screening_failed",
+          reason: "Screening could not be completed: review this candidate by hand",
+          score: null,
+          rank: null,
+          override: false,
+          actor_id: null,
+          created_at: "2026-10-05T00:00:00Z",
+        },
+      ],
+    });
+    renderAdmin(<RankingPanel jobId="j-1" jobReference="JOB-0001" canManage={false} />);
+    await user.click(await screen.findByRole("button", { name: "Explain Asha Rao's ranking" }));
+    const sheet = await screen.findByRole("dialog", { name: "Why Asha Rao ranks #1" });
+    expect(await within(sheet).findByText(/Screening could not be completed:/)).toBeInTheDocument();
+    expect(within(sheet).queryByText(/screening_failed/)).not.toBeInTheDocument();
   });
 
   it("exports the ranking", async () => {

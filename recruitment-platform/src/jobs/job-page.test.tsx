@@ -1,5 +1,5 @@
 import { ApiProblem } from "@hirevion/api-client";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resetNavigation } from "@/test/navigation";
@@ -28,22 +28,25 @@ beforeEach(() => {
     interview_templates: [],
   });
   vi.mocked(api.getDescription).mockResolvedValue(null);
-  vi.mocked(api.listJobVersions).mockResolvedValue([
-    {
-      version: 1,
-      reason: "created",
-      created_by: null,
-      created_at: "2026-10-02T00:00:00Z",
-      snapshot: {},
-    },
-    {
-      version: 2,
-      reason: "jd-applied",
-      created_by: null,
-      created_at: "2026-10-02T01:00:00Z",
-      snapshot: {},
-    },
-  ]);
+  vi.mocked(api.listJobVersions).mockResolvedValue({
+    items: [
+      {
+        version: 2,
+        reason: "jd-applied",
+        created_by: null,
+        created_at: "2026-10-02T01:00:00Z",
+        snapshot: {},
+      },
+      {
+        version: 1,
+        reason: "created",
+        created_by: null,
+        created_at: "2026-10-02T00:00:00Z",
+        snapshot: {},
+      },
+    ],
+    next_cursor: null,
+  });
 });
 
 describe("JobPage", () => {
@@ -87,6 +90,58 @@ describe("JobPage", () => {
     renderAdmin(<JobPage id="j-1" canEdit={false} />);
     await screen.findByRole("heading", { name: "Backend Engineer" });
     expect(screen.queryByRole("button", { name: "Pause" })).not.toBeInTheDocument();
+  });
+
+  it("keeps what is half-typed when you look at another tab", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.getJob).mockResolvedValue(job());
+    renderAdmin(<JobPage id="j-1" canEdit />);
+    const title = await screen.findByLabelText(/^Title/);
+    await user.clear(title);
+    await user.type(title, "Staff Engineer");
+    await user.click(screen.getByRole("tab", { name: "History" }));
+    expect(await screen.findByText("Description applied")).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Details" }));
+    expect(screen.getByLabelText(/^Title/)).toHaveValue("Staff Engineer");
+  });
+
+  it("asks before archiving, which cannot be undone", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.getJob).mockResolvedValue(job({ status: "closed" }));
+    vi.mocked(api.setJobStatus).mockResolvedValue(job({ status: "archived" }));
+    renderAdmin(<JobPage id="j-1" canEdit />);
+    await user.click(await screen.findByRole("button", { name: "Archive" }));
+    const dialog = await screen.findByRole("dialog", { name: "Archive this job?" });
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(api.setJobStatus).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Archive" }));
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Archive" }),
+    );
+    await waitFor(() => expect(api.setJobStatus).toHaveBeenCalledWith("j-1", "archived"));
+  });
+
+  it("refreshes the history after a status move", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.getJob).mockResolvedValue(job({ status: "open" }));
+    vi.mocked(api.setJobStatus).mockResolvedValue(job({ status: "paused" }));
+    renderAdmin(<JobPage id="j-1" canEdit />);
+    await user.click(await screen.findByRole("tab", { name: "History" }));
+    await screen.findByText("Description applied");
+    const before = vi.mocked(api.listJobVersions).mock.calls.length;
+    await user.click(screen.getByRole("button", { name: "Pause" }));
+    await waitFor(() =>
+      expect(vi.mocked(api.listJobVersions).mock.calls.length).toBeGreaterThan(before),
+    );
+  });
+
+  it("says when the history could not be loaded", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.getJob).mockResolvedValue(job());
+    vi.mocked(api.listJobVersions).mockRejectedValue(new Error("offline"));
+    renderAdmin(<JobPage id="j-1" canEdit />);
+    await user.click(await screen.findByRole("tab", { name: "History" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/couldn't be loaded/);
   });
 
   it("lists the job's versions", async () => {

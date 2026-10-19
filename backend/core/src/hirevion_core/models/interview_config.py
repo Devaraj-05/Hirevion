@@ -63,6 +63,8 @@ class Question(IdMixin, TenantMixin, TimestampMixin, Base):
     created_by: Mapped[UUID | None]
     approved_by: Mapped[UUID | None]
     approved_at: Mapped[datetime | None]
+    # The version a person approved: templates may pin it or a later one, not an earlier one.
+    approved_version: Mapped[int | None] = mapped_column(Integer)
 
 
 class QuestionVersion(Base):
@@ -207,4 +209,4 @@ class OrganizationSettings(Base):
         JSONB, server_default=sql_text("'{}'::jsonb")
     )
     updated_by: Mapped[UUID | None]
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())

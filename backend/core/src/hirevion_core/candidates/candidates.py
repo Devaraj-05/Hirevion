@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from hirevion_core.access.errors import NotFound
 from hirevion_core.access.scope import ResourceScope, job_scope_clause
+from hirevion_core.db.search import like_escape
 from hirevion_core.models import Application, Candidate, CandidateSkill, Document, Job
 
 
@@ -42,10 +43,6 @@ class CandidateDetail:
     skills: list[CandidateSkill]
     applications: list[tuple[Application, Job]]
     documents: list[Document]
-
-
-def _escaped(query: str) -> str:
-    return query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 def _stage_clause(group: str) -> ColumnElement[bool]:
@@ -87,8 +84,8 @@ def candidates_statement(scope: ResourceScope, filters: CandidateFilters) -> Sel
     if filters.query and filters.query.strip():
         query = filters.query.strip()
         conditions: list[ColumnElement[bool]] = [
-            Candidate.name.ilike(f"%{_escaped(query)}%", escape="\\"),
-            Candidate.email.ilike(f"%{_escaped(query)}%", escape="\\"),
+            Candidate.name.ilike(f"%{like_escape(query)}%", escape="\\"),
+            Candidate.email.ilike(f"%{like_escape(query)}%", escape="\\"),
         ]
         digits = re.sub(r"\D", "", query)
         if len(digits) >= 4:

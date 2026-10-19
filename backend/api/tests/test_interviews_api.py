@@ -7,6 +7,8 @@ from uuid import UUID
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 from hirevion_core.ai import build_ai
 from hirevion_core.ai.mock import MockLLM
@@ -148,13 +150,125 @@ async def test_drafts_are_generated_by_the_ai_for_review(
     result = response.json()
     assert (len(result["drafts"]), result["skipped"]) == (2, 0)
     assert all(d["status"] == "draft" and d["source"] == "ai" for d in result["drafts"])
-    assert result["drafts"][0]["generation"]["inputs"]["job"] == job["id"]
+    inputs = result["drafts"][0]["generation"]["inputs"]
+    assert (
+        inputs["skills"] == "Python" and "job" not in inputs
+    )  # who it was made from stays private
     assert "Backend Engineer" in sent[0]
 
     ai.llm.failures.append(AiUnavailable("down"))
     down = await recruiter.post("/api/v1/questions/generate", json={"skills": ["Python"]})
     assert down.status_code == 503
     assert down.json()["code"] == "ai-unavailable"
+
+
+async def test_a_retried_generation_is_not_charged_or_saved_twice(
+    api: FastAPI, app_db: Database, recruiter: AsyncClient
+) -> None:
+    ai = build_ai(AiSettings(profile="mock"), app_db)
+    assert isinstance(ai.llm, MockLLM)
+    calls: list[int] = []
+
+    def script(messages: Sequence[ChatMessage]) -> Any:
+        calls.append(1)
+        return {"questions": [question("How would you profile a slow FastAPI endpoint?")]}
+
+    ai.llm.scripted["questions.generate"] = script
+    api.state.ai = ai
+    headers = {"Idempotency-Key": "generate-once-0001"}
+    body = {"skills": ["Python"], "count": 1}
+    first = await recruiter.post("/api/v1/questions/generate", json=body, headers=headers)
+    again = await recruiter.post("/api/v1/questions/generate", json=body, headers=headers)
+    assert (first.status_code, again.status_code) == (200, 200)
+    assert first.json() == again.json() and len(calls) == 1
+    drafts = (await recruiter.get("/api/v1/questions", params={"status": "draft"})).json()
+    assert len(drafts["items"]) == 1
+
+
+async def test_a_draft_is_made_only_from_what_the_caller_may_read(
+    api: FastAPI,
+    app_db: Database,
+    acme: UUID,
+    signed_in,
+    make_user,
+    recruiter: AsyncClient,
+    admin_engine: AsyncEngine,
+) -> None:
+    ai = build_ai(AiSettings(profile="mock"), app_db)
+    assert isinstance(ai.llm, MockLLM)
+    ai.llm.scripted["questions.generate"] = {"questions": []}
+    api.state.ai = ai
+    job = (await recruiter.post("/api/v1/jobs", json={"title": "Backend Engineer"})).json()
+
+    manager = await signed_in(acme, await make_user(acme, roles=["recruiter"]))
+    limited = await make_user(acme, roles=["recruiter"])
+    async with admin_engine.begin() as conn:
+        await conn.execute(
+            text("UPDATE users SET access_scope = 'teams' WHERE id = :id"), {"id": limited}
+        )
+    outside = await signed_in(acme, limited)
+    unseen = await outside.post(
+        "/api/v1/questions/generate", json={"skills": ["Python"], "job_id": job["id"]}
+    )
+    assert (unseen.status_code, unseen.json()["code"]) == (404, "job-not-found")
+    seen = await manager.post(
+        "/api/v1/questions/generate", json={"skills": ["Python"], "job_id": job["id"]}
+    )
+    assert seen.status_code == 200
+    missing = await manager.post(
+        "/api/v1/questions/generate", json={"skills": ["Python"], "candidate_id": str(UUID(int=4))}
+    )
+    assert (missing.status_code, missing.json()["code"]) == (404, "candidate-not-found")
+
+
+async def test_approval_names_the_version_that_was_read(recruiter: AsyncClient) -> None:
+    made = await recruiter.post(
+        "/api/v1/questions",
+        json=question("Explain how Python's garbage collector handles cycles.", status="draft"),
+    )
+    qid = made.json()["id"]
+    await recruiter.put(
+        f"/api/v1/questions/{qid}", json=question("Explain how CPython finds reference cycles.")
+    )
+    stale = await recruiter.post(f"/api/v1/questions/{qid}/approve", params={"version": 1})
+    assert (stale.status_code, stale.json()["code"]) == (409, "question-changed")
+    current = await recruiter.post(f"/api/v1/questions/{qid}/approve", params={"version": 2})
+    assert (current.status_code, current.json()["status"]) == (200, "approved")
+
+
+async def test_the_matrix_preview_checks_its_difficulty_mix(recruiter: AsyncClient) -> None:
+    body = {
+        "question_count": 10,
+        "skills": [{"name": "Python", "weight": 100}],
+        "difficulty": {"easy": -100, "medium": 150, "hard": 50},
+    }
+    refused = await recruiter.post("/api/v1/interview-templates/skill-matrix", json=body)
+    assert refused.status_code == 422
+    body["difficulty"] = {"easy": 20, "medium": 50, "hard": 30}
+    assert (
+        await recruiter.post("/api/v1/interview-templates/skill-matrix", json=body)
+    ).status_code == 200
+
+
+async def test_a_partial_recording_or_coding_change_keeps_the_rest(recruiter: AsyncClient) -> None:
+    made = await recruiter.post(
+        "/api/v1/interview-templates",
+        json={
+            "name": "Quiet",
+            "skills": [{"name": "Python", "weight": 100}],
+            "recording": {"screen": True, "camera": False, "audio": True},
+            "coding": {"enabled": True, "languages": ["sql"], "minutes": 25},
+        },
+    )
+    assert made.status_code == 201, made.text
+    edited = await recruiter.patch(
+        f"/api/v1/interview-templates/{made.json()['id']}",
+        json={"recording": {"screen": False}, "coding": {"minutes": 30}},
+    )
+    assert edited.status_code == 200, edited.text
+    current = edited.json()["current"]
+    assert current["recording"] == {"screen": False, "camera": False, "audio": True}
+    assert current["coding"] == {"enabled": True, "languages": ["sql"], "minutes": 30}
 
 
 async def test_generation_needs_the_ai(api: FastAPI, recruiter: AsyncClient) -> None:

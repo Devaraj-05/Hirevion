@@ -6,6 +6,7 @@ AI writes is used directly. Candidates' names and contact details never reach th
 from __future__ import annotations
 
 import re
+import unicodedata
 from collections.abc import Sequence
 from dataclasses import dataclass
 from importlib.resources import files
@@ -19,6 +20,7 @@ from hirevion_core.access.actor import Actor
 from hirevion_core.access.audit import record
 from hirevion_core.access.errors import Invalid
 from hirevion_core.ai.types import AiContext, ChatMessage, LLMService
+from hirevion_core.documents import pii
 from hirevion_core.interviews.questions import QuestionDetail, QuestionFields, create_question
 from hirevion_core.models import Candidate, Job, JobSkill, Question, QuestionVersion
 from hirevion_core.models.interview_config import InterviewTemplateVersion
@@ -82,11 +84,36 @@ class GenerationResult:
 
 
 def _fold(text: str) -> str:
-    return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
+    """Two questions that differ only in case, spacing or punctuation fold alike. Letters of any
+    script count, and `+` and `#` do (C++ and C# are different questions)."""
+    return re.sub(r"[^\w+#]+", " ", unicodedata.normalize("NFKC", text).lower()).strip()
+
+
+_PERSONAL = (
+    "email",
+    "phone",
+    "dob",
+    "aadhaar",
+    "pan",
+    "vid",
+    "passport",
+    "voter_id",
+    "bank_account",
+)
+
+
+def _scrub(text: str) -> str:
+    """The text without contact details or identity numbers, wherever a resume put them."""
+    out = text
+    for match in sorted(pii.find(text), key=lambda m: m.start, reverse=True):
+        if match.kind in _PERSONAL:
+            out = out[: match.start] + "[removed]" + out[match.end :]
+    return out
 
 
 def _candidate_text(candidate: Candidate) -> str:
-    """Work only: titles, companies, skills, projects. No name, contact or personal details."""
+    """Work only: titles, companies, skills, projects. No name, contact or personal details,
+    not even inside a project's description."""
     profile = candidate.profile or {}
     lines = []
     for position in profile.get("positions") or []:
@@ -100,7 +127,7 @@ def _candidate_text(candidate: Candidate) -> str:
         lines.append(f"Project: {project.get('name')}: {project.get('description') or ''}")
     for item in profile.get("achievements") or []:
         lines.append(f"Achievement: {item.get('text')}")
-    return "\n".join(line.strip() for line in lines if line.strip())
+    return _scrub("\n".join(line.strip() for line in lines if line.strip()))
 
 
 def _job_text(job: Job, skills: Sequence[JobSkill]) -> str:
@@ -131,9 +158,13 @@ async def _existing(session: AsyncSession, skills: Sequence[str]) -> list[str]:
     return list(rows.all())
 
 
+def clean_skills(skills: Sequence[str]) -> list[str]:
+    return [" ".join(s.split())[:100] for s in skills if s.strip()]
+
+
 async def gather(session: AsyncSession, request: GenerationRequest) -> tuple[str, list[str]]:
     """The prompt's user message, and the library texts to de-duplicate against."""
-    skills = [" ".join(s.split()) for s in request.skills if s.strip()]
+    skills = clean_skills(request.skills)
     if not skills or len(skills) > 10:
         raise Invalid("skills-required", "Choose 1 to 10 skills", field="skills")
     if not 1 <= request.count <= MAX_QUESTIONS:
@@ -200,11 +231,18 @@ async def save_drafts(
     *,
     model: str,
     refs: dict[str, str],
+    limit: int = MAX_QUESTIONS,
+    types: Sequence[str] = (),
 ) -> GenerationResult:
+    """Saves the AI's questions as drafts: no more than `limit` (what was asked for), none of
+    a type that was not asked for (when `types` is given), none already in the library."""
     seen = {_fold(text) for text in existing}
     drafts: list[QuestionDetail] = []
-    skipped = 0
-    for item in generated.questions:
+    skipped = max(0, len(generated.questions) - limit)
+    for item in generated.questions[:limit]:
+        if types and item.type not in types:
+            skipped += 1
+            continue
         key = _fold(item.text)
         if not key or key in seen:
             skipped += 1
@@ -254,7 +292,7 @@ async def save_drafts(
 
 
 def refs_of(request: GenerationRequest) -> dict[str, str]:
-    refs = {"skills": ",".join(request.skills), "level": request.experience_level}
+    refs = {"skills": ",".join(clean_skills(request.skills)), "level": request.experience_level}
     if request.job_id:
         refs["job"] = str(request.job_id)
     if request.candidate_id:

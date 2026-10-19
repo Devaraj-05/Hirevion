@@ -39,12 +39,16 @@ from hirevion_api.interviews.schemas import (
 from hirevion_api.pagination import Page, PageParams, page_params, paginate
 from hirevion_api.problems import ProblemError
 from hirevion_api.routing import api_router
+from hirevion_core.access.errors import Refused
+from hirevion_core.access.scope import resource_scope
 from hirevion_core.ai import AiServices
 from hirevion_core.ai.types import AiBudgetExceeded, AiError
+from hirevion_core.candidates import candidates
 from hirevion_core.interviews import generation, questions, templates
 from hirevion_core.interviews.generation import GenerationRequest
 from hirevion_core.interviews.questions import QuestionDetail, QuestionFields, QuestionFilters
 from hirevion_core.interviews.templates import TemplateDetail, TemplateFields
+from hirevion_core.jobs import jobs
 from hirevion_core.models import InterviewTemplate, InterviewTemplateVersion, Question
 from hirevion_core.models.interview_config import DIFFICULTIES
 
@@ -82,11 +86,22 @@ def _question(detail: QuestionDetail) -> QuestionResponse:
         time_limit_seconds=v.time_limit_seconds,
         follow_up_rules=v.follow_up_rules,
         coding=v.coding,
-        generation=v.generation,
+        generation=_shown(v.generation),
         approved_at=q.approved_at,
         created_at=q.created_at,
         updated_at=q.updated_at,
     )
+
+
+def _shown(generation: dict[str, Any] | None) -> dict[str, Any] | None:
+    """How a draft was made, without the ids of the job and candidate it was made from: those
+    belong to people who may not be allowed to see them."""
+    if generation is None:
+        return None
+    inputs = dict(generation.get("inputs") or {})
+    for private in ("job", "candidate"):
+        inputs.pop(private, None)
+    return {**generation, "inputs": inputs}
 
 
 def _fields(body: QuestionBody) -> QuestionFields:
@@ -239,14 +254,24 @@ async def create_question(
 
 @router.post("/questions/generate")
 async def generate_questions(
-    body: GenerateRequest, request: Request, principal: ManagesQuestions
+    body: GenerateRequest, request: Request, principal: ManagesQuestions, idem: Idempotent
 ) -> GenerateResponse:
     """Drafts questions with AI from the job, a candidate's work history, the skills, the level
     and a template (PRD §23). They're saved as drafts: none is used until a recruiter approves
-    it. The AI call happens outside any database transaction."""
+    it. A job or candidate must be one the caller may read. The AI call happens outside any
+    database transaction, and a retry with the same `Idempotency-Key` costs nothing."""
     ai = _ai(request)
     actor = principal.actor(request)
     async with own_tenant(request, principal) as session:
+        scope = await resource_scope(session, principal.user_id)
+        if body.job_id is not None:
+            if "jobs.view" not in principal.permissions:
+                raise Refused("forbidden", "You don't have permission to read jobs")
+            await jobs.require_in_scope(session, body.job_id, scope)
+        if body.candidate_id is not None:
+            if "candidates.view" not in principal.permissions:
+                raise Refused("forbidden", "You don't have permission to read candidates")
+            await candidates.get_candidate(session, body.candidate_id, scope)
         template = await _template_version(session, body.template_id) if body.template_id else None
         ask = GenerationRequest(
             skills=body.skills,
@@ -259,20 +284,34 @@ async def generate_questions(
         )
         message, existing = await generation.gather(session, ask)
     refs = generation.refs_of(ask)
-    try:
-        generated, model = await generation.ask(
-            ai.llm, principal.organization_id, message, refs=refs
-        )
-    except AiError as error:
-        raise _ai_failed(error) from error
-    async with own_tenant(request, principal) as session:
-        result = await generation.save_drafts(
-            session, actor, generated, existing, model=model, refs=refs
-        )
-        return GenerateResponse(
-            drafts=[_question(d) for d in result.drafts],
-            skipped=result.skipped,
-            model=result.model,
+
+    async def generate() -> GenerateResponse:
+        try:
+            generated, model = await generation.ask(
+                ai.llm, principal.organization_id, message, refs=refs
+            )
+        except AiError as error:
+            raise _ai_failed(error) from error
+        async with own_tenant(request, principal) as saving:
+            result = await generation.save_drafts(
+                saving,
+                actor,
+                generated,
+                existing,
+                model=model,
+                refs=refs,
+                limit=body.count,
+                types=body.types,
+            )
+            return GenerateResponse(
+                drafts=[_question(d) for d in result.drafts],
+                skipped=result.skipped,
+                model=result.model,
+            )
+
+    async with own_tenant(request, principal) as keeping:
+        return await idem.run(
+            keeping, principal.organization_id, idempotency_scope(principal), generate
         )
 
 
@@ -307,11 +346,17 @@ async def question_versions(
 
 @router.post("/questions/{question_id}/approve")
 async def approve_question(
-    question_id: UUID, request: Request, principal: ManagesQuestions
+    question_id: UUID,
+    request: Request,
+    principal: ManagesQuestions,
+    version: Annotated[
+        int | None,
+        Query(ge=1, description="The version the reviewer read; refused if it has changed."),
+    ] = None,
 ) -> QuestionResponse:
-    """Makes a draft usable in templates and interviews."""
+    """Makes the question's current version usable in templates and interviews."""
     async with own_tenant(request, principal) as session:
-        await questions.approve(session, principal.actor(request), question_id)
+        await questions.approve(session, principal.actor(request), question_id, version)
         return await _reloaded_question(session, question_id)
 
 

@@ -39,6 +39,7 @@ export function useCursorPage<T>(
     isLoading: query.isPending,
     isFetching: query.isFetching,
     error: query.error,
+    refetch: () => void query.refetch(),
     hasNext: Boolean(page?.next_cursor),
     hasPrevious: cursors.length > 1,
     nextPage() {

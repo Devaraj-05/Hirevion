@@ -72,6 +72,8 @@ class RankedApplication(BaseModel):
     experience: dict[str, Any]
     knockouts: list[str]
     semantic_similarity: float | None
+    blind: bool | None
+    """Whether the AI read a blind resume for this result; null when not screened yet."""
     recruiter_id: UUID | None
     hiring_manager_id: UUID | None
     screened_at: datetime | None
@@ -91,6 +93,7 @@ class ScreeningResultResponse(BaseModel):
     missing: list[str]
     knockouts: list[str]
     semantic_similarity: float | None
+    blind: bool | None
     job_version: int
     config_version: int
     prompt_version: str
