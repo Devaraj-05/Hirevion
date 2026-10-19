@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from hirevion_core.access.actor import Actor
 from hirevion_core.access.audit import record
 from hirevion_core.access.errors import Conflict, Invalid, NotFound
-from hirevion_core.access.scope import ResourceScope, scope_clause
+from hirevion_core.access.scope import ResourceScope, job_scope_clause, scope_clause
 from hirevion_core.identity.settings import IdentitySettings
 from hirevion_core.interviews import invitations
 from hirevion_core.interviews.lifecycle import STATUS_GROUPS, By, record_event, transition
@@ -429,7 +429,7 @@ async def assign(
             .join(Candidate, Candidate.id == Application.candidate_id)
             .where(
                 Application.id.in_(ids),
-                scope_clause(scope, team_column=Job.team_id, owner_column=Job.recruiter_id),
+                job_scope_clause(scope),
             )
         )
     }

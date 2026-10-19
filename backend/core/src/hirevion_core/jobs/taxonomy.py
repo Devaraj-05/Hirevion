@@ -24,7 +24,12 @@ class NormalisedSkill:
 
 
 def _clean(name: str) -> str:
-    return " ".join(name.strip(_WRAPPING).split())
+    """The name without the punctuation around it. A dot that starts a name stays (".NET")."""
+    text = " ".join(name.split()).rstrip(_WRAPPING)
+    text = text.lstrip(_WRAPPING.replace(".", ""))
+    while text.startswith(".") and not text[1:2].isalnum():
+        text = text[1:]
+    return " ".join(text.split())
 
 
 async def resolve_skills(
@@ -36,18 +41,19 @@ async def resolve_skills(
     lowered = {name.lower() for name in cleaned if name}
     known: dict[str, tuple[UUID, str]] = {}
     if lowered:
-        by_name = select(func.lower(Skill.name), Skill.id, Skill.name).where(
+        by_name = select(func.lower(Skill.name), Skill.id, Skill.name, literal(0)).where(
             func.lower(Skill.name).in_(lowered)
         )
         by_alias = (
-            select(func.lower(SkillAlias.alias), Skill.id, Skill.name)
+            select(func.lower(SkillAlias.alias), Skill.id, Skill.name, literal(1))
             .join(Skill, Skill.id == SkillAlias.skill_id)
             .where(func.lower(SkillAlias.alias).in_(lowered))
         )
-        known = {
-            key: (skill_id, name)
-            for key, skill_id, name in await session.execute(union_all(by_name, by_alias))
-        }
+        # A skill's own name beats another skill's alias of the same spelling.
+        for key, skill_id, name, _rank in sorted(
+            await session.execute(union_all(by_name, by_alias)), key=lambda row: row[3]
+        ):
+            known.setdefault(key, (skill_id, name))
     result: list[NormalisedSkill | None] = []
     for name in cleaned:
         if not name:
@@ -76,8 +82,12 @@ async def search_skills(session: AsyncSession, query: str, limit: int = 10) -> l
     text = _clean(query).lower()
     if not text:
         return []
-    alias_match = select(SkillAlias.skill_id).where(func.lower(SkillAlias.alias).startswith(text))
-    prefix = or_(func.lower(Skill.name).startswith(text), Skill.id.in_(alias_match))
+    alias_match = select(SkillAlias.skill_id).where(
+        func.lower(SkillAlias.alias).startswith(text, autoescape=True)
+    )
+    prefix = or_(
+        func.lower(Skill.name).startswith(text, autoescape=True), Skill.id.in_(alias_match)
+    )
     likeness = func.similarity(func.lower(Skill.name), literal(text))
     rows = await session.scalars(
         select(Skill)

@@ -41,7 +41,15 @@ from hirevion_core.documents.files import MAX_BYTES
 from hirevion_core.jobs import jobs
 from hirevion_core.jobs.jobs import JobDetail, JobFilters
 from hirevion_core.jobs.taxonomy import search_skills
-from hirevion_core.models import Department, Document, InterviewTemplate, Job, Team, User
+from hirevion_core.models import (
+    Department,
+    Document,
+    InterviewTemplate,
+    Job,
+    JobVersion,
+    Team,
+    User,
+)
 
 router = api_router(tags=["jobs"])
 
@@ -168,7 +176,14 @@ async def _reachable(session: AsyncSession, principal: Principal, job_id: UUID) 
 async def _detail(session: AsyncSession, principal: Principal, job_id: UUID) -> JobResponse:
     await session.flush()
     session.expire_all()
-    return job_response(await _reachable(session, principal, job_id))
+    try:
+        return job_response(await _reachable(session, principal, job_id))
+    except NotFound:
+        # The change put the job where its author can't reach it (another team, someone
+        # else's): refused, and rolled back, rather than reported as a job that doesn't exist.
+        raise Refused(
+            "outside-your-scope", "You can only assign a job to your own teams or to yourself"
+        ) from None
 
 
 # Jobs
@@ -276,12 +291,20 @@ async def change_job_status(
 
 @router.get("/jobs/{job_id}/versions")
 async def list_job_versions(
-    job_id: UUID, request: Request, principal: ViewsJobs
-) -> list[JobVersionResponse]:
+    job_id: UUID,
+    request: Request,
+    principal: ViewsJobs,
+    page: Annotated[PageParams, Depends(page_params)],
+) -> Page[JobVersionResponse]:
+    """The job's history, newest version first."""
     async with own_tenant(request, principal) as session:
         await _reachable(session, principal, job_id)
-        versions = await jobs.list_versions(session, job_id)
-        return [JobVersionResponse.model_validate(version) for version in versions]
+        rows, next_cursor = await paginate(
+            session, jobs.versions_statement(job_id), [JobVersion.version], page, descending=True
+        )
+        return Page(
+            items=[JobVersionResponse.model_validate(row) for row in rows], next_cursor=next_cursor
+        )
 
 
 # Job descriptions
@@ -340,15 +363,21 @@ async def get_job_description(job_id: UUID, request: Request, principal: ViewsJo
 
 @router.post("/jobs/{job_id}/jd/apply")
 async def apply_job_description(
-    job_id: UUID, body: JdApply, request: Request, principal: ManagesJobs
+    job_id: UUID, body: JdApply, request: Request, principal: ManagesJobs, idem: Idempotent
 ) -> JobResponse:
     """Writes the reviewed fields into the job, as a new version (PRD §12)."""
     async with own_tenant(request, principal) as session:
         await _reachable(session, principal, job_id)
-        await jobs.apply_jd(
-            session, principal.actor(request), job_id, body.document_id, body.changes()
+
+        async def apply() -> JobResponse:
+            await jobs.apply_jd(
+                session, principal.actor(request), job_id, body.document_id, body.changes()
+            )
+            return await _detail(session, principal, job_id)
+
+        return await idem.run(
+            session, principal.organization_id, idempotency_scope(principal), apply
         )
-        return await _detail(session, principal, job_id)
 
 
 @router.post("/documents/{document_id}/retry")
@@ -361,10 +390,13 @@ async def retry_document(
         document = await session.get(Document, document_id)
         if document is None or document.job_id is None:
             raise NotFound("document-not-found", "No such document")
+        try:
+            await _reachable(session, principal, document.job_id)
+        except NotFound:  # out of reach: it doesn't exist for this reader, whatever they may do
+            raise NotFound("document-not-found", "No such document") from None
         needed = "jobs.create" if document.kind == "jd" else "candidates.manage"
         if needed not in principal.permissions:
             raise Refused("forbidden", "You don't have permission to do this")
-        await _reachable(session, principal, document.job_id)
         retried = await intake.retry_document(session, principal.actor(request), document_id)
         await session.flush()
         await session.refresh(retried)

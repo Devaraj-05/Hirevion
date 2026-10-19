@@ -11,7 +11,7 @@ from sqlalchemy import ColumnElement, Select, exists, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from hirevion_core.access.errors import NotFound
-from hirevion_core.access.scope import ResourceScope, scope_clause
+from hirevion_core.access.scope import ResourceScope, job_scope_clause
 from hirevion_core.models import Application, Candidate, CandidateSkill, Document, Job
 
 
@@ -68,7 +68,7 @@ def candidates_statement(scope: ResourceScope, filters: CandidateFilters) -> Sel
             .join(Job, Job.id == Application.job_id)
             .where(
                 Application.candidate_id == Candidate.id,
-                scope_clause(scope, team_column=Job.team_id, owner_column=Job.recruiter_id),
+                job_scope_clause(scope),
             )
         )
         statement = statement.where(
@@ -78,9 +78,7 @@ def candidates_statement(scope: ResourceScope, filters: CandidateFilters) -> Sel
         applied = select(Application.id).where(Application.candidate_id == Candidate.id)
         if not scope.organization_wide:
             # A filter must not show that a candidate applied to a job the reader cannot see.
-            applied = applied.join(Job, Job.id == Application.job_id).where(
-                scope_clause(scope, team_column=Job.team_id, owner_column=Job.recruiter_id)
-            )
+            applied = applied.join(Job, Job.id == Application.job_id).where(job_scope_clause(scope))
         if filters.job_id is not None:
             applied = applied.where(Application.job_id == filters.job_id)
         if filters.stage_group is not None:
@@ -120,9 +118,7 @@ async def get_candidate(
         .order_by(Application.created_at.desc())
     )
     if not scope.organization_wide:
-        applications_query = applications_query.where(
-            scope_clause(scope, team_column=Job.team_id, owner_column=Job.recruiter_id)
-        )
+        applications_query = applications_query.where(job_scope_clause(scope))
     applications = [(row[0], row[1]) for row in await session.execute(applications_query)]
     documents_query = (
         select(Document)
@@ -130,9 +126,7 @@ async def get_candidate(
         .order_by(Document.created_at.desc())
     )
     if not scope.organization_wide:
-        reachable_jobs = select(Job.id).where(
-            scope_clause(scope, team_column=Job.team_id, owner_column=Job.recruiter_id)
-        )
+        reachable_jobs = select(Job.id).where(job_scope_clause(scope))
         documents_query = documents_query.where(Document.job_id.in_(reachable_jobs))
     documents = await session.scalars(documents_query)
     return CandidateDetail(candidate, list(skills.all()), applications, list(documents.all()))

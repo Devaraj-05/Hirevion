@@ -8,7 +8,8 @@ from uuid import UUID
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
-from sqlalchemy import func
+from sqlalchemy import func, text
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 from hirevion_core.ai import build_ai
 from hirevion_core.ai.mock import MockLLM
@@ -117,7 +118,10 @@ async def test_creating_reading_and_editing_a_job(recruiter: AsyncClient) -> Non
         2,
     )
     versions = (await recruiter.get(f"/api/v1/jobs/{job['id']}/versions")).json()
-    assert [(v["version"], v["reason"]) for v in versions] == [(1, "created"), (2, "edited")]
+    assert [(v["version"], v["reason"]) for v in versions["items"]] == [
+        (2, "edited"),
+        (1, "created"),
+    ]
 
 
 async def test_bad_fields_point_at_the_field(recruiter: AsyncClient) -> None:
@@ -202,7 +206,7 @@ async def test_a_pasted_description_is_read_reviewed_and_applied(
     assert (body["title"], body["jd_document_id"]) == ("Senior Python Engineer", review["id"])
     assert body["description"].startswith("Senior Python Engineer")
     versions = (await recruiter.get(f"/api/v1/jobs/{job['id']}/versions")).json()
-    assert versions[-1]["reason"] == "jd-applied"
+    assert versions["items"][0]["reason"] == "jd-applied"
 
 
 async def test_an_uploaded_description_file(
@@ -271,6 +275,93 @@ async def test_the_form_choices(
     assert [d["name"] for d in choices["departments"]] == ["Engineering"]
     assert [t["name"] for t in choices["teams"]] == ["Platform"]
     assert str(user) in [p["id"] for p in choices["people"]]
+
+
+async def limited(signed_in, acme: UUID, make_user, admin_engine: AsyncEngine) -> AsyncClient:
+    """A recruiter who reaches only their own teams' jobs and their own."""
+    user = await make_user(acme, roles=["recruiter"])
+    async with admin_engine.begin() as conn:
+        await conn.execute(
+            text("UPDATE users SET access_scope = 'teams' WHERE id = :id"), {"id": user}
+        )
+    return await signed_in(acme, user)
+
+
+async def test_assigning_a_job_out_of_reach_is_refused_not_a_missing_job(
+    signed_in, acme: UUID, make_user, admin_engine: AsyncEngine, app_db: Database
+) -> None:
+    client = await limited(signed_in, acme, make_user, admin_engine)
+    colleague = await make_user(acme, roles=["recruiter"])
+    async with app_db.tenant(acme) as session:
+        other_team = Team(organization_id=acme, name="Elsewhere")
+        session.add(other_team)
+        await session.flush()
+        other_team_id = str(other_team.id)
+    refused = await client.post(
+        "/api/v1/jobs",
+        json={"title": "Engineer", "recruiter_id": str(colleague), "team_id": other_team_id},
+    )
+    assert (refused.status_code, refused.json()["code"]) == (403, "outside-your-scope")
+    assert (await client.get("/api/v1/jobs")).json()["items"] == []  # and nothing was saved
+    own = await new_job(client)
+    moved = await client.patch(
+        f"/api/v1/jobs/{own['id']}",
+        json={"recruiter_id": str(colleague), "team_id": other_team_id},
+    )
+    assert (moved.status_code, moved.json()["code"]) == (403, "outside-your-scope")
+    assert (await client.get(f"/api/v1/jobs/{own['id']}")).json()["team_id"] is None
+
+
+async def test_a_document_in_a_job_out_of_reach_is_not_found_whatever_the_permission(
+    signed_in, acme: UUID, make_user, admin_engine: AsyncEngine, recruiter: AsyncClient
+) -> None:
+    job = await new_job(recruiter)
+    submitted = await recruiter.post(f"/api/v1/jobs/{job['id']}/jd", data={"text": JD})
+    outsider = await limited(signed_in, acme, make_user, admin_engine)
+    answer = await outsider.post(f"/api/v1/documents/{submitted.json()['id']}/retry")
+    assert (answer.status_code, answer.json()["code"]) == (404, "document-not-found")
+
+
+async def test_applying_a_description_twice_is_one_version(
+    recruiter: AsyncClient, services: DocumentServices, acme: UUID
+) -> None:
+    job = await new_job(recruiter)
+    submitted = await recruiter.post(f"/api/v1/jobs/{job['id']}/jd", data={"text": JD})
+    await process_document(services, acme, UUID(submitted.json()["id"]))
+    body = {"document_id": submitted.json()["id"], "skills": [{"name": "Python"}]}
+    first = await recruiter.post(f"/api/v1/jobs/{job['id']}/jd/apply", json=body)
+    again = await recruiter.post(f"/api/v1/jobs/{job['id']}/jd/apply", json=body)
+    assert (first.status_code, again.status_code) == (200, 200)
+    assert again.json()["version"] == first.json()["version"]
+    keyed = {"Idempotency-Key": "apply-once-0001"}
+    one = await recruiter.post(
+        f"/api/v1/jobs/{job['id']}/jd/apply", json={**body, "title": "Staff"}, headers=keyed
+    )
+    two = await recruiter.post(
+        f"/api/v1/jobs/{job['id']}/jd/apply", json={**body, "title": "Staff"}, headers=keyed
+    )
+    assert one.json() == two.json()
+
+
+async def test_salaries_the_database_cannot_hold_are_a_field_error(recruiter: AsyncClient) -> None:
+    job = await new_job(recruiter)
+    answer = await recruiter.patch(f"/api/v1/jobs/{job['id']}", json={"salary_max": 1e15})
+    assert (answer.status_code, answer.json()["errors"][0]["pointer"]) == (422, "#/salary_max")
+
+
+async def test_the_versions_are_paged_newest_first(recruiter: AsyncClient) -> None:
+    job = await new_job(recruiter)
+    for place in ("Pune", "Delhi", "Goa"):
+        await recruiter.patch(f"/api/v1/jobs/{job['id']}", json={"location": place})
+    page = (await recruiter.get(f"/api/v1/jobs/{job['id']}/versions", params={"limit": 3})).json()
+    assert [v["version"] for v in page["items"]] == [4, 3, 2]
+    rest = (
+        await recruiter.get(
+            f"/api/v1/jobs/{job['id']}/versions",
+            params={"limit": 3, "cursor": page["next_cursor"]},
+        )
+    ).json()
+    assert [v["version"] for v in rest["items"]] == [1] and rest["next_cursor"] is None
 
 
 async def test_uploads_need_blob_storage(signed_in, acme: UUID, make_user) -> None:

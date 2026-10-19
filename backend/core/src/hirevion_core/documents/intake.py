@@ -4,6 +4,7 @@ outbox event for the `documents` consumer, in the request's transaction (ADR-001
 from __future__ import annotations
 
 import hashlib
+import logging
 from typing import Protocol
 from uuid import UUID
 
@@ -24,6 +25,8 @@ from hirevion_core.ids import uuid7
 from hirevion_core.models import Document, Job
 from hirevion_core.outbox import publish_event
 from hirevion_core.storage.paths import BlobPath
+
+log = logging.getLogger(__name__)
 
 DOCUMENTS_TOPIC = "documents"
 JD_TYPES = frozenset({"pdf", "docx", "txt"})
@@ -67,6 +70,15 @@ async def _job(session: AsyncSession, job_id: UUID) -> Job:
     if job is None:
         raise NotFound("job-not-found", "No such job")
     return job
+
+
+async def _discard(blobs: BlobStore, path: BlobPath) -> None:
+    """Takes back a file whose document row could not be saved, so nothing is left unreferenced.
+    Best effort: the request is already failing for another reason."""
+    try:
+        await blobs.delete(path)
+    except Exception:
+        log.warning("Couldn't remove %s after its document failed to save", path, exc_info=True)
 
 
 async def queue(session: AsyncSession, document: Document, action: str = "process") -> None:
@@ -144,18 +156,23 @@ async def submit_jd_file(
         status="uploaded",
         created_by=actor.user_id,
     )
-    await blobs.put(BlobPath(actor.organization_id, key), data, CONTENT_TYPES[kind])
-    session.add(document)
-    await session.flush()
-    await queue(session, document)
-    await record(
-        session,
-        actor,
-        "job.jd_uploaded",
-        "job",
-        job.id,
-        details={"document_id": str(document.id), "source": "file", "type": kind},
-    )
+    path = BlobPath(actor.organization_id, key)
+    await blobs.put(path, data, CONTENT_TYPES[kind])
+    try:
+        session.add(document)
+        await session.flush()
+        await queue(session, document)
+        await record(
+            session,
+            actor,
+            "job.jd_uploaded",
+            "job",
+            job.id,
+            details={"document_id": str(document.id), "source": "file", "type": kind},
+        )
+    except BaseException:
+        await _discard(blobs, path)
+        raise
     return document
 
 
@@ -194,19 +211,24 @@ async def submit_resume_file(
         status="uploaded",
         created_by=actor.user_id,
     )
-    await blobs.put(BlobPath(actor.organization_id, key), data, CONTENT_TYPES[kind])
-    session.add(document)
-    await session.flush()
-    if publish:
-        await queue(session, document)
-    await record(
-        session,
-        actor,
-        "resume.uploaded",
-        "job",
-        job.id,
-        details={"document_id": str(document.id), "type": kind},
-    )
+    path = BlobPath(actor.organization_id, key)
+    await blobs.put(path, data, CONTENT_TYPES[kind])
+    try:
+        session.add(document)
+        await session.flush()
+        if publish:
+            await queue(session, document)
+        await record(
+            session,
+            actor,
+            "resume.uploaded",
+            "job",
+            job.id,
+            details={"document_id": str(document.id), "type": kind},
+        )
+    except BaseException:
+        await _discard(blobs, path)
+        raise
     return document
 
 

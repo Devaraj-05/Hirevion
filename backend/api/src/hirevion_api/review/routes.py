@@ -23,7 +23,7 @@ from hirevion_api.review import schemas
 from hirevion_api.routing import api_router
 from hirevion_core.access.audit import record
 from hirevion_core.access.errors import NotFound
-from hirevion_core.access.scope import ResourceScope, resource_scope, scope_clause
+from hirevion_core.access.scope import ResourceScope, job_scope_clause, resource_scope
 from hirevion_core.candidates.candidates import get_candidate
 from hirevion_core.hiring import inputs, notes, scores, workflow
 from hirevion_core.interviews.lifecycle import reference
@@ -60,7 +60,7 @@ async def _application(
             .join(Job, Job.id == Application.job_id)
             .where(
                 Application.id == application_id,
-                scope_clause(scope, team_column=Job.team_id, owner_column=Job.recruiter_id),
+                job_scope_clause(scope),
             )
         )
     ).first()

@@ -16,7 +16,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from hirevion_core.access.scope import ResourceScope, scope_clause
+from hirevion_core.access.scope import ResourceScope, job_scope_clause
 from hirevion_core.hiring.workflow import FINISHED, allowed_targets
 from hirevion_core.interviews.assignment import InterviewFilters, interviews_statement
 from hirevion_core.models import (
@@ -238,7 +238,7 @@ async def pipeline(
     per_column: int = PER_COLUMN,
 ) -> list[Column]:
     """The nine statuses with their counts and newest cards (PRD §72), within `scope`."""
-    where = [scope_clause(scope, team_column=Job.team_id, owner_column=Job.recruiter_id)]
+    where = [job_scope_clause(scope)]
     if job_id is not None:
         where.append(Application.job_id == job_id)
     counts = dict(

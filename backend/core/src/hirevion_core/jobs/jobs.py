@@ -7,7 +7,7 @@ from __future__ import annotations
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass, fields, replace
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 from uuid import UUID
 
@@ -19,7 +19,7 @@ from hirevion_core.access import UNSET, Unset
 from hirevion_core.access.actor import Actor
 from hirevion_core.access.audit import record
 from hirevion_core.access.errors import Conflict, Invalid, NotFound
-from hirevion_core.access.scope import ResourceScope, scope_clause
+from hirevion_core.access.scope import ResourceScope, job_scope_clause
 from hirevion_core.documents.intake import DOCUMENTS_TOPIC
 from hirevion_core.jobs.taxonomy import resolve_skills
 from hirevion_core.models import (
@@ -40,6 +40,12 @@ DESCRIPTION_MAX = 50_000
 ITEM_MAX = 500
 ITEMS_MAX = 50
 SKILLS_MAX = 100
+# The largest amount a salary column holds (NUMERIC(14, 2)).
+SALARY_MAX = Decimal("999999999999.99")
+# Fields the job's embedding is computed from (see `documents.pipeline.job_profile_text`).
+EMBEDDED_FIELDS = frozenset(
+    {"title", "description", "responsibilities", "qualifications", "domain", "skills"}
+)
 _CURRENCY = re.compile(r"[A-Z]{3}")
 
 # Where a job may go from each status (PRD §11: Draft → Open → Paused → Closed → Archived).
@@ -120,20 +126,48 @@ def _text(value: str, field: str, maximum: int, *, required: bool = False) -> st
 
 def _items(values: Sequence[str], field: str) -> list[str]:
     items = [item for item in (value.strip() for value in values) if item]
-    if len(items) > ITEMS_MAX or any(len(item) > ITEM_MAX for item in items):
-        raise Invalid("too-many", f"Up to {ITEMS_MAX} items of {ITEM_MAX} characters", field=field)
+    if len(items) > ITEMS_MAX:
+        raise Invalid("too-many", f"Up to {ITEMS_MAX} items", field=field)
+    if any(len(item) > ITEM_MAX for item in items):
+        raise Invalid("too-long", f"Each item can have up to {ITEM_MAX} characters", field=field)
     return items
 
 
 def _years(value: Decimal | None, field: str) -> Decimal | None:
-    if value is not None and not Decimal(0) <= value <= Decimal(60):
+    """Years as the database keeps them (one decimal, rounded as it rounds)."""
+    if value is None:
+        return None
+    if not value.is_finite() or not Decimal(0) <= value <= Decimal(60):
         raise Invalid("invalid-years", "Use 0 to 60 years", field=field)
-    return value
+    return value.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
 
 
-async def _member(session: AsyncSession, user_id: UUID | None, field: str) -> UUID | None:
+def _amount(value: Decimal | None, field: str) -> Decimal | None:
+    if value is None:
+        return None
+    if not value.is_finite() or not Decimal(0) <= value <= SALARY_MAX:
+        raise Invalid("invalid-salary", "Use an amount from 0 to 999,999,999,999.99", field=field)
+    return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def _check_skills(skills: Sequence[SkillInput]) -> None:
+    if len(skills) > SKILLS_MAX:
+        raise Invalid("too-many", f"Up to {SKILLS_MAX} skills", field="skills")
+    if any(skill.importance not in SKILL_IMPORTANCE for skill in skills):
+        raise Invalid("invalid-importance", "Unknown importance", field="skills")
+    for skill in skills:
+        _years(skill.min_years, "skills")
+
+
+async def _member(
+    session: AsyncSession, user_id: UUID | None, field: str, current: UUID | None = None
+) -> UUID | None:
+    """The person, who must be someone in the organisation who can still sign in. Only a new
+    choice is checked: a job keeps a recruiter who was disabled since."""
     if user_id is None:
         return None
+    if user_id == current:
+        return user_id
     user = await session.get(User, user_id)
     if user is None or user.status == "disabled":
         raise Invalid("invalid-user", "Choose someone in this organisation", field=field)
@@ -141,10 +175,15 @@ async def _member(session: AsyncSession, user_id: UUID | None, field: str) -> UU
 
 
 async def _live[T: (Department, Team)](
-    session: AsyncSession, model: type[T], row_id: UUID | None, field: str
+    session: AsyncSession,
+    model: type[T],
+    row_id: UUID | None,
+    field: str,
+    current: UUID | None = None,
 ) -> UUID | None:
-    if row_id is None:
-        return None
+    """The department or team, which must not be archived (unless the job already has it)."""
+    if row_id is None or row_id == current:
+        return row_id
     row = await session.get(model, row_id)
     if row is None or row.archived_at is not None:
         raise Invalid("invalid-reference", "Choose a current one", field=field)
@@ -154,6 +193,8 @@ async def _live[T: (Department, Team)](
 async def _apply(session: AsyncSession, job: Job, changes: JobChanges) -> list[str]:
     """Checks `changes`, writes them to `job` and returns the names of the fields that changed
     (`skills` included)."""
+    if not isinstance(changes.skills, Unset):
+        _check_skills(changes.skills)  # before anything is written to the job
     values: dict[str, Any] = {}
     if not isinstance(changes.title, Unset):
         values["title"] = _text(changes.title, "title", TITLE_MAX, required=True)
@@ -182,9 +223,7 @@ async def _apply(session: AsyncSession, job: Job, changes: JobChanges) -> list[s
     for name in ("salary_min", "salary_max"):
         given = getattr(changes, name)
         if not isinstance(given, Unset):
-            if given is not None and given < 0:
-                raise Invalid("invalid-salary", "Use a positive amount", field=name)
-            values[name] = given
+            values[name] = _amount(given, name)
     if not isinstance(changes.salary_currency, Unset):
         currency = (changes.salary_currency or "").strip().upper() or None
         if currency is not None and not _CURRENCY.fullmatch(currency):
@@ -194,14 +233,14 @@ async def _apply(session: AsyncSession, job: Job, changes: JobChanges) -> list[s
         values["salary_currency"] = currency
     if not isinstance(changes.department_id, Unset):
         values["department_id"] = await _live(
-            session, Department, changes.department_id, "department_id"
+            session, Department, changes.department_id, "department_id", job.department_id
         )
     if not isinstance(changes.team_id, Unset):
-        values["team_id"] = await _live(session, Team, changes.team_id, "team_id")
+        values["team_id"] = await _live(session, Team, changes.team_id, "team_id", job.team_id)
     for name in ("recruiter_id", "hiring_manager_id"):
         given = getattr(changes, name)
         if not isinstance(given, Unset):
-            values[name] = await _member(session, given, name)
+            values[name] = await _member(session, given, name, getattr(job, name))
     if not isinstance(changes.interview_template_id, Unset):
         template_id = changes.interview_template_id
         # Only a new choice must be active: a job keeps a default that was archived since.
@@ -236,10 +275,7 @@ async def _apply(session: AsyncSession, job: Job, changes: JobChanges) -> list[s
 
 
 async def _replace_skills(session: AsyncSession, job: Job, skills: Sequence[SkillInput]) -> bool:
-    if len(skills) > SKILLS_MAX:
-        raise Invalid("too-many", f"Up to {SKILLS_MAX} skills", field="skills")
-    if any(skill.importance not in SKILL_IMPORTANCE for skill in skills):
-        raise Invalid("invalid-importance", "Unknown importance", field="skills")
+    _check_skills(skills)
     rows: list[JobSkill] = []
     seen: set[str] = set()
     resolved = await resolve_skills(session, [skill.name for skill in skills])
@@ -290,6 +326,7 @@ _SNAPSHOT_FIELDS = (
     *(f.name for f in fields(JobChanges) if f.name != "skills"),
     "status",
     "number",
+    "jd_document_id",
 )
 
 
@@ -318,10 +355,13 @@ async def _snapshot(session: AsyncSession, job: Job, reason: str, actor: Actor) 
     await session.flush()
 
 
+def versions_statement(job_id: UUID) -> Select[JobVersion]:
+    """A job's history; the caller orders and pages it."""
+    return select(JobVersion).where(JobVersion.job_id == job_id)
+
+
 async def list_versions(session: AsyncSession, job_id: UUID) -> list[JobVersion]:
-    rows = await session.scalars(
-        select(JobVersion).where(JobVersion.job_id == job_id).order_by(JobVersion.version)
-    )
+    rows = await session.scalars(versions_statement(job_id).order_by(JobVersion.version))
     return list(rows.all())
 
 
@@ -364,7 +404,7 @@ async def create_job(session: AsyncSession, actor: Actor, changes: JobChanges) -
         break
     else:
         raise Conflict("busy", "Too many jobs created at once; try again")
-    await _apply(session, job, changes)
+    changed = await _apply(session, job, changes)
     await session.flush()
     await _snapshot(session, job, "created", actor)
     await record(
@@ -375,22 +415,52 @@ async def create_job(session: AsyncSession, actor: Actor, changes: JobChanges) -
         job.id,
         details={"number": job.number, "title": job.title},
     )
+    await _ask_for_embedding(session, job, changed)
     return job
 
 
 async def _job(session: AsyncSession, job_id: UUID) -> Job:
-    job = await session.get(Job, job_id)
+    """The job, locked until the transaction ends: two edits at once take turns, and each
+    starts from the version the other left."""
+    job = await session.get(Job, job_id, with_for_update=True)
     if job is None:
         raise NotFound("job-not-found", "No such job")
     return job
+
+
+async def _require_complete(session: AsyncSession, job: Job) -> None:
+    """A job that is open (or about to be) has what screening needs: a title, a description and
+    a required skill."""
+    missing = [name for name in ("title", "description") if not getattr(job, name).strip()]
+    if not any(skill.importance == "required" for skill in await _skills(session, job.id)):
+        missing.append("required skills")
+    if missing:
+        raise Invalid(
+            "job-incomplete", "Add what an open job needs first", detail=", ".join(missing)
+        )
+
+
+async def _ask_for_embedding(session: AsyncSession, job: Job, changed: Sequence[str]) -> None:
+    """Queues the job's embedding again when something it is computed from changed."""
+    if EMBEDDED_FIELDS.intersection(changed):
+        await publish_event(
+            session,
+            job.organization_id,
+            DOCUMENTS_TOPIC,
+            {"action": "embed-job", "job_id": str(job.id)},
+            key=str(job.id),
+        )
 
 
 async def update_job(session: AsyncSession, actor: Actor, job_id: UUID, changes: JobChanges) -> Job:
     job = await _job(session, job_id)
     changed = await _apply(session, job, changes)
     if changed:
+        if job.status == "open":
+            await _require_complete(session, job)
         await bump(session, actor, job, "edited")
         await record(session, actor, "job.updated", "job", job.id, details={"fields": changed})
+        await _ask_for_embedding(session, job, changed)
     return job
 
 
@@ -403,15 +473,7 @@ async def set_status(session: AsyncSession, actor: Actor, job_id: UUID, status: 
             detail=f"{job.status} → {status}",
         )
     if status == "open":
-        missing = [name for name in ("title", "description") if not getattr(job, name).strip()]
-        if not any(skill.importance == "required" for skill in await _skills(session, job.id)):
-            missing.append("required skills")
-        if missing:
-            raise Invalid(
-                "job-incomplete",
-                "Add what an open job needs first",
-                detail=", ".join(missing),
-            )
+        await _require_complete(session, job)
     previous, job.status = job.status, status
     await bump(session, actor, job, "status")
     await record(
@@ -437,9 +499,14 @@ async def apply_jd(
     if document.status != "parsed":
         raise Conflict("not-parsed", "The description hasn't been read yet")
     if isinstance(changes.description, Unset) and not job.description.strip() and document.text:
-        changes = replace(changes, description=document.text)
+        changes = replace(changes, description=document.text[:DESCRIPTION_MAX])
+    already_applied = job.jd_document_id == document.id
     changed = await _apply(session, job, changes)
+    if already_applied and not changed:
+        return job  # the same description with nothing new: no version, no second embedding
     job.jd_document_id = document.id
+    if job.status == "open":
+        await _require_complete(session, job)
     await bump(session, actor, job, "jd-applied")
     await record(
         session,
@@ -461,9 +528,7 @@ async def apply_jd(
 
 def jobs_statement(scope: ResourceScope, filters: JobFilters) -> Select[Job]:
     """The jobs `scope` reaches that match `filters`; the caller orders and pages it."""
-    statement = select(Job).where(
-        scope_clause(scope, team_column=Job.team_id, owner_column=Job.recruiter_id)
-    )
+    statement = select(Job).where(job_scope_clause(scope))
     if filters.status is not None:
         statement = statement.where(Job.status == filters.status)
     if filters.department_id is not None:

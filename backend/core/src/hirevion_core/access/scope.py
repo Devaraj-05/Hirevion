@@ -16,7 +16,7 @@ from sqlalchemy import ColumnElement, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 
-from hirevion_core.models import Team, TeamMember, User
+from hirevion_core.models import Job, Team, TeamMember, User
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,12 +43,27 @@ def scope_clause(
     *,
     team_column: ColumnElement[Any] | InstrumentedAttribute[Any],
     owner_column: ColumnElement[Any] | InstrumentedAttribute[Any],
+    assigned_column: ColumnElement[Any] | InstrumentedAttribute[Any] | None = None,
 ) -> ColumnElement[bool]:
     """A WHERE clause keeping only the rows `scope` reaches; `team_column` is the owning team
-    and `owner_column` the owning user of each row."""
+    and `owner_column` the owning user of each row. Whoever a row is assigned to
+    (`assigned_column`) reaches it too, whatever their scope."""
     if scope.organization_wide:
         return true()
-    owned = owner_column == scope.user_id
+    reached = owner_column == scope.user_id
+    if assigned_column is not None:
+        reached = reached | (assigned_column == scope.user_id)
     if not scope.team_ids:
-        return owned
-    return team_column.in_(scope.team_ids) | owned
+        return reached
+    return team_column.in_(scope.team_ids) | reached
+
+
+def job_scope_clause(scope: ResourceScope) -> ColumnElement[bool]:
+    """The jobs `scope` reaches: their teams', their own as the recruiter, and the ones they are
+    the hiring manager of (PRD: "assigned jobs")."""
+    return scope_clause(
+        scope,
+        team_column=Job.team_id,
+        owner_column=Job.recruiter_id,
+        assigned_column=Job.hiring_manager_id,
+    )

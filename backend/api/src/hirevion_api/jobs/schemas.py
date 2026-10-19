@@ -16,8 +16,10 @@ WorkModel = Literal["onsite", "hybrid", "remote"]
 EmploymentType = Literal["full_time", "part_time", "contract", "internship", "temporary"]
 Importance = Literal["required", "preferred", "optional"]
 DocumentStatus = Literal[
-    "uploaded", "scanning", "extracting", "parsing", "parsed", "quarantined", "failed"
+    "uploaded", "scanning", "extracting", "ocr", "parsing", "parsed", "quarantined", "failed"
 ]
+# The largest salary the database holds (NUMERIC(14, 2)).
+SALARY_MAX = 999_999_999_999.99
 
 # Fields that always have a value: sending null for them is refused.
 _NOT_NULL = frozenset(
@@ -58,8 +60,8 @@ class JobFields(BaseModel):
     responsibilities: list[str] | None = Field(None, max_length=50)
     qualifications: list[str] | None = Field(None, max_length=50)
     domain: list[str] | None = Field(None, max_length=50)
-    salary_min: float | None = Field(None, ge=0)
-    salary_max: float | None = Field(None, ge=0)
+    salary_min: float | None = Field(None, ge=0, le=SALARY_MAX)
+    salary_max: float | None = Field(None, ge=0, le=SALARY_MAX)
     salary_currency: str | None = Field(None, min_length=3, max_length=3)
     recruiter_id: UUID | None = None
     hiring_manager_id: UUID | None = None
