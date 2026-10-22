@@ -15,6 +15,7 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 | A2 SP-07c | Desktop candidate auth, DPoP, releases | #7 / ADR-0021 |
 | C1–C3 SP-09 | AI interview engine, agent, simulator | #7 / ADR-0030 |
 | D1 (part) | Policy drafts, SP-01–06 threat models, `hv trace --check` | #7 |
+| D1 rest | CI gates (coverage at 85% on `hirevion_core` and a web floor, Bandit, Semgrep, osv-scanner, licences, Trivy and Syft SBOM; all through `scripts/gates.sh`), the SP-04a to SP-06 code review with its fixes, the ten PRD section 10 dashboard figures under seven filters | pending |
 | B1 SP-08a | Desktop sign-in, device keys, system check | #6 / ADR-0018 |
 | B2 | SP-11 monitoring, SP-12 client recording, SP-15a desktop vision | #9 |
 | B3 (part) SP-08b | Briefing, consent, interview path, services, upload drain | #9 |
@@ -33,13 +34,14 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 
 ## Remaining, in priority order (dependency in brackets)
 
-- **P0:** D1 rest: CI gates, code review, dashboard KPIs [none]
 - **P1:** A4 SP-18 notifications/webhooks [A1] · C6 SP-16 coding server [C3] · C7 vision agent [C5, D3] · B4 desktop coding/third-eye/advanced CV [B3, C6, D3]
 - **P2:** D4 SP-19 enterprise identity [SP-02] · D5 SP-22 admin/governance [A5, C5] · A6 SP-21 analytics [A5] · D6 SP-20 ATS/public API [A4, A5]
 - **P3:** D7 SP-23 automated hardening [all] · B5 Windows golden path and chaos drills [B3, B4]
 
 ## Found in testing (open)
 
+- [ ] D1: `livekit-local-inference` ships under the LiveKit Model License, which the licence gate accepts only as a recorded exception (`hirevion_devcli/licenses.py`). Have counsel read its terms before a commercial release.
+- [ ] D1 review, out of scope (A1/A5 code): the reviewers dialog lists disabled users; the interview page has no time-zone label; the evaluation re-run button can stick; the candidate page doesn't refresh after an action taken elsewhere; the assign dialog shows raw window codes.
 - [ ] B3: the desktop e2e once failed at the system check with "Camera: not available" when run right after the desktop job in `scripts/ci-local.sh`; it passed alone and on the next full run. Watch for it; if it recurs, find what holds the camera.
 - [ ] D3: not yet tried on real phones (iOS Safari 16.4+, Android Chrome; the owner's check, runbook "Third eye") or with the real Egress container (its image is about 1 GB; tests used the adapter's fake). Run both before CP3.
 - [ ] A5/D2: ffmpeg isn't installed on this PC, so recordings stay assembly-pending and the review player's sync is tested only with pure functions and jsdom. Install ffmpeg (see the runbook's "Recordings") and play a simulator interview's recordings end to end before CP3.

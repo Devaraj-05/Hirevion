@@ -197,13 +197,13 @@ A box is ticked in the PR that merges the part. Deliverables are in MASTER §14;
 ### Lane D — quality, media services, identity and governance
 
 - [x] **D0** Review `recordings.md` and `third-eye.md`. Depends on: nothing.
-- [ ] **D1 Catch-up H0** (what SP-04a to SP-06 skipped). Depends on: nothing. Plan: `docs/superpowers/plans/2026-10-09-h0-catch-up.md`.
+- [x] **D1 Catch-up H0** (what SP-04a to SP-06 skipped). Depends on: nothing. Plan: `docs/superpowers/plans/2026-10-09-h0-catch-up.md`.
   - [x] Policy drafts in `docs/policies/`.
-  - [ ] CI gates: `pytest-cov` failing below 85% on `hirevion_core` domain modules, plus Vitest coverage; Semgrep and Bandit; osv-scanner over all the lockfiles; `pip-licenses` and `license-checker`; Trivy and a Syft SBOM for the API image.
+  - [x] CI gates: `pytest-cov` failing below 85% on `hirevion_core` domain modules, plus Vitest coverage; Semgrep and Bandit; osv-scanner over all the lockfiles; `pip-licenses` and `license-checker`; Trivy and a Syft SBOM for the API image.
   - [x] Traceability: `hv trace --check`, run in CI.
   - [x] Threat models for SP-01 to SP-06.
-  - [ ] Code review: `/code-review` over the SP-04a to SP-06 code, with the findings fixed.
-  - [ ] Dashboard: KPIs from real data (PRD §10) for jobs and candidates.
+  - [x] Code review: `/code-review` over the SP-04a to SP-06 code, with the findings fixed.
+  - [x] Dashboard: KPIs from real data (PRD §10) for jobs and candidates.
 - [x] **D2 SP-12 Server side.** Depends on: SP-01, `recordings.md`. See MASTER §14 SP-12. Plan: `docs/superpowers/plans/2026-10-10-sp-12-server-recording.md`.
   - Exit: as in MASTER §14 SP-12 (with B2's client). Egress moved to D3, evidence snapshots to C5.
 - [x] **D3 SP-13 Third-eye.** Depends on: C3, D2. See MASTER §14 SP-13. Plan: `docs/superpowers/plans/2026-10-12-sp-13-third-eye.md`.

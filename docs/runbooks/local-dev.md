@@ -348,7 +348,14 @@ How the pipeline works is in [ADR-0015](../architecture/adr/0015-jobs-and-docume
   - A candidate's page shows every parsed item with "From the resume, page N", and their resumes and applications.
   - Flags (hidden text, injection attempts, possible duplicates, low OCR confidence) are shown as things to check.
 - **Permissions:** uploading needs `candidates.manage` ("Upload resumes and manage candidates": org admins and recruiters); reading needs `candidates.view`.
-- **Personal data:** Aadhaar and PAN numbers are masked before anything is stored or parsed. A scanned resume's page image still goes to the OCR service before masking (ADR-0015).
+- **Personal data:** Aadhaar numbers and virtual IDs, PANs, and passport, voter ID and bank account numbers written after their label, are masked to their last four characters before anything is stored or parsed. A scanned resume's page image still goes to the OCR service before masking (ADR-0015).
+- **What the pipeline refuses or leaves out (D1 review):**
+  - A Word file or PDF that inflates past its limit (64 MB for a Word file, 256 MB of PDF streams) is refused as `archive-bomb`; in a ZIP, an entry compressed more than 100 to 1 is skipped (`compressed-like-a-bomb`) and the rest is read.
+  - Text drawn invisibly, painted over by a white shape, white on white, tiny, off the page, or hidden in Word (including in hyperlinks and styles) is left out and reported. White text on a dark banner or shaded cell is visible and stays.
+  - Invisible characters (zero-width, bidi, Unicode tag characters, variation selectors) are removed and counted.
+  - Plain instructions to the screener ("ignore all previous instructions", "rank me first") are replaced with a marker before the AI reads the resume, and the candidate shows the flag "Instructions to the screener were removed".
+  - A quote counts as evidence only if it is long enough and is about what it supports (a skill's quote must mention the skill or one of its spellings).
+  - A resume downloads only once it has been scanned; a ZIP itself never downloads (its entries do).
 - **The synthetic set and the F1 evaluation:**
   - `uv run hv synth-resumes` writes 200 made-up resumes and `truth.jsonl` to `tools/devcli/.cache/resumes`.
   - `uv run hv eval-resumes` runs them through the pipeline in an organisation of its own, scores 14 fields, checks the exit criteria and writes `docs/evals/2026-10-resume-parse.md`. It uses the AI profile in `.env`; with `HV_AI_PROFILE=mock`, only the exit criteria mean anything.
@@ -366,7 +373,9 @@ How it works is in [ADR-0016](../architecture/adr/0016-screening-and-ranking.md)
   - Click a name to see each factor's score and the resume quotes behind it, strengths, concerns and missing requirements.
   - Select candidates to shortlist, hold, mark for review or reject in bulk. Rejections, and decisions against the ranking, ask for a reason.
   - "Download CSV/Excel" asks for your password if you haven't confirmed it in the last few minutes.
+- **Blind screening** is on by default and shown on the Ranking tab. Only an organisation administrator (`admin.organization.manage`) can turn it off for a job or for the organisation; a job's Screening tab warns when it is off, and results made without it are marked "Names shown". Blind mode removes names, contact details, links and handles, addresses, and lines about gender, age, marital status, religion, caste, nationality and the like (`hirevion_core.screening.blind`); a new way of writing one of these is a new rule and a new test.
 - **Permissions:** `candidates.view` reads; `candidates.manage` screens and acts; `jobs.create` edits a job's settings; `admin.organization.manage` edits the defaults.
+- **Candidates whose screening failed** five times go to "Marked for review" with the reason in their history, and the job's ranking carries on without them. "Screen again" tries them afresh.
 - **Evaluating the ranking:** `uv run hv eval-screening` after `hv eval-resumes` (see `docs/evals/2026-10-screening.md`).
 
 ### Question library and interview templates
@@ -400,7 +409,11 @@ How it works is in [ADR-0020](../architecture/adr/0020-interviews-and-invitation
 - **The invitation** goes through the outbox and the mail consumer to Mailpit (http://127.0.0.1:8025). It holds PRD §25's eight contents and, for a new candidate, a set-password link to the candidate portal (`HV_CANDIDATE_ORIGIN`, valid `HV_CANDIDATE_LINK_HOURS`). Set the organisation's support email under Administration → Organisation.
 - **`/interviews`:** Upcoming (scheduled and invited), Live (in progress and interrupted) and Completed (everything that's over). An interview's page shows the pinned template version and policy, the window, the reviewers, the history and every email sent, and lets `interviews.manage` holders send or resend the invitation, reschedule, cancel (with a reason the candidate sees) and change reviewers.
 - **Reminders and expiry:** the scheduler in `hv api` (or `hv worker`) runs every minute. To try it, move a window with SQL (`UPDATE interviews SET expires_at = now() - interval '1 minute' WHERE ...`) and watch the interview become Expired within a minute.
-- **The dashboard** counts scheduled, live and completed interviews under its filters.
+- **The dashboard** shows the ten PRD section 10 figures under its seven filters (date range, recruiter, team, job, department, interview status, candidate status):
+  - Open jobs; active candidates (people with an application still undecided); candidates screened; candidates shortlisted; applications in the hiring pipeline.
+  - Interviews scheduled, live and completed; pending reviews (finished interviews waiting for a decision); proctoring alerts (warnings and critical events nobody has reviewed yet).
+  - The date range applies to the date of the thing counted (job created, application created, interview window start). A figure the signed-in user may not read shows "no data yet"; a hiring manager's counts cover only the jobs assigned to them.
+  - If the figures fail to load the page says so, with a retry, instead of showing zeros.
 - **Permissions:** `interviews.view` reads (interviewers see only interviews they review); `interviews.manage` changes.
 
 ### Candidate desktop sign-in and releases
@@ -682,6 +695,40 @@ Press Ctrl+C in the `eye-tunnel` terminal as soon as you're done: while it runs,
 LiveKit signalling are reachable at a public (random) address. Docker Desktop's installer already
 allows its backend through Windows Firewall. If the phone connects but shows no video, check the
 firewall allows UDP 7882 and TCP 7881 for "Docker Desktop Backend".
+
+## Quality gates (D1)
+
+CI and `bash scripts/ci-local.sh` run the same gates; the local script is the merge gate while
+GitHub Actions are off. Every scanner is run by `scripts/gates.sh`, which both call, so the two cannot
+drift. Nothing needs admin rights: the scanners are pinned Docker images (Docker Desktop is already
+required), and Bandit, `pytest-cov` and `pip-licenses` come with `uv sync`.
+
+| Gate | Where it runs | Run it alone | A finding fails when | Read it |
+|---|---|---|---|---|
+| Python coverage | `python` job | `uv run pytest --cov` | the domain code is under 85% | below |
+| Web coverage | `js` job | `pnpm --filter @hirevion/recruitment-platform test:coverage` | a figure falls under `thresholds` in `vitest.config.ts` | the printed summary |
+| Bandit | `python` job | `bash scripts/gates.sh bandit` | medium severity or worse | each issue names its rule (B6xx) |
+| Semgrep | `semgrep` job | `bash scripts/gates.sh semgrep` (about 7 minutes) | any finding of `p/python`, `p/typescript`, `p/react`, `p/secrets`, `p/owasp-top-ten` | each finding names its rule |
+| osv-scanner | `dependencies` job | `bash scripts/gates.sh osv` | a known vulnerability in `uv.lock`, `pnpm-lock.yaml` or `Cargo.lock` | the table lists the fixed version |
+| Licences | `dependencies` job | `uv run hv licenses` (`--python` or `--js`) | a licence outside master plan section 13 | each line is `package version: licence` |
+| Trivy | `compose` job | `bash scripts/gates.sh trivy hirevion-api:ci-local` | HIGH or CRITICAL with a fix available, in the API image | the table lists package and fixed version |
+| SBOM | `compose` job | `bash scripts/gates.sh syft hirevion-api:ci-local` | the scan can't run | `.ci-local/sbom.spdx.json` (CI uploads it as `api-image-sbom`) |
+
+- **Python coverage.**
+  - *Domain code* means `hirevion_core`: identity and access, jobs, documents, candidates, screening, interviews, the engine, evaluation, proctoring, recordings, reports.
+  - Not measured, because they are exercised end to end or by contract tests against fakes: the API's routes, the tools and the interview agent, and the vendor and I/O adapters listed under `omit` in `pyproject.toml` (the OpenAI-compatible and Deepgram clients, blob storage, SMTP, ClamAV, OpenTelemetry, the migration runner, ffmpeg).
+  - `uv run pytest --cov --cov-report=term-missing` lists the lines that no test reaches.
+  - The tests need the stack (`uv run hv up`), as without coverage.
+- **Web coverage** is V8's, over `recruitment-platform/src`. The floors in `vitest.config.ts` are what was measured on 2026-10-22, rounded down: raise them when coverage rises, never lower them to pass.
+- **Accepting a finding.** Fix it first. If it is a false positive or a deliberate choice, say why beside the code, in the scanner's own form:
+  - Bandit: `# nosec B608` (the rule id) and a comment line above saying why.
+  - Semgrep: `# nosemgrep: <rule id>` on the line before the finding, with the reason in the line above that.
+  - Ruff: `# noqa: S608`, as before.
+  - osv-scanner: an `[[IgnoredVulns]]` entry in `osv-scanner.toml` with a `reason` and an `ignoreUntil` date (about six months out), so it comes back for a second look.
+  - Licences: an `EXCEPTIONS` entry in `tools/devcli/src/hirevion_devcli/licenses.py` with its reason.
+- **Semgrep's file list** is `.semgrepignore` (dependencies, build output, tests, generated code). The gate mounts the source directories one by one, not the repository: a git worktree's `.git` points outside the container, and Semgrep then walked `node_modules` for 39 minutes.
+- **Updating a scanner.** The versions are at the top of `scripts/gates.sh` (`SEMGREP_IMAGE`, `OSV_IMAGE`, `TRIVY_IMAGE`, `SYFT_IMAGE`). Bump one, run its gate, and fix or accept what it finds. Trivy keeps its vulnerability database in the `hirevion-trivy-cache` Docker volume.
+- **Dependencies of the licence check:** `pip-licenses` (a dev dependency) and `license-checker-rseidelsohn`, fetched by `pnpm dlx` at the version pinned in `licenses.py`. The Rust crates are checked by `cargo deny` (the `rust-licenses` job).
 
 ## Troubleshooting
 

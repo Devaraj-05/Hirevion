@@ -1585,20 +1585,20 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 8 | Desktop: email/password, short-lived token, interview session token, device/session binding, expiry; no master credentials | SP-07c (ADR-0021: DPoP-bound access, refresh and session tokens, `test_candidate_auth_api.py`), SP-08, §13 |
 | 9 | Organisation profile, departments, teams, users, roles, permissions | SP-02 |
 | 9 | Branding, default screening/interview config, proctoring policies, AI config, retention, integrations | SP-05 (screening defaults), SP-06 (interview defaults and proctoring presets), SP-22, SP-20 |
-| 10 | 10 dashboard KPIs and 7 filters | SP-03, SP-21 (KPIs wired from real data as modules land: catch-up H0.2) |
+| 10 | 10 dashboard KPIs and 7 filters | SP-03, H0 (D1: all ten figures counted from the data under all seven filters, `hirevion_core.dashboard`, `test_dashboard_api.py`, `dashboard-figures.test.tsx`), SP-21 |
 | 11 | 17 job fields; 5 statuses | SP-04 (Screening Configuration field → SP-05; Interview Template field → SP-07a: `jobs.interview_template_id`, the job form's choice) |
 | 12 | JD formats (PDF, DOCX, TXT, text); 10-step pipeline; 8 extracted items; recruiter review/edit | SP-04 (§6.6) |
-| 13 | Single, bulk, PDF, DOCX, TXT, image/OCR; 10-step pipeline including malware scan | SP-04b (§6.6; ZIP bulk upload, per-entry scanning, ADR-0015) |
+| 13 | Single, bulk, PDF, DOCX, TXT, image/OCR; 10-step pipeline including malware scan | SP-04b (§6.6; ZIP bulk upload, per-entry scanning, ADR-0015), H0 (D1 review: decompression limits, invisible-text and instruction handling, `test_documents_review.py`) |
 | 14 | 16 parsed fields; evidence references | SP-04b (page, section and verified quote per item; F1 in `docs/evals/`) |
 | 15 | 4 inputs; 9 evaluation factors; 6 combination methods | SP-05 (§6.7, ADR-0016) |
 | 16 | 9 ranking output fields; explainable, with evidence per factor | SP-05 (evidence drawer; NDCG in `docs/evals/`) |
 | 17 | Configurable weights; Required/Preferred/Optional skills | SP-05, SP-22 (organisation defaults) |
-| 18 | 6 workflow stages; 8 actions; override audit | SP-05 (7 actions), SP-07a ("Create interview" on the ranking, single and bulk) |
+| 18 | 6 workflow stages; 8 actions; override audit | SP-05 (8 actions: the ranking offers assign recruiter and assign hiring manager since D1), SP-07a ("Create interview" on the ranking, single and bulk) |
 | 19 | 13 candidate-profile sections | SP-04b (profile, resume, parsed profile, applications, jobs), SP-05, SP-17 (delivered: `hirevion_core.reports.candidate360` loads the file's other sections within the reader's scope: screening, interview history, evaluation, proctoring results, recordings, notes and the timeline; the internal candidate report prints them; `test_report_review.py`) |
 | 20 | 13 Candidate 360 tabs | SP-17 (delivered: the thirteen tabs of `candidate-360.tsx` over the 360 and timeline endpoints, a tab the reader may not see is left out; `candidate-360.test.tsx`, `test_candidate_360_api.py`) |
 | 21 | 13 template fields; example weights and difficulty distribution | SP-06 (ADR-0017; skill-matrix preview; built-in defaults 20/50/30) |
 | 22 | 10 question fields; 8 question types | SP-06 (versioned library, §7 categories, approval; time limits and follow-up rules honoured in SP-09) |
-| 23 | AI question generation from 6 inputs; review before reuse | SP-06 (`interviews.generation`: drafts approved by a recruiter; candidate work history only, never contact details) |
+| 23 | AI question generation from 6 inputs; review before reuse | SP-06 (`interviews.generation`: drafts approved by a recruiter, by version; candidate work history only, never contact details; D1: only for jobs and candidates the caller may read) |
 | 24 | Assignment: 3 inputs → 9 system fields | SP-07a (ADR-0020: `hirevion_core.interviews.assignment`, the policy snapshot, `test_interview_assignment.py`) |
 | 25 | 8 invitation contents | SP-07a (`interviews.invitations`, en-IN/en-US templates, the Mailpit test and `e2e/auth/interviews.spec.ts`), SP-07b (ADR-0022: the pages it links to: `/invitation/`, download, notices, requests, forgot password; `e2e/auth/portal.spec.ts`) |
 | 26 | 9 startup steps (`AI-Interview.exe`) | SP-08 (the update gate with Update now, the signed updater and downgrade refusal: SP-08c, ADR-0019, `tests/updater.rs`; the version check's server side, the release registry and update manifest: SP-07c) |
