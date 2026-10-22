@@ -1,0 +1,41 @@
+# What the `semgrep` gate (scripts/gates.sh) does not look at.
+#
+# Inside the scanner's container the repository's .git may not be readable (a git worktree's is
+# a pointer to another path), and then Semgrep does not know what git ignores: without this list
+# it walks node_modules and build output, which took 39 minutes on a PC. Listing them here keeps
+# the gate to the code we wrote, in CI as well.
+
+# Dependencies and build output
+node_modules/
+.venv/
+.next/
+dist/
+target/
+coverage/
+playwright-report/
+test-results/
+.ci-local/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.tsbuildinfo
+
+# Generated from the API; the API's own source is scanned
+packages/api-client/src/schema.d.ts
+packages/api-client/openapi.json
+
+# Test code and fixtures: they hold deliberately bad input (injection phrases, hidden text,
+# fake keys and passwords) and run only in CI and on developers' PCs
+tests/
+test/
+e2e/
+*.test.ts
+*.test.tsx
+conftest.py
+
+# Documents and data, not code
+docs/
+*.md
+*.json
+*.yaml
+*.yml

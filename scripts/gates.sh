@@ -18,10 +18,10 @@ set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
-SEMGREP_IMAGE="${SEMGREP_IMAGE:-semgrep/semgrep:1.151.0}"
+SEMGREP_IMAGE="${SEMGREP_IMAGE:-semgrep/semgrep:1.180.0}"
 OSV_IMAGE="${OSV_IMAGE:-ghcr.io/google/osv-scanner:v2.7.0}"
-TRIVY_IMAGE="${TRIVY_IMAGE:-aquasec/trivy:0.69.3}"
-SYFT_IMAGE="${SYFT_IMAGE:-anchore/syft:v1.42.3}"
+TRIVY_IMAGE="${TRIVY_IMAGE:-aquasec/trivy:0.76.0}"
+SYFT_IMAGE="${SYFT_IMAGE:-anchore/syft:v1.54.1}"
 UV="${UV:-uv}"
 command -v "$UV" >/dev/null 2>&1 || UV="/c/Users/${USER:-}/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/uv.exe"
 
@@ -56,11 +56,11 @@ gate_osv() {
 }
 
 gate_licenses_python() {
-  "$UV" run hv licenses --python
+  PYTHONUTF8=1 "$UV" run hv licenses --python
 }
 
 gate_licenses_js() {
-  "$UV" run hv licenses --js
+  PYTHONUTF8=1 "$UV" run hv licenses --js
 }
 
 gate_trivy() {

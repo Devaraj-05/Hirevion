@@ -363,6 +363,29 @@ def trace_command(
         raise typer.Exit(code=1)
 
 
+@app.command("licenses")
+def licenses_command(
+    python: Annotated[bool, typer.Option("--python", help="Check the Python packages.")] = False,
+    javascript: Annotated[
+        bool, typer.Option("--js", help="Check every pnpm workspace package's dependencies.")
+    ] = False,
+) -> None:
+    """Check dependency licences against master plan section 13 (exit 1 on a problem)."""
+    from . import licenses
+
+    root = repo_root()
+    problems: list[str] = []
+    if python or not javascript:
+        problems += [f"python: {item}" for item in licenses.run_python(root)]
+    if javascript or not python:
+        problems += [f"js: {item}" for item in licenses.run_javascript(root)]
+    for problem in problems:
+        console.print(f"[red]FAIL[/red] {problem}", markup=True, highlight=False)
+    console.print(f"{len(problems)} dependency licence problem(s).")
+    if problems:
+        raise typer.Exit(code=1)
+
+
 @app.command("interview-sim")
 def interview_sim_command(
     persona_name: Annotated[
