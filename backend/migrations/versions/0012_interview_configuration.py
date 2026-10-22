@@ -86,10 +86,10 @@ def _jsonb(name: str, default: str, nullable: bool = False) -> sa.Column[object]
     if nullable:
         return sa.Column(name, postgresql.JSONB(), nullable=True)
     return sa.Column(
-        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
-        # (`default` is a constant of this migration: "{}" or "[]")
         name,
         postgresql.JSONB(),
+        # (`default` is a constant of this migration: "{}" or "[]")
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         server_default=sa.text(f"'{default}'::jsonb"),
         nullable=False,
     )
