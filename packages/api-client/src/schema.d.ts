@@ -2011,7 +2011,8 @@ export interface paths {
         /**
          * Update Job Screening Config
          * @description Gives the job its own configuration (starting from what it inherited). Turning blind
-         *     screening off is the organisation's decision: it needs `admin.organization.manage`.
+         *     screening off is the organisation's decision: it needs `admin.organization.manage`. Saving
+         *     other settings while it is already off (the form sends the value back) is not turning it off.
          */
         put: operations["update_job_screening_config"];
         post?: never;
@@ -2897,8 +2898,10 @@ export interface paths {
          * Generate Questions
          * @description Drafts questions with AI from the job, a candidate's work history, the skills, the level
          *     and a template (PRD §23). They're saved as drafts: none is used until a recruiter approves
-         *     it. A job or candidate must be one the caller may read. The AI call happens outside any
-         *     database transaction, and a retry with the same `Idempotency-Key` costs nothing.
+         *     it. A job or candidate must be one the caller may read. The reads that build the prompt
+         *     are done before the AI call. The call is made while the `Idempotency-Key` is claimed (one
+         *     connection is held for its duration), and the drafts are saved in that same transaction, so
+         *     they exist exactly when the key's answer does: a retry costs nothing and can't duplicate.
          */
         post: operations["generate_questions"];
         delete?: never;

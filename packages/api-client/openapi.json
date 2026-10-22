@@ -23854,7 +23854,7 @@
         ]
       },
       "put": {
-        "description": "Gives the job its own configuration (starting from what it inherited). Turning blind\nscreening off is the organisation's decision: it needs `admin.organization.manage`.",
+        "description": "Gives the job its own configuration (starting from what it inherited). Turning blind\nscreening off is the organisation's decision: it needs `admin.organization.manage`. Saving\nother settings while it is already off (the form sends the value back) is not turning it off.",
         "operationId": "update_job_screening_config",
         "parameters": [
           {
@@ -26847,7 +26847,7 @@
     },
     "/api/v1/questions/generate": {
       "post": {
-        "description": "Drafts questions with AI from the job, a candidate's work history, the skills, the level\nand a template (PRD §23). They're saved as drafts: none is used until a recruiter approves\nit. A job or candidate must be one the caller may read. The AI call happens outside any\ndatabase transaction, and a retry with the same `Idempotency-Key` costs nothing.",
+        "description": "Drafts questions with AI from the job, a candidate's work history, the skills, the level\nand a template (PRD §23). They're saved as drafts: none is used until a recruiter approves\nit. A job or candidate must be one the caller may read. The reads that build the prompt\nare done before the AI call. The call is made while the `Idempotency-Key` is claimed (one\nconnection is held for its duration), and the drafts are saved in that same transaction, so\nthey exist exactly when the key's answer does: a retry costs nothing and can't duplicate.",
         "operationId": "generate_questions",
         "parameters": [
           {
