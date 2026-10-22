@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from hirevion_core.access.actor import Actor
 from hirevion_core.access.errors import NotFound
 from hirevion_core.access.scope import ResourceScope
+from hirevion_core.dashboard import DashboardFilters, review_figures
 from hirevion_core.db.session import Database
 from hirevion_core.identity.permissions import permissions_for
 from hirevion_core.models import Interview, ScreeningResult
@@ -158,7 +159,8 @@ async def test_the_queue_lists_interviews_waiting_for_a_person_oldest_first(
         assert item.evaluated and item.overall_score is not None
         assert item.unreviewed_critical == 1  # the phone event hasn't been reviewed
         assert item.candidate.name == "Asha Rao" and item.hiring_status == "interview_completed"
-        assert await review.pending_count(session, EVERYTHING) == 1
+        counted = await review_figures(session, EVERYTHING, DashboardFilters(), alerts=False)
+        assert counted == {"pending_reviews": 1}  # the dashboard counts what the queue lists
         await review_event(
             session,
             Actor(recruiter, org, perms("recruiter")),

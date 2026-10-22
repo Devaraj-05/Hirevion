@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as jobsApi from "@/jobs/api";
 import { resetNavigation } from "@/test/navigation";
@@ -248,6 +249,42 @@ describe("RankingPanel", () => {
       expect(vi.mocked(api.listScreeningResults).mock.calls.length).toBeGreaterThan(before),
     );
     await waitFor(() => expect(screen.getByRole("button", { name: "Screen again" })).toBeEnabled());
+  });
+
+  it("stops polling the run while its tab is hidden, and goes on when it is shown again", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.screenJob).mockResolvedValue(2);
+    vi.mocked(api.getScreeningSummary).mockResolvedValue({
+      applications: 2,
+      screened: 1,
+      waiting: 1,
+      stages: { ranked: 1 },
+    });
+
+    function Tabs() {
+      const [active, setActive] = useState(true);
+      return (
+        <>
+          <button type="button" onClick={() => setActive((previous) => !previous)}>
+            toggle tab
+          </button>
+          <RankingPanel jobId="j-1" jobReference="JOB-0001" canManage pollMs={20} active={active} />
+        </>
+      );
+    }
+
+    renderAdmin(<Tabs />);
+    await user.click(await screen.findByRole("button", { name: "Screen again" }));
+    await waitFor(() => expect(api.screenJob).toHaveBeenCalledWith("j-1"));
+    await user.click(screen.getByRole("button", { name: "toggle tab" }));
+    await new Promise((resolve) => setTimeout(resolve, 60)); // a poll already under way ends
+    const hidden = vi.mocked(api.getScreeningSummary).mock.calls.length;
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    expect(vi.mocked(api.getScreeningSummary).mock.calls.length).toBe(hidden);
+    await user.click(screen.getByRole("button", { name: "toggle tab" }));
+    await waitFor(() =>
+      expect(vi.mocked(api.getScreeningSummary).mock.calls.length).toBeGreaterThan(hidden),
+    );
   });
 
   it("assigns a recruiter to the selected candidates", async () => {

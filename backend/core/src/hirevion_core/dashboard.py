@@ -16,6 +16,11 @@ opens, whichever the figure counts; *recruiter*, *team*, *job* and *department* 
 interview's, for an interview); *candidate status* is the application's hiring status; *interview
 status* is the interview's. A figure with no candidate or interview of its own counts a job or a
 person when they have one in that state, so no filter is ignored.
+
+Scope: jobs and candidates are counted over the jobs the reader reaches, including the ones
+they are the hiring manager of. Interviews are counted over the interviews the reader can open
+(the Interviews page's own scope, `interviews_statement`), so a figure never counts what the
+reader could not click through to.
 """
 
 from __future__ import annotations
@@ -32,6 +37,7 @@ from hirevion_core.access.scope import ResourceScope, job_scope_clause
 from hirevion_core.hiring.workflow import FINISHED
 from hirevion_core.interviews.assignment import InterviewFilters, interviews_statement
 from hirevion_core.models import Application, Interview, Job, ProctorEvent
+from hirevion_core.reports.review import AWAITING
 
 INTERVIEW_FIGURES: dict[str, tuple[str, ...]] = {
     "interviews_scheduled": ("scheduled", "invited"),
@@ -39,8 +45,6 @@ INTERVIEW_FIGURES: dict[str, tuple[str, ...]] = {
     "completed_interviews": ("completed", "evaluating", "evaluated"),
 }
 DECIDED = ("selected", "rejected")
-# Interviews that have ended and wait for a person to decide (see `reports.review`).
-AWAITING = ("interview_completed", "additional_review")
 ALERT_SEVERITIES = ("WARNING", "CRITICAL")
 
 

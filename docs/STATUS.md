@@ -41,6 +41,7 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 ## Found in testing (open)
 
 - [ ] D1: `livekit-local-inference` ships under the LiveKit Model License, which the licence gate accepts only as a recorded exception (`hirevion_devcli/licenses.py`). Have counsel read its terms before a commercial release.
+- [ ] D1: a hiring manager of a job outside their team sees the job and its candidates (`job_scope_clause`) but not its interviews (`interviews_statement` has no assigned-job reach), so the dashboard's interview figures, the Interviews page and the reports leave those out. Decide whether the "assigned jobs" rule extends to interviews and reports (A1/A5 access code).
 - [ ] D1 review, out of scope (A1/A5 code): the reviewers dialog lists disabled users; the interview page has no time-zone label; the evaluation re-run button can stick; the candidate page doesn't refresh after an action taken elsewhere; the assign dialog shows raw window codes.
 - [ ] B3: the desktop e2e once failed at the system check with "Camera: not available" when run right after the desktop job in `scripts/ci-local.sh`; it passed alone and on the next full run. Watch for it; if it recurs, find what holds the camera.
 - [ ] D3: not yet tried on real phones (iOS Safari 16.4+, Android Chrome; the owner's check, runbook "Third eye") or with the real Egress container (its image is about 1 GB; tests used the adapter's fake). Run both before CP3.

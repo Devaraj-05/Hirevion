@@ -159,15 +159,20 @@ async def update_job_screening_config(
     job_id: UUID, body: ScreeningConfigUpdate, request: Request, principal: ManagesJobs
 ) -> ScreeningConfigResponse:
     """Gives the job its own configuration (starting from what it inherited). Turning blind
-    screening off is the organisation's decision: it needs `admin.organization.manage`."""
-    if body.blind is False and "admin.organization.manage" not in principal.permissions:
-        raise ProblemError(
-            403,
-            "blind-screening-locked",
-            "Only an organisation administrator can turn blind screening off",
-        )
+    screening off is the organisation's decision: it needs `admin.organization.manage`. Saving
+    other settings while it is already off (the form sends the value back) is not turning it off."""
     async with own_tenant(request, principal) as session:
         await _job_in_scope(session, principal, job_id)
+        if (
+            body.blind is False
+            and "admin.organization.manage" not in principal.permissions
+            and (await config.effective(session, job_id)).blind
+        ):
+            raise ProblemError(
+                403,
+                "blind-screening-locked",
+                "Only an organisation administrator can turn blind screening off",
+            )
         saved = await config.save(session, principal.actor(request), job_id, **_changes(body))
         return _config(saved)
 

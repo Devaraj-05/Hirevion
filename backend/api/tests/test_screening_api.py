@@ -126,6 +126,23 @@ async def test_configuration_inherits_and_validates(
     assert (await recruiter.get(f"/api/v1/jobs/{job_id}/screening-config")).json()["blind"] is False
 
 
+async def test_a_recruiter_can_save_weights_while_blind_is_already_off(
+    recruiter: AsyncClient, signed_in, acme: UUID, make_user
+) -> None:
+    """The lock is on turning blind screening off, not on resending that it is off."""
+    job_id = (await recruiter.post("/api/v1/jobs", json={"title": "Engineer"})).json()["id"]
+    admin = await signed_in(acme, await make_user(acme, roles=["org_admin"]))
+    assert (await admin.put("/api/v1/screening-config", json={"blind": False})).status_code == 200
+    current = (await recruiter.get(f"/api/v1/jobs/{job_id}/screening-config")).json()
+    assert current["blind"] is False
+    weights = {**current["weights"], "required_skills": 30, "experience": 30}
+    saved = await recruiter.put(
+        f"/api/v1/jobs/{job_id}/screening-config", json={"weights": weights, "blind": False}
+    )
+    assert saved.status_code == 200, saved.text
+    assert (saved.json()["blind"], saved.json()["weights"]["required_skills"]) == (False, 30)
+
+
 async def test_results_are_ranked_and_explained(
     recruiter: AsyncClient, app_db: Database, acme: UUID
 ) -> None:

@@ -85,6 +85,18 @@ describe("ResumesPanel", () => {
     expect(vi.mocked(candidatesApi.listResumes).mock.calls.length).toBe(calls);
   });
 
+  it("does not poll while its tab is hidden", async () => {
+    vi.mocked(candidatesApi.listResumes).mockResolvedValue({
+      items: [resume({ status: "parsing", candidate: null })],
+      next_cursor: null,
+    });
+    renderAdmin(<ResumesPanel jobId="j-1" canUpload pollMs={20} active={false} />);
+
+    expect(await screen.findByText("Reading the resume")).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    expect(vi.mocked(candidatesApi.listResumes)).toHaveBeenCalledTimes(1);
+  });
+
   it("offers Retry for a failed resume and shows flags", async () => {
     const user = userEvent.setup();
     vi.mocked(candidatesApi.listResumes).mockResolvedValue({

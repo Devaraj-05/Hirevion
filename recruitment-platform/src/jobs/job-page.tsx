@@ -59,6 +59,8 @@ export function JobPage({
   // A tab is mounted when first opened and kept, so what is half-typed in one survives a look
   // at another.
   const [opened, setOpened] = useState<ReadonlySet<string>>(new Set(["details"]));
+  // The tab being shown: the panels kept mounted behind it stop polling.
+  const [shown, setShown] = useState("details");
 
   const move = useMutation({
     mutationFn: (status: JobStatus) => setJobStatus(id, status),
@@ -169,7 +171,10 @@ export function JobPage({
       ) : null}
       <Tabs
         defaultValue="details"
-        onValueChange={(value) => setOpened((previous) => new Set(previous).add(value))}
+        onValueChange={(value) => {
+          setShown(value);
+          setOpened((previous) => new Set(previous).add(value));
+        }}
       >
         <TabsList label={current.title} className="flex-wrap">
           <TabsTrigger value="details">{t("page.tabs.details")}</TabsTrigger>
@@ -188,12 +193,16 @@ export function JobPage({
           <JobForm key={current.version} job={current} readOnly={!canEdit} />
         </TabsContent>
         <TabsContent value="description" {...keep("description")}>
-          <DescriptionPanel job={current} canEdit={canEdit} />
+          <DescriptionPanel job={current} canEdit={canEdit} active={shown === "description"} />
         </TabsContent>
         {canViewCandidates ? (
           <>
             <TabsContent value="resumes" {...keep("resumes")}>
-              <ResumesPanel jobId={id} canUpload={canManageCandidates} />
+              <ResumesPanel
+                jobId={id}
+                canUpload={canManageCandidates}
+                active={shown === "resumes"}
+              />
             </TabsContent>
             <TabsContent value="candidates" {...keep("candidates")}>
               <ApplicationsPanel jobId={id} />
@@ -205,6 +214,7 @@ export function JobPage({
                 jobId={id}
                 jobReference={current.reference}
                 canManage={canManageCandidates}
+                active={shown === "ranking"}
               />
             </TabsContent>
           </>

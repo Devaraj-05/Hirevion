@@ -258,8 +258,10 @@ async def generate_questions(
 ) -> GenerateResponse:
     """Drafts questions with AI from the job, a candidate's work history, the skills, the level
     and a template (PRD §23). They're saved as drafts: none is used until a recruiter approves
-    it. A job or candidate must be one the caller may read. The AI call happens outside any
-    database transaction, and a retry with the same `Idempotency-Key` costs nothing."""
+    it. A job or candidate must be one the caller may read. The reads that build the prompt
+    are done before the AI call. The call is made while the `Idempotency-Key` is claimed (one
+    connection is held for its duration), and the drafts are saved in that same transaction, so
+    they exist exactly when the key's answer does: a retry costs nothing and can't duplicate."""
     ai = _ai(request)
     actor = principal.actor(request)
     async with own_tenant(request, principal) as session:
@@ -285,16 +287,17 @@ async def generate_questions(
         message, existing = await generation.gather(session, ask)
     refs = generation.refs_of(ask)
 
-    async def generate() -> GenerateResponse:
-        try:
-            generated, model = await generation.ask(
-                ai.llm, principal.organization_id, message, refs=refs
-            )
-        except AiError as error:
-            raise _ai_failed(error) from error
-        async with own_tenant(request, principal) as saving:
+    async with own_tenant(request, principal) as keeping:
+
+        async def generate() -> GenerateResponse:
+            try:
+                generated, model = await generation.ask(
+                    ai.llm, principal.organization_id, message, refs=refs
+                )
+            except AiError as error:
+                raise _ai_failed(error) from error
             result = await generation.save_drafts(
-                saving,
+                keeping,
                 actor,
                 generated,
                 existing,
@@ -309,7 +312,6 @@ async def generate_questions(
                 model=result.model,
             )
 
-    async with own_tenant(request, principal) as keeping:
         return await idem.run(
             keeping, principal.organization_id, idempotency_scope(principal), generate
         )

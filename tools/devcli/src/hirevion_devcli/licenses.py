@@ -97,7 +97,7 @@ EXCEPTIONS = {
 OWN_PREFIXES = ("hirevion-", "@hirevion/")
 
 _OR = re.compile(r"\s+OR\s+")
-_AND = re.compile(r"\s+AND\s+|;|,")
+_AND = re.compile(r"\s+AND\s+|;")
 
 
 def _unwrap(text: str) -> str:
@@ -114,11 +114,16 @@ def _name(text: str) -> str:
 
 
 def _all_allowed(text: str) -> bool:
-    """Every licence in an "A AND B" (or "A; B") list is allowed."""
+    """Every licence in an "A AND B" (or "A; B") list is allowed. A name with a comma in it
+    ("Apache License, Version 2.0") is read whole first; only then is a comma a separator."""
     parts = [part for part in _AND.split(text) if part.strip()]
     if not parts:
         return False
-    return all(_name(part) in ALLOWED for part in parts)
+    return all(
+        _name(part) in ALLOWED
+        or all(_name(piece) in ALLOWED for piece in part.split(",") if piece.strip())
+        for part in parts
+    )
 
 
 def allowed(text: str) -> bool:

@@ -34,12 +34,16 @@ AI_FACTORS = ("roles", "projects", "domain", "education", "location")
 # Words about who a person is, not what they can do (PRD §3.2(1)). A comment containing one is
 # not shown.
 _PROTECTED = re.compile(
-    r"\b(?:male|female|man|woman|men|women|boy|girl|gender|sex|young|younger|youth|elderly|"
-    r"old(?:er)?\s+(?:candidate|applicant|person|worker)|age[ds]?|\d+\s*(?:years?|yrs?)\s+old|"
-    r"married|unmarried|marital|marriage|pregnan\w*|maternity|wife|husband|spouse|children|kids|"
+    r"\b(?:male|female|woman|women|boy|girl|gender|sex|young|younger|youth|elderly|"
+    r"man(?!-)|men(?!-)|old(?:er)?\s+(?:candidate|applicant|person|worker)|"
+    r"(?:too|rather|fairly|quite)\s+old|(?:his|her|their|candidate'?s)\s+age|"
+    r"age\s*:|ages?d?\s+\d+|\d+\s*(?:years?|yrs?)\s+old|"
+    r"married|unmarried|marital|marriage|pregnan\w*|maternity|wife|husband|spouse|"
+    r"(?:has|have|having|her|his|their|two|three|young|small)\s+(?:\w+\s+)?(?:children|kids)|"
     r"famil(?:y|ies)\s+(?:commitments?|responsibilit\w+)|religio\w*|hindu|muslim|christian|sikh|"
     r"jain|buddhist|caste|dalit|obc|nationality|ethnic\w*|disabilit\w*|"
-    r"handicap\w*|health\s+(?:condition|issue)s?|accent)\b",
+    r"handicap\w*|health\s+(?:condition|issue)s?|"
+    r"accent(?!-|\s+(?:insensitive|sensitive|folding|marks?|normali)))\b",
     re.IGNORECASE,
 )
 _PROMPT = (files("hirevion_core.screening") / "prompts" / f"{PROMPT_VERSION}.md").read_text(

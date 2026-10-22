@@ -17,6 +17,7 @@ from typing import Annotated
 import segno
 import typer
 from rich.console import Console
+from rich.markup import escape
 from rich.table import Table
 
 from hirevion_core.db.migrate import migrate as migrate_database
@@ -380,7 +381,8 @@ def licenses_command(
     if javascript or not python:
         problems += [f"js: {item}" for item in licenses.run_javascript(root)]
     for problem in problems:
-        console.print(f"[red]FAIL[/red] {problem}", markup=True, highlight=False)
+        # (a licence text may hold square brackets, which are not markup)
+        console.print(f"[red]FAIL[/red] {escape(problem)}", highlight=False)
     console.print(f"{len(problems)} dependency licence problem(s).")
     if problems:
         raise typer.Exit(code=1)

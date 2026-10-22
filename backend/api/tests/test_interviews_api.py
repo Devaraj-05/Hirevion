@@ -185,6 +185,42 @@ async def test_a_retried_generation_is_not_charged_or_saved_twice(
     assert len(drafts["items"]) == 1
 
 
+async def test_the_drafts_and_the_idempotency_record_are_saved_together(
+    api: FastAPI, app_db: Database, recruiter: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """If the key's record can't be saved, no drafts exist either, so the retry makes one set."""
+    from hirevion_api import idempotency
+    from hirevion_api.problems import ProblemError
+
+    ai = build_ai(AiSettings(profile="mock"), app_db)
+    assert isinstance(ai.llm, MockLLM)
+    ai.llm.scripted["questions.generate"] = lambda messages: {
+        "questions": [question("How would you profile a slow FastAPI endpoint?")]
+    }
+    api.state.ai = ai
+    real = idempotency.remember
+    failures = [True]
+
+    async def flaky(*args: Any, **kwargs: Any) -> None:
+        if failures:
+            failures.pop()
+            raise ProblemError(503, "unavailable", "The database dropped the connection")
+        await real(*args, **kwargs)
+
+    monkeypatch.setattr(idempotency, "remember", flaky)
+    headers = {"Idempotency-Key": "generate-flaky-0001"}
+    body = {"skills": ["Python"], "count": 1}
+    first = await recruiter.post("/api/v1/questions/generate", json=body, headers=headers)
+    assert first.status_code == 503
+    assert (await recruiter.get("/api/v1/questions", params={"status": "draft"})).json()[
+        "items"
+    ] == []
+    retried = await recruiter.post("/api/v1/questions/generate", json=body, headers=headers)
+    assert retried.status_code == 200, retried.text
+    drafts = (await recruiter.get("/api/v1/questions", params={"status": "draft"})).json()
+    assert len(drafts["items"]) == 1
+
+
 async def test_a_draft_is_made_only_from_what_the_caller_may_read(
     api: FastAPI,
     app_db: Database,

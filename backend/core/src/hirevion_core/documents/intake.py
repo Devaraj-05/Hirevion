@@ -3,6 +3,7 @@ outbox event for the `documents` consumer, in the request's transaction (ADR-001
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
 from typing import Protocol
@@ -135,7 +136,7 @@ async def submit_jd_file(
 ) -> Document:
     job = await _job(session, job_id)
     try:
-        kind = check(data, set(JD_TYPES))
+        kind = await asyncio.to_thread(check, data, set(JD_TYPES))
     except DocumentRejected as error:
         raise Invalid(
             error.code, _REJECTIONS.get(error.code, "Unsupported file"), field="file"
@@ -190,7 +191,9 @@ async def submit_resume_file(
     leaves queueing to the caller (the evaluation runs the pipeline itself)."""
     job = await _job(session, job_id)
     try:
-        kind = check(data, set(RESUME_TYPES | {"zip"}), max_bytes=MAX_ARCHIVE_BYTES)
+        kind = await asyncio.to_thread(
+            check, data, set(RESUME_TYPES | {"zip"}), max_bytes=MAX_ARCHIVE_BYTES
+        )
         if kind != "zip" and len(data) > MAX_BYTES:
             raise DocumentRejected("too-large")
     except DocumentRejected as error:

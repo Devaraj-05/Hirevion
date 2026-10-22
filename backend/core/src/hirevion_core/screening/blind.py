@@ -67,17 +67,21 @@ _STATED = re.compile(
     r"|^\W*(?:male|female|transgender|non[\s-]binary|married|unmarried)\W*$",
     re.IGNORECASE,
 )
+# A street word with a PIN code at the end of the same line is an address. A six-digit number
+# in the middle of a line ("processed 250000 records a day") is work, and so is "cross-functional".
 _STREET = re.compile(
     r"\b(?:road|rd\.?|street|st\.|nagar|colony|layout|apartments?|apt\.?|flat|sector|lane|cross|"
-    r"marg|house\s+no|h\.?\s?no\.?|block|phase|plot)\b.*\b[1-9]\d{2}\s?\d{3}\b"
+    r"marg|house\s+no|h\.?\s?no\.?|block|phase|plot)\b(?!-).*\b[1-9]\d{2}\s?\d{3}\b(?:\W*india)?\W*$"
     r"|\bpin(?:\s*code)?\b\W*[1-9]\d{2}\s?\d{3}\b",
     re.IGNORECASE,
 )
+# A handle is a segment of its own ("Twitter: @jdoe", "mail | @jdoe"); "@Transactional" inside a
+# sentence is a Java annotation.
 _LINK = re.compile(
     r"https?://|www\.|linkedin\.com|github\.com|gitlab\.com|\.com/"
     r"|(?:^|[|,;\u2022\u00b7])\s*(?:linkedin|github|gitlab|twitter|facebook|instagram|behance|dribbble|"
     r"medium|portfolio|website|blog|leetcode|hackerrank|kaggle|stack\s*overflow)\b\s*[:\-/]"
-    r"|(?<![\w@])@[A-Za-z0-9_.]{3,}"
+    r"|(?:^|[|,;•·:])\s*@[A-Za-z0-9_.]{3,}\s*(?:[|,;•·]|$)"
     r"|\b[a-z0-9-]{3,}\.(?:dev|me|xyz|co\.in)\b"
     r"|^\W*[a-z0-9-]+\.(?:com|in|io|net|org)(?:/\S*)?\W*$",
     re.IGNORECASE,

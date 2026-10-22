@@ -313,6 +313,31 @@ async def test_the_blind_resume_has_no_name_even_when_the_parser_found_none(
     assert "Built a payments gateway" in recorder.sent[0]
 
 
+@pytest.mark.parametrize(
+    ("name", "filename"), [("Resume", "Resume.pdf"), ("Unnamed candidate", None)]
+)
+async def test_a_name_made_from_the_file_name_is_not_taken_for_the_candidate(
+    app_db: Database,
+    acme: Actor,
+    ai: AiServices,
+    recorder: Recorder,
+    name: str,
+    filename: str | None,
+) -> None:
+    """A resume with no name is filed under its file's name ("Resume"): the words of that are
+    not the candidate's and the lines that use them stay."""
+    text_ = RESUME + "- Built a candidate matching service and a resume parser\n"
+    _, application = await new_application(app_db, acme, text_=text_)
+    async with app_db.tenant(acme.organization_id) as session:
+        candidate = await session.get_one(Candidate, application.candidate_id)
+        candidate.profile = {**candidate.profile, "name": None}
+        candidate.name = name
+        for document in (await session.scalars(select(Document))).all():
+            document.filename = filename
+    await screen_application(app_db, ai, acme.organization_id, application.id)
+    assert "Built a candidate matching service and a resume parser" in recorder.sent[0]
+
+
 async def test_equal_scores_are_ranked_in_a_fixed_order(
     app_db: Database, acme: Actor, ai: AiServices
 ) -> None:

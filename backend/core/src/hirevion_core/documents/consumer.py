@@ -33,10 +33,12 @@ _DONE_TTL_SECONDS = 7 * 86_400
 # A claim on an event ends before a lost consumer's message is claimed again (`retry_idle_ms`), so
 # a crash never makes an event look handled.
 _CLAIM_SHARE = 0.9
-# Reading a document can take minutes (up to 50 scanned pages, one paid OCR call each), so the
-# documents consumer waits this long before it takes an event from a consumer that went quiet:
-# at the default minute, a slow document was started a second time while the first was working.
-DOCUMENT_RETRY_IDLE_MS = 10 * 60_000
+# Reading a document can take minutes (up to 50 scanned pages, one paid OCR call each), and one
+# AI call with its retries can take longer than the default minute. The consumers of such work
+# (documents, screening, evaluation) wait this long before they take an event from a consumer that
+# went quiet: at the default minute, a slow one was started a second time while the first was
+# working, and its claim (90% of this) had run out.
+SLOW_RETRY_IDLE_MS = 10 * 60_000
 _BATCH = 10
 
 Handler = Callable[[UUID, dict[str, Any]], Awaitable[None]]

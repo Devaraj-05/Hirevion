@@ -412,7 +412,7 @@ How it works is in [ADR-0020](../architecture/adr/0020-interviews-and-invitation
 - **The dashboard** shows the ten PRD section 10 figures under its seven filters (date range, recruiter, team, job, department, interview status, candidate status):
   - Open jobs; active candidates (people with an application still undecided); candidates screened; candidates shortlisted; applications in the hiring pipeline.
   - Interviews scheduled, live and completed; pending reviews (finished interviews waiting for a decision); proctoring alerts (warnings and critical events nobody has reviewed yet).
-  - The date range applies to the date of the thing counted (job created, application created, interview window start). A figure the signed-in user may not read shows "no data yet"; a hiring manager's counts cover only the jobs assigned to them.
+  - The date range applies to the date of the thing counted (job created, application created, interview window start). A figure the signed-in user may not read shows "no data yet". The job and candidate figures cover the jobs the user reaches, including those they are hiring manager of; the interview figures cover the interviews they can open (the Interviews page's scope).
   - If the figures fail to load the page says so, with a retry, instead of showing zeros.
 - **Permissions:** `interviews.view` reads (interviewers see only interviews they review); `interviews.manage` changes.
 

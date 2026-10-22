@@ -70,6 +70,17 @@ describe("DescriptionPanel", () => {
     expect(vi.mocked(api.getDescription).mock.calls.length).toBe(calls);
   });
 
+  it("does not poll while its tab is hidden", async () => {
+    vi.mocked(api.getDescription).mockResolvedValue(
+      description({ status: "scanning", extraction: null }),
+    );
+    renderAdmin(<DescriptionPanel job={job()} canEdit pollMs={20} active={false} />);
+
+    expect(await screen.findByText("Checking for viruses")).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    expect(vi.mocked(api.getDescription)).toHaveBeenCalledTimes(1);
+  });
+
   it("shows where each skill was found, and what was left out", async () => {
     vi.mocked(api.getDescription).mockResolvedValue(description());
     renderAdmin(<DescriptionPanel job={job()} canEdit />);

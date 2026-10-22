@@ -25,6 +25,8 @@ from hirevion_devcli.licenses import (
         "Apache Software License",
         "Apache 2.0 License",
         "Apache License 2.0",
+        "Apache License, Version 2.0",
+        "Apache License, Version 2.0; MIT License",
         "BSD-3-Clause",
         "BSD License",
         "3-Clause BSD License",

@@ -67,10 +67,13 @@ export function DescriptionPanel({
   job,
   canEdit,
   pollMs = POLL_MS,
+  active = true,
 }: {
   job: Job;
   canEdit: boolean;
   pollMs?: number;
+  /** False while the panel is kept mounted behind another tab: it doesn't poll then. */
+  active?: boolean;
 }) {
   const t = useTranslations("jobs.description");
   const [replacing, setReplacing] = useState(false);
@@ -79,7 +82,7 @@ export function DescriptionPanel({
     queryFn: () => getDescription(job.id),
     refetchInterval: (query) => {
       const data = query.state.data;
-      return data && !FINAL.has(data.status) ? pollMs : false;
+      return active && data && !FINAL.has(data.status) ? pollMs : false;
     },
   });
 

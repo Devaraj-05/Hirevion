@@ -154,3 +154,30 @@ async def test_a_skill_with_a_one_letter_or_unrelated_quote_is_not_kept(
     parsed = await process(app_db, services, blobs, acme, "Asha Rao\nSkills\nPython, Go, Rust\n")
     assert [skill["name"] for skill in (parsed.extraction or {})["skills"]] == ["py"]
     assert (parsed.extraction or {})["dropped"] == 2
+
+
+async def test_an_upload_is_inspected_off_the_event_loop(
+    app_db: Database, blobs: MemoryBlobs, acme: Actor, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Inflating a PDF's streams to look for a bomb takes seconds on a bad file; it must not
+    stop the other requests meanwhile."""
+    import threading
+
+    real = intake.check
+    threads: list[str] = []
+
+    def spy(*args: Any, **kwargs: Any) -> Any:
+        threads.append(threading.current_thread().name)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(intake, "check", spy)
+    async with app_db.tenant(acme.organization_id) as session:
+        job: Job = await jobs.create_job(session, acme, JobChanges(title="Engineer"))
+        await intake.submit_resume_file(
+            session, acme, job.id, b"Asha Rao\nPython\n", "cv.txt", blobs
+        )
+        await intake.submit_jd_file(
+            session, acme, job.id, b"Backend engineer\nPython\n", "jd.txt", blobs
+        )
+    assert len(threads) == 2
+    assert threading.main_thread().name not in threads

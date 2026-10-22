@@ -41,6 +41,8 @@ def blind(lines: str, profile: dict[str, Any] | None = None, extra: Sequence[str
         "Married",
         "Date of Birth: 14/03/1996",
         "12, MG Road, Koramangala, Bangalore 560034",
+        "Flat 4B, Green Heights, HSR Layout, Bengaluru - 560102, India",
+        "Plot 12, Sector 5, Noida 201301.",
         "Permanent Address: 4 Gandhi Nagar, Chennai",
         "Pin Code: 600020",
         "Portfolio: rahuldev.dev",
@@ -83,13 +85,19 @@ def test_the_personal_details_block_ends_at_its_blank_line_not_at_a_heading_it_k
 def test_work_that_mentions_these_words_is_kept() -> None:
     shown = blind(
         "Projects\nGender bias detector for hiring data\nPan-India rollout of the payments app\n"
-        "Passport verification service (OCR)\nBuilt on Socket.IO and ASP.NET"
+        "Passport verification service (OCR)\nBuilt on Socket.IO and ASP.NET\n"
+        "Led a cross-functional team serving 250000 users\n"
+        "Cut the block size and processed 250000 records a day\n"
+        "Used Spring @Transactional and @Cacheable with Lombok @Data"
     )
     for kept in (
         "Gender bias detector",
         "Pan-India rollout",
         "Passport verification service",
         "Socket.IO and ASP.NET",
+        "cross-functional team serving 250000 users",
+        "processed 250000 records a day",
+        "@Transactional and @Cacheable",
     ):
         assert kept in shown
 
@@ -185,3 +193,35 @@ async def test_comments_about_a_persons_traits_are_dropped_and_engineering_words
         "Fixed a race condition in the payments queue",
         "Mentored five engineers",
     ]
+
+
+@pytest.mark.parametrize(
+    "comment",
+    [
+        "Built React components that render children props",
+        "Mitigated man-in-the-middle attacks on the payments gateway",
+        "Modernised aged legacy systems",
+        "Added accent-insensitive search",
+        "Built age verification for the checkout",
+    ],
+)
+async def test_engineering_words_that_look_like_traits_are_kept(comment: str) -> None:
+    llm = Fake(reply(strengths=[comment]))
+    result = await assess(llm, UUID(int=1), "Job", "Built APIs", application_id=UUID(int=2))
+    assert result.strengths == [comment]
+
+
+@pytest.mark.parametrize(
+    "comment",
+    [
+        "Her age might be an issue",
+        "Aged 45, so may be slow to learn",
+        "Has two young children at home",
+        "Strong accent, hard to follow",
+        "Probably too old for this team",
+    ],
+)
+async def test_comments_about_age_family_and_accent_are_dropped(comment: str) -> None:
+    llm = Fake(reply(strengths=[comment]))
+    result = await assess(llm, UUID(int=1), "Job", "Built APIs", application_id=UUID(int=2))
+    assert result.strengths == []

@@ -9,6 +9,7 @@ import hashlib
 import json
 import math
 from collections.abc import Sequence
+from pathlib import PurePath
 from typing import Any
 from uuid import UUID
 
@@ -227,6 +228,17 @@ async def record_stage(
         await sync_from_stage(session, application, actor_id=actor_id, reason=reason)
 
 
+def _own_names(candidate: Candidate, document: Document | None) -> list[str]:
+    """The candidate's name as the record holds it, unless the record only holds a stand-in
+    made from the resume's file name ("Resume", "CV") or "Unnamed candidate": those are not who
+    the resume is about, and their words would take working lines out of it."""
+    name = candidate.name.strip()
+    stem = PurePath(document.filename or "").stem if document is not None else ""
+    if not name or name == "Unnamed candidate" or name == stem:
+        return []
+    return [name]
+
+
 async def screen_application(
     db: Database, ai: AiServices, organization_id: UUID, application_id: UUID
 ) -> ScreeningResult | None:
@@ -267,7 +279,7 @@ async def screen_application(
         )
         text = (document.text if document else None) or ""
         resume = (
-            blind_text(text, candidate.profile, extra_names=[candidate.name])
+            blind_text(text, candidate.profile, extra_names=_own_names(candidate, document))
             if settings.blind
             else text
         )

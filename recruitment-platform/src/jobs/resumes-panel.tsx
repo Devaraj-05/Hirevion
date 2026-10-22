@@ -57,10 +57,13 @@ export function ResumesPanel({
   jobId,
   canUpload,
   pollMs = POLL_MS,
+  active = true,
 }: {
   jobId: string;
   canUpload: boolean;
   pollMs?: number;
+  /** False while the panel is kept mounted behind another tab: it doesn't poll then. */
+  active?: boolean;
 }) {
   const t = useTranslations("jobs.resumes");
   const errors = useTranslations("jobs.description.errors");
@@ -77,6 +80,7 @@ export function ResumesPanel({
     queryFn: ({ pageParam }) => listResumes(jobId, { limit: LIST_SIZE, cursor: pageParam }),
     getNextPageParam: (last) => last.next_cursor,
     refetchInterval: (query) =>
+      active &&
       query.state.data?.pages.some((page) => page.items.some((item) => !FINAL.has(item.status)))
         ? pollMs
         : false,

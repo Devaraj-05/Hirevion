@@ -88,6 +88,7 @@ export function RankingPanel({
   canCreateInterviews = false,
   interviewTemplateId = null,
   pollMs = POLL_MS,
+  active = true,
 }: {
   jobId: string;
   jobReference: string;
@@ -96,6 +97,8 @@ export function RankingPanel({
   canCreateInterviews?: boolean;
   interviewTemplateId?: string | null;
   pollMs?: number;
+  /** False while the panel is kept mounted behind another tab: it doesn't poll then. */
+  active?: boolean;
 }) {
   const t = useTranslations("screening");
   const stages = useTranslations("candidates.stages");
@@ -116,7 +119,7 @@ export function RankingPanel({
   const summary = useQuery({
     queryKey: keys.summary(jobId),
     queryFn: () => getScreeningSummary(jobId),
-    refetchInterval: running ? pollMs : false,
+    refetchInterval: running && active ? pollMs : false,
   });
   const waiting = summary.data?.waiting;
   const updatedAt = summary.dataUpdatedAt;

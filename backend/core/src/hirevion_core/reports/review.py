@@ -196,19 +196,6 @@ async def pending_reviews(
     )
 
 
-async def pending_count(
-    session: AsyncSession, scope: ResourceScope, *, reviewer_only: UUID | None = None
-) -> int:
-    base = (
-        interviews_statement(scope, InterviewFilters(), reviewer_only=reviewer_only)
-        .join(Application, Application.id == Interview.application_id)
-        .where(Interview.status.in_(FINISHED), Application.hiring_status.in_(AWAITING))
-    )
-    return int(
-        await session.scalar(select(func.count()).select_from(base.order_by(None).subquery())) or 0
-    )
-
-
 @dataclass(frozen=True, slots=True)
 class Card:
     application_id: UUID
@@ -307,7 +294,6 @@ __all__ = [
     "Column",
     "MediaTrack",
     "PendingReview",
-    "pending_count",
     "pending_reviews",
     "pipeline",
     "review_media",

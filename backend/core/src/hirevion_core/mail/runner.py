@@ -19,7 +19,7 @@ from hirevion_core.ai import build_ai
 from hirevion_core.ai.settings import load_ai_settings
 from hirevion_core.db.session import create_database
 from hirevion_core.documents.consumer import (
-    DOCUMENT_RETRY_IDLE_MS,
+    SLOW_RETRY_IDLE_MS,
     DocumentConsumer,
     StreamConsumer,
 )
@@ -132,7 +132,7 @@ async def run_workers(
                 redis,
                 partial(handle_event, services),
                 on_give_up=partial(give_up, services),
-                retry_idle_ms=DOCUMENT_RETRY_IDLE_MS,
+                retry_idle_ms=SLOW_RETRY_IDLE_MS,
             )
             workers.append(consumer.run_forever(stop))
             screening = StreamConsumer(
@@ -140,6 +140,7 @@ async def run_workers(
                 partial(handle_screening_event, app_db, services.ai),
                 topic=SCREENING_TOPIC,
                 on_give_up=partial(give_up_screening, app_db),
+                retry_idle_ms=SLOW_RETRY_IDLE_MS,
             )
             workers.append(screening.run_forever(stop))
             # Evaluations of completed interviews (SP-10).
@@ -148,6 +149,7 @@ async def run_workers(
                 partial(handle_evaluation_event, app_db, services.ai),
                 topic=EVALUATION_TOPIC,
                 on_give_up=partial(give_up_evaluation, app_db),
+                retry_idle_ms=SLOW_RETRY_IDLE_MS,
             )
             workers.append(evaluation.run_forever(stop))
         await asyncio.gather(*workers)
