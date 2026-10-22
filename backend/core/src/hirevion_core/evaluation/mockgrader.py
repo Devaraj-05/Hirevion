@@ -195,3 +195,209 @@ def grade_synthesis(system: str, request: Mapping[str, Any]) -> dict[str, Any]:
             "quotes": first_quote(best) if best else [],
         },
     }
+
+
+# The coding question (SP-16, ADR-0033): the code is read from its shape, never run.
+
+CODING_CRITERIA = (
+    "correctness",
+    "approach",
+    "edge_cases",
+    "time_complexity",
+    "space_complexity",
+    "code_quality",
+    "readability",
+)
+_CODE_COMMENT = re.compile(r"^\s*(#|//|--|/\*|\*)")
+_CODE_DEF = re.compile(
+    r"^\s*(async\s+)?(def|function|class)\s|^\s*(export\s+)?(const|let)\s+\w+\s*=\s*"
+    r"(async\s*)?\(|^\s*export\s+(async\s+)?function\s|^\s*(SELECT|WITH)\b",
+    re.IGNORECASE,
+)
+_CODE_RETURN = re.compile(r"\breturn\b|^\s*SELECT\b", re.IGNORECASE)
+_CODE_LOOP = re.compile(
+    r"^\s*(for|while)\b|\bfor\s*\(|\.(forEach|map|filter|reduce)\(|\bFROM\b", re.IGNORECASE
+)
+_CODE_HASH = re.compile(
+    r"=\s*\{\s*\}|\bdict\(|\bset\(|\bnew\s+(Map|Set)\b|\b(Map|Set)<|\bCounter\(|defaultdict|"
+    r"\.has\(|\bin\s+seen\b|\bGROUP\s+BY\b|\bJOIN\b",
+    re.IGNORECASE,
+)
+_CODE_EDGE = re.compile(
+    r"\bif\s+not\b|\bis\s+None\b|===?\s*(null|undefined)\b|\.length\s*(===?|<=?)\s*[012]\b|"
+    r"\blen\([^)]*\)\s*(==|<=?)\s*[012]\b|\braise\b|\bthrow\b|\bCOALESCE\b|\bIS\s+NULL\b|"
+    r"\bHAVING\b",
+    re.IGNORECASE,
+)
+_CODE_UNSAFE = re.compile(r"\beval\(|\bexec\(|^\s*except\s*:|catch\s*\(\w*\)\s*\{\s*\}")
+_CODE_NAME = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*\b")
+_CODE_KEYWORDS = frozenset(
+    [
+        "def",
+        "return",
+        "if",
+        "not",
+        "or",
+        "and",
+        "in",
+        "for",
+        "while",
+        "is",
+        "none",
+        "true",
+        "false",
+        "else",
+        "elif",
+        "import",
+        "from",
+        "class",
+        "function",
+        "const",
+        "let",
+        "var",
+        "new",
+        "async",
+        "await",
+        "export",
+        "null",
+        "undefined",
+        "this",
+        "of",
+        "typeof",
+        "select",
+        "where",
+        "group",
+        "by",
+        "order",
+        "having",
+        "join",
+        "on",
+        "as",
+        "count",
+        "sum",
+        "min",
+        "max",
+        "desc",
+        "asc",
+        "limit",
+        "with",
+    ]
+)
+_LOOP_NAMES = frozenset("ijknxy_")
+
+
+def _indent(line: str) -> int:
+    return len(line) - len(line.lstrip())
+
+
+def _code_quotes(
+    lines: Sequence[str], test: Any, fallback: Sequence[str], verbatim: bool
+) -> list[str]:
+    chosen = [line.strip() for line in lines if test(line)][:2]
+    chosen = chosen or [line.strip() for line in fallback[:1]]
+    return [_quote(line, verbatim) for line in chosen]
+
+
+def _code_units(own: Sequence[str], code: Sequence[str]) -> tuple[dict[str, float], dict[str, Any]]:
+    """Each criterion's grade from 0 to 1, and what the code was seen to do."""
+    comments = len(own) - len(code)
+    entry = any(_CODE_DEF.search(line) for line in code)
+    returns = any(_CODE_RETURN.search(line) for line in code)
+    loops = [line for line in code if _CODE_LOOP.search(line)]
+    nested = any(
+        _indent(later) > _indent(first)
+        for index, first in enumerate(loops)
+        for later in loops[index + 1 :]
+    )
+    hashed = any(_CODE_HASH.search(line) for line in code)
+    edges = sum(len(_CODE_EDGE.findall(line)) for line in code)
+    iterates = bool(loops)
+    names = [
+        name
+        for line in code
+        for name in _CODE_NAME.findall(line)
+        if name.lower() not in _CODE_KEYWORDS and name not in _LOOP_NAMES
+    ]
+    good_names = bool(names) and sum(len(n) >= 3 for n in names) / len(names) >= 0.6
+    tidy = all(len(line) <= 100 for line in code)
+    unsafe = any(_CODE_UNSAFE.search(line) for line in code)
+    # Code that never touches the input isn't an attempt, however tidy it looks.
+    attempt = 1.0 if iterates or hashed else 0.6
+    units = {
+        "correctness": 0.15 * entry
+        + 0.15 * returns
+        + 0.35 * iterates
+        + 0.2 * (hashed or nested)
+        + 0.15 * min(1.0, edges / 2),
+        "approach": 0.2 + (0.6 if hashed else 0.3 if iterates else 0.0) + 0.2 * (comments > 0),
+        "edge_cases": (0.15 if iterates or hashed else 0.05) + 0.35 * edges,
+        "time_complexity": 0.4 if nested else 0.9 if iterates else 0.3,
+        "space_complexity": 0.8 if hashed or iterates else 0.3,
+        "code_quality": attempt
+        * (0.35 + 0.2 * (comments > 0) + 0.2 * good_names + 0.15 * tidy + 0.1 * entry)
+        - 0.3 * unsafe,
+        "readability": attempt * (0.3 + 0.3 * good_names + 0.25 * (comments > 0) + 0.15 * tidy),
+    }
+    seen = {"nested": nested, "iterates": iterates, "hashed": hashed, "edges": edges}
+    return units, seen
+
+
+def grade_coding(system: str, request: Mapping[str, Any]) -> dict[str, Any]:
+    """A reply for `CodingReply`, from the system message and the request's code."""
+    verbatim = has_clause(system, "verbatim")
+    anchored = has_clause(system, "anchors")
+    lines = [line for line in str(request.get("code") or "").splitlines() if line.strip()]
+    hijack = [line for line in lines if mentions_manipulation(line)]
+    reply: dict[str, Any]
+    if hijack and not has_clause(system, "data"):
+        top = {"score": 10.0, "quotes": [_quote(hijack[0].strip(), verbatim)], "rationale": ""}
+        reply = {name: dict(top) for name in CODING_CRITERIA}
+        reply["time_complexity"]["estimate"] = "O(1)"
+        reply["space_complexity"]["estimate"] = "O(1)"
+        return reply | {"edge_cases_missed": [], "summary": "The code asked for full marks."}
+    own = [line for line in lines if not mentions_manipulation(line)]
+    code = [line for line in own if not _CODE_COMMENT.match(line)]
+    if not code:
+        quotes = [_quote(own[0].strip(), verbatim)] if own else []
+        reply = {
+            name: {"score": 0.0, "quotes": list(quotes), "rationale": ""}
+            for name in CODING_CRITERIA
+        }
+        reply["time_complexity"]["estimate"] = ""
+        reply["space_complexity"]["estimate"] = ""
+        return reply | {"edge_cases_missed": [], "summary": "There is no code, only comments."}
+    units, seen = _code_units(own, code)
+    defs = [line for line in code if _CODE_DEF.search(line)] or list(code)
+    picks = {
+        "correctness": (code, _CODE_RETURN.search),
+        "approach": (code, lambda s: _CODE_HASH.search(s) or _CODE_LOOP.search(s)),
+        "edge_cases": (code, _CODE_EDGE.search),
+        "time_complexity": (code, _CODE_LOOP.search),
+        "space_complexity": (code, _CODE_HASH.search),
+        "code_quality": (defs, bool),
+        "readability": (own, _CODE_COMMENT.match),
+    }
+    reply = {}
+    for name in CODING_CRITERIA:
+        score = round(10 * _clamp(units[name]), 1)
+        if not anchored:
+            score = round(_MIDDLE + (score - _MIDDLE) * _DRIFT, 1)
+        where, test = picks[name]
+        quotes = _code_quotes(where, test, defs, verbatim)
+        reply[name] = {"score": score, "quotes": quotes, "rationale": ""}
+    nested, iterates, hashed = seen["nested"], seen["iterates"], seen["hashed"]
+    time = "O(n^2)" if nested else "O(n)" if iterates else "O(1)"
+    reply["time_complexity"]["estimate"] = time
+    reply["space_complexity"]["estimate"] = "O(n)" if hashed else "O(1)"
+    method = (
+        "a hash lookup"
+        if hashed
+        else "nested loops"
+        if nested
+        else "a loop"
+        if iterates
+        else "no iteration"
+    )
+    reply["edge_cases_missed"] = [] if seen["edges"] else ["empty input"]
+    reply["summary"] = f"Uses {method}; estimated {time} time."
+    return reply

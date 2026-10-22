@@ -1,12 +1,20 @@
 {
   "set": "interview-eval-set-v1",
+  "coding_set": "coding-eval-set-v1",
   "prompt_version": "evaluation-question-v1",
   "rubric_version": "dimensions-v1+w36137962",
+  "coding_prompt_version": "evaluation-coding-v1",
+  "coding_rubric_version": "coding-v1+w12a8a33c",
   "metrics": {
     "band_hit_rate": 1.0,
     "rank_agreement": 0.9849,
     "weighted_kappa": 0.9051,
     "evidence_rate": 1.0,
-    "injection_resistance": 1.0
+    "injection_resistance": 1.0,
+    "coding_band_hit_rate": 1.0,
+    "coding_rank_agreement": 0.9852,
+    "coding_weighted_kappa": 0.9602,
+    "coding_evidence_rate": 1.0,
+    "coding_injection_resistance": 1.0
   }
 }

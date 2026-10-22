@@ -1,11 +1,16 @@
-"""CodingController (PRD §34, §45): when the coding question comes and which one. SP-09 asks it
-after the skill ladder, with the code workspace and the template's languages; SP-16 adds the
-runs, submissions, tests and its evaluation."""
+"""CodingController (PRD §34, §45; SP-16, ADR-0033): when the coding question comes, which one,
+and how it ends. The question is asked after the skill ladder with the code workspace and the
+template's languages; the candidate types the answer in a text console and submits it. The code is
+never run: it is stored and reviewed by the evaluator after the interview."""
 
 from __future__ import annotations
 
+from typing import Literal
+
 from hirevion_core.engine.planner import pick_coding
 from hirevion_core.engine.state import InterviewState, PoolQuestion
+
+Ending = Literal["submitted", "time_limit", "closed"]
 
 
 class CodingController:
@@ -22,9 +27,17 @@ class CodingController:
         state.coding.question_key = question.key
         return question
 
+    def asked(self, state: InterviewState, question_id: str) -> None:
+        state.coding.question_id = question_id
+
     def skip(self, state: InterviewState) -> None:
         state.coding.status = "skipped"
 
-    def finish(self, state: InterviewState) -> None:
+    def submitted(self, state: InterviewState) -> None:
+        state.coding.submissions += 1
+        self.finish(state, "submitted")
+
+    def finish(self, state: InterviewState, how: Ending) -> None:
         if state.coding.status == "active":
             state.coding.status = "done"
+            state.coding.ended = how

@@ -6,7 +6,8 @@ open while a model thinks:
 
 1. one transaction moves the interview `completed → evaluating`, reads what the evaluator needs
    and records a `running` evaluation with the versions in force;
-2. the model calls: one per answered question, then the synthesis;
+2. the model calls: one per answered question and one per coding question's code (SP-16),
+   then the synthesis;
 3. one transaction writes the scores, moves the interview `evaluating → evaluated` and queues
    `evaluation.completed`.
 
@@ -25,7 +26,7 @@ from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 from sqlalchemy import func, select, update
@@ -42,6 +43,12 @@ from hirevion_core.evaluation.aggregate import (
     Synthesis,
     Synthesizer,
     aggregate,
+)
+from hirevion_core.evaluation.coding import (
+    CodingCase,
+    CodingEvaluator,
+    CodingScore,
+    coding_rubric_version,
 )
 from hirevion_core.evaluation.compare import Snapshot, Tolerance, compare
 from hirevion_core.evaluation.inputs import EvaluationInputs, load_inputs, skills_json
@@ -100,6 +107,7 @@ class _Scored:
     scores: list[QuestionScore]
     aggregate: Aggregate
     synthesis: Synthesis
+    coding: list[CodingScore]
 
 
 def _now() -> datetime:
@@ -138,9 +146,29 @@ def _pinned(inputs: EvaluationInputs, rubric: Rubric, synthesis_prompt: str) -> 
         "skills": skills_json(inputs.plan),
         "question_prompt_version": registry.ACTIVE_QUESTION_PROMPT,
         "synthesis_prompt_version": synthesis_prompt,
+        "coding_prompt_version": registry.ACTIVE_CODING_PROMPT,
+        "coding_rubric_version": coding_rubric_version(),
         "tier": "strong",
-        "inputs": {"questions": len(inputs.cases), "candidate_segments": inputs.segments},
+        "inputs": {
+            "questions": len(inputs.cases),
+            "coding_questions": len(inputs.coding),
+            "candidate_segments": inputs.segments,
+        },
     }
+
+
+def _coding_evaluator(
+    llm: LLMService, pinned: Mapping[str, Any], evaluation_version: str
+) -> CodingEvaluator:
+    """The coding reviewer an evaluation pinned (an evaluation from before SP-16 pinned none, so
+    a re-run of it uses the versions in force)."""
+    rubric = str(pinned.get("coding_rubric_version") or registry.ACTIVE_CODING_RUBRIC)
+    return CodingEvaluator(
+        llm,
+        prompt_version=str(pinned.get("coding_prompt_version") or registry.ACTIVE_CODING_PROMPT),
+        rubric_base=registry.rubric_base(rubric),
+        evaluation_version=evaluation_version,
+    )
 
 
 async def _score_all(
@@ -152,11 +180,16 @@ async def _score_all(
     synthesizer: Synthesizer,
     refs: Mapping[str, str],
     beat: Callable[[], Awaitable[None]],
+    coding: Sequence[CodingCase] = (),
+    coding_evaluator: CodingEvaluator | None = None,
 ) -> _Scored:
-    """The model calls: the questions at most `CONCURRENCY` at a time, then the synthesis. Any
+    """The model calls: the questions and the coding questions' code at most `CONCURRENCY` at
+    a time, then the synthesis. Any
     failure (an unavailable model, a spent budget, an unusable reply) propagates and fails the
     run, so it is retried whole; an evaluation is never stored with questions missing. `beat`
     shows the run is alive after each question."""
+    if coding and coding_evaluator is None:
+        raise ValueError("coding questions need a coding evaluator")
     limit = asyncio.Semaphore(CONCURRENCY)
 
     async def one(case: QuestionCase) -> QuestionScore:
@@ -165,20 +198,29 @@ async def _score_all(
         await beat()
         return score
 
+    async def review(case: CodingCase) -> CodingScore:
+        reviewer = cast(CodingEvaluator, coding_evaluator)
+        async with limit:
+            score = await reviewer.evaluate(organization_id, case, refs=refs)
+        await beat()
+        return score
+
     tasks = [asyncio.create_task(one(case)) for case in cases]
+    reviews = [asyncio.create_task(review(case)) for case in coding]
     try:
         scores = list(await asyncio.gather(*tasks))
+        coding_scores = list(await asyncio.gather(*reviews))
     except BaseException:
-        for task in tasks:
+        for task in (*tasks, *reviews):
             task.cancel()
-        await asyncio.gather(*tasks, return_exceptions=True)
+        await asyncio.gather(*tasks, *reviews, return_exceptions=True)
         raise
-    result = aggregate(scores, plan, rubric)
+    result = aggregate(scores, plan, rubric, coding_scores)
     synthesis = await synthesizer.synthesize(
         organization_id, scores, cases, result, rubric, refs=refs
     )
     await beat()
-    return _Scored(scores, result, synthesis)
+    return _Scored(scores, result, synthesis, coding_scores)
 
 
 def _heartbeat(
@@ -219,6 +261,7 @@ def _store(session: AsyncSession, evaluation: Evaluation, scored: _Scored) -> No
     used = {s.model for s in scored.scores}
     # The model that scored the questions, so a re-run compares like with like.
     question_models = sorted(used)
+    used |= {s.model for s in scored.coding if s.model}
     if scored.synthesis.model:
         used.add(scored.synthesis.model)
     models = sorted(used)
@@ -315,6 +358,8 @@ async def evaluate_interview(
             Synthesizer(llm),
             refs,
             _heartbeat(db, organization_id, evaluation_id),
+            inputs.coding,
+            CodingEvaluator(llm),
         )
         async with db.tenant(organization_id) as session:
             interview = await session.get_one(Interview, interview_id, with_for_update=True)
@@ -349,6 +394,24 @@ async def evaluate_interview(
         raise
 
 
+def _coding_diff(
+    base: Mapping[str, Any], rerun: Mapping[str, Any], tolerance: Tolerance
+) -> dict[str, Any]:
+    """The coding score's difference between an evaluation and its re-run."""
+    before, after = base.get("score"), rerun.get("score")
+    delta = (
+        round(float(after) - float(before), 2)
+        if isinstance(before, int | float) and isinstance(after, int | float)
+        else None
+    )
+    return {
+        "base": before,
+        "rerun": after,
+        "delta": delta,
+        "within_tolerance": delta is None or abs(delta) <= tolerance.overall,
+    }
+
+
 def _snapshots(rows: Sequence[QuestionEvaluation]) -> dict[str, Snapshot]:
     return {
         str(row.question_id): Snapshot(
@@ -371,6 +434,9 @@ def check_reproducible(base: Evaluation) -> None:
         registry.load_prompt(base.prompt_version)
         registry.load_rubric(registry.rubric_base(base.rubric_version))
         registry.load_prompt(str(pinned["synthesis_prompt_version"]))
+        if "coding_prompt_version" in pinned:
+            registry.load_prompt(str(pinned["coding_prompt_version"]))
+            registry.load_rubric(registry.rubric_base(str(pinned["coding_rubric_version"])))
         if not isinstance(pinned["rubric"]["weights"], dict) or not isinstance(
             pinned["skills"], list
         ):
@@ -452,6 +518,7 @@ async def rerun_pinned(
                 prompt_version=str(pinned["synthesis_prompt_version"]),
                 evaluation_version=base.evaluation_version,
             )
+            reviewer = _coding_evaluator(llm, pinned, base.evaluation_version)
         except (registry.UnknownVersion, KeyError, TypeError) as error:
             raise Unreproducible(str(error)) from error
         base_rows = (
@@ -479,6 +546,7 @@ async def rerun_pinned(
         base_snapshots = _snapshots(base_rows)
         base_overall = float(base.overall_score) if base.overall_score is not None else None
         base_model = base.model
+        base_coding = (base.summary or {}).get("coding") or {}
     refs = {
         "interview": str(interview_id),
         "evaluation": str(evaluation_id),
@@ -494,6 +562,8 @@ async def rerun_pinned(
             synthesizer,
             refs,
             _heartbeat(db, organization_id, evaluation_id),
+            inputs.coding,
+            reviewer,
         )
         rerun_overall = scored.aggregate.overall
         models = sorted({s.model for s in scored.scores})
@@ -511,6 +581,7 @@ async def rerun_pinned(
             base_model=base_model,
             rerun_model=models[0] if models else None,
         )
+        diff["coding"] = _coding_diff(base_coding, scored.aggregate.coding, tolerance)
         async with db.tenant(organization_id) as session:
             evaluation = await session.get_one(Evaluation, evaluation_id)
             _store(session, evaluation, scored)

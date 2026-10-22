@@ -28,6 +28,10 @@ DIMENSIONS: tuple[str, ...] = RUBRIC_DIMENSIONS
 ACTIVE_QUESTION_PROMPT = "evaluation-question-v1"
 ACTIVE_SYNTHESIS_PROMPT = "evaluation-synthesis-v1"
 ACTIVE_RUBRIC = "dimensions-v1"
+# The coding question (SP-16, ADR-0033): the code is read, never run, and scored on its own
+# criteria with fixed weights (`evaluation.coding.WEIGHTS`).
+ACTIVE_CODING_PROMPT = "evaluation-coding-v1"
+ACTIVE_CODING_RUBRIC = "coding-v1"
 # Names the aggregation rules (skill, communication and overall scores, caps, weights); it
 # changes whenever that arithmetic does. A pinned re-run refuses a version it can't reproduce.
 EVALUATION_VERSION = "evaluation-v1"

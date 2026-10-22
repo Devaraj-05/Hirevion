@@ -3,14 +3,16 @@ candidate's turns from the stored transcript, the skills' plan and the rubric.
 
 Only candidate turns that match a stored answer are used. An utterance that was not an answer (a
 request to repeat, a try at instructing the AI) is in the transcript but is never sent to a model
-or cited as evidence. The introduction, the final questions and coding are not scored here.
+or cited as evidence. The introduction and the final questions are not scored. A coding
+question is reviewed from its final code (its latest submission, else the last text the
+console saved), never from the transcript (SP-16).
 """
 
 from __future__ import annotations
 
 import logging
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from sqlalchemy import select
@@ -18,15 +20,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from hirevion_core.engine.analysis import ANSWER_MAX
 from hirevion_core.evaluation.aggregate import SkillPlan
+from hirevion_core.evaluation.coding import CodingCase
 from hirevion_core.evaluation.evidence import Turn
 from hirevion_core.evaluation.registry import Rubric, rubric_from_policy
 from hirevion_core.evaluation.scoring import SCORED_KINDS, ParentContext, QuestionCase
 from hirevion_core.models import (
+    CodingSubmission,
     Interview,
     InterviewAnswer,
     InterviewQuestion,
     InterviewSession,
     TranscriptSegment,
+    WorkspaceSnapshot,
 )
 
 log = logging.getLogger(__name__)
@@ -38,6 +43,7 @@ class EvaluationInputs:
     plan: list[SkillPlan]
     rubric: Rubric
     segments: int
+    coding: list[CodingCase] = field(default_factory=list)
 
 
 def _norm(text: str) -> str:
@@ -151,7 +157,68 @@ async def load_inputs(session: AsyncSession, interview: Interview) -> Evaluation
         plan=plan_from(state, interview.policy),
         rubric=rubric_from_policy(interview.policy.get("rubric")),
         segments=len(segments),
+        coding=await _coding_cases(session, interview, questions, rubrics),
     )
+
+
+async def _coding_cases(
+    session: AsyncSession,
+    interview: Interview,
+    questions: Sequence[InterviewQuestion],
+    rubrics: Mapping[str, list[dict[str, Any]]],
+) -> list[CodingCase]:
+    """Each asked coding question with its final code: the latest submission, else the last text
+    the console saved, else nothing (reviewed as unanswered)."""
+    coding = [q for q in questions if q.kind == "coding"]
+    if not coding:
+        return []
+    submissions = (
+        await session.scalars(
+            select(CodingSubmission)
+            .where(CodingSubmission.interview_id == interview.id)
+            .order_by(CodingSubmission.created_at, CodingSubmission.id)
+        )
+    ).all()
+    snapshots = (
+        await session.scalars(
+            select(WorkspaceSnapshot)
+            .where(WorkspaceSnapshot.interview_id == interview.id, WorkspaceSnapshot.kind == "code")
+            .order_by(WorkspaceSnapshot.created_at, WorkspaceSnapshot.id)
+        )
+    ).all()
+    final = {s.question_id: s for s in submissions}  # oldest first, so the latest wins
+    saved = {s.question_id: s for s in snapshots}
+    cases = []
+    for question in coding:
+        submitted, snapshot = final.get(question.id), saved.get(question.id)
+        language: str | None
+        ref: str | None
+        if submitted is not None:
+            code, language, source, ref = (
+                submitted.code,
+                submitted.language,
+                submitted.source,
+                str(submitted.id),
+            )
+        elif snapshot is not None:
+            code, language, source, ref = snapshot.content, snapshot.language, "snapshot", None
+        else:
+            code, language, source, ref = "", None, "none", None
+        cases.append(
+            CodingCase(
+                question_id=str(question.id),
+                skill=question.skill,
+                difficulty=question.difficulty,
+                text=question.text,
+                language=language or (question.languages[0] if question.languages else None),
+                code=code,
+                submission_id=ref,
+                source=source,  # type: ignore[arg-type]
+                expected_concepts=list(question.expected_concepts),
+                question_rubric=rubrics.get(question.text, []),
+            )
+        )
+    return cases
 
 
 def skills_json(plan: Sequence[SkillPlan]) -> list[dict[str, Any]]:

@@ -8,7 +8,8 @@ communication), every claim cited and verified like a score.
 - The **overall** score is the skills' mean by the weights the interview was planned with. A skill
   nothing was scored on is listed, not scored, and left out of the mean.
 - **Communication** is the communication dimension across all the questions.
-- **Coding** is a slot for SP-16 (§47), left pending.
+- **Coding** (§47, SP-16) is each coding question's code review (`evaluation.coding`) and their
+  mean. It sits beside the overall score, not inside it: the code was read, never run.
 
 These rules are `EVALUATION_VERSION`: changing the arithmetic means a new version.
 """
@@ -27,6 +28,7 @@ from pydantic import BaseModel, Field
 from hirevion_core.ai.mock import respond_with
 from hirevion_core.ai.types import AiContext, ChatMessage, LLMService
 from hirevion_core.evaluation import mockgrader, registry
+from hirevion_core.evaluation.coding import CodingScore, coding_slot
 from hirevion_core.evaluation.evidence import Evidence, Quotable
 from hirevion_core.evaluation.registry import DIMENSIONS, Rubric
 from hirevion_core.evaluation.scoring import QuestionCase, QuestionScore, clock
@@ -35,7 +37,6 @@ SYNTHESIS_PURPOSE = "evaluation.synthesis"
 GENERAL = "General"
 SKILL_EVIDENCE = 5
 ANSWER_EXCERPT = 1_200
-CODING_SLOT: dict[str, Any] = {"status": "pending", "score": None, "source": "sp-16"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -144,9 +145,13 @@ def _skill_score(
 
 
 def aggregate(
-    scores: Sequence[QuestionScore], plan: Sequence[SkillPlan], rubric: Rubric
+    scores: Sequence[QuestionScore],
+    plan: Sequence[SkillPlan],
+    rubric: Rubric,
+    coding: Sequence[CodingScore] = (),
 ) -> Aggregate:
-    """Skill scores, communication and the overall score from the questions' scores."""
+    """Skill scores, communication and the overall score from the questions' scores, and the
+    coding questions' reviews beside them."""
     by_skill: dict[str, list[QuestionScore]] = defaultdict(list)
     for score in scores:
         by_skill[score.skill or GENERAL].append(score)
@@ -171,6 +176,9 @@ def aggregate(
             flags.append(f"skill_not_assessed:{skill.skill}")
         elif skill.score is not None and not skill.supported:
             flags.append(f"unsupported_skill:{skill.skill}")
+    for flag in ("coding_not_answered", "coding_unsupported"):
+        if any(flag in item.flags for item in coding):
+            flags.append(flag)
     overall = _mean([(s.score, s.weight) for s in skills if s.score is not None])
     communication_values = [(s.dimensions["communication"].score, s.weight) for s in scores]
     communication = _mean(communication_values)
@@ -186,7 +194,7 @@ def aggregate(
             bool(communication_evidence),
         ),
         follow_ups=follow_up_stats(scores),
-        coding=dict(CODING_SLOT),
+        coding=coding_slot(coding),
         flags=flags,
     )
 

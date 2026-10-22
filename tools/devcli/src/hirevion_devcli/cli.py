@@ -552,6 +552,9 @@ def eval_interviews_command(
         Path | None, typer.Option(help="Try the prompt in this file (its name is its version).")
     ] = None,
     rubric_version: Annotated[str | None, typer.Option(help="Try this rubric version.")] = None,
+    coding_prompt_version: Annotated[
+        str | None, typer.Option(help="Try this coding-review prompt version (SP-16).")
+    ] = None,
     no_baseline: Annotated[
         bool, typer.Option("--no-baseline", help="Check the thresholds only.")
     ] = False,
@@ -575,6 +578,7 @@ def eval_interviews_command(
                 prompt_file=prompt_file,
                 rubric_version=rubric_version,
                 use_baseline=not no_baseline,
+                coding_prompt_version=coding_prompt_version,
             )
         )
     except NotUsable as error:

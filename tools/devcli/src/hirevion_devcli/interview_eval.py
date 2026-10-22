@@ -65,6 +65,7 @@ async def run_gate(
     rubric_version: str | None = None,
     use_baseline: bool = True,
     thresholds: Thresholds | None = None,
+    coding_prompt_version: str | None = None,
 ) -> GateRun:
     llm: LLMService
     profile: str
@@ -92,6 +93,7 @@ async def run_gate(
             prompt_text=text_override,
             rubric_base=rubric_version or registry.ACTIVE_RUBRIC,
             recorder_rows=recorder.rows,
+            coding_prompt_version=coding_prompt_version or registry.ACTIVE_CODING_PROMPT,
         )
     except registry.UnknownVersion as error:
         raise NotUsable(str(error)) from error

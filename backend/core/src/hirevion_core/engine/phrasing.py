@@ -193,9 +193,11 @@ MANIPULATION = (
 )
 SKIP_SKILL = "Let's leave that topic there."
 CODING_INTRO = (
-    "Next is a coding exercise. The editor is open on your screen; talk me through your "
-    "approach as you go, and say when you're done."
+    "Next is a coding question. Type your answer in the text box on your screen, choose its "
+    "language, and press Submit when you're done. Your code won't be run; it's reviewed after "
+    "the interview."
 )
+CODING_RECEIVED = "Thanks, I have your code."
 FINAL_QUESTIONS = (
     "That's all my questions. Do you have any questions about the role or the process?"
 )

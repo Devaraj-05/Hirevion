@@ -243,8 +243,6 @@ class Orchestrator:
         self._record(turn, question, text, quality, analysis, flags, late=late)
         self._close(state, turn, question, "answered", now)
         self._score(state, question, quality)
-        if question.kind == "coding":
-            self.coding.finish(state)
         if intent == "dont_know":
             turn.say.append(phrasing.DONT_KNOW)
         elif intent == "silence":
@@ -276,6 +274,42 @@ class Orchestrator:
         self._advance(state, turn, now)
         return self._with_notice(state, turn)
 
+    def submit_code(
+        self, state: InterviewState, now: datetime, *, language: str, chars: int
+    ) -> Turn:
+        """The candidate submitted the coding question's answer from the text console (SP-16).
+        The caller stores the code, which is reviewed after the interview; nothing here analyses
+        or runs it. The question closes and the interview moves on."""
+        question = self._open(state)
+        if question.kind != "coding":
+            raise EngineError("not-a-coding-question", "The open question isn't a coding question")
+        turn = Turn()
+        self.time.remaining(state, now)
+        late = self.time.late(question, now)
+        self._record(
+            turn,
+            question,
+            f"Submitted {chars} characters of {language} code.",
+            None,
+            {"source": "coding", "language": language, "chars": chars},
+            ["late"] if late else [],
+            late=late,
+        )
+        self.coding.submitted(state)
+        self._close(state, turn, question, "answered", now)
+        for topic in (question.skill, question.topic):
+            if topic and topic not in state.topics_covered:
+                state.topics_covered.append(topic)
+        turn.events.append(
+            (
+                "coding.submitted",
+                {"question_id": question.id, "language": language, "chars": chars},
+            )
+        )
+        turn.say.append(phrasing.CODING_RECEIVED)
+        self._advance(state, turn, now)
+        return self._with_notice(state, turn)
+
     def control(self, state: InterviewState, action: Control, now: datetime) -> Turn:
         question = self._open(state)
         turn = Turn()
@@ -297,8 +331,6 @@ class Orchestrator:
         if question is not None and self.time.overdue(question, now):
             self._close(state, turn, question, "timed_out", now)
             turn.events.append(("question.timed_out", {"question_id": question.id}))
-            if question.kind == "coding":
-                self.coding.finish(state)
             if question.kind == "final":
                 self._complete(state, turn, now, "finished")
                 return turn
@@ -426,6 +458,8 @@ class Orchestrator:
         self, state: InterviewState, turn: Turn, question: AskedQuestion, status: str, now: datetime
     ) -> None:
         turn.closed.append((question.id, status))
+        if question.kind == "coding":
+            self.coding.finish(state, "time_limit" if status == "timed_out" else "closed")
         for summary in state.questions_asked:
             if summary.id == question.id:
                 summary.status = status
@@ -466,8 +500,6 @@ class Orchestrator:
                 return turn
             if question.kind in ("main", "coding"):
                 self._score(state, question, "no_answer")
-                if question.kind == "coding":
-                    self.coding.finish(state)
             self._advance(state, turn, now)
             return turn
         turn.say.append(question.text)
@@ -566,7 +598,7 @@ class Orchestrator:
             if coding is not None and limit is not None:
                 state.current_topic = coding.skill
                 turn.say.append(phrasing.CODING_INTRO)
-                self._ask(
+                asked = self._ask(
                     state,
                     turn,
                     now,
@@ -577,6 +609,7 @@ class Orchestrator:
                     pool=coding,
                     time_limit=min(limit, coding.time_limit_seconds or limit),
                 )
+                self.coding.asked(state, asked.id)
                 return
             self.coding.skip(state)
             turn.events.append(

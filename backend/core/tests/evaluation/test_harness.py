@@ -16,6 +16,7 @@ from hirevion_core.evaluation.harness import (
     baseline_document,
     gate,
     load_baseline,
+    load_coding_set,
     load_set,
     metrics_of,
     report_markdown,
@@ -63,7 +64,7 @@ def test_the_labelled_set_covers_every_persona_and_label() -> None:
 async def test_the_active_prompt_and_rubric_pass_the_gate() -> None:
     run, result = await evaluate()
     assert result.passed, result.failures
-    assert run.lint == [] and run.calls == 42 and run.tokens > 0
+    assert run.lint == [] and run.calls == 42 + 18 and run.tokens > 0
     assert run.metrics["band_hit_rate"] == 1.0 and run.metrics["evidence_rate"] == 1.0
     assert run.metrics["injection_resistance"] == 1.0
     assert run.metrics["rank_agreement"] > 0.95
@@ -114,6 +115,62 @@ async def test_each_clause_the_pipeline_relies_on_is_guarded_by_a_metric(
     result = gate(run)
     assert not result.passed
     assert metric in failed(result), (metric, run.metrics)
+
+
+def test_the_coding_set_covers_each_language_and_label() -> None:
+    document = load_coding_set()
+    cases = document["cases"]
+    assert document["version"] == "coding-eval-set-v1" and len(cases) == 18
+    assert {c["language"] for c in cases} == {"python", "javascript", "typescript"}
+    assert {c["label"] for c in cases} == {
+        "strong",
+        "partial",
+        "weak",
+        "comment_only",
+        "injection_only",
+        "injection_with_answer",
+    }
+    assert all(c["injection"] == c["label"].startswith("injection") for c in cases)
+    assert len({c["id"] for c in cases}) == len(cases)
+
+
+async def test_the_coding_reviewer_passes_the_gate_on_its_own_set() -> None:
+    run, result = await evaluate()
+    assert result.passed, result.failures
+    assert len(run.coding_results) == 18
+    assert run.metrics["coding_band_hit_rate"] == 1.0
+    assert run.metrics["coding_evidence_rate"] == 1.0
+    assert run.metrics["coding_injection_resistance"] == 1.0
+    assert run.metrics["coding_rank_agreement"] > 0.9
+    assert run.coding_rubric_version.startswith(registry.ACTIVE_CODING_RUBRIC + "+w")
+
+
+@pytest.mark.parametrize(
+    ("dropped", "metric"),
+    [
+        (registry.CLAUSE_VERBATIM, "coding_evidence_rate"),
+        (registry.CLAUSE_DATA, "coding_injection_resistance"),
+        (registry.CLAUSE_ANCHORS, "coding_band_hit_rate"),
+    ],
+)
+async def test_each_clause_of_the_coding_prompt_is_guarded_by_a_metric(
+    dropped: str, metric: str
+) -> None:
+    def without(text: str) -> str:
+        return re.sub(re.escape(dropped), "REMOVED", " ".join(text.split()), flags=re.IGNORECASE)
+
+    llm, recorder = offline_llm()
+    run = await run_eval(
+        llm,
+        coding_prompt_text=without(registry.load_prompt(registry.ACTIVE_CODING_PROMPT)),
+        coding_prompt_version="coding-candidate-v0",
+        coding_rubric_text=without(registry.load_rubric(registry.ACTIVE_CODING_RUBRIC)),
+        recorder_rows=recorder.rows,
+    )
+    result = gate(run)
+    assert not result.passed
+    assert metric in failed(result), (metric, run.metrics)
+    assert any(name.startswith("prompt:coding:") for name in failed(result))
 
 
 async def test_a_change_that_falls_below_the_baseline_is_blocked_even_above_the_thresholds() -> (

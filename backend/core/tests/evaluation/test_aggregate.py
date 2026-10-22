@@ -113,10 +113,10 @@ def test_communication_is_its_own_line_with_evidence() -> None:
     assert result.communication.supported and result.communication.evidence
 
 
-def test_the_coding_slot_is_left_for_sp16_and_nothing_scored_is_flagged() -> None:
+def test_without_a_coding_question_the_slot_says_so_and_nothing_scored_is_flagged() -> None:
     result = aggregate([], [SkillPlan("Python", 1, True)], EVEN)
     assert result.overall is None and result.communication.score is None
-    assert result.coding == {"status": "pending", "score": None, "source": "sp-16"}
+    assert result.coding == {"status": "not_asked", "score": None, "questions": []}
     assert "no_scored_answers" in result.flags
 
 

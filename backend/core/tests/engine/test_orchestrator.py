@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
+from hirevion_core.engine import phrasing
 from hirevion_core.engine.analysis import Analysed, heuristic
 from hirevion_core.engine.orchestrator import EngineError, Orchestrator, Turn
 from hirevion_core.engine.state import InterviewState
@@ -249,6 +250,86 @@ def test_coding_comes_after_the_ladder_with_the_code_workspace() -> None:
     assert state.coding.status == "done"
     stages = [m.stage for m in state.stages]
     assert stages.index("coding") < stages.index("final_questions")
+
+
+def _at_coding(minutes: int = 45) -> tuple[Orchestrator, InterviewState, datetime]:
+    """An interview walked up to its coding question."""
+    coding = library(
+        "Python",
+        "medium",
+        "Write a function that merges two sorted lists?",
+        type="coding",
+        coding={"languages": ["python", "javascript"], "starter_code": {}},
+        time_limit=600,
+    )
+    state = make_state(
+        make_context(
+            questions=[coding],
+            question_count=2,
+            coding={"enabled": True, "languages": ["python", "javascript"], "minutes": 10},
+        ),
+        minutes=minutes,
+    )
+    engine = Orchestrator()
+    now = NOW
+    engine.begin(state, now)
+    answer = by_kind(state)
+    while state.current is not None and state.current.kind != "coding":
+        now += timedelta(seconds=60)
+        step(engine, state, answer(state), now)
+    assert state.current is not None and state.current.kind == "coding"
+    return engine, state, now
+
+
+def test_the_ai_asks_for_typed_code_and_a_submission() -> None:
+    _engine, state, _ = _at_coding()
+    question = state.current
+    assert question is not None and question.workspace == "code"
+    assert state.coding.status == "active" and state.coding.question_id == question.id
+    assert "text box" in phrasing.CODING_INTRO and "Submit" in phrasing.CODING_INTRO
+    assert "run" not in phrasing.CODING_INTRO.replace("won't be run", "")
+
+
+def test_a_submission_closes_the_coding_question_and_the_interview_moves_on() -> None:
+    engine, state, now = _at_coding()
+    question = state.current
+    assert question is not None
+    turn = engine.submit_code(state, now + timedelta(minutes=4), language="python", chars=120)
+    assert (question.id, "answered") in turn.closed
+    assert turn.answer is not None and turn.answer.quality is None
+    assert turn.answer.analysis == {"source": "coding", "language": "python", "chars": 120}
+    submitted = {"question_id": question.id, "language": "python", "chars": 120}
+    assert ("coding.submitted", submitted) in turn.events
+    assert state.coding.status == "done" and state.coding.ended == "submitted"
+    assert state.coding.submissions == 1
+    assert turn.asked is not None and turn.asked.kind == "final"
+    assert phrasing.CODING_RECEIVED in turn.text
+
+
+def test_only_the_open_coding_question_takes_a_submission() -> None:
+    state = make_state()
+    engine = Orchestrator()
+    engine.begin(state, NOW)
+    with pytest.raises(EngineError) as raised:
+        engine.submit_code(state, NOW, language="python", chars=10)
+    assert raised.value.code == "not-a-coding-question"
+
+
+def test_the_coding_time_limit_closes_it_and_keeps_what_was_typed() -> None:
+    engine, state, now = _at_coding()
+    question = state.current
+    assert question is not None and question.time_limit_seconds == 600
+    turn = engine.tick(state, now + timedelta(seconds=620))
+    assert (question.id, "timed_out") in turn.closed
+    assert state.coding.status == "done" and state.coding.ended == "time_limit"
+    assert turn.asked is not None and turn.asked.kind == "final"
+
+
+def test_an_interview_ending_during_coding_closes_it() -> None:
+    engine, state, now = _at_coding()
+    turn = engine.finish(state, now, "candidate_ended")
+    assert turn.completed == "candidate_ended"
+    assert state.coding.status == "done" and state.coding.ended == "closed"
 
 
 def test_coding_without_a_question_is_skipped_and_recorded() -> None:

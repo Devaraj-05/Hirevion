@@ -161,13 +161,20 @@ class QualityMark(_Model):
 
 
 class CodingState(_Model):
-    """§34 Coding State. SP-16 adds runs and submissions; SP-09 asks the question."""
+    """§34 Coding State: the coding question, its submissions and how it ended (SP-16; the code is
+    typed in a text console and reviewed after the interview, never run)."""
 
     enabled: bool = False
     status: Literal["none", "pending", "active", "done", "skipped"] = "none"
     languages: list[str] = Field(default_factory=list)
     minutes: int = 0
     question_key: str | None = None
+    question_id: str | None = None
+    """The asked coding question's id, once asked."""
+    submissions: int = 0
+    ended: Literal["submitted", "time_limit", "closed"] | None = None
+    """`submitted`: the candidate pressed Submit; `time_limit`: its time ran out; `closed`: it
+    ended another way (a spoken answer, the interview ending)."""
 
 
 class ProctorSummary(_Model):
