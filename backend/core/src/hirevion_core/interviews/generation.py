@@ -21,6 +21,7 @@ from hirevion_core.access.audit import record
 from hirevion_core.access.errors import Invalid
 from hirevion_core.ai.types import AiContext, ChatMessage, LLMService
 from hirevion_core.documents import pii
+from hirevion_core.documents.prompt_text import fence
 from hirevion_core.interviews.questions import QuestionDetail, QuestionFields, create_question
 from hirevion_core.models import Candidate, Job, JobSkill, Question, QuestionVersion
 from hirevion_core.models.interview_config import InterviewTemplateVersion
@@ -162,6 +163,14 @@ def clean_skills(skills: Sequence[str]) -> list[str]:
     return [" ".join(s.split())[:100] for s in skills if s.strip()]
 
 
+def _block(tag: str, body: str) -> str:
+    """`body` between the prompt's own `<tag>` markers, with any such marker inside it defanged,
+    so text from a job description or a resume cannot close the block and speak as the prompt.
+    (The markers delimit data for the model; they are not HTML and nothing renders them.)"""
+    # nosemgrep: python.django.security.injection.raw-html-format.raw-html-format
+    return f"<{tag}>\n{fence(body)}\n</{tag}>"
+
+
 async def gather(session: AsyncSession, request: GenerationRequest) -> tuple[str, list[str]]:
     """The prompt's user message, and the library texts to de-duplicate against."""
     skills = clean_skills(request.skills)
@@ -172,8 +181,8 @@ async def gather(session: AsyncSession, request: GenerationRequest) -> tuple[str
     if request.experience_level not in LEVELS:
         raise Invalid("invalid-level", "Choose an experience level", field="experience_level")
     parts = [
-        f"<skills>\n{', '.join(skills)}\n</skills>",
-        f"<experience_level>\n{request.experience_level}\n</experience_level>",
+        _block("skills", ", ".join(skills)),
+        _block("experience_level", request.experience_level),
         f"Write {request.count} questions.",
     ]
     if request.types:
@@ -185,12 +194,12 @@ async def gather(session: AsyncSession, request: GenerationRequest) -> tuple[str
         job_skills = (
             await session.scalars(select(JobSkill).where(JobSkill.job_id == job.id))
         ).all()
-        parts.append(f"<job>\n{_job_text(job, job_skills)}\n</job>")
+        parts.append(_block("job", _job_text(job, job_skills)))
     if request.candidate_id is not None:
         candidate = await session.get(Candidate, request.candidate_id)
         if candidate is None:
             raise Invalid("candidate-not-found", "No such candidate", field="candidate_id")
-        parts.append(f"<candidate>\n{_candidate_text(candidate)}\n</candidate>")
+        parts.append(_block("candidate", _candidate_text(candidate)))
     if request.template is not None:
         t = request.template
         mix = ", ".join(f"{k} {v}%" for k, v in t.difficulty.items())
@@ -201,7 +210,7 @@ async def gather(session: AsyncSession, request: GenerationRequest) -> tuple[str
         )
     existing = await _existing(session, skills)
     if existing:
-        listed = "\n".join(f"- {text[:300]}" for text in existing[:EXISTING_SENT])
+        listed = fence("\n".join(f"- {text[:300]}" for text in existing[:EXISTING_SENT]))
         parts.append(f"<existing>\n{listed}\n</existing>")
     return "\n\n".join(parts), existing
 

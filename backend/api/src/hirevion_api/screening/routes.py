@@ -465,6 +465,9 @@ async def export_screening_results(
         out = StringIO()
         writer = csv.writer(out)
         writer.writerow(EXPORT_COLUMNS)
+        # Every cell went through `_cell`, which prefixes anything a spreadsheet would run as a
+        # formula; that is what defusedcsv does.
+        # nosemgrep: python.django.security.injection.csv-writer-injection.csv-writer-injection
         writer.writerows(rows)
         # A byte-order mark, so Excel reads names with accents as UTF-8.
         return Response(

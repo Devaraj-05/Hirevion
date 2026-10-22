@@ -6,7 +6,18 @@ from __future__ import annotations
 
 import re
 
-_TAGS = re.compile(r"<(\s*/?\s*)(resume|job_description|job|candidate|document)\b", re.IGNORECASE)
+_NAMES = (
+    "resume",
+    "job_description",
+    "job",
+    "candidate",
+    "document",
+    "skills",
+    "experience_level",
+    "template",
+    "existing",
+)
+_TAGS = re.compile(rf"<(\s*/?\s*)({'|'.join(_NAMES)})\b", re.IGNORECASE)
 
 
 def fence(text: str) -> str:

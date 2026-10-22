@@ -57,6 +57,9 @@ class HibpChecker:
         self._timeout = timeout
 
     async def is_breached(self, password: str) -> bool:
+        # Have I Been Pwned's range API is keyed by SHA-1; only the first five characters leave
+        # this process, and nothing here depends on SHA-1 being collision resistant.
+        # nosemgrep: python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1
         digest = hashlib.sha1(password.encode("utf-8"), usedforsecurity=False).hexdigest().upper()
         prefix, suffix = digest[:5], digest[5:]
         body = await asyncio.wait_for(self._fetch(prefix), self._timeout)

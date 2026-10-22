@@ -58,6 +58,8 @@ async def claim(
     lock_timeout_ms: int = 5000,
 ) -> StoredResponse | None:
     """`None`: go ahead, then `remember()` the response. Otherwise, the response to replay."""
+    # SET can't take a bound parameter; the value is an int made here, never request text.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(f"SET LOCAL lock_timeout = {int(lock_timeout_ms)}"))
     try:
         inserted = await session.scalar(
