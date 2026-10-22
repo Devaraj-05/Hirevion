@@ -2,9 +2,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
+import { QueryFailed } from "@/data/query-failed";
 import { getDashboard, interviewKeys } from "@/interviews/assigned-api";
 import { KpiGrid } from "./kpi-grid";
-import { DASHBOARD_FILTERS, type Kpi } from "./model";
+import { DASHBOARD_FILTERS, KPIS, type Kpi } from "./model";
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -24,7 +25,7 @@ export function dashboardQuery(params: URLSearchParams): Record<string, string |
   const query: Record<string, string | undefined> = {};
   for (const name of DASHBOARD_FILTERS) {
     const value = params.get(name) || undefined;
-    if (value === undefined || name === "candidateStatus") continue;
+    if (value === undefined) continue;
     if (name === "from") query.from = dayStart(value);
     else if (name === "to") query.to = dayStart(value, 1);
     else query[name] = value;
@@ -41,13 +42,27 @@ export function DashboardFigures({ live }: { live: boolean }) {
     queryFn: () => getDashboard(query),
     enabled: live,
   });
-  const values: Partial<Record<Kpi, number>> = figures.data
-    ? {
-        interviewsScheduled: figures.data.interviews_scheduled,
-        liveInterviews: figures.data.live_interviews,
-        completedInterviews: figures.data.completed_interviews,
-        pendingReviews: figures.data.pending_reviews,
-      }
-    : {};
+  if (figures.isError) return <QueryFailed onRetry={() => void figures.refetch()} />;
+  // A figure the reader may not read comes back null: it stays "no data yet".
+  const data = figures.data;
+  const values: Partial<Record<Kpi, number>> = {};
+  if (data) {
+    const all: Record<Kpi, number | null | undefined> = {
+      openJobs: data.open_jobs,
+      activeCandidates: data.active_candidates,
+      screened: data.screened,
+      shortlisted: data.shortlisted,
+      inPipeline: data.in_pipeline,
+      interviewsScheduled: data.interviews_scheduled,
+      liveInterviews: data.live_interviews,
+      completedInterviews: data.completed_interviews,
+      pendingReviews: data.pending_reviews,
+      proctoringAlerts: data.proctoring_alerts,
+    };
+    for (const kpi of KPIS) {
+      const value = all[kpi];
+      if (typeof value === "number") values[kpi] = value;
+    }
+  }
   return <KpiGrid values={values} />;
 }

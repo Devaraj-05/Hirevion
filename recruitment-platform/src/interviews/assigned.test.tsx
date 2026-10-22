@@ -226,6 +226,7 @@ describe("dashboardQuery", () => {
       from: new Date("2026-10-01T00:00:00").toISOString(),
       to: new Date("2026-10-08T00:00:00").toISOString(),
       team: "t1",
+      candidateStatus: "shortlisted",
     });
   });
 
