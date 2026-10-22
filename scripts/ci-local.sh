@@ -7,7 +7,9 @@
 #   bash scripts/ci-local.sh --all      every job, as CI runs on main
 #   bash scripts/ci-local.sh python js  only the jobs named
 #
-# Jobs: hooks, python, contract, js, e2e, compose, desktop, desktop-e2e, rust, secrets.
+# Jobs: hooks, python, contract, js, e2e, compose, desktop, desktop-e2e, rust, secrets,
+# semgrep, dependencies. The scanners (Semgrep, osv-scanner, Trivy, Syft) run as pinned Docker
+# images through scripts/gates.sh, the same script CI calls; nothing to install.
 # `e2e` needs the local stack and the API running (`uv run hv up`, `uv run hv api`); the Python
 # tests need the stack too. The summary is also written to .ci-local/summary.md.
 set -uo pipefail
@@ -18,7 +20,7 @@ SUMMARY=.ci-local/summary.md
 UV=${UV:-uv}
 command -v "$UV" >/dev/null 2>&1 || UV="/c/Users/$USER/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/uv.exe"
 
-ALL_JOBS=(hooks python contract js e2e compose desktop desktop-e2e rust secrets)
+ALL_JOBS=(hooks python contract js e2e compose desktop desktop-e2e rust secrets semgrep dependencies)
 
 changed_files() {
   git fetch -q origin main 2>/dev/null || true
@@ -44,6 +46,8 @@ pick_jobs() {
   touches "$ci|^infrastructure/|^backend/|^docs/policies/|^uv\.lock$" && JOBS+=(compose)
   touches "$ci|^ai-interviewer-desktop/|^packages/|^pnpm-lock\.yaml$" && JOBS+=(desktop desktop-e2e)
   touches "$ci|^ai-interviewer-desktop/src-tauri/" && JOBS+=(rust)
+  touches "$ci|^backend/|^tools/|^recruitment-platform/|^packages/|^ai-interviewer-desktop/|^\.semgrepignore$|^scripts/gates\.sh$" && JOBS+=(semgrep)
+  touches "$ci|^uv\.lock$|^pnpm-lock\.yaml$|^pnpm-workspace\.yaml$|package\.json$|Cargo\.lock$|^osv-scanner\.toml$|^tools/devcli/|^scripts/gates\.sh$" && JOBS+=(dependencies)
   return 0
 }
 
@@ -56,7 +60,9 @@ job_python() {
     "$UV" run hv trace --check &&
     "$UV" run mypy tools/devcli/src backend/core/src backend/api/src \
       backend/interview_agent/src tools/voice_bench/src tools/interview-simulator/src &&
-    "$UV" run pytest -q -p no:cacheprovider 2>&1 | tail -15
+    bash scripts/gates.sh bandit &&
+    # Tests, with line coverage of the domain code (hirevion_core): the run fails below 85%.
+    "$UV" run pytest -q -p no:cacheprovider --cov --cov-report=term:skip-covered 2>&1 | tail -40
 }
 
 job_contract() {
@@ -68,7 +74,10 @@ job_contract() {
 job_js() {
   # CI starts from a clean checkout: Next.js route types from an older build would fail tsc.
   rm -rf recruitment-platform/.next/types
-  pnpm install --frozen-lockfile >/dev/null && pnpm lint && pnpm typecheck && pnpm test
+  pnpm install --frozen-lockfile >/dev/null && pnpm lint && pnpm typecheck &&
+    pnpm --filter '!@hirevion/recruitment-platform' test &&
+    # The web app's tests with V8 coverage, against the floor in vitest.config.ts.
+    pnpm --filter @hirevion/recruitment-platform test:coverage
 }
 
 job_e2e() {
@@ -84,6 +93,9 @@ job_compose() {
     --profile core --profile edge --profile media --profile obs config --quiet &&
     docker build -q -f backend/api/Dockerfile -t hirevion-api:ci-local . >/dev/null &&
     docker rm -f hirevion-api-ci-local >/dev/null 2>&1
+  # Trivy: HIGH or CRITICAL vulnerabilities with a fix fail; Syft writes the SPDX SBOM.
+  bash scripts/gates.sh trivy hirevion-api:ci-local || return 1
+  bash scripts/gates.sh syft hirevion-api:ci-local .ci-local/sbom.spdx.json || return 1
   docker run -d --name hirevion-api-ci-local -p 127.0.0.1:18000:8000 \
     -e OTEL_SDK_DISABLED=true -e POSTGRES_USER=ci -e POSTGRES_PASSWORD=ci \
     -e POSTGRES_APP_PASSWORD=ci -e POSTGRES_RELAY_PASSWORD=ci hirevion-api:ci-local >/dev/null || return 1
@@ -116,6 +128,16 @@ job_desktop-e2e() {
 job_rust() {
   cargo deny --manifest-path ai-interviewer-desktop/src-tauri/Cargo.toml \
     check advisories bans licenses sources
+}
+
+job_semgrep() { bash scripts/gates.sh semgrep; }
+
+job_dependencies() {
+  "$UV" sync --locked >/dev/null &&
+    pnpm install --frozen-lockfile >/dev/null &&
+    bash scripts/gates.sh osv &&
+    bash scripts/gates.sh licenses-python &&
+    bash scripts/gates.sh licenses-js
 }
 
 job_secrets() {

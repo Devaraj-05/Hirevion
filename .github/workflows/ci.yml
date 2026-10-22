@@ -27,6 +27,8 @@ jobs:
       compose: ${{ steps.filter.outputs.compose }}
       desktop: ${{ steps.filter.outputs.desktop }}
       rust: ${{ steps.filter.outputs.rust }}
+      scan: ${{ steps.filter.outputs.scan }}
+      deps: ${{ steps.filter.outputs.deps }}
     steps:
       - uses: actions/checkout@v7
       - uses: dorny/paths-filter@v3
@@ -75,6 +77,27 @@ jobs:
             rust:
               - *ci
               - "ai-interviewer-desktop/src-tauri/**"
+            # Source for the static analysis (Semgrep) to read.
+            scan:
+              - *ci
+              - "backend/**"
+              - "tools/**"
+              - "recruitment-platform/**"
+              - "packages/**"
+              - "ai-interviewer-desktop/**"
+              - ".semgrepignore"
+              - "scripts/gates.sh"
+            # What the dependency scans (osv-scanner, licences) read.
+            deps:
+              - *ci
+              - "uv.lock"
+              - "pnpm-lock.yaml"
+              - "pnpm-workspace.yaml"
+              - "**/package.json"
+              - "ai-interviewer-desktop/src-tauri/Cargo.lock"
+              - "osv-scanner.toml"
+              - "tools/devcli/**"
+              - "scripts/gates.sh"
 
   hooks:
     runs-on: ubuntu-24.04
@@ -154,9 +177,14 @@ jobs:
       - run: >-
           uv run mypy tools/devcli/src backend/core/src backend/api/src
           backend/interview_agent/src tools/voice_bench/src tools/interview-simulator/src
+      - name: Bandit (medium severity and up fails; pyproject.toml has the settings)
+        run: bash scripts/gates.sh bandit
       - name: Interview evaluation gate (a regressed prompt or rubric fails here; mock profile)
         run: uv run hv eval-interviews
-      - run: uv run pytest
+      # Line coverage of hirevion_core, the domain code (see [tool.coverage] in pyproject.toml):
+      # the run fails below 85%.
+      - name: Tests, with coverage of the domain code
+        run: uv run pytest --cov --cov-report=term:skip-covered
 
   # The committed OpenAPI document and the TypeScript types generated from it match the API.
   api-contract:
@@ -328,6 +356,44 @@ jobs:
             api.log
           retention-days: 7
 
+  # Semgrep: the Python, TypeScript, React, secrets and OWASP Top Ten rule packs over our own
+  # source (.semgrepignore lists what is left out). Any finding fails; an accepted one carries
+  # `# nosemgrep: <rule>` and the reason beside it.
+  semgrep:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.scan == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - run: bash scripts/gates.sh semgrep
+
+  # osv-scanner over every lockfile, and the licence policy (master plan section 13).
+  dependencies:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.deps == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: uv sync --locked
+      - run: pnpm install --frozen-lockfile
+      - name: Known vulnerabilities in uv.lock, pnpm-lock.yaml and Cargo.lock (osv-scanner)
+        run: bash scripts/gates.sh osv
+      - name: Python licences (pip-licenses)
+        run: bash scripts/gates.sh licenses-python
+      - name: JavaScript licences (license-checker)
+        run: bash scripts/gates.sh licenses-js
+
   compose:
     needs: changes
     if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.compose == 'true'
@@ -347,6 +413,15 @@ jobs:
           --profile core --profile edge --profile media --profile obs config --quiet
       - name: Build the API image
         run: docker build -f backend/api/Dockerfile -t hirevion-api:ci .
+      - name: Trivy (HIGH or CRITICAL vulnerabilities with a fix fail)
+        run: bash scripts/gates.sh trivy hirevion-api:ci
+      - name: SBOM of the API image (Syft, SPDX)
+        run: bash scripts/gates.sh syft hirevion-api:ci .ci-local/sbom.spdx.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: api-image-sbom
+          path: .ci-local/sbom.spdx.json
+          retention-days: 90
       - name: The API image starts and answers its liveness probe
         run: |
           docker run -d --name hirevion-api -p 127.0.0.1:8000:8000 \
@@ -382,7 +457,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
-      - run: pnpm test
+      - run: pnpm --filter '!@hirevion/recruitment-platform' test
+      # The web app's tests with V8 coverage; vitest.config.ts has the floor it may not fall below.
+      - name: Web app tests, with coverage
+        run: pnpm --filter @hirevion/recruitment-platform test:coverage
 
   desktop:
     needs: changes

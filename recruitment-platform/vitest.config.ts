@@ -6,6 +6,17 @@ export default defineConfig({
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
   test: {
+    // `pnpm test:coverage` (the web coverage gate): V8 coverage of the app's own source.
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: ["src/**/*.test.{ts,tsx}", "src/test/**", "**/*.d.ts"],
+      reporter: ["text-summary", "json-summary"],
+      reportsDirectory: "coverage",
+      // What was measured on 2026-10-22, rounded down: the gate only lets coverage rise. Raise
+      // these when it does.
+      thresholds: { lines: 72, statements: 71, branches: 66, functions: 66 },
+    },
     // Logic runs on Node; components (.tsx tests) run in jsdom.
     projects: [
       { extends: true, test: { name: "node", include: ["src/**/*.test.ts"], environment: "node" } },

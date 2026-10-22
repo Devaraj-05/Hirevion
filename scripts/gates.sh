@@ -43,7 +43,17 @@ gate_bandit() {
 }
 
 gate_semgrep() {
-  docker_run -v "$(host_dir):/src:ro" -w /src "$SEMGREP_IMAGE" semgrep scan \
+  # Each source directory is mounted by itself, not the whole repository: with the repository's
+  # .git inside, Semgrep asks git about the files, and a git worktree's .git points outside the
+  # container, where git fails. Without a .git it walks the files, skipping what .semgrepignore
+  # lists.
+  local host mounts=() dir
+  host=$(host_dir)
+  for dir in backend tools packages recruitment-platform/src ai-interviewer-desktop/src; do
+    mounts+=(-v "$host/$dir:/src/$dir:ro")
+  done
+  docker_run "${mounts[@]}" -v "$host/.semgrepignore:/src/.semgrepignore:ro" -w /src \
+    "$SEMGREP_IMAGE" semgrep scan \
     --config p/python --config p/typescript --config p/react --config p/secrets \
     --config p/owasp-top-ten --metrics=off --error --quiet \
     backend tools recruitment-platform/src packages ai-interviewer-desktop/src

@@ -166,7 +166,8 @@ def run_python(root: Path) -> list[str]:
     """Reads the licences of the installed Python packages with `pip-licenses`."""
     with tempfile.TemporaryDirectory() as folder:
         report = Path(folder) / "python.json"
-        subprocess.run(  # noqa: S603  # nosec B603 (fixed commands, no user input)
+        # (fixed commands: the interpreter, pnpm and a pinned tool; no user input)
+        subprocess.run(  # noqa: S603  # nosec B603
             [
                 sys.executable,
                 "-m",
@@ -192,7 +193,8 @@ def run_javascript(root: Path) -> list[str]:
     with tempfile.TemporaryDirectory() as folder:
         for directory in workspace_directories(root):
             report = Path(folder) / f"{directory.name}.json"
-            subprocess.run(  # noqa: S603  # nosec B603 (fixed commands, no user input)
+            # (fixed commands: the interpreter, pnpm and a pinned tool; no user input)
+            subprocess.run(  # noqa: S603  # nosec B603
                 [
                     pnpm,
                     "dlx",

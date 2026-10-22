@@ -98,10 +98,31 @@ module = ["pypdfium2", "pypdfium2.*", "reportlab", "reportlab.*"]
 ignore_missing_imports = true
 
 [tool.coverage.run]
+# The domain code is `hirevion_core`: identity and access, jobs, documents, candidates, screening,
+# interviews, the engine, evaluation, proctoring, recordings, reports. The API (thin routes over
+# it), the tools and the agent are exercised end to end rather than measured line by line.
 source_pkgs = ["hirevion_core"]
 # SQLAlchemy's async engine runs on greenlets; without this their lines read as not run.
 concurrency = ["greenlet", "thread"]
+# Vendor and I/O adapters: they speak to a service (OpenAI-compatible and Deepgram APIs, blob
+# storage, SMTP, ClamAV, OpenTelemetry, the migration runner, ffmpeg) and are covered by
+# contract tests against fakes and by the live tests, not by line coverage.
+omit = [
+  "*/hirevion_core/ai/openai_compat.py",
+  "*/hirevion_core/ai/deepgram.py",
+  "*/hirevion_core/storage/service.py",
+  "*/hirevion_core/mail/sender.py",
+  "*/hirevion_core/documents/scan.py",
+  "*/hirevion_core/telemetry.py",
+  "*/hirevion_core/db/migrate.py",
+  "*/hirevion_core/recordings/ffmpeg.py",
+]
 
 [tool.coverage.report]
+# 85% of the domain code's lines (master plan section 13); `pytest --cov` fails below it.
 fail_under = 85
 skip_covered = true
+
+[tool.bandit]
+# Tests assert, use fixed passwords and build SQL freely; the gate is about the code we ship.
+exclude_dirs = ["tests", "node_modules", ".venv"]
