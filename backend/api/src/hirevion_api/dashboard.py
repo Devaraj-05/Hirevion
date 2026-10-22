@@ -11,10 +11,16 @@ from pydantic import AwareDatetime
 from hirevion_api.access.deps import own_tenant
 from hirevion_api.authz import Principal, requires
 from hirevion_api.interviews.assigned_schemas import DashboardSummary, InterviewStatus
+from hirevion_api.review.schemas import HiringStatus
 from hirevion_api.routing import api_router
 from hirevion_core.access.scope import resource_scope
-from hirevion_core.dashboard import DashboardFilters, interview_figures
-from hirevion_core.reports.review import pending_count
+from hirevion_core.dashboard import (
+    DashboardFilters,
+    candidate_figures,
+    interview_figures,
+    job_figures,
+    review_figures,
+)
 
 router = api_router(tags=["dashboard"])
 
@@ -32,8 +38,11 @@ async def get_dashboard(
     job: UUID | None = None,
     department: UUID | None = None,
     interview_status: Annotated[InterviewStatus | None, Query(alias="interviewStatus")] = None,
+    candidate_status: Annotated[HiringStatus | None, Query(alias="candidateStatus")] = None,
 ) -> DashboardSummary:
-    """The figures within the reader's scope that have data so far."""
+    """PRD §10's figures within the reader's scope, under the page's seven filters. What the
+    reader may not read is null: jobs need `jobs.view`, candidates `candidates.view`, alerts
+    `reports.proctoring.view`; someone who only reviews sees just their own interviews."""
     filters = DashboardFilters(
         date_from=date_from,
         date_to=date_to,
@@ -42,10 +51,24 @@ async def get_dashboard(
         job_id=job,
         department_id=department,
         interview_status=interview_status,
+        candidate_status=candidate_status,
     )
     reviewer_only = principal.reviewer_only
+    can = principal.permissions
     async with own_tenant(request, principal) as session:
         scope = await resource_scope(session, principal.user_id)
-        figures = await interview_figures(session, scope, filters, reviewer_only=reviewer_only)
-        pending = await pending_count(session, scope, reviewer_only=reviewer_only)
-    return DashboardSummary(**figures, pending_reviews=pending)
+        figures: dict[str, int] = await interview_figures(
+            session, scope, filters, reviewer_only=reviewer_only
+        )
+        figures |= await review_figures(
+            session,
+            scope,
+            filters,
+            reviewer_only=reviewer_only,
+            alerts="reports.proctoring.view" in can,
+        )
+        if "jobs.view" in can:
+            figures |= await job_figures(session, scope, filters)
+        if "candidates.view" in can:
+            figures |= await candidate_figures(session, scope, filters)
+    return DashboardSummary(**figures)

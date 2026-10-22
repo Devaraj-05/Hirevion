@@ -707,7 +707,9 @@ export interface paths {
         };
         /**
          * Get Dashboard
-         * @description The figures within the reader's scope that have data so far.
+         * @description PRD §10's figures within the reader's scope, under the page's seven filters. What the
+         *     reader may not read is null: jobs need `jobs.view`, candidates `candidates.view`, alerts
+         *     `reports.proctoring.view`; someone who only reviews sees just their own interviews.
          */
         get: operations["get_dashboard"];
         put?: never;
@@ -4491,18 +4493,30 @@ export interface components {
         };
         /**
          * DashboardSummary
-         * @description PRD §10's figures that have data so far; the rest are absent (the page shows "no data
-         *     yet").
+         * @description PRD §10's figures, counted under the page's filters (`hirevion_core.dashboard` says how).
+         *     A figure is null when the reader may not read what it counts (the page shows "no data yet").
          */
         DashboardSummary: {
+            /** Active Candidates */
+            active_candidates?: number | null;
             /** Completed Interviews */
             completed_interviews: number;
+            /** In Pipeline */
+            in_pipeline?: number | null;
             /** Interviews Scheduled */
             interviews_scheduled: number;
             /** Live Interviews */
             live_interviews: number;
+            /** Open Jobs */
+            open_jobs?: number | null;
             /** Pending Reviews */
             pending_reviews: number;
+            /** Proctoring Alerts */
+            proctoring_alerts?: number | null;
+            /** Screened */
+            screened?: number | null;
+            /** Shortlisted */
+            shortlisted?: number | null;
         };
         /** DecisionRequest */
         DecisionRequest: {
@@ -10912,6 +10926,7 @@ export interface operations {
                 job?: string | null;
                 department?: string | null;
                 interviewStatus?: ("scheduled" | "invited" | "in_progress" | "interrupted" | "completed" | "evaluating" | "evaluated" | "expired" | "cancelled" | "abandoned") | null;
+                candidateStatus?: ("under_review" | "shortlisted" | "interview_invited" | "interview_started" | "interview_completed" | "additional_review" | "selected" | "rejected" | "on_hold") | null;
             };
             header?: never;
             path?: never;

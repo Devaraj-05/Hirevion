@@ -147,11 +147,20 @@ class ReviewersBody(BaseModel):
 
 
 class DashboardSummary(BaseModel):
-    """PRD §10's figures that have data so far; the rest are absent (the page shows "no data
-    yet")."""
+    """PRD §10's figures, counted under the page's filters (`hirevion_core.dashboard` says how).
+    A figure is null when the reader may not read what it counts (the page shows "no data yet")."""
 
+    open_jobs: int | None = None
+    active_candidates: int | None = None
+    """People with at least one application that is not decided."""
+    screened: int | None = None
+    shortlisted: int | None = None
+    in_pipeline: int | None = None
+    """The undecided applications, one by one (the Hiring Pipeline's total)."""
     interviews_scheduled: int
     live_interviews: int
     completed_interviews: int
     pending_reviews: int
-    """Interviews that have ended and wait for a person to decide (not narrowed by the filters)."""
+    """Interviews that have ended and wait for a person to decide."""
+    proctoring_alerts: int | None = None
+    """WARNING and CRITICAL proctoring events of those interviews that no one has reviewed."""

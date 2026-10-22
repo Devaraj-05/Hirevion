@@ -2469,11 +2469,33 @@
         "type": "object"
       },
       "DashboardSummary": {
-        "description": "PRD §10's figures that have data so far; the rest are absent (the page shows \"no data\nyet\").",
+        "description": "PRD §10's figures, counted under the page's filters (`hirevion_core.dashboard` says how).\nA figure is null when the reader may not read what it counts (the page shows \"no data yet\").",
         "properties": {
+          "active_candidates": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Candidates"
+          },
           "completed_interviews": {
             "title": "Completed Interviews",
             "type": "integer"
+          },
+          "in_pipeline": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "In Pipeline"
           },
           "interviews_scheduled": {
             "title": "Interviews Scheduled",
@@ -2483,9 +2505,53 @@
             "title": "Live Interviews",
             "type": "integer"
           },
+          "open_jobs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open Jobs"
+          },
           "pending_reviews": {
             "title": "Pending Reviews",
             "type": "integer"
+          },
+          "proctoring_alerts": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proctoring Alerts"
+          },
+          "screened": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Screened"
+          },
+          "shortlisted": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shortlisted"
           }
         },
         "required": [
@@ -18777,7 +18843,7 @@
     },
     "/api/v1/dashboard": {
       "get": {
-        "description": "The figures within the reader's scope that have data so far.",
+        "description": "PRD §10's figures within the reader's scope, under the page's seven filters. What the\nreader may not read is null: jobs need `jobs.view`, candidates `candidates.view`, alerts\n`reports.proctoring.view`; someone who only reviews sees just their own interviews.",
         "operationId": "get_dashboard",
         "parameters": [
           {
@@ -18908,6 +18974,33 @@
                 }
               ],
               "title": "Interviewstatus"
+            }
+          },
+          {
+            "in": "query",
+            "name": "candidateStatus",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "under_review",
+                    "shortlisted",
+                    "interview_invited",
+                    "interview_started",
+                    "interview_completed",
+                    "additional_review",
+                    "selected",
+                    "rejected",
+                    "on_hold"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Candidatestatus"
             }
           }
         ],
