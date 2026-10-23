@@ -52,6 +52,13 @@ async def test_candidate_360_has_the_tabs_data_for_a_recruiter(
         "third_eye",
     ]
     assert interview["code_snapshots"] == 1 and interview["candidate_report_status"] == "none"
+    assert interview["coding"] == {
+        "questions": 0,
+        "submissions": 0,
+        "status": "not_asked",
+        "score": None,
+        "notable_signals": 0,
+    }
     assert {s["skill"] for s in body["skills"]} == {"PostgreSQL", "Python"}
     assert [n["body"] for n in body["notes"]] == ["Confident on query plans."]
 

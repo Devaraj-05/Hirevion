@@ -217,6 +217,16 @@ def interview_entries(
             f"{snapshot.language or 'text'}, {snapshot.size} characters",
             ref={"question_id": str(snapshot.question_id)},
         )
+    for item in data.submissions:
+        add(
+            item.created_at,
+            "coding",
+            "submission",
+            f"Code submitted for question {numbers.get(item.question_id, '?')}",
+            f"{item.language}, {item.size} characters"
+            + ("" if item.source == "submitted" else " (kept when the question ended)"),
+            ref={"question_id": str(item.question_id)},
+        )
     floor = RANK.get(min_severity, 0)
     for event in data.events:
         if RANK.get(event.severity, 0) < floor:

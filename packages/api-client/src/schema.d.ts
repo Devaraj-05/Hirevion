@@ -1305,6 +1305,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/interviews/{interview_id}/coding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Coding Question
+         * @description The open coding question for the console: its text, the languages to choose from, any
+         *     starter code and the last saved draft; `question` is null when the open question isn't one.
+         */
+        get: operations["coding_question"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/coding/submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Code
+         * @description Submits the coding question's answer. It becomes the question's final code (never run;
+         *     reviewed after the interview), the question closes and the interview moves on.
+         */
+        post: operations["submit_code"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/coding/telemetry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Coding Telemetry
+         * @description A batch of the console's integrity events (PRD §48): typing started and stopped, paste,
+         *     copy, cut, focus and blur. Clipboard events carry a length, never text; there are no
+         *     keystrokes.
+         */
+        post: operations["coding_telemetry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/interviews/{interview_id}/complete": {
         parameters: {
             query?: never;
@@ -4394,6 +4458,119 @@ export interface components {
              */
             type: "code";
         };
+        /**
+         * CodingBrief
+         * @description The interview's coding questions (SP-16): the review of the code and its signals.
+         */
+        CodingBrief: {
+            /** Notable Signals */
+            notable_signals: number;
+            /** Questions */
+            questions: number;
+            /** Score */
+            score: number | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "not_asked" | "pending" | "scored" | "no_code";
+            /** Submissions */
+            submissions: number;
+        };
+        /** CodingCriterion */
+        CodingCriterion: {
+            /** Estimate */
+            estimate?: string | null;
+            /**
+             * Estimated
+             * @default false
+             */
+            estimated: boolean;
+            /** Evidence */
+            evidence: components["schemas"]["CodingEvidence"][];
+            /** Rationale */
+            rationale: string;
+            /** Raw Score */
+            raw_score: number;
+            /** Score */
+            score: number;
+            /** Supported */
+            supported: boolean;
+        };
+        /**
+         * CodingEvidence
+         * @description A verified quote from the code and the lines it spans.
+         */
+        CodingEvidence: {
+            /** End Line */
+            end_line: number;
+            /** Line */
+            line: number;
+            /** Quote */
+            quote: string;
+        };
+        /** CodingQuestionBody */
+        CodingQuestionBody: {
+            /**
+             * Asked At
+             * Format: date-time
+             */
+            asked_at: string;
+            draft: components["schemas"]["Draft"] | null;
+            /** Languages */
+            languages: ("python" | "javascript" | "typescript" | "sql")[];
+            /**
+             * Question Id
+             * Format: uuid
+             */
+            question_id: string;
+            /** Starter Code */
+            starter_code: {
+                [key: string]: string;
+            };
+            /** Text */
+            text: string;
+            /** Time Limit Seconds */
+            time_limit_seconds: number | null;
+        };
+        /** CodingQuestionEvaluation */
+        CodingQuestionEvaluation: {
+            /** Criteria */
+            criteria: {
+                [key: string]: components["schemas"]["CodingCriterion"];
+            };
+            /** Edge Cases Missed */
+            edge_cases_missed: string[];
+            /** Flags */
+            flags: string[];
+            /** Language */
+            language: string | null;
+            /** Model */
+            model: string | null;
+            /** Question Id */
+            question_id: string;
+            /** Score */
+            score: number;
+            /** Skill */
+            skill: string | null;
+            /** Source */
+            source: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "scored" | "no_code";
+            /** Submission Id */
+            submission_id: string | null;
+            /** Summary */
+            summary: string;
+            /** Unsupported */
+            unsupported: string[];
+        };
+        /** CodingQuestionResponse */
+        CodingQuestionResponse: {
+            question: components["schemas"]["CodingQuestionBody"] | null;
+        };
         /** CodingSettings */
         CodingSettings: {
             /** Languages */
@@ -4461,6 +4638,24 @@ export interface components {
             id: string;
             /** Missing */
             missing: string[];
+        };
+        /**
+         * ConsoleEvent
+         * @description One console event. Paste, copy and cut carry the length of the text, never the text.
+         */
+        ConsoleEvent: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Chars */
+            chars?: number | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "typing_started" | "typing_stopped" | "paste" | "copy" | "cut" | "focus" | "blur";
         };
         /** Counts */
         Counts: {
@@ -4660,6 +4855,18 @@ export interface components {
             /** System Requirements */
             system_requirements: string[];
         };
+        /** Draft */
+        Draft: {
+            /** Content */
+            content: string;
+            /** Language */
+            language: string | null;
+            /**
+             * Saved At
+             * Format: date-time
+             */
+            saved_at: string;
+        };
         /** DraftItem */
         DraftItem: {
             /** Include */
@@ -4749,15 +4956,26 @@ export interface components {
         };
         /**
          * EvaluationCoding
-         * @description Left for the coding evaluation (SP-16, PRD §47).
+         * @description The coding questions' review (SP-16, PRD §47): the code was read, never run. An evaluation
+         *     from before SP-16 has `status: pending` and `source: sp-16`.
          */
         EvaluationCoding: {
+            /** Prompt Version */
+            prompt_version?: string | null;
+            /** Questions */
+            questions?: components["schemas"]["CodingQuestionEvaluation"][];
+            /** Rubric Version */
+            rubric_version?: string | null;
             /** Score */
             score: number | null;
             /** Source */
-            source: string;
+            source?: string | null;
             /** Status */
             status: string;
+            /** Weights */
+            weights?: {
+                [key: string]: number;
+            };
         };
         /** EvaluationDimension */
         EvaluationDimension: {
@@ -5522,6 +5740,7 @@ export interface components {
             candidate_report_status: "none" | "draft" | "released" | "withdrawn";
             /** Code Snapshots */
             code_snapshots: number;
+            coding: components["schemas"]["CodingBrief"];
             /** Completed At */
             completed_at: string | null;
             evaluation: components["schemas"]["EvaluationBrief"];
@@ -8831,6 +9050,58 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** Submission */
+        Submission: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Language
+             * @enum {string}
+             */
+            language: "python" | "javascript" | "typescript" | "sql";
+            /**
+             * Question Id
+             * Format: uuid
+             */
+            question_id: string;
+            /** Sha256 */
+            sha256: string;
+            /** Size */
+            size: number;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "submitted" | "time_limit" | "closed";
+            /**
+             * Submitted At
+             * Format: date-time
+             */
+            submitted_at: string;
+        };
+        /** SubmissionBody */
+        SubmissionBody: {
+            /** Code */
+            code: string;
+            /**
+             * Language
+             * @enum {string}
+             */
+            language: "python" | "javascript" | "typescript" | "sql";
+            /**
+             * Question Id
+             * Format: uuid
+             */
+            question_id: string;
+        };
+        /** SubmissionResponse */
+        SubmissionResponse: {
+            state: components["schemas"]["SessionState"];
+            submission: components["schemas"]["Submission"];
+        };
         /** SystemCheckBody */
         SystemCheckBody: {
             /** App Version */
@@ -8936,6 +9207,21 @@ export interface components {
             description?: string | null;
             /** Name */
             name?: string | null;
+        };
+        /** TelemetryBody */
+        TelemetryBody: {
+            /** Events */
+            events: components["schemas"]["ConsoleEvent"][];
+            /**
+             * Question Id
+             * Format: uuid
+             */
+            question_id: string;
+        };
+        /** TelemetryResponse */
+        TelemetryResponse: {
+            /** Accepted */
+            accepted: number;
         };
         /**
          * TemplateBody
@@ -12419,6 +12705,134 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CandidateReportResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    coding_question: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CodingQuestionResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    submit_code: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmissionBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmissionResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    coding_telemetry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TelemetryBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelemetryResponse"];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */

@@ -336,13 +336,8 @@ def technical_evaluation(data: InterviewData) -> Section:
 
 
 def coding_evaluation(data: InterviewData) -> Section:
-    return b.section(
-        "coding_evaluation",
-        "Coding evaluation",
-        coding_blocks(data),
-        pending=True,
-        note="Coding questions, test runs and grading arrive with the coding service (SP-16).",
-    )
+    """The coding question's review (SP-16): the code was read, never run."""
+    return b.section("coding_evaluation", "Coding evaluation", coding_blocks(data))
 
 
 def communication(data: InterviewData) -> Section:

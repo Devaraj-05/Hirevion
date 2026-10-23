@@ -110,7 +110,7 @@ async def test_the_interview_report_has_thirteen_sections_and_viewing_is_audited
     assert doc["kind"] == "interview" and doc["confidential"] is True
     assert len(doc["sections"]) == 13
     assert [s["status"] for s in doc["sections"]].count("populated") == 12
-    assert {s["key"]: s["status"] for s in doc["sections"]}["coding_evaluation"] == "pending"
+    assert {s["key"]: s["status"] for s in doc["sections"]}["coding_evaluation"] == "empty"
     skills = next(b for b in doc["sections"][4]["blocks"] if b["type"] == "table")
     assert {row[0] for row in skills["rows"]} == {"PostgreSQL", "Python"}
     # Looking again within five minutes is one audit entry, as with the proctoring report.
@@ -169,7 +169,7 @@ async def test_the_coding_and_candidate_reports(
     scene, _, _ = await make_reviewed_interview(org)
     client = await signed_in(org, scene.hiring.recruiter_id)
     coding = (await client.get(interview_url(scene, "/reports/coding"))).json()
-    assert coding["kind"] == "coding" and "SP-16" in str(coding)
+    assert coding["kind"] == "coding" and "no coding questions" in str(coding)
     candidate = await client.get(f"/api/v1/candidates/{scene.hiring.candidate_id}/report")
     assert candidate.status_code == 200
     doc = candidate.json()

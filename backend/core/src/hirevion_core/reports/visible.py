@@ -130,7 +130,12 @@ def draft_items(data: InterviewData) -> dict[str, dict[str, Any]]:
             if gaps
             else "We have no specific technical feedback to share from this interview."
         ),
-        "coding_feedback": "There was no coding assessment in this interview.",
+        "coding_feedback": (
+            "Thank you for working through the coding question. Your code was reviewed after the "
+            "interview."
+            if any(q.kind == "coding" for q in data.questions)
+            else "There was no coding assessment in this interview."
+        ),
         "next_step": NEXT_STEP[data.application.hiring_status],
     }
     return {

@@ -164,8 +164,8 @@ def _body(
             delta=follow.get("delta"),
             summary=_cited(follow.get("summary")),
         ),
-        coding=EvaluationCoding(
-            **summary.get("coding", {"status": "pending", "score": None, "source": "sp-16"})
+        coding=EvaluationCoding.model_validate(
+            summary.get("coding") or {"status": "not_asked", "score": None}
         ),
         flags=list(evaluation.flags),
         questions=[_brief(row, question) for row, question in rows],

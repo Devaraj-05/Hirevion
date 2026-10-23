@@ -272,7 +272,9 @@ async def test_every_persona_with_coding_finishes_and_the_code_is_reviewed(
     assert evaluation.pinned["coding_prompt_version"] == "evaluation-coding-v1"
 
     browser = await signed_in(seed.organization_id, recruiter)
-    api_view = (await browser.get(f"/api/v1/interviews/{seed.interview_id}/evaluation")).json()
+    api_view = (await browser.get(f"/api/v1/interviews/{seed.interview_id}/evaluation")).json()[
+        "evaluation"
+    ]
     assert api_view["coding"]["status"] == "scored"
     assert api_view["coding"]["questions"][0]["criteria"]["correctness"]["evidence"]
     document = (await browser.get(f"/api/v1/interviews/{seed.interview_id}/reports/coding")).json()

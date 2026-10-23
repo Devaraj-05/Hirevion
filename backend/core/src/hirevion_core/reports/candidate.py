@@ -11,6 +11,9 @@ from hirevion_core.models import Application, Job
 from hirevion_core.reports import blocks as b
 from hirevion_core.reports.blocks import Block, Document, Section
 from hirevion_core.reports.candidate360 import Candidate360
+from hirevion_core.reports.coding import METHOD as CODING_METHOD
+from hirevion_core.reports.coding import coding_questions, signals_for
+from hirevion_core.reports.coding import review as coding_review
 from hirevion_core.reports.data import InterviewData
 from hirevion_core.reports.labels import (
     HIRING_LABELS,
@@ -169,17 +172,37 @@ def _technical_skills(c360: Candidate360) -> Section:
 
 
 def _coding(c360: Candidate360) -> Section:
-    saved = sum(len(data.snapshots) for data in c360.interviews)
+    """Each interview's coding questions, the AI's review of the code and the signals."""
+    rows = []
+    for data in c360.interviews:
+        questions = coding_questions(data)
+        if not questions:
+            continue
+        slot = coding_review(data)
+        notable = sum(signals_for(data, q).notable for q in questions)
+        rows.append(
+            [
+                f"IV-{data.interview.number:04d}",
+                str(len(questions)),
+                str(len(data.submissions)),
+                b.score(slot.get("score")) if slot.get("score") is not None else None,
+                f"{notable} question(s) with notable signals" if notable else "None notable",
+            ]
+        )
     return b.section(
         "coding",
         "Coding",
         [
-            b.notice(
-                "Code runs, test results and coding grades arrive with the coding service (SP-16)."
+            b.notice(CODING_METHOD),
+            b.table(
+                "Coding by interview",
+                ["Interview", "Questions", "Submissions", "Coding score", "Integrity signals"],
+                rows,
             ),
-            b.facts([("Code snapshots saved", str(saved))]),
-        ],
-        pending=True,
+        ]
+        if rows
+        else [],
+        note=None if rows else "No coding question was asked.",
     )
 
 

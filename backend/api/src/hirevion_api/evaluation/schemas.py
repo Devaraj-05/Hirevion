@@ -92,12 +92,53 @@ class FollowUpPerformance(BaseModel):
     summary: EvaluationStatement
 
 
+class CodingEvidence(BaseModel):
+    """A verified quote from the code and the lines it spans."""
+
+    quote: str
+    line: int
+    end_line: int
+
+
+class CodingCriterion(BaseModel):
+    score: float
+    raw_score: float
+    supported: bool
+    evidence: list[CodingEvidence]
+    rationale: str
+    estimate: str | None = None
+    """Time and space complexity: the reviewer's big-O estimate from reading the code."""
+    estimated: bool = False
+
+
+class CodingQuestionEvaluation(BaseModel):
+    question_id: str
+    skill: str | None
+    language: str | None
+    submission_id: str | None
+    source: str
+    """`submitted`, `time_limit`, `closed`, `snapshot` or `none` (nothing was typed)."""
+    status: Literal["scored", "no_code"]
+    score: float
+    criteria: dict[str, CodingCriterion]
+    summary: str
+    edge_cases_missed: list[str]
+    flags: list[str]
+    unsupported: list[str]
+    model: str | None
+
+
 class EvaluationCoding(BaseModel):
-    """Left for the coding evaluation (SP-16, PRD §47)."""
+    """The coding questions' review (SP-16, PRD §47): the code was read, never run. An evaluation
+    from before SP-16 has `status: pending` and `source: sp-16`."""
 
     status: str
     score: float | None
-    source: str
+    source: str | None = None
+    prompt_version: str | None = None
+    rubric_version: str | None = None
+    weights: dict[str, int] = Field(default_factory=dict)
+    questions: list[CodingQuestionEvaluation] = Field(default_factory=list)
 
 
 class EvaluationVersions(BaseModel):

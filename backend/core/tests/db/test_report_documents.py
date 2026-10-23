@@ -5,6 +5,7 @@ is missing; and the candidate-visible report, which carries nothing internal."""
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -14,10 +15,13 @@ from hirevion_core.access.actor import Actor
 from hirevion_core.access.errors import Conflict, Invalid
 from hirevion_core.ai import build_ai
 from hirevion_core.ai.settings import AiSettings
+from hirevion_core.coding.console import submission
 from hirevion_core.db.session import Database
+from hirevion_core.evaluation.offline import offline_llm
 from hirevion_core.evaluation.service import evaluate_interview
 from hirevion_core.identity.permissions import permissions_for
-from hirevion_core.models import Interview
+from hirevion_core.ids import uuid7
+from hirevion_core.models import CodingTelemetry, Interview, InterviewQuestion
 from hirevion_core.proctoring.catalogue import EVENTS
 from hirevion_core.reports import interview as interview_report
 from hirevion_core.reports import proctoring as proctoring_report
@@ -67,13 +71,14 @@ async def test_the_interview_report_has_thirteen_sections_and_each_is_populated(
     assert [s["key"] for s in doc["sections"]] == list(interview_report.SECTION_KEYS)
     assert len(doc["sections"]) == 13
     status = {s["key"]: s["status"] for s in doc["sections"]}
-    # Coding waits for SP-16 and says so; every other section holds what the interview produced.
-    assert status.pop("coding_evaluation") == "pending"
+    # This interview had no coding question and says so; every other section holds what the
+    # interview produced.
+    assert status.pop("coding_evaluation") == "empty"
     assert set(status.values()) == {"populated"}, status
     assert doc["confidential"] is True and doc["audience"] == "internal"
 
     sections = {s["key"]: s for s in doc["sections"]}
-    assert "SP-16" in sections["coding_evaluation"]["note"]
+    assert "no coding question" in str(sections["coding_evaluation"]["blocks"])
     skills = next(
         block for block in sections["skill_evaluation"]["blocks"] if block["type"] == "table"
     )
@@ -223,23 +228,114 @@ def test_every_proctoring_event_has_a_label_and_a_report_section() -> None:
     assert set(EVENTS) <= set(SECTION_OF_EVENT)
 
 
-async def test_the_coding_report_says_what_exists_and_what_is_missing(
-    app_db: Database,
-    make_organization: MakeOrganization,
-    make_completed_interview: Any,
-    add_telemetry: Any,
+CODE = (
+    "def solve(nums, target):\n"
+    "    # One pass with a hash map.\n"
+    "    if not nums:\n"
+    "        return []\n"
+    "    seen = {}\n"
+    "    for index, value in enumerate(nums):\n"
+    "        if target - value in seen:\n"
+    "            return [seen[target - value], index]\n"
+    "        seen[value] = index\n"
+    "    return []\n"
+)
+
+
+async def _with_coding(app_db: Database, scene: Any) -> UUID:
+    """Adds an answered coding question to a finished interview: its submission (kept when the
+    time ran out) and the console's events."""
+    question_id = uuid7()
+    asked = datetime(2026, 10, 23, 10, 0, tzinfo=UTC)
+    async with app_db.tenant(scene.organization_id) as session:
+        interview = await session.get_one(Interview, scene.interview_id)
+        session.add(
+            InterviewQuestion(
+                id=question_id,
+                organization_id=scene.organization_id,
+                interview_id=scene.interview_id,
+                position=9,
+                kind="coding",
+                stage="coding",
+                skill="Python",
+                difficulty="medium",
+                type="coding",
+                text="Write solve(nums, target) returning the indices of a pair adding to target.",
+                source="library",
+                workspace="code",
+                languages=["python"],
+                status="timed_out",
+                asked_at=asked,
+                closed_at=asked + timedelta(minutes=10),
+            )
+        )
+        await session.flush()
+        session.add(
+            submission(interview, question_id, language="python", code=CODE, source="time_limit")
+        )
+        for kind, second, chars in (
+            ("focus", 1, None),
+            ("typing_started", 2, None),
+            ("paste", 30, 150),
+            ("blur", 60, None),
+            ("focus", 150, None),
+        ):
+            session.add(
+                CodingTelemetry(
+                    organization_id=scene.organization_id,
+                    interview_id=scene.interview_id,
+                    question_id=question_id,
+                    kind=kind,
+                    chars=chars,
+                    occurred_at=asked + timedelta(seconds=second),
+                )
+            )
+    return question_id
+
+
+async def test_without_a_coding_question_the_coding_report_says_so(
+    app_db: Database, make_organization: MakeOrganization, make_completed_interview: Any
 ) -> None:
-    org = await make_organization("Acme")
-    scene = await make_completed_interview(org)
-    await add_telemetry(scene)
+    scene = await make_completed_interview(await make_organization("Acme"))
     doc = coding_report(await load(app_db, scene))
     sections = {s["key"]: s for s in doc["sections"]}
-    assert sections["coding_summary"]["status"] == "pending"
-    assert sections["test_results"]["status"] == sections["coding_grade"]["status"] == "pending"
-    assert "SP-16" in str(sections["coding_summary"])
-    assert sections["coding_questions"]["status"] == "populated"
-    code = sections["submitted_code"]["blocks"][0]
-    assert code["type"] == "code" and "def decorate" in code["text"]
+    assert [s["status"] for s in doc["sections"]] == ["empty"] * 6
+    assert sections["coding_questions"]["note"] == "This interview asked no coding questions."
+    assert all(s["status"] != "pending" for s in doc["sections"])
+
+
+async def test_the_coding_report_shows_the_code_every_submission_the_review_and_the_signals(
+    app_db: Database, make_organization: MakeOrganization, make_completed_interview: Any
+) -> None:
+    scene = await make_completed_interview(await make_organization("Acme"))
+    await _with_coding(app_db, scene)
+    before = {s["key"]: s for s in coding_report(await load(app_db, scene))["sections"]}
+    assert before["final_code"]["status"] == "populated"
+    assert CODE in before["final_code"]["blocks"][0]["text"]
+    assert "kept when the time ran out" in before["final_code"]["blocks"][0]["caption"]
+    assert before["submissions"]["status"] == "populated"
+    assert before["assessment"]["status"] == "empty"
+    assert before["assessment"]["note"] == "The interview hasn't been evaluated yet."
+    integrity = str(before["integrity"])
+    assert "never proof" in integrity and "Pasted once, 150 characters." in integrity
+    assert "Left the code box once, about 90 seconds in all." in integrity
+
+    llm, _ = offline_llm()
+    await evaluate_interview(app_db, llm, scene.organization_id, scene.interview_id)
+    doc = coding_report(await load(app_db, scene))
+    sections = {s["key"]: s for s in doc["sections"]}
+    assert all(s["status"] == "populated" for s in doc["sections"]), [
+        (s["key"], s["status"]) for s in doc["sections"]
+    ]
+    blocks = sections["assessment"]["blocks"]
+    assert "never run" in blocks[0]["text"]
+    criteria = next(b for b in blocks if b["type"] == "table")
+    assert [row[0] for row in criteria["rows"]][3] == "Time complexity (estimated)"
+    quotes = next(b for b in blocks if b["type"] == "quotes")
+    assert all(" · line " in item["source"] for item in quotes["items"])
+    assert all(item["text"] in CODE for item in quotes["items"])
+    summary = str(sections["coding_summary"])
+    assert "estimated O(n) time" in summary
 
 
 async def test_html_never_lets_a_candidates_words_become_markup() -> None:

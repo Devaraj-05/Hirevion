@@ -83,7 +83,7 @@ async def test_a_completed_interview_is_evaluated_and_ends_evaluated(
     assert set(skills) == {"PostgreSQL", "Python"}
     assert skills["PostgreSQL"]["score"] > skills["Python"]["score"]
     assert skills["PostgreSQL"]["supported"] and skills["PostgreSQL"]["evidence"]
-    assert evaluation.summary["coding"]["status"] == "pending"
+    assert evaluation.summary["coding"] == {"status": "not_asked", "score": None, "questions": []}
     assert evaluation.summary["strengths"] and evaluation.summary["knowledge_gaps"]
 
     async with app_db.tenant(scene.organization_id) as session:

@@ -22,6 +22,8 @@ from hirevion_core.models import (
     ApplicationStatusHistory,
     Candidate,
     CandidateNote,
+    CodingSubmission,
+    CodingTelemetry,
     Evaluation,
     HiringInput,
     Interview,
@@ -75,6 +77,10 @@ class InterviewData:
     hiring_inputs: list[HiringInput]
     people: dict[UUID, str] = field(default_factory=dict)
     """Names of the users who appear in the data."""
+    submissions: list[CodingSubmission] = field(default_factory=list)
+    """Every coding submission, oldest first (SP-16)."""
+    console_events: list[CodingTelemetry] = field(default_factory=list)
+    """The coding console's integrity events, in time order (SP-16)."""
 
     @property
     def anchor(self) -> datetime | None:
@@ -249,6 +255,24 @@ async def load_interview_data(
                     select(WorkspaceSnapshot)
                     .where(WorkspaceSnapshot.interview_id == interview.id)
                     .order_by(WorkspaceSnapshot.created_at, WorkspaceSnapshot.id)
+                )
+            ).all()
+        ),
+        submissions=list(
+            (
+                await session.scalars(
+                    select(CodingSubmission)
+                    .where(CodingSubmission.interview_id == interview.id)
+                    .order_by(CodingSubmission.created_at, CodingSubmission.id)
+                )
+            ).all()
+        ),
+        console_events=list(
+            (
+                await session.scalars(
+                    select(CodingTelemetry)
+                    .where(CodingTelemetry.interview_id == interview.id)
+                    .order_by(CodingTelemetry.occurred_at, CodingTelemetry.id)
                 )
             ).all()
         ),

@@ -61,7 +61,7 @@ async def test_the_evaluation_has_scores_evidence_and_versions(
     assert body["versions"]["prompt"] == "evaluation-question-v1"
     assert body["versions"]["rubric"].startswith("dimensions-v1+w")
     assert body["versions"]["model"] == "mock-llm" and sum(body["rubric_weights"].values()) == 100
-    assert body["overall_score"] is not None and body["coding"]["status"] == "pending"
+    assert body["overall_score"] is not None and body["coding"]["status"] == "not_asked"
     assert {s["skill"] for s in body["skills"]} == {"PostgreSQL", "Python"}
     postgres = next(s for s in body["skills"] if s["skill"] == "PostgreSQL")
     assert postgres["supported"] and postgres["evidence"][0]["quote"]

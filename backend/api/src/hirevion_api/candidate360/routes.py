@@ -19,6 +19,8 @@ from hirevion_core.access.scope import resource_scope
 from hirevion_core.hiring.scores import ScoreValue
 from hirevion_core.interviews.lifecycle import reference
 from hirevion_core.reports.candidate360 import Candidate360, load_candidate_360
+from hirevion_core.reports.coding import coding_questions, signals_for
+from hirevion_core.reports.coding import review as coding_review
 from hirevion_core.reports.data import InterviewData
 from hirevion_core.reports.review import track_kind
 from hirevion_core.reports.timeline import (
@@ -94,11 +96,31 @@ def _interview_item(
         ],
         candidate_report_status=report.status if report is not None else "none",  # type: ignore[arg-type]
         code_snapshots=len(data.snapshots),
+        coding=_coding(data),
         exports=[
             schemas.ExportBrief(id=row.id, kind=row.kind, created_at=row.created_at)
             for row in c360.exports
             if row.interview_id == interview.id
         ],
+    )
+
+
+def _coding(data: InterviewData) -> schemas.CodingBrief:
+    questions = coding_questions(data)
+    slot = coding_review(data)
+    status = (
+        "not_asked"
+        if not questions
+        else str(slot.get("status"))
+        if slot.get("status") in ("scored", "no_code")
+        else "pending"
+    )
+    return schemas.CodingBrief(
+        questions=len(questions),
+        submissions=len(data.submissions),
+        status=status,  # type: ignore[arg-type]
+        score=slot.get("score") if status in ("scored", "no_code") else None,
+        notable_signals=sum(signals_for(data, q).notable for q in questions),
     )
 
 

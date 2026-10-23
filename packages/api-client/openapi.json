@@ -2196,6 +2196,335 @@
         "title": "CodeBlock",
         "type": "object"
       },
+      "CodingBrief": {
+        "description": "The interview's coding questions (SP-16): the review of the code and its signals.",
+        "properties": {
+          "notable_signals": {
+            "title": "Notable Signals",
+            "type": "integer"
+          },
+          "questions": {
+            "title": "Questions",
+            "type": "integer"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "status": {
+            "enum": [
+              "not_asked",
+              "pending",
+              "scored",
+              "no_code"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "submissions": {
+            "title": "Submissions",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "questions",
+          "submissions",
+          "status",
+          "score",
+          "notable_signals"
+        ],
+        "title": "CodingBrief",
+        "type": "object"
+      },
+      "CodingCriterion": {
+        "properties": {
+          "estimate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimate"
+          },
+          "estimated": {
+            "default": false,
+            "title": "Estimated",
+            "type": "boolean"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/CodingEvidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "rationale": {
+            "title": "Rationale",
+            "type": "string"
+          },
+          "raw_score": {
+            "title": "Raw Score",
+            "type": "number"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "supported": {
+            "title": "Supported",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "score",
+          "raw_score",
+          "supported",
+          "evidence",
+          "rationale"
+        ],
+        "title": "CodingCriterion",
+        "type": "object"
+      },
+      "CodingEvidence": {
+        "description": "A verified quote from the code and the lines it spans.",
+        "properties": {
+          "end_line": {
+            "title": "End Line",
+            "type": "integer"
+          },
+          "line": {
+            "title": "Line",
+            "type": "integer"
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          }
+        },
+        "required": [
+          "quote",
+          "line",
+          "end_line"
+        ],
+        "title": "CodingEvidence",
+        "type": "object"
+      },
+      "CodingQuestionBody": {
+        "properties": {
+          "asked_at": {
+            "format": "date-time",
+            "title": "Asked At",
+            "type": "string"
+          },
+          "draft": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Draft"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "languages": {
+            "items": {
+              "enum": [
+                "python",
+                "javascript",
+                "typescript",
+                "sql"
+              ],
+              "type": "string"
+            },
+            "title": "Languages",
+            "type": "array"
+          },
+          "question_id": {
+            "format": "uuid",
+            "title": "Question Id",
+            "type": "string"
+          },
+          "starter_code": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Starter Code",
+            "type": "object"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "time_limit_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time Limit Seconds"
+          }
+        },
+        "required": [
+          "question_id",
+          "text",
+          "languages",
+          "starter_code",
+          "time_limit_seconds",
+          "asked_at",
+          "draft"
+        ],
+        "title": "CodingQuestionBody",
+        "type": "object"
+      },
+      "CodingQuestionEvaluation": {
+        "properties": {
+          "criteria": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CodingCriterion"
+            },
+            "title": "Criteria",
+            "type": "object"
+          },
+          "edge_cases_missed": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Edge Cases Missed",
+            "type": "array"
+          },
+          "flags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "string"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "skill": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skill"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "scored",
+              "no_code"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "submission_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submission Id"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "unsupported": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Unsupported",
+            "type": "array"
+          }
+        },
+        "required": [
+          "question_id",
+          "skill",
+          "language",
+          "submission_id",
+          "source",
+          "status",
+          "score",
+          "criteria",
+          "summary",
+          "edge_cases_missed",
+          "flags",
+          "unsupported",
+          "model"
+        ],
+        "title": "CodingQuestionEvaluation",
+        "type": "object"
+      },
+      "CodingQuestionResponse": {
+        "properties": {
+          "question": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CodingQuestionBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "title": "CodingQuestionResponse",
+        "type": "object"
+      },
       "CodingSettings": {
         "properties": {
           "languages": {
@@ -2389,6 +2718,49 @@
           "missing"
         ],
         "title": "ConsentResponse",
+        "type": "object"
+      },
+      "ConsoleEvent": {
+        "additionalProperties": false,
+        "description": "One console event. Paste, copy and cut carry the length of the text, never the text.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "chars": {
+            "anyOf": [
+              {
+                "maximum": 10000000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chars"
+          },
+          "kind": {
+            "enum": [
+              "typing_started",
+              "typing_stopped",
+              "paste",
+              "copy",
+              "cut",
+              "focus",
+              "blur"
+            ],
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "at"
+        ],
+        "title": "ConsoleEvent",
         "type": "object"
       },
       "Counts": {
@@ -2942,6 +3314,37 @@
         "title": "DownloadsResponse",
         "type": "object"
       },
+      "Draft": {
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "saved_at": {
+            "format": "date-time",
+            "title": "Saved At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "language",
+          "content",
+          "saved_at"
+        ],
+        "title": "Draft",
+        "type": "object"
+      },
       "DraftItem": {
         "properties": {
           "include": {
@@ -3246,8 +3649,37 @@
         "type": "object"
       },
       "EvaluationCoding": {
-        "description": "Left for the coding evaluation (SP-16, PRD §47).",
+        "description": "The coding questions' review (SP-16, PRD §47): the code was read, never run. An evaluation\nfrom before SP-16 has `status: pending` and `source: sp-16`.",
         "properties": {
+          "prompt_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Version"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/CodingQuestionEvaluation"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "rubric_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rubric Version"
+          },
           "score": {
             "anyOf": [
               {
@@ -3260,18 +3692,31 @@
             "title": "Score"
           },
           "source": {
-            "title": "Source",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
           },
           "status": {
             "title": "Status",
             "type": "string"
+          },
+          "weights": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Weights",
+            "type": "object"
           }
         },
         "required": [
           "status",
-          "score",
-          "source"
+          "score"
         ],
         "title": "EvaluationCoding",
         "type": "object"
@@ -5456,6 +5901,9 @@
             "title": "Code Snapshots",
             "type": "integer"
           },
+          "coding": {
+            "$ref": "#/components/schemas/CodingBrief"
+          },
           "completed_at": {
             "anyOf": [
               {
@@ -5571,6 +6019,7 @@
           "recordings",
           "candidate_report_status",
           "code_snapshots",
+          "coding",
           "exports"
         ],
         "title": "InterviewHistoryItem",
@@ -14814,6 +15263,111 @@
         "title": "StepUpRequest",
         "type": "object"
       },
+      "Submission": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "language": {
+            "enum": [
+              "python",
+              "javascript",
+              "typescript",
+              "sql"
+            ],
+            "title": "Language",
+            "type": "string"
+          },
+          "question_id": {
+            "format": "uuid",
+            "title": "Question Id",
+            "type": "string"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          },
+          "source": {
+            "enum": [
+              "submitted",
+              "time_limit",
+              "closed"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "submitted_at": {
+            "format": "date-time",
+            "title": "Submitted At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "question_id",
+          "language",
+          "size",
+          "sha256",
+          "source",
+          "submitted_at"
+        ],
+        "title": "Submission",
+        "type": "object"
+      },
+      "SubmissionBody": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "maxLength": 300000,
+            "title": "Code",
+            "type": "string"
+          },
+          "language": {
+            "enum": [
+              "python",
+              "javascript",
+              "typescript",
+              "sql"
+            ],
+            "title": "Language",
+            "type": "string"
+          },
+          "question_id": {
+            "format": "uuid",
+            "title": "Question Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "language",
+          "code"
+        ],
+        "title": "SubmissionBody",
+        "type": "object"
+      },
+      "SubmissionResponse": {
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/SessionState"
+          },
+          "submission": {
+            "$ref": "#/components/schemas/Submission"
+          }
+        },
+        "required": [
+          "submission",
+          "state"
+        ],
+        "title": "SubmissionResponse",
+        "type": "object"
+      },
       "SystemCheckBody": {
         "properties": {
           "app_version": {
@@ -15134,6 +15688,44 @@
           }
         },
         "title": "TeamUpdate",
+        "type": "object"
+      },
+      "TelemetryBody": {
+        "additionalProperties": false,
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/ConsoleEvent"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Events",
+            "type": "array"
+          },
+          "question_id": {
+            "format": "uuid",
+            "title": "Question Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "events"
+        ],
+        "title": "TelemetryBody",
+        "type": "object"
+      },
+      "TelemetryResponse": {
+        "properties": {
+          "accepted": {
+            "title": "Accepted",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "accepted"
+        ],
+        "title": "TelemetryResponse",
         "type": "object"
       },
       "TemplateBody": {
@@ -21250,6 +21842,188 @@
         "summary": "Withdraw Candidate Visible Report",
         "tags": [
           "reports"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/coding": {
+      "get": {
+        "description": "The open coding question for the console: its text, the languages to choose from, any\nstarter code and the last saved draft; `question` is null when the open question isn't one.",
+        "operationId": "coding_question",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CodingQuestionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Coding Question",
+        "tags": [
+          "coding"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/coding/submissions": {
+      "post": {
+        "description": "Submits the coding question's answer. It becomes the question's final code (never run;\nreviewed after the interview), the question closes and the interview moves on.",
+        "operationId": "submit_code",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmissionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmissionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Submit Code",
+        "tags": [
+          "coding"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/coding/telemetry": {
+      "post": {
+        "description": "A batch of the console's integrity events (PRD §48): typing started and stopped, paste,\ncopy, cut, focus and blur. Clipboard events carry a length, never text; there are no\nkeystrokes.",
+        "operationId": "coding_telemetry",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TelemetryBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelemetryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Coding Telemetry",
+        "tags": [
+          "coding"
         ]
       }
     },

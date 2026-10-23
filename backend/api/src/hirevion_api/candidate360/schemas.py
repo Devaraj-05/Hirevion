@@ -80,6 +80,18 @@ class EvaluationBrief(BaseModel):
     knowledge_gaps: list[str]
 
 
+class CodingBrief(BaseModel):
+    """The interview's coding questions (SP-16): the review of the code and its signals."""
+
+    questions: int
+    submissions: int
+    status: Literal["not_asked", "pending", "scored", "no_code"]
+    """`pending`: asked, but the interview isn't evaluated yet."""
+    score: float | None
+    notable_signals: int
+    """Coding questions whose integrity signals are notable (a signal, never proof)."""
+
+
 class InterviewHistoryItem(BaseModel):
     interview_id: UUID
     reference: str
@@ -98,6 +110,7 @@ class InterviewHistoryItem(BaseModel):
     recordings: list[RecordingBrief]
     candidate_report_status: Literal["none", "draft", "released", "withdrawn"]
     code_snapshots: int
+    coding: CodingBrief
     exports: list[ExportBrief]
 
 
