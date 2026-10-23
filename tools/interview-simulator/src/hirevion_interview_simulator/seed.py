@@ -359,8 +359,11 @@ class NotSeeded(Exception):
     """The development organisation or its recruiter doesn't exist yet (`hv seed-identity`)."""
 
 
-async def seed_development_interview(*, text_answers: bool, password: str) -> Seeded:
-    """A synthetic interview in the development organisation, for its seeded recruiter."""
+async def seed_development_interview(
+    *, text_answers: bool, password: str, coding: bool = False
+) -> Seeded:
+    """A synthetic interview in the development organisation, for its seeded recruiter
+    (with a coding question when `coding`, SP-16)."""
     from hirevion_core.db.session import create_database
     from hirevion_core.identity.bootstrap import SEED_ORGANIZATION_SLUG, seed_email
     from hirevion_core.identity.settings import load_identity_settings
@@ -387,6 +390,8 @@ async def seed_development_interview(*, text_answers: bool, password: str) -> Se
             password=password,
             settings=load_identity_settings(),
             text_answers=text_answers,
+            coding=coding,
+            duration_minutes=45 if coding else 30,
         )
     finally:
         await app_db.dispose()

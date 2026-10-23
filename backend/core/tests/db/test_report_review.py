@@ -111,7 +111,7 @@ async def test_the_internal_candidate_report_has_eleven_sections(
         doc = await candidate_report.candidate_report(session, c360)
     assert [s["key"] for s in doc["sections"]] == list(candidate_report.SECTION_KEYS)
     status = {s["key"]: s["status"] for s in doc["sections"]}
-    assert status.pop("coding") == "pending"
+    assert status.pop("coding") == "empty"  # this interview had no coding question
     assert set(status.values()) == {"populated"}, status
     assert doc["confidential"] is True and doc["kind"] == "candidate"
     text_of = str(doc)

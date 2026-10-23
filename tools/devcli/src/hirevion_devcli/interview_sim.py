@@ -32,13 +32,18 @@ class SimulationRun:
 
 
 async def run_simulation(
-    name: str, api_url: str, *, telemetry: bool = True, password: str | None = None
+    name: str,
+    api_url: str,
+    *,
+    telemetry: bool = True,
+    password: str | None = None,
+    coding: bool = False,
 ) -> SimulationRun:
     """One simulated interview. With `telemetry` (the default) the desktop's proctoring events and
     recording segments are sent too, so the run has data for every part of the reports."""
     candidate = persona(name)
     seed = await seed_development_interview(
-        text_answers=True, password=password or secrets.token_urlsafe(18)
+        text_answers=True, password=password or secrets.token_urlsafe(18), coding=coding
     )
     candidate.knowledge = dict(seed.knowledge)
     sent: list[TelemetryReport] = []

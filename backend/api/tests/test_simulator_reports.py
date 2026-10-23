@@ -1,7 +1,7 @@
 """A simulator run fills the reports (SP-17 exit criterion): the desktop's answers, proctoring
 events and recording segments go through the real API, the evaluation runs, and every section of
-PRD §68's proctoring report and §69's interview report holds what the run produced (coding,
-which is SP-16's, says so)."""
+PRD §68's proctoring report and §69's interview report holds what the run produced, the coding
+question's review included (SP-16)."""
 
 from __future__ import annotations
 
@@ -80,6 +80,8 @@ async def test_a_simulated_interview_populates_every_report_section(
         password=PASSWORD,
         settings=IDENTITY,
         text_answers=True,
+        coding=True,
+        duration_minutes=45,
     )
     interview = str(seed.interview_id)
     # A partial candidate has both strengths and knowledge gaps to report.
@@ -142,8 +144,11 @@ async def test_a_simulated_interview_populates_every_report_section(
         await client.get(f"/api/v1/interviews/{interview}/reports/interview")
     ).json()
     status = {s["key"]: s["status"] for s in interview_report["sections"]}
-    assert len(status) == 13 and status.pop("coding_evaluation") == "pending"
+    assert len(status) == 13
     assert {k: v for k, v in status.items() if v != "populated"} == {}, status
+    coding_report = (await client.get(f"/api/v1/interviews/{interview}/reports/coding")).json()
+    coding = {s["key"]: s["status"] for s in coding_report["sections"]}
+    assert set(coding.values()) == {"populated"}, coding
 
     async with admin_engine.begin() as conn:
         stored = await conn.scalar(

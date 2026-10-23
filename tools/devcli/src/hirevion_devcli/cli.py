@@ -409,6 +409,12 @@ def interview_sim_command(
             "(a throwaway one is made otherwise).",
         ),
     ] = None,
+    coding: Annotated[
+        bool,
+        typer.Option(
+            "--coding", help="Include a coding question; the persona types and submits code."
+        ),
+    ] = False,
 ) -> None:
     """Run one simulated candidate through a text-mode interview on the running API."""
     from .interview_sim import NotSeeded, run_simulation
@@ -418,7 +424,9 @@ def interview_sim_command(
         console.print("Refusing to simulate interviews with HV_ENVIRONMENT=production.")
         raise typer.Exit(code=1)
     try:
-        run = asyncio.run(run_simulation(persona_name, api, telemetry=telemetry, password=password))
+        run = asyncio.run(
+            run_simulation(persona_name, api, telemetry=telemetry, password=password, coding=coding)
+        )
     except NotSeeded:
         console.print("Run `uv run hv seed-identity` first: the simulator uses its recruiter.")
         raise typer.Exit(code=1) from None

@@ -28,7 +28,18 @@ async function noAxeViolations(page: Page): Promise<void> {
 function simulate(persona: string, password: string): { id: string; email: string } {
   const output = execFileSync(
     uv,
-    ["run", "hv", "interview-sim", "--persona", persona, "--api", API, "--password", password],
+    [
+      "run",
+      "hv",
+      "interview-sim",
+      "--persona",
+      persona,
+      "--api",
+      API,
+      "--password",
+      password,
+      "--coding",
+    ],
     { cwd: REPO, encoding: "utf8" },
   );
   const id = output.match(/^interview_id=([0-9a-f-]{36})$/m)?.[1];
@@ -96,14 +107,11 @@ test("the CP3 golden path: simulated interview, evaluation, reports, review, dec
   await expect(page.locator(`a[href="/interviews/${id}/review"]`)).toBeVisible();
   await noAxeViolations(page);
 
-  // The interview report: thirteen sections, every one populated but coding, which says so.
+  // The interview report: thirteen sections, every one populated, the coding review included.
   await page.goto(`/reports/interview/${id}`);
   await expect(page.getByRole("heading", { level: 1, name: "Interview report" })).toBeVisible();
   await expect(page.locator("[data-section]")).toHaveCount(13);
-  await expect(page.locator('[data-section][data-status="populated"]')).toHaveCount(12);
-  await expect(
-    page.locator('[data-section="coding_evaluation"][data-status="pending"]'),
-  ).toHaveCount(1);
+  await expect(page.locator('[data-section][data-status="populated"]')).toHaveCount(13);
   await expect(page.getByRole("region", { name: /Transcript/ })).toContainText("Please");
   await noAxeViolations(page);
   const pdf = await downloadedPdf(page, () =>
@@ -118,8 +126,13 @@ test("the CP3 golden path: simulated interview, evaluation, reports, review, dec
   await expect(page.locator('[data-section="reviewer_notes"][data-status="empty"]')).toHaveCount(1);
   await expect(page.getByText(/no single score for cheating or honesty/)).toBeVisible();
   await noAxeViolations(page);
+  // The coding report (SP-16): the code typed in the console, never run, and its AI review.
   await page.goto(`/reports/coding/${id}`);
-  await expect(page.getByText(/arrive with the coding service \(SP-16\)/).first()).toBeVisible();
+  await expect(page.locator("[data-section]")).toHaveCount(6);
+  await expect(page.locator('[data-section][data-status="populated"]')).toHaveCount(6);
+  await expect(page.getByText(/It was never run/).first()).toBeVisible();
+  await expect(page.getByText(/never proof/).first()).toBeVisible();
+  await noAxeViolations(page);
 
   // The review workspace: the recordings on one timeline, the transcript, the events.
   await page.goto(`/interviews/${id}/review`);
