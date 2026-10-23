@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from hirevion_interview_simulator.client import DesktopClient, SimulatorError
+from hirevion_interview_simulator.coding import code_for
 from hirevion_interview_simulator.personas import Persona
 
 MAX_TURNS = 80
@@ -68,8 +69,20 @@ async def simulate(
             # An answer to a question that's no longer open is refused.
             stale = await client.answer(interview_id, previous, "late answer")
             report.refusals.append(f"{stale.status_code} {stale.json().get('code')}")
-        text = candidate.answer(question)
-        response = await client.answer(interview_id, question["id"], text)
+        if question.get("workspace") == "code":
+            # The coding console (SP-16): save, report the console's events, submit.
+            typed = code_for(candidate.name)
+            await client.workspace(interview_id, question["id"], typed.code, typed.language)
+            sent = await client.coding_telemetry(interview_id, question["id"], typed.events)
+            if sent.status_code >= 400:
+                raise SimulatorError(sent)
+            text = typed.code
+            response = await client.submit_code(
+                interview_id, question["id"], typed.language, typed.code
+            )
+        else:
+            text = candidate.answer(question)
+            response = await client.answer(interview_id, question["id"], text)
         report.exchanges.append(
             Exchange(question["id"], question["type"], question["text"], text, response.status_code)
         )

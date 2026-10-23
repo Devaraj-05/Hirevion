@@ -28,6 +28,7 @@ from hirevion_api.auth.router import router as auth_router
 from hirevion_api.candidate360.routes import router as candidate360_router
 from hirevion_api.candidate_auth.routes import router as candidate_auth_router
 from hirevion_api.candidates.routes import router as candidates_router
+from hirevion_api.coding.routes import router as coding_router
 from hirevion_api.desktop_admin import router as desktop_admin_router
 from hirevion_api.evaluation.routes import router as evaluation_router
 from hirevion_api.idempotency import install_idempotency_handler
@@ -228,6 +229,7 @@ def create_app(
     app.include_router(reports_router)
     app.include_router(review_router)
     app.include_router(candidate360_router)
+    app.include_router(coding_router)
     if telemetry is not None and telemetry.enabled:
         FastAPIInstrumentor.instrument_app(
             app,

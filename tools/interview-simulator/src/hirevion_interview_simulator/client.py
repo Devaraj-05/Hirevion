@@ -183,6 +183,21 @@ class DesktopClient:
         }
         return await self.interview("POST", interview_id, "workspace", body)
 
+    async def coding_question(self, interview_id: str) -> Any:
+        return (await self._ok(await self.interview("GET", interview_id, "coding")))["question"]
+
+    async def coding_telemetry(
+        self, interview_id: str, question_id: str, events: list[dict[str, Any]]
+    ) -> httpx.Response:
+        body = {"question_id": question_id, "events": events}
+        return await self.interview("POST", interview_id, "coding/telemetry", body)
+
+    async def submit_code(
+        self, interview_id: str, question_id: str, language: str, code: str
+    ) -> httpx.Response:
+        body = {"question_id": question_id, "language": language, "code": code}
+        return await self.interview("POST", interview_id, "coding/submissions", body)
+
     async def session_call(
         self, method: str, interview_id: str, path: str, json: dict[str, Any] | None = None
     ) -> httpx.Response:

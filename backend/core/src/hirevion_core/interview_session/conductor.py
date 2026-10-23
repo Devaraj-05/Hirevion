@@ -37,6 +37,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from hirevion_core.access.errors import Conflict, Gone, Invalid, NotFound, TooLarge
 from hirevion_core.ai.types import LLMService
+from hirevion_core.coding import console
 from hirevion_core.db.session import Database
 from hirevion_core.engine.analysis import Analysed, AnswerAnalyzer
 from hirevion_core.engine.context import ContextBuilder
@@ -57,6 +58,7 @@ from hirevion_core.interviews.lifecycle import By, record_event, transition
 from hirevion_core.models import (
     Application,
     CandidateAccount,
+    CodingSubmission,
     Consent,
     Interview,
     InterviewAnswer,
@@ -345,6 +347,14 @@ class Conductor:
                 .where(InterviewQuestion.id == UUID(question_id))
                 .values(status=status, closed_at=now)
             )
+            if question_id == state.coding.question_id and state.coding.ended in (
+                "time_limit",
+                "closed",
+            ):
+                # Closed without a submission: the last text the console saved is the final code.
+                await console.keep_last_text(
+                    session, interview, UUID(question_id), state.coding.ended
+                )
         if turn.asked is not None:
             asked = turn.asked
             session.add(
@@ -1037,6 +1047,93 @@ class Conductor:
             session.add(snapshot)
             await session.flush()
             return snapshot
+
+    async def submit_code(
+        self,
+        organization_id: UUID,
+        interview_id: UUID,
+        question_id: UUID,
+        *,
+        language: str,
+        code: str,
+        by: By,
+    ) -> tuple[TurnResult, CodingSubmission]:
+        """The candidate's Submit in the coding console (SP-16): the code is stored as the
+        question's final code, never run, and the interview moves on in the same turn."""
+        if len(code.encode("utf-8")) > console.CODE_MAX_BYTES:
+            raise TooLarge("code-too-large", "The code is over 256 KB")
+        async with self._turn(interview_id):
+            for attempt in (1, 2):
+                interview, row, state = await self._checkpoint(organization_id, interview_id)
+                question = state.current
+                if question is None or question.id != str(question_id):
+                    raise Conflict(
+                        "question-not-current", "That question isn't the one being asked"
+                    )
+                if question.kind != "coding":
+                    raise Conflict("not-a-coding-question", "The open question isn't coding")
+                offered = [lang.lower() for lang in question.languages]
+                if offered and language not in offered:
+                    raise Invalid(
+                        "language-not-offered",
+                        f"Choose one of {', '.join(offered)}",
+                        field="language",
+                    )
+                expected = row.state_seq
+                now = self._clock()
+                turn = self._engine.submit_code(state, now, language=language, chars=len(code))
+                timing = Speech(question.asked_at, now)
+                try:
+                    async with self._db.tenant(organization_id) as session:
+                        interview, row = await self._locked(session, interview_id)
+                        saved = console.submission(
+                            interview,
+                            question_id,
+                            language=language,
+                            code=code,
+                            source="submitted",
+                        )
+                        session.add(saved)
+                        seq = await self._apply(
+                            session,
+                            interview,
+                            row,
+                            state,
+                            turn,
+                            now,
+                            by=by,
+                            expected_seq=expected,
+                            candidate=("", question.id, timing, "text"),
+                        )
+                except Conflict as error:
+                    if error.code == "state-conflict" and attempt == 1:
+                        continue
+                    raise
+                result = await self._result(interview, row, state, turn, now, seq)
+                break
+            else:
+                raise Conflict("state-conflict", "The interview moved on; try again")
+        summary = turn.answer.text if turn.answer is not None else ""
+        await self._publish(
+            interview_id, state, turn, now, answered=(summary, question.id, timing, "text")
+        )
+        try:
+            await realtime.publish(
+                self._redis,
+                interview_id,
+                "CODE_SUBMITTED",
+                {
+                    "question_id": question.id,
+                    "submission_id": str(saved.id),
+                    "language": language,
+                    "chars": len(code),
+                    "source": "submitted",
+                },
+                at=now,
+            )
+        except Exception:
+            log.exception("Couldn't publish CODE_SUBMITTED for interview %s", interview_id)
+        return result, saved
 
     async def note_proctor_event(
         self, organization_id: UUID, interview_id: UUID, kind: str, severity: str

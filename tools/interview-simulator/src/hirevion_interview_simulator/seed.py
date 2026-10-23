@@ -29,6 +29,13 @@ from hirevion_core.interviews.assignment import Assignment
 from hirevion_core.interviews.lifecycle import By
 from hirevion_core.interviews.templates import BUILT_IN_DEFAULTS
 from hirevion_core.models import CandidateAccount, Interview
+from hirevion_interview_simulator.coding import (
+    CODING_CONCEPTS,
+    CODING_LANGUAGES,
+    CODING_QUESTION,
+    CODING_SKILL,
+    STARTER_CODE,
+)
 
 SKILLS = (("Python", 50, "required"), ("PostgreSQL", 30, "required"), ("Redis", 20, "preferred"))
 LIBRARY: dict[str, dict[str, tuple[str, tuple[str, ...]]]] = {
@@ -141,6 +148,36 @@ async def _library(conn: Any, organization_id: UUID) -> dict[str, list[str]]:
     return knowledge
 
 
+async def _coding_question(conn: Any, organization_id: UUID) -> None:
+    """The coding question the simulator's interviews ask when coding is on (SP-16)."""
+    question_id = uuid7()
+    await conn.execute(
+        text(
+            "INSERT INTO questions (id, organization_id, category, status, source) "
+            "VALUES (:id, :org, 'coding', 'approved', 'manual')"
+        ),
+        {"id": question_id, "org": organization_id},
+    )
+    await conn.execute(
+        text(
+            "INSERT INTO question_versions (organization_id, question_id, version, text, "
+            "skill_name, topic, difficulty, type, expected_concepts, time_limit_seconds, coding) "
+            "VALUES (:org, :id, 1, :text, :skill, 'Coding', 'medium', 'coding', :concepts, 600, "
+            ":coding)"
+        ),
+        {
+            "org": organization_id,
+            "id": question_id,
+            "text": CODING_QUESTION,
+            "skill": CODING_SKILL,
+            "concepts": list(CODING_CONCEPTS),
+            "coding": json.dumps(
+                {"languages": list(CODING_LANGUAGES), "starter_code": STARTER_CODE}
+            ),
+        },
+    )
+
+
 async def seed_interview(
     admin: AsyncEngine,
     app_db: Database,
@@ -151,7 +188,9 @@ async def seed_interview(
     settings: IdentitySettings,
     text_answers: bool = True,
     duration_minutes: int = 30,
+    coding: bool = False,
 ) -> Seeded:
+    """`coding`: the template has coding on and the library a coding question (SP-16)."""
     job_id, candidate_id, application_id, template_id = uuid7(), uuid7(), uuid7(), uuid7()
     email = f"sim-{candidate_id.hex[-10:]}@example.test"
     async with admin.begin() as conn:
@@ -231,12 +270,18 @@ async def seed_interview(
                     [{"name": s, "skill_id": None, "weight": w} for s, w, _ in SKILLS]
                 ),
                 "difficulty": json.dumps({"easy": 34, "medium": 33, "hard": 33}),
-                "coding": json.dumps({"enabled": False, "languages": ["python"], "minutes": 20}),
+                "coding": json.dumps(
+                    {"enabled": True, "languages": list(CODING_LANGUAGES), "minutes": 10}
+                    if coding
+                    else {"enabled": False, "languages": ["python"], "minutes": 20}
+                ),
                 "recording": json.dumps({"screen": True, "camera": True, "audio": True}),
                 "rubric": json.dumps(BUILT_IN_DEFAULTS["rubric"]),
             },
         )
         knowledge = await _library(conn, organization_id)
+        if coding:
+            await _coding_question(conn, organization_id)
         # Adds the simulator's FAQ to whatever the organisation already has.
         saved = await conn.scalar(
             text(
