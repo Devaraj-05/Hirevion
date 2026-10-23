@@ -509,3 +509,33 @@
 - Chromium parses HTML built from candidate text; the controls above make it inert, but a browser engine is a large attack surface, so the renderer should run in its own container in the cloud (the cloud plan).
 - `report_exports` and notes have no retention yet (SP-22), and `recording.viewed` is written per link issue, not per second watched.
 - The draft's wording comes from AI-written statements that the evaluation verified against the transcript; a recruiter who approves without reading can release a sentence they did not check.
+
+## SP-16 Coding answers (no execution)
+
+By product-owner decision (2026-10-23; ADR-0033) candidate code is **never executed**, so the sandbox the master plan first designed (and its escape risks) does not exist. What remains is text from the candidate that reaches a model and reviewers.
+
+**Assets:** the candidate's code and drafts; the console's integrity events; the coding scores a recruiter reads.
+
+**Trust boundaries:**
+- the desktop (interview-session token, DPoP) → the coding routes;
+- the candidate's code → the evaluator's model (as JSON data);
+- the stored code → the recruiter's browser and the PDF renderer.
+
+| Threat (STRIDE) | Example | Control |
+|---|---|---|
+| Spoofing | Someone submits code for another interview | Every route takes the interview-session token for the path's interview with a fresh DPoP proof (ADR-0021); the question must be the interview's open coding question |
+| Tampering | A submission or draft is changed after the interview | `coding_submissions` and `coding_telemetry` are insert-only for the app role; each submission's SHA-256 is stored |
+| Tampering | A comment in the code tells the reviewer to give full marks | The code is JSON data under a prompt that says so; replies are schema-checked and bounded; every score needs a quote verified against the code or is capped at 5; manipulation phrases add `manipulation_attempt`; the gate's coding set has injection cases and blocks a prompt that loses its data clause |
+| Tampering | A second submission replaces a weak one | One submission per question: it closes the question in the same transaction (`409 question-not-current` afterwards) |
+| Repudiation | The candidate says the kept code wasn't theirs | The draft, its time and the submission's source (`submitted`, `time_limit`, `closed`) are stored |
+| Information disclosure | Pasted text (possibly personal or secret) is collected | The schema has no column for clipboard text; events carry a length only; unknown fields are refused; no keystrokes and nothing outside the text box |
+| Information disclosure | Code or signals reach a reader without `reports.interview.view`, or the candidate | The coding report and Candidate 360 interviews need the interview permission and resource scope; the candidate-visible draft says only that the code was reviewed |
+| Information disclosure | Code becomes markup in the web view or PDF | Code is rendered as text (React; Jinja2 autoescape in a `pre` block) |
+| Denial of service | Huge code or event floods | 256 KB per submission; 200 events per batch; 10 submissions and 60 telemetry batches a minute per interview, plus the per-IP limit |
+| Elevation of privilege | Code runs on a server | Nothing runs it: there is no runner, interpreter call or `eval` of candidate code anywhere |
+
+**Residual risks:**
+- The review is a model's reading, not a test run: it can call wrong code correct. The UI says the code was never run and that complexity is an estimate; a person decides.
+- An injection can still move a criterion within its bounds where a real quote supports it; the gate's injection cases and reviewers' judgement watch for it.
+- Integrity signals can mislead (pasting one's own notes is ordinary); they are worded as signals, never proof.
+- The two new tables have no retention yet (SP-22).

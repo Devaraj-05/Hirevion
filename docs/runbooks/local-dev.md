@@ -479,6 +479,18 @@ How it works is in [ADR-0031](../architecture/adr/0031-evaluation-and-governance
 - **Reviewers' calibration:** on a finished interview's page, open a question, score the eight dimensions yourself and save; the AI's scores and their quotes appear beside yours. Organisation admins and recruiters (`reports.analytics.view`) see the organisation's weighted kappa, Spearman, mean gap and the AI's bias under the interview's evaluation.
 - **Database tests while other lanes test:** the test database and Valkey database 15 are shared, so run with your own database (`CREATE DATABASE hirevion_test_c4`, then `HV_TEST_DATABASE=hirevion_test_c4 uv run pytest ...`) to avoid another session rebuilding the schema under you.
 
+### Coding answers (SP-16)
+
+How it works is in [ADR-0033](../architecture/adr/0033-coding-answers-without-execution.md); the desktop's calls are `docs/api/contracts/coding.md`. **Nothing is executed:** by product-owner decision (2026-10-23) there is no sandbox, Run or test cases. The candidate types the answer in a plain text box, labels its language and submits it; the AI reviews the code after the interview by reading it.
+
+- **Turning it on:** a template's Coding setting (enabled, languages, minutes) plus at least one approved library question of type Coding for one of the interview's skills, with its languages (and optional starter code). The AI asks it after the skill ladder when the time allows; otherwise the interview records `coding.skipped`.
+- **Feed it without the desktop:** `uv run hv interview-sim` against an interview whose template has coding: when the coding question opens, the simulator saves a draft, sends the console's events and submits each persona's code (`hirevion_interview_simulator.coding`). In tests, `seed_interview(..., coding=True)` makes such an interview.
+- **What is stored:** `coding_submissions` (every submission and every draft kept at the time limit, with SHA-256; the latest is the final code) and `coding_telemetry` (typing, paste, copy, cut, focus, blur; clipboard lengths only). Both are insert-only. Drafts stay in `workspace_snapshots`.
+- **The review:** the evaluation run (worker) makes one extra strong-model call per coding question, `evaluation.coding`, with prompt `evaluation-coding-v1` and rubric `coding-v1`; its calls are in `ai_invocations` like the others. The result is `evaluations.summary->'coding'`: each question's seven criteria, each with quotes and the code's line numbers, and the mean beside the overall score. Read it on the interview's evaluation card, the coding report (`/reports/coding/<id>`), the review workspace's code panel and the Candidate 360 Coding tab.
+- **Changing the coding prompt:** add `evaluation/prompts/evaluation-coding-v2.md` (or a rubric), then `uv run hv eval-interviews --coding-prompt-version evaluation-coding-v2`; the gate runs the coding set (`evaluation/eval_set/coding_cases.json`) with `coding_` metrics beside the answers'. When it passes, point `ACTIVE_CODING_PROMPT` at it and run `--update-baseline`.
+- **Live events:** `CODE_SUBMITTED` appears on `hv:rt:interview:<id>` with the question, language and length; `CODE_RUN` never does.
+- **Tests on a busy PC:** your own `HV_TEST_DATABASE` and `HV_TEST_VALKEY_DB`, as above.
+
 ### Proctoring (engine and live view)
 
 How it works is in [ADR-0032](../architecture/adr/0032-proctoring-engine.md); the desktop's wire format is `docs/api/contracts/proctoring.md`.

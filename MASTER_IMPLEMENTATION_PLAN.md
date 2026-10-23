@@ -39,7 +39,7 @@
 | **Recruitment Platform (web)** | Super Admin, Org Admin, Recruiter, Hiring Manager, Interviewer/Reviewer | Control, configuration, screening, candidates, live monitoring, reviews, reports, analytics, administration, integrations | Next.js web app. It also hosts the **candidate portal** on a separate host: invitation acceptance, set password, download, notices, data rights, candidate report. |
 | **AI Interview Desktop (Windows)** | Candidate only | Authentication, system check, consent, AI voice interview, coding, camera/mic/screen capture, native Windows proctoring, recording | Signed Tauri 2 `.exe`. Installs per user with no admin rights, auto-updates, x64 + ARM64. |
 | **Third-Eye** | Candidate's phone | A temporary second camera angle | A mobile web page opened from a QR code; nothing to install. |
-| **Backend** | All of the above | Source of truth, AI orchestration, realtime, storage, evaluation | Containers: `api`, `realtime`, `worker`, `media-worker`, `interview-agent`, `vision-agent`, `coding-service`, `sandbox-runner`. |
+| **Backend** | All of the above | Source of truth, AI orchestration, realtime, storage, evaluation | Containers: `api`, `realtime`, `worker`, `media-worker`, `interview-agent`, `vision-agent` (no `coding-service` or `sandbox-runner`: nothing executes candidate code, ADR-0033). |
 
 The apps share **only** versioned contracts:
 - the OpenAPI spec, with a generated TypeScript client;
@@ -53,14 +53,14 @@ Each application has its own build, tests and release pipeline.
 | # | Decision | Why |
 |---|---|---|
 | D1 | One monorepo: pnpm + Turborepo for TypeScript, a uv workspace for Python, a Cargo workspace for Rust. Top-level folder names follow PRD §93. | One CI pipeline and shared contracts. |
-| D2 | The backend is a FastAPI modular monolith (`api`) plus `realtime`, `worker` (Valkey-stream consumers, ADR-0015), `media-worker`, `interview-agent`, `vision-agent`, `coding-service` and `sandbox-runner`. PostgreSQL 17 + pgvector; Valkey 8 as the Redis-compatible store. | Follows the §87 service split; the §86 Recruitment/Interview/Proctor APIs become route groups that can be split out later. |
+| D2 | The backend is a FastAPI modular monolith (`api`) plus `realtime`, `worker` (Valkey-stream consumers, ADR-0015), `media-worker`, `interview-agent` and `vision-agent` (the planned `coding-service` and `sandbox-runner` were dropped with code execution, ADR-0033). PostgreSQL 17 + pgvector; Valkey 8 as the Redis-compatible store. | Follows the §87 service split; the §86 Recruitment/Interview/Proctor APIs become route groups that can be split out later. |
 | D3 | Web stack: Next.js (App Router, React 19), TypeScript, Tailwind v4, shadcn/ui, TanStack Query and Table, Zustand, ECharts, next-intl, react-hook-form + zod, and an OpenAPI-generated client. | §94. |
 | D4 | Desktop stack: Tauri 2 with React/TS/Vite and Monaco. Native code uses the Rust `windows` crate. MediaPipe Tasks (WASM) runs on-device computer vision. NSIS per-user installer and a signed updater. | §27 and §94. |
 | D5 | Self-hosted LiveKit server and Egress in Docker. The voice pipeline runs on LiveKit Agents (Python), with our orchestrator plugged in. | Provides turn detection, barge-in, streaming and fallbacks; serves §52, §65 and §92. |
 | D6 | An AI provider abstraction (§78) with three profiles: `dev` (Gemini + Deepgram) for development and testing, `production` (OpenAI + Deepgram), and `mock` (deterministic fakes) for CI and load tests. Providers and models are set per route in configuration. | Real model quality and latency from day one, no GPU needed, and the cost model measures real spend. |
 | D7 | In-house identity:<br>• **Recruiters:** argon2id passwords, TOTP and passkeys, sessions, lockout, SSO (Entra ID/OIDC/SAML) and SCIM.<br>• **Candidates:** invitation → set password → desktop login (plus an email OTP on a new device, org-configurable) → device-bound DPoP tokens. | Your choice; also delivers §8 device and session binding. |
 | D8 | Storage uses the Azure Blob API everywhere (Azurite locally), behind a storage-service and URL-signer interface. ClamAV scans files. Email goes over SMTP (Mailpit locally). | The cloud move needs no rework. |
-| D9 | The coding sandbox is a separate `sandbox-runner` that starts a fresh, hardened container for every run and destroys it afterwards. | §46. |
+| D9 | Coding answers are typed in a plain text console and never executed; the AI reviews the code after the interview (ADR-0033). Superseded the per-run hardened sandbox (by product-owner decision, 2026-10-23: no code execution or sandbox; code is evaluated by AI review after the interview). | §45–§47. |
 | D10 | Recording:<br>• **Screen:** native Rust capture of every display → Media Foundation H.264 → 10-second MP4 segments.<br>• **Camera and mic:** WebCodecs segments.<br>• **Server-side copies** of the conversation audio and the third-eye video.<br>• **All segments** go to an encrypted local queue → resumable upload → server acknowledgement. | §50, §51 and §95. |
 | D11 | Proctoring is evidence-first. On-device computer vision is checked by server-side verification. Media state the server observes is the ground truth. | The client cannot be trusted. |
 | D12 | Realtime fan-out uses Redis Streams rather than Pub/Sub. A transactional outbox carries every domain event. | Alerts and webhooks are never lost. |
@@ -205,7 +205,7 @@ Caddy (TLS via local CA) *.hirevion.localhost   ← local "API gateway" (§86)
   api. ws. eye. livekit.(→7880) storage.(→azurite) downloads.(installers + update manifest)
 Docker Desktop (WSL2)
   core : postgres17+pgvector · valkey · azurite · clamav · mailpit
-  app  : api · realtime · worker+beat · media-worker · interview-agent · vision-agent · coding-service · sandbox-runner(isolated net)
+  app  : api · realtime · worker+beat · media-worker · interview-agent · vision-agent
   media: livekit-server (7880 ws / 7881 tcp / 7882 udp-mux) · livekit-egress
   obs  : otel-lgtm (Grafana/Tempo/Loki/Prometheus) · glitchtip
   test : keycloak (SAML/OIDC test IdP) · webhook-receiver · ats-mocks
@@ -275,7 +275,6 @@ Decided on 2026-09-28 (ADR-0002, ADR-0003): AI runs on hosted APIs through your 
   - ClamAV → ClamAV + Defender for Storage
   - Self-hosted LiveKit → LiveKit Cloud or VMs/AKS
   - The `production` AI profile (OpenAI + Deepgram), plus an Azure OpenAI failover deployment (recommended) and a re-embed of stored vectors
-  - Docker sandbox → Azure Container Apps dynamic sessions (Hyper-V) or Kata containers
   - Caddy → Front Door WAF
   - `.env` → Key Vault with managed identity
   - Grafana LGTM + GlitchTip → Azure Monitor / Application Insights
@@ -311,7 +310,7 @@ Decided on 2026-09-28 (ADR-0002, ADR-0003): AI runs on hosted APIs through your 
   - Scheduled jobs (SP-18, SP-22) publish events from a small scheduler.
 - **`media-worker`** runs ffmpeg (LGPL build) as a separate process. It verifies and assembles segments, makes thumbnails and cuts evidence clips.
 - **`interview-agent`** runs the voice pipeline and the orchestrator (§6.8). **`vision-agent`** runs server-side vision (§6.12). Both are LiveKit Agents workers, dispatched explicitly per interview session.
-- **`coding-service`** handles code runs and submissions. **`sandbox-runner`** is the only component with Docker-socket access and sits on an isolated network.
+- **Coding** answers are stored and reviewed inside `api` and `worker` (`hirevion_core.coding`, the evaluator); no service runs candidate code (ADR-0033).
 - **Shared `hirevion_core` library:**
   - Settings, database (SQLAlchemy 2 async + asyncpg, Alembic) and tenancy context.
   - Authorisation, outbox/events, storage and AI providers.
@@ -585,20 +584,16 @@ Pairing again revokes the old device. Egress records the stream.
 
 ### 6.10 Coding (§45–48)
 
-- **Flow:** the AI asks a coding question → Monaco → Run → Tests → Submit → Evaluation.
-- **Questions** carry starter code per language, plus visible, hidden, edge-case and performance tests.
-- **Sandbox path:** `coding-service` → queue → `sandbox-runner` → a fresh container for each run, destroyed afterwards. Container limits:
-  - No network.
-  - Read-only root filesystem, with a size-capped tmpfs.
-  - CPU, memory, process-count and time limits.
-  - `cap-drop ALL`, `no-new-privileges`, seccomp, non-root user.
-- **Runners:**
-  - Python
-  - Node (JavaScript)
-  - TypeScript (tsx)
-  - SQL, against a throwaway PostgreSQL or SQLite
-- **Evaluation** (the eight §47 criteria): correctness, test cases, edge cases, time and space complexity (measured plus LLM analysis), code quality, readability, approach.
-- **Stored:** final code, every submission, test results, execution time and memory.
+Re-scoped by product-owner decision, 2026-10-23: no code execution or sandbox; code is evaluated by AI review after the interview (ADR-0033). Code execution, Run, test cases, measured runtime and memory, the sandbox (`sandbox-runner`, runner images, escape suite) and Monaco were removed.
+
+- **Flow:** the AI asks the coding question and tells the candidate to type the answer in the text box and submit → a plain, notepad-like text console (monospace, a language label chosen from the question's languages: Python, JavaScript, TypeScript, SQL) → Submit → the interview moves on → after the interview, the AI reviews the code by reading it.
+- **Questions** carry the languages and optional starter code per language (the question library).
+- **Answers:** drafts are saved as workspace snapshots; every submission is stored (`coding_submissions`, insert-only, with SHA-256). When the question's time runs out, or it ends another way, the last draft becomes the final code.
+- **Engine:** `CodingController` keeps §34's coding state; a submission is a conductor turn that closes the question.
+- **Evaluation** (inside SP-10's evaluator, prompt `evaluation-coding-v1`, rubric `coding-v1`, pinned and gated like the answers'): correctness of the logic, approach, edge cases considered, time and space complexity (the model's estimate, labelled "estimated"), code quality, readability, each with quotes verified against the code and its lines. §47's "test cases" criterion is not delivered (nothing runs).
+- **Telemetry (§48 subset):** typing started and stopped, paste, copy, cut, focus and blur in the text box, with clipboard lengths only and no keystrokes; shown to reviewers as signals, never proof.
+- **Stored:** the final code and every submission. No test results, execution time or memory exist.
+- **Contract:** `docs/api/contracts/coding.md`.
 - **Telemetry** (the eight §48 events): typing start/stop, code changed, run, submit, copy, paste, cut, editor focus change. No global keystroke capture.
 - **Coding report:** its own view and export.
 
@@ -966,7 +961,7 @@ Pairing again revokes the old device. Egress records the stream.
   - STT seconds and TTS characters.
   - Media participant and egress minutes.
   - Storage bytes by data class.
-  - Sandbox seconds and OCR pages.
+  - OCR pages.
   - Emails sent.
   - Service CPU-seconds.
 - **Cost model (`tools/cost-model`):**
@@ -988,7 +983,6 @@ Hirevion/
 ├── third-eye/                     # mobile-browser camera app (Vite + React)
 ├── backend/                       # uv workspace: core/, api/, realtime/, interview_agent/, vision_agent/, coding/, migrations/
 ├── workers/                       # media-worker (stream consumers run from hirevion_core via `hv worker`)
-├── coding-sandbox/                # sandbox-runner + runner images (python, node, ts, sql) + test harness
 ├── packages/                      # shared TS: api-client (generated), ui (design system), events, i18n
 ├── infrastructure/local/          # compose, Caddyfile, livekit/egress config, scripts (cloud/ comes with migration plan)
 ├── tools/                         # interview-simulator, eval-harness, synthetic-data, load-tests (k6), cost-model
@@ -1362,20 +1356,19 @@ It starts with the interview simulator as its client.
   - A UI copy review confirms no signal is presented as proof.
 
 **SP-16 Coding interview** (CP4; depends on SP-09 and SP-08)
-- **Deliverables:** everything in §6.10:
-  - The four runners.
-  - The sandbox and `coding-service`.
-  - Question and test authoring.
-  - Monaco and the whiteboard.
-  - `CodingController`.
-  - Telemetry.
-  - Evaluation.
-  - The coding report.
-  - The Candidate 360 Coding tab.
+- **Re-scoped** by product-owner decision, 2026-10-23: no code execution or sandbox; code is evaluated by AI review after the interview (ADR-0033): no runners, sandbox, Run, test cases or measured time and memory; no Monaco.
+- **Deliverables (server, C6):** everything in §6.10:
+  - The coding question served to the console, one submission per question, the last draft kept at the time limit.
+  - `CodingController` and the coding state.
+  - Integrity telemetry from the text box.
+  - The AI code review inside the evaluation (pinned prompt and rubric, evidence from the code, the eval gate's coding set).
+  - The coding report and the Candidate 360 Coding tab.
+  - The contract `docs/api/contracts/coding.md`.
+- **Deliverables (desktop, B4):** the notepad-style console (text box, language label, Submit, drafts, telemetry) and the whiteboard.
 - **Exit criteria:**
-  - The sandbox-escape suite contains every attack: network access, fork bomb, disk fill, memory bomb, infinite loop, writes outside tmp.
-  - All 4 languages run end to end.
-  - Time and memory are stored for every run.
+  - A simulated interview submits code that is stored and reviewed with verified evidence from the code.
+  - The time limit keeps the last draft as the final code.
+  - The coding set passes the eval gate, and removing any prompt clause fails a coding metric.
 
 **SP-18 Notifications & webhooks** (CP4; depends on SP-01) — **not built: skipped by product-owner decision, 2026-10-25 (see §6.14).**
 - **Deliverables:** everything in §6.14, plus webhook endpoint administration.
@@ -1604,14 +1597,14 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 24 | Assignment: 3 inputs → 9 system fields | SP-07a (ADR-0020: `hirevion_core.interviews.assignment`, the policy snapshot, `test_interview_assignment.py`) |
 | 25 | 8 invitation contents | SP-07a (`interviews.invitations`, en-IN/en-US templates, the Mailpit test and `e2e/auth/interviews.spec.ts`), SP-07b (ADR-0022: the pages it links to: `/invitation/`, download, notices, requests, forgot password; `e2e/auth/portal.spec.ts`) |
 | 26 | 9 startup steps (`AI-Interview.exe`) | SP-08 (the update gate with Update now, the signed updater and downgrade refusal: SP-08c, ADR-0019, `tests/updater.rs`; the version check's server side, the release registry and update manifest: SP-07c) |
-| 27 | Tauri, React, TypeScript, Rust, Monaco | SP-08 (the per-user NSIS installers, development signing and GlitchTip crash reports: SP-08c, ADR-0019; the tauri-driver test `e2e/desktop.e2e.mjs`), SP-16 |
+| 27 | Tauri, React, TypeScript, Rust, Monaco | SP-08 (the per-user NSIS installers, development signing and GlitchTip crash reports: SP-08c, ADR-0019; the tauri-driver test `e2e/desktop.e2e.mjs`), SP-16 (B4: a plain text console instead of Monaco, by product-owner decision, 2026-10-23; ADR-0033) |
 | 28 | 6 login verifications; short-lived credentials | SP-07c (`candidate_access.service`, the six checks in order with their codes), SP-08 |
 | 29 | 11 system checks; policy-driven mandatory checks | SP-08 (the checks on the device), SP-09 (`interview_session.preparation.record_system_check`, mandatory checks from the policy and accommodations: `test_conductor.py`) |
 | 30 | 6 instructions (configurable); 10 consent items | SP-08, SP-09 (the briefing: `interview_session.briefing`, the organisation's instructions in Administration → Organisation, itemised consents against `NOTICE_VERSION`), SP-22 |
 | 31 | Fullscreen; 5 monitored states | SP-08, SP-11 |
-| 32 | UI layout, timer, orb, transcript, editor (language, Run, Submit), status bar, non-coding workspace | SP-08, SP-09 (`hv.state`: voice, question, time left, workspace; `POST /workspace`), SP-16 |
+| 32 | UI layout, timer, orb, transcript, editor (language, Run, Submit), status bar, non-coding workspace | SP-08, SP-09 (`hv.state`: voice, question, time left, workspace; `POST /workspace`), SP-16 (C6 server: `docs/api/contracts/coding.md`, the language label and Submit; B4 builds the text console). Run removed by product-owner decision, 2026-10-23: no code execution |
 | 33 | 6 voice states; streaming STT/TTS | SP-09 (ADR-0030: the agent's `hv.state` voice states incl. `error`; Deepgram streaming STT/TTS through LiveKit, `hirevion_interview_agent.agent`) |
-| 34 | No single giant prompt; 12 state fields; 9 components | SP-09 (`hirevion_core.engine`: `state.InterviewState`, the nine components, `orchestrator.py`; `tests/engine/`), SP-16 (CodingController's runs and grading) |
+| 34 | No single giant prompt; 12 state fields; 9 components | SP-09 (`hirevion_core.engine`: `state.InterviewState`, the nine components, `orchestrator.py`; `tests/engine/`), SP-16 (C6: `engine.coding.CodingController` and the coding state's submissions; `test_orchestrator.py`) |
 | 35 | 10 state-machine states | SP-09 (§6.8; `engine.state.STAGES` recorded with times; `test_orchestrator.py`) |
 | 36 | Resume-based questions with internal source reference | SP-09 (`engine.skills.resume_hooks`, `interview_questions.source`/`source_ref`, the transcript page's source lines) |
 | 37 | JD skill coverage tracked | SP-09 (`engine.completion.CompletionEvaluator`, required JD skills added by `SkillMatrixBuilder`; coverage in `GET /interviews/{id}/transcript`; every persona covers them in `test_interview_session_api.py`) |
@@ -1622,10 +1615,10 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 42 | TTS: low latency, streaming, interruption, state tracking, failure handling | SP-09 (the agent's acknowledgement while analysing, interruptible speech, the pronunciation lexicon in `tts_node`, the `error` state; `hv-voice-bench` measures p95) |
 | 43 | Complete two-sided transcript | SP-09 (both speakers per turn; JSON/VTT/TXT artifacts by the `interview.completed` consumer; the interview page's transcript) |
 | 44 | 8 evaluation dimensions, with evidence | SP-10 (`evaluation.scoring.QuestionEvaluator`, `evaluation.evidence`, `question_evaluations`; `test_question_evaluator.py`, ADR-0031) |
-| 45 | Coding flow; Python, JavaScript, TypeScript, SQL | SP-16 |
-| 46 | Never on API servers; queue; 6 limits; destroyed after each run | SP-16 |
-| 47 | 8 coding-evaluation criteria; 5 stored artifacts | SP-16 |
-| 48 | 8 telemetry events; no unnecessary global keystrokes | SP-16 |
+| 45 | Coding flow; Python, JavaScript, TypeScript, SQL | SP-16 (C6: the AI asks, the candidate types in a text console with the language as a label and submits; `hirevion_core.engine.coding`, `Conductor.submit_code`, `hirevion_api.coding.routes`, `docs/api/contracts/coding.md`; `test_coding_api.py`; the console itself is B4). Removed by product-owner decision, 2026-10-23: no code execution or sandbox; code is evaluated by AI review after the interview: Monaco, Run and running tests |
+| 46 | Never on API servers; queue; 6 limits; destroyed after each run | SP-16: nothing is executed anywhere, so no sandbox exists (removed by product-owner decision, 2026-10-23: no code execution or sandbox; code is evaluated by AI review after the interview); ADR-0033 |
+| 47 | 8 coding-evaluation criteria; 5 stored artifacts | SP-16 (C6, inside SP-10's evaluator: `hirevion_core.evaluation.coding` scores correctness, approach, edge cases, time and space complexity estimated, code quality and readability with quotes verified against the code; prompt `evaluation-coding-v1.md`, rubric `coding-v1.md`, the gate's `coding_cases.json`; final code and every submission in `coding_submissions`; `test_coding_evaluation.py`, `test_harness.py`). Removed by product-owner decision, 2026-10-23: no code execution or sandbox; code is evaluated by AI review after the interview: the test-cases criterion, test results, execution time and memory |
+| 48 | 8 telemetry events; no unnecessary global keystrokes | SP-16 (C6: typing started and stopped, paste, copy, cut, focus and blur from the text box, clipboard lengths only, no keystrokes; `hirevion_core.coding.console`, `hirevion_core.coding.signals`; `test_coding_signals.py`, `test_coding_schema.py`). Run and code-changed events don't exist (by product-owner decision, 2026-10-23: no code execution or sandbox; code is evaluated by AI review after the interview); submissions are stored instead |
 | 49 | 6 camera uses; 5 microphone uses | SP-09, SP-12, SP-13 (D3: the conversation audio and the third-eye video by LiveKit Egress, `hirevion_core.third_eye.egress`; `test_third_eye_api.py`), SP-15a, SP-15b |
 | 50 | Native screen capture; segmented; continuous upload | SP-12 (device: lane B; server, D2: `hirevion_core.recordings.segments` write-only per-segment upload URLs, `hirevion_core.recordings.assembly` joining each track with ffmpeg and `hirevion_core.recordings.timeline` the timeline map; `test_recordings_api.py`, `test_recording_assembly.py`) |
 | 51 | Encrypted buffer → queue → retry → server acknowledgement; crash/network recovery | SP-12 (device queue: lane B; server, D2: hash-verified acknowledgement and the recovery listing in `hirevion_core.recordings.segments`, continuity events in `hirevion_core.recordings.monitor`; `test_recordings_api.py`, `test_recording_monitor.py`) |
@@ -1646,9 +1639,9 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 66 | Live dashboard layout | SP-14 (delivered: `monitoring-panel.tsx` on the interview page, `proctoring-state.ts`; `proctoring.test.tsx`; the camera, screen and third-eye video tiles need `POST /proctoring/{interview_id}/observe`'s token and wait for the media player) |
 | 67 | 7 evidence types; JSON schema | SP-12, SP-14 (delivered: the schema and `proctor_evidence` in `hirevion_core.proctoring.evidence`, snapshots asked for at CRITICAL events and answered through `/proctoring/evidence-uploads`; `test_proctoring_api.py`) |
 | 68 | 14 proctoring-report sections; no single score | SP-17 (delivered: `hirevion_core.reports.proctoring`: fourteen sections, each severity's reason in words, dismissed events kept and marked, an explicit statement that there is no single score; `test_report_documents.py`, `test_simulator_reports.py`) |
-| 69 | 13 interview-report sections | SP-17 (delivered: `hirevion_core.reports.interview`: thirteen sections with the AI's scores beside any change, coding pending until SP-16; `test_report_documents.py`, `golden-path.spec.ts`) |
-| 70 | Per-skill final evaluation, with evidence | SP-10 (`evaluation.aggregate`, `GET /interviews/{id}/evaluation`; `test_aggregate.py`; the coding slot is SP-16) |
-| 71 | 11 recruiter-review actions | SP-17 (delivered: `review-workspace.tsx`: transcript, recordings on one timeline (`sync.ts`), jump to evidence, code and test results, screening, evaluation, proctoring events, notes, export and the hiring status; `review.test.tsx`, `test_review_api.py`) |
+| 69 | 13 interview-report sections | SP-17 (delivered: `hirevion_core.reports.interview`: thirteen sections with the AI's scores beside any change; SP-16 (C6) fills the coding section from the code review, `hirevion_core.reports.coding`; `test_report_documents.py`, `golden-path.spec.ts`) |
+| 70 | Per-skill final evaluation, with evidence | SP-10 (`evaluation.aggregate`, `GET /interviews/{id}/evaluation`; `test_aggregate.py`), SP-16 (C6: the coding entry beside the overall score, `evaluation.coding.coding_slot`; `test_coding_evaluation.py`) |
+| 71 | 11 recruiter-review actions | SP-17 (delivered: `review-workspace.tsx`: transcript, recordings on one timeline (`sync.ts`), jump to evidence, code and its AI review (SP-16; no test results exist, nothing is run), screening, evaluation, proctoring events, notes, export and the hiring status; `review.test.tsx`, `test_review_api.py`) |
 | 72 | 9 hiring statuses, audited | SP-17 (delivered: `hirevion_core.hiring.workflow`: the nine statuses beside the screening stage, every change in the status history and the audit log, the final decision only with its own permission; the pipeline's moves in `pipeline-board.tsx`; `test_hiring_workflow.py`) |
 | 73 | 12 analytics | SP-21 |
 | 74 | 9 funnel stages | SP-21 |
@@ -1668,7 +1661,7 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 88 | Azure production architecture | Cloud plan |
 | 89 | Every core table | §7; each owning SP |
 | 90 | 20 API groups; the screening, interview and proctoring example endpoints | §8; owning SPs (SP-09: `/interviews/{id}/start`, `/answer`, `/complete`, `/transcript`; SP-14: `/proctoring/session`, `/events`, `/heartbeat`, `/evidence-uploads`, `GET /proctoring/{interview_id}` and `/evidence`) |
-| 91 | 3 WebSocket channels; 10 events | SP-09 (`/ws/interviews/{id}`; `AI_SPEAKING`, `CANDIDATE_SPEAKING`, `QUESTION_STARTED`, `ANSWER_RECEIVED`, `INTERVIEW_COMPLETED` on `hv:rt:interview:{id}`), SP-12 (D2: `RECORDING_STATUS` on the same stream from `hirevion_core.recordings.monitor` and `hirevion_core.recordings.assembly`), SP-13 (D3: `THIRD_EYE_STATUS` from `hirevion_core.third_eye.service`), SP-14 (delivered, `/ws/proctoring/{id}` and `PROCTOR_EVENT`; `/ws/recruiter` and the other events with their owners), SP-16 |
+| 91 | 3 WebSocket channels; 10 events | SP-09 (`/ws/interviews/{id}`; `AI_SPEAKING`, `CANDIDATE_SPEAKING`, `QUESTION_STARTED`, `ANSWER_RECEIVED`, `INTERVIEW_COMPLETED` on `hv:rt:interview:{id}`), SP-16 (C6: `CODE_SUBMITTED` from `Conductor.submit_code`; `CODE_RUN` is never sent, nothing runs), SP-12 (D2: `RECORDING_STATUS` on the same stream from `hirevion_core.recordings.monitor` and `hirevion_core.recordings.assembly`), SP-13 (D3: `THIRD_EYE_STATUS` from `hirevion_core.third_eye.service`), SP-14 (delivered, `/ws/proctoring/{id}` and `PROCTOR_EVENT`; `/ws/recruiter` and the other events with their owners), SP-16 |
 | 92 | Third-eye realtime path | SP-13 (D3: desktop → pairing → QR → phone page → LiveKit → `THIRD_EYE_STATUS` and the proctoring channel; `hirevion_api.third_eye.routes`, `test_third_eye_api.py`) |
 | 93 | Repository structure | SP-00 (§12) |
 | 94 | Technology stack (local parts) | §2; Azure part in the Cloud plan |

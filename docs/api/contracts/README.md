@@ -15,6 +15,7 @@
 | [proctoring.md](proctoring.md) | Lane C (SP-14) | Proctor sessions, signed and sequenced event batches, heartbeats, evidence uploads |
 | [recordings.md](recordings.md) | Lane D (SP-12) | Segment upload URLs, hash-verified acknowledgement, recovery |
 | [third-eye.md](third-eye.md) | Lane D (SP-13) | Pairing, redeeming on the phone, status, revocation |
+| [coding.md](coding.md) | Lane C (SP-16) | The coding console: the question, drafts, one submission, integrity events; nothing is executed |
 
 ## Conventions (all contracts)
 

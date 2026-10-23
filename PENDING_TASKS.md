@@ -173,6 +173,7 @@ A box is ticked in the PR that merges the part. Deliverables are in MASTER §14;
     - the ARM64 installer: the script and the manual `Desktop installers` workflow build it; it needs the Visual Studio ARM64 build tools and hasn't run on a runner yet → B5;
     - the production Authenticode certificate and updater key (owner), and a11y beyond the SP-08b screens.
 - [ ] **B4 Desktop parts of SP-16, SP-13 and SP-15b.** Depends on: B3, C6, D3. See MASTER §14 SP-16, SP-13, SP-15b. Includes, moved from B3: the workspace host for code and whiteboard; answering SP-14's `snapshot_requests` (screen/camera JPEG, `request_id` upload); the third-eye status in heartbeats.
+  - Coding (product-owner decision, 2026-10-23; ADR-0033): a notepad-style console to `docs/api/contracts/coding.md`: a monospace text box, the language picked from the question's languages as a label, drafts saved with `POST /workspace`, one Submit, and the text box's integrity events (typing started and stopped, paste, copy, cut with lengths only, focus, blur). No Monaco, no Run, no tests; nothing is executed.
   - Exit: as in those §14 entries, for the desktop side.
 - [ ] **B5 Windows golden path and chaos drills.** Depends on: B3, B4. See MASTER §16 (chaos drills).
   - Includes, moved from B3: building and checking the ARM64 installer on a runner.
@@ -188,8 +189,9 @@ A box is ticked in the PR that merges the part. Deliverables are in MASTER §14;
 - [x] **C5 SP-14 Proctoring engine and live monitoring.** Depends on: C3, B2, D2. See MASTER §14 SP-14.
   - Also (moved from D2): evidence snapshots, screen and camera at event time, asked for by SP-14's events.
   - Exit: p95 latency to the dashboard is under 1 s; a reconnect gets the missed alerts; dismissed events are audited.
-- [ ] **C6 SP-16 Coding, server side.** Depends on: C3. See MASTER §14 SP-16.
-  - Exit: the sandbox-escape suite holds; all four languages run end to end.
+- [x] **C6 SP-16 Coding, server side.** Depends on: C3. See MASTER §14 SP-16. ADR-0033.
+  - Re-scoped by product-owner decision, 2026-10-23: coding answers are typed in a text console and reviewed by AI after the interview; no sandbox, no execution, no Run, no test cases.
+  - Exit met: a simulated interview submits code that is stored and reviewed with evidence verified against the code; the time limit keeps the last draft; the coding set passes the eval gate and each removed prompt clause fails a coding metric.
 - [ ] **C7 Vision agent (SP-15a and SP-15b server).** Depends on: C5, D3. See MASTER §14 SP-15a, SP-15b.
   - Exit: each detector's precision and recall is reported on the labelled set; no signal is shown as proof.
 
@@ -273,11 +275,11 @@ pnpm --filter @hirevion/ai-interviewer-desktop tauri dev       # the candidate a
 
 - **A1 (SP-07a):** done (ADR-0020): the "Create interview" action, the candidates' Interview and Completed tabs, and interviews pinning a template version, its questions and its policy.
 - **C2 (SP-09b):** done (ADR-0030): question time limits and follow-up rules are used live.
-- **C6 (SP-16):** the coding question's runs, tests and grading (SP-09 asks it with the code workspace).
+- **C6 (SP-16):** done (ADR-0033): the coding question's submission, its time limit and the AI review of the code. Runs and tests were removed by product-owner decision (2026-10-23). Left for B4: the desktop's text console (contract `coding.md`).
 - **D3 (SP-13):** done (ADR-0040): the pairing check at `start`. Left for B4: the desktop's pairing screen, placement guide and third-eye status (contract "Changes", 2026-10-17).
 - **C5 (SP-14):** `Conductor.note_proctor_event` fills §34's proctor summary and the CRITICAL-event reminder; `/ws/proctoring` and `/ws/recruiter`.
 - **C5 (SP-14) and D5 (SP-22):** proctoring presets become editable policies.
-- **A5 (SP-17):** done (ADR-0023): pipeline-board moves, all thirteen Candidate 360 tabs, the five reports, the review workspace and the hiring workflow. Left for C6 (SP-16): the coding report's test results and grading (the pages say so); for SP-18: the `report.ready` notification; for SP-22: retention of `report_exports` and an audit-log viewer.
+- **A5 (SP-17):** done (ADR-0023): pipeline-board moves, all thirteen Candidate 360 tabs, the five reports, the review workspace and the hiring workflow. C6 (SP-16) filled the coding report and the Candidate 360 Coding tab; for SP-18: the `report.ready` notification; for SP-22: retention of `report_exports` and an audit-log viewer.
 - **A4 (SP-18):** skipped by product-owner decision, 2026-10-25; the notification centre isn't built and A1's scheduler loop stays.
 - **D4 (SP-19):** MFA, moved from SP-02.
 - **D5 (SP-22):**

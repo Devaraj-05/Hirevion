@@ -139,7 +139,7 @@ Body:
 | `POST /interviews/{id}/complete` | `{ "reason": "finished" \| "candidate_ended" }` | `200 { "status": "completed" }` |
 
 - **After completion:** the desktop drains its upload queue (recordings.md) before saying it's safe to close.
-- **Coding:** coding runs and submissions belong to SP-16's own contract, added later.
+- **Coding:** the coding console (the question, one submission, integrity events) is [coding.md](coding.md). Drafts still go to `POST /workspace`. Nothing is executed.
 
 ## Changes
 
@@ -159,3 +159,4 @@ Body:
     - `start` without a media server is `503 media-unavailable`.
   - `POST /answer` accepts typed answers in voice mode too; the agent then speaks the next question.
   - Rate limits: 30 answers or workspace snapshots a minute per interview.
+- 2026-10-23: lane C (C6, SP-16; ADR-0033). The coding question is answered in a plain text console and never run: see [coding.md](coding.md). The AI now says "type your answer in the text box … press Submit"; a submission closes the question, and so does its time limit, when the last `POST /workspace` draft becomes the final code.
