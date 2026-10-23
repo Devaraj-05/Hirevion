@@ -1905,7 +1905,7 @@
       },
       "overall": "Overall score",
       "communication": "Communication",
-      "codingPending": "Coding is evaluated separately and isn't in these scores yet.",
+      "codingPending": "The coding question isn't reviewed yet.",
       "skills": "Skills",
       "notAssessed": "Not assessed",
       "questionCount": "{count, plural, one {# question} other {# questions}}",
@@ -1970,7 +1970,9 @@
           "weak": "Weak agreement"
         }
       },
-      "jumpTo": "Jump to {time}"
+      "jumpTo": "Jump to {time}",
+      "coding": "Coding",
+      "codingReviewed": "(the code was read, never run)"
     },
     "session": {
       "coverage": "Skill coverage",
@@ -2296,7 +2298,7 @@
       "none": "This application hasn't been screened."
     },
     "code": {
-      "title": "Code and test results"
+      "title": "Code and its review"
     },
     "scores": {
       "title": "Scores",
@@ -2385,9 +2387,14 @@
       "onResumeYears": "On the resume ({years} years)"
     },
     "coding": {
-      "pending": "Code runs, test results and coding grades arrive with the coding service (SP-16). Until then this shows what interviews recorded.",
+      "method": "Code is typed in a plain text box and never run. The AI reviews it after the interview and cites lines of the code; integrity signals are for you to weigh, never proof.",
       "none": "No interviews yet.",
-      "snapshots": "{count, plural, one {# code snapshot saved} other {# code snapshots saved}}",
+      "notAsked": "No coding question",
+      "pending": "Not reviewed yet",
+      "noCode": "No code was given",
+      "score": "Coding score {score}",
+      "counts": "{questions, plural, one {# coding question} other {# coding questions}}, {submissions, plural, one {# submission} other {# submissions}}",
+      "notable": "{count, plural, one {# question with notable signals} other {# questions with notable signals}}",
       "open": "Coding report"
     },
     "ai": {

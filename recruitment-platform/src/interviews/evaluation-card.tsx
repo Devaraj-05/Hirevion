@@ -117,6 +117,22 @@ function Findings({
   );
 }
 
+/** The coding question's review (SP-16): beside the overall score, not inside it. */
+function CodingScore({ coding }: { coding: EvaluationBody["coding"] }) {
+  const t = useTranslations("interviews.evaluation");
+  if (coding.status === "not_asked") return null;
+  if (coding.status !== "scored" && coding.status !== "no_code") {
+    return <p className="text-muted-foreground text-sm">{t("codingPending")}</p>;
+  }
+  return (
+    <p className="text-sm">
+      <span className="text-muted-foreground">{t("coding")}</span>{" "}
+      <span className="font-medium tabular-nums">{formatScore(coding.score)}</span>{" "}
+      <span className="text-muted-foreground">{t("codingReviewed")}</span>
+    </p>
+  );
+}
+
 function Summary({ evaluation }: { evaluation: EvaluationBody }) {
   const t = useTranslations("interviews.evaluation");
   const follow = evaluation.follow_up_performance;
@@ -135,7 +151,7 @@ function Summary({ evaluation }: { evaluation: EvaluationBody }) {
             {formatScore(evaluation.communication.score)}
           </span>
         </p>
-        <p className="text-muted-foreground text-sm">{t("codingPending")}</p>
+        <CodingScore coding={evaluation.coding} />
       </div>
       <section className="grid gap-2">
         <h3 className="font-medium text-sm">{t("skills")}</h3>

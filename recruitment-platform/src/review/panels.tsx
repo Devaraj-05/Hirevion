@@ -410,15 +410,16 @@ export function ScreeningPanel({
   );
 }
 
-/** The code the candidate saved and the test results (PRD §71 "review code" and "review test
- * results"). The coding service is SP-16, so the results say they are not there yet. */
+/** The candidate's final code, the AI's review of it and the console's integrity signals (PRD
+ * §71 "review code"). The code was typed in a text box and never run, so there are no test
+ * results (product-owner decision, ADR-0033). */
 export function CodePanel({ id }: { id: string }) {
   const t = useTranslations("review.code");
   const coding = useQuery({ queryKey: reportKeys.coding(id), queryFn: () => getCodingReport(id) });
   if (coding.isPending) return <Skeleton className="h-24 w-full" />;
   if (!coding.data) return null;
   const sections = coding.data.sections.filter((section) =>
-    ["submitted_code", "test_results"].includes(section.key),
+    ["final_code", "assessment", "integrity"].includes(section.key),
   );
   return (
     <Card>

@@ -73,7 +73,15 @@ const BODY: api.EvaluationBody = {
     { text: "Never mentions statistics.", skill: null, evidence: [], supported: false },
   ],
   follow_up_performance: { asked: 1, mean: 6, main_mean: 8, delta: -2, summary: STATEMENT },
-  coding: { status: "pending", score: null, source: "sp-16" },
+  coding: {
+    status: "scored",
+    score: 7.5,
+    source: null,
+    prompt_version: "evaluation-coding-v1",
+    rubric_version: "coding-v1+w00000000",
+    weights: {},
+    questions: [],
+  },
   flags: ["manipulation_attempt"],
   questions: [
     {
@@ -159,6 +167,9 @@ describe("EvaluationCard", () => {
     expect(
       screen.getByText(/Scored by mock-llm with prompt evaluation-question-v1/),
     ).toBeInTheDocument();
+    // The coding question's review sits beside the overall score, not inside it.
+    expect(screen.getByText("7.5")).toBeInTheDocument();
+    expect(screen.getByText(/code was read, never run/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Repeat with pinned versions" })).toBeNull();
   });
 

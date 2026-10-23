@@ -192,34 +192,56 @@ export function SkillsTab({ data }: { data: Candidate360 }) {
   );
 }
 
-/** Coding: what exists of the candidate's coding today; the coding service is SP-16. */
+/** Coding: each interview's coding questions, the AI's review of the code (read, never run)
+ * and the console's integrity signals, which are for the reviewer to weigh, never proof. */
 export function CodingTab({ data }: { data: Candidate360 }) {
   const t = useTranslations("candidate360.coding");
   return (
     <div className="grid max-w-3xl gap-3 text-sm">
       <p role="note" className="rounded-md border border-border bg-surface-muted px-3 py-2">
-        {t("pending")}
+        {t("method")}
       </p>
       {data.interviews.length === 0 ? (
         <Empty>{t("none")}</Empty>
       ) : (
         <ul className="grid gap-2">
           {data.interviews.map((item) => (
-            <li key={item.interview_id} className="flex flex-wrap items-center gap-x-3">
+            <li key={item.interview_id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="font-medium">{item.reference}</span>
-              <span>{t("snapshots", { count: item.code_snapshots })}</span>
-              <Link
-                href={`/reports/coding/${item.interview_id}`}
-                className="inline-flex min-h-6 items-center underline"
-              >
-                {t("open")}
-              </Link>
+              <CodingStatus coding={item.coding} />
+              {item.coding.questions > 0 ? (
+                <span>
+                  {t("counts", {
+                    questions: item.coding.questions,
+                    submissions: item.coding.submissions,
+                  })}
+                </span>
+              ) : null}
+              {item.coding.notable_signals > 0 ? (
+                <span>{t("notable", { count: item.coding.notable_signals })}</span>
+              ) : null}
+              {item.coding.questions > 0 ? (
+                <Link
+                  href={`/reports/coding/${item.interview_id}`}
+                  className="inline-flex min-h-6 items-center underline"
+                >
+                  {t("open")}
+                </Link>
+              ) : null}
             </li>
           ))}
         </ul>
       )}
     </div>
   );
+}
+
+function CodingStatus({ coding }: { coding: Candidate360["interviews"][number]["coding"] }) {
+  const t = useTranslations("candidate360.coding");
+  if (coding.status === "not_asked") return <span>{t("notAsked")}</span>;
+  if (coding.status === "pending") return <span>{t("pending")}</span>;
+  if (coding.status === "no_code") return <span>{t("noCode")}</span>;
+  return <span>{t("score", { score: (coding.score ?? 0).toFixed(1) })}</span>;
 }
 
 /** AI interview: each interview's evaluation, with its strengths and gaps. */

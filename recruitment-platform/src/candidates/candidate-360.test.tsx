@@ -103,6 +103,13 @@ const FULL: review.Candidate360 = {
       ],
       candidate_report_status: "released",
       code_snapshots: 1,
+      coding: {
+        questions: 1,
+        submissions: 2,
+        status: "scored",
+        score: 8.25,
+        notable_signals: 1,
+      },
       exports: [{ id: "ex-1", kind: "interview", created_at: "2026-10-17T10:00:00Z" }],
     },
   ],
@@ -217,12 +224,19 @@ describe("Candidate 360", () => {
     );
   });
 
-  it("says coding is waiting for SP-16, and links the proctoring, recordings and reports", async () => {
+  it("shows each interview's code review and signals, and links the other reports", async () => {
     const user = userEvent.setup();
     renderAdmin(<CandidatePage id="c-1" />);
     await user.click(await screen.findByRole("tab", { name: "Coding" }));
-    expect(screen.getByRole("note")).toHaveTextContent("SP-16");
-    expect(screen.getByText("1 code snapshot saved")).toBeInTheDocument();
+    expect(screen.getByRole("note")).toHaveTextContent("never run");
+    expect(screen.getByRole("note")).toHaveTextContent("never proof");
+    expect(screen.getByText("Coding score 8.3")).toBeInTheDocument();
+    expect(screen.getByText("1 coding question, 2 submissions")).toBeInTheDocument();
+    expect(screen.getByText("1 question with notable signals")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Coding report" })).toHaveAttribute(
+      "href",
+      "/reports/coding/iv-1",
+    );
     await user.click(screen.getByRole("tab", { name: "Proctoring" }));
     expect(
       screen.getByText("These are signals for a reviewer, not a verdict."),
