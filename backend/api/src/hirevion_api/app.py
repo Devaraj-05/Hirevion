@@ -13,6 +13,7 @@ import aiohttp
 from fastapi import FastAPI
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from redis.asyncio import Redis
+from starlette.types import ASGIApp
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from hirevion_api import clock, dashboard, health
@@ -41,6 +42,7 @@ from hirevion_api.middleware import (
     BodySizeLimitMiddleware,
     HostCheckMiddleware,
     SecurityHeadersMiddleware,
+    TraceStateGuard,
     UnhandledErrorMiddleware,
 )
 from hirevion_api.portal.recruiter import router as candidate_requests_router
@@ -255,7 +257,19 @@ def create_app(
     app.add_middleware(RateLimitMiddleware, rule=ip_rule)
     app.add_middleware(HostCheckMiddleware, allowed_hosts=settings.hosts)
     app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=settings.proxies)
+    _guard_tracestate(app)
     return app
+
+
+def _guard_tracestate(app: FastAPI) -> None:
+    """Puts `TraceStateGuard` outside everything, the tracing middleware included (which
+    replaces `build_middleware_stack` to make itself outermost)."""
+    build = app.build_middleware_stack
+
+    def build_guarded() -> ASGIApp:
+        return TraceStateGuard(build())
+
+    app.build_middleware_stack = build_guarded  # type: ignore[method-assign]
 
 
 async def _stop_workers(stop: asyncio.Event, workers: asyncio.Task[None]) -> None:

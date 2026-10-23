@@ -30,3 +30,13 @@ reason = "zvariant is Tauri's Linux D-Bus stack; not in the Windows graph"
 id = "RUSTSEC-2026-0372"
 ignoreUntil = 2027-04-19
 reason = "zvariant_derive is Tauri's Linux D-Bus stack; not in the Windows graph"
+
+# Python: opentelemetry-api 1.45.1 fixes GHSA-xcq7-p3pf-p88h, but every livekit-agents release that
+# allows it also requires the OpenAI SDK 3 (a major upgrade of the AI layer, done separately).
+# Until then the API drops any `tracestate` longer than the W3C limit before tracing parses it
+# (hirevion_api.middleware.TraceStateGuard, test_telemetry.py); the interview agent takes no
+# inbound HTTP. Short expiry: upgrade as soon as the AI-layer change lands.
+[[IgnoredVulns]]
+id = "GHSA-xcq7-p3pf-p88h"
+ignoreUntil = 2026-12-31
+reason = "Mitigated: TraceStateGuard drops tracestate over 512 chars before OpenTelemetry parses it; the fix needs livekit-agents 1.8.8, which requires the OpenAI SDK 3"

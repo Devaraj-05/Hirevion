@@ -117,3 +117,39 @@ def test_telemetry_settings_are_read_from_the_environment(
     assert settings.otel_sdk_disabled is True
     assert settings.otel_exporter_otlp_endpoint == "http://collector:4318"
     assert settings.hv_environment == "staging"
+
+
+async def test_an_oversized_tracestate_is_dropped_before_tracing_parses_it(
+    telemetry: Telemetry,
+    exporter: InMemorySpanExporter,
+    client_for: Callable[[FastAPI], AsyncClient],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """GHSA-xcq7-p3pf-p88h: OpenTelemetry parses `tracestate` in quadratic time, so a long run
+    of spaces stalls the worker. The W3C limit is 512 characters; anything longer never
+    reaches the parser."""
+    from opentelemetry.trace.span import TraceState
+
+    seen: list[str] = []
+    parse = TraceState.from_header
+
+    def spy(header_list: list[str]) -> TraceState:
+        seen.extend(header_list)
+        return parse(header_list)
+
+    monkeypatch.setattr(TraceState, "from_header", staticmethod(spy))
+    app = create_app(ApiSettings(), telemetry=telemetry)
+    app.include_router(router)
+    client = client_for(app)
+    parent = "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01"
+
+    attack = "a=" + " " * 100_000 + "b"
+    await client.get("/api/v1/test/boom", headers={"traceparent": parent, "tracestate": attack})
+    assert all(len(header) <= 512 for header in seen)
+
+    await client.get(
+        "/api/v1/test/boom", headers={"traceparent": parent, "tracestate": "vendor=v1"}
+    )
+    assert "vendor=v1" in seen
+    spans = server_spans(exporter)
+    assert spans and spans[-1].context.trace_state.get("vendor") == "v1"
