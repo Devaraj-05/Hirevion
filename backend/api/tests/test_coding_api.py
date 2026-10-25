@@ -157,6 +157,7 @@ async def test_the_console_gets_the_question_saves_submits_and_moves_on(
         ({"kind": "keystroke", "at": now}, 422, None),
         ({"kind": "paste", "at": now}, 422, "invalid-chars"),
         ({"kind": "paste", "at": now, "chars": 3, "text": "secret"}, 422, None),
+        ({"kind": "focus", "at": "2026-10-25T10:00:00"}, 422, None),  # no time zone
         (
             {"kind": "focus", "at": (datetime.now(UTC) + timedelta(hours=1)).isoformat()},
             422,

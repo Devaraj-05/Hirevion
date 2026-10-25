@@ -44,10 +44,12 @@ from hirevion_core.evaluation.aggregate import (
     Synthesizer,
     aggregate,
 )
+from hirevion_core.evaluation.coding import WEIGHTS as CODING_WEIGHTS
 from hirevion_core.evaluation.coding import (
     CodingCase,
     CodingEvaluator,
     CodingScore,
+    checked_weights,
     coding_rubric_version,
 )
 from hirevion_core.evaluation.compare import Snapshot, Tolerance, compare
@@ -147,7 +149,11 @@ def _pinned(inputs: EvaluationInputs, rubric: Rubric, synthesis_prompt: str) -> 
         "question_prompt_version": registry.ACTIVE_QUESTION_PROMPT,
         "synthesis_prompt_version": synthesis_prompt,
         "coding_prompt_version": registry.ACTIVE_CODING_PROMPT,
-        "coding_rubric_version": coding_rubric_version(),
+        "coding_rubric": {
+            "base": registry.ACTIVE_CODING_RUBRIC,
+            "weights": dict(CODING_WEIGHTS),
+            "version": coding_rubric_version(),
+        },
         "tier": "strong",
         "inputs": {
             "questions": len(inputs.cases),
@@ -157,17 +163,18 @@ def _pinned(inputs: EvaluationInputs, rubric: Rubric, synthesis_prompt: str) -> 
     }
 
 
-def _coding_evaluator(
+def coding_reviewer_for(
     llm: LLMService, pinned: Mapping[str, Any], evaluation_version: str
 ) -> CodingEvaluator:
-    """The coding reviewer an evaluation pinned (an evaluation from before SP-16 pinned none, so
-    a re-run of it uses the versions in force)."""
-    rubric = str(pinned.get("coding_rubric_version") or registry.ACTIVE_CODING_RUBRIC)
+    """The coding reviewer an evaluation pinned: its prompt, rubric and weights. An evaluation
+    from before SP-16 pinned none, so a re-run of it uses the versions in force."""
+    rubric = pinned.get("coding_rubric") or {}
     return CodingEvaluator(
         llm,
         prompt_version=str(pinned.get("coding_prompt_version") or registry.ACTIVE_CODING_PROMPT),
-        rubric_base=registry.rubric_base(rubric),
+        rubric_base=str(rubric.get("base") or registry.ACTIVE_CODING_RUBRIC),
         evaluation_version=evaluation_version,
+        weights=rubric.get("weights"),
     )
 
 
@@ -436,12 +443,13 @@ def check_reproducible(base: Evaluation) -> None:
         registry.load_prompt(str(pinned["synthesis_prompt_version"]))
         if "coding_prompt_version" in pinned:
             registry.load_prompt(str(pinned["coding_prompt_version"]))
-            registry.load_rubric(registry.rubric_base(str(pinned["coding_rubric_version"])))
+            registry.load_rubric(str(pinned["coding_rubric"]["base"]))
+            checked_weights(pinned["coding_rubric"]["weights"])
         if not isinstance(pinned["rubric"]["weights"], dict) or not isinstance(
             pinned["skills"], list
         ):
             raise TypeError("the pinned weights or skills are malformed")
-    except (registry.UnknownVersion, KeyError, TypeError) as error:
+    except (registry.UnknownVersion, KeyError, TypeError, ValueError) as error:
         raise Unreproducible(str(error)) from error
 
 
@@ -518,7 +526,7 @@ async def rerun_pinned(
                 prompt_version=str(pinned["synthesis_prompt_version"]),
                 evaluation_version=base.evaluation_version,
             )
-            reviewer = _coding_evaluator(llm, pinned, base.evaluation_version)
+            reviewer = coding_reviewer_for(llm, pinned, base.evaluation_version)
         except (registry.UnknownVersion, KeyError, TypeError) as error:
             raise Unreproducible(str(error)) from error
         base_rows = (

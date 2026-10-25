@@ -297,9 +297,7 @@ class Orchestrator:
         )
         self.coding.submitted(state)
         self._close(state, turn, question, "answered", now)
-        for topic in (question.skill, question.topic):
-            if topic and topic not in state.topics_covered:
-                state.topics_covered.append(topic)
+        self._cover(state, question)
         turn.events.append(
             (
                 "coding.submitted",
@@ -476,6 +474,9 @@ class Orchestrator:
                 skill.answered += 1
             skill.qualities.append(quality)
             skill.weak_streak = skill.weak_streak + 1 if quality in ("weak", "no_answer") else 0
+        self._cover(state, question)
+
+    def _cover(self, state: InterviewState, question: AskedQuestion) -> None:
         for topic in (question.skill, question.topic):
             if topic and topic not in state.topics_covered:
                 state.topics_covered.append(topic)

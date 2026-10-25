@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from hirevion_api.interview_session.schemas import SessionState
 
@@ -66,7 +66,7 @@ class ConsoleEvent(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     kind: EventKind
-    at: datetime
+    at: AwareDatetime
     chars: int | None = Field(None, ge=0, le=10_000_000)
 
 

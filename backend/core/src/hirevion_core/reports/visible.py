@@ -108,6 +108,20 @@ def _sentences(items: list[dict[str, Any]], limit: int = 3) -> list[str]:
     ]
 
 
+def coding_feedback(coding: Mapping[str, Any], *, asked: bool) -> str:
+    """The coding item's draft from the evaluation's coding entry: what happened, with no score."""
+    if not asked:
+        return "There was no coding assessment in this interview."
+    if coding.get("status") == "scored":
+        return (
+            "Thank you for working through the coding question. Your code was reviewed after the "
+            "interview."
+        )
+    if coding.get("status") == "no_code":
+        return "Thank you for your time on the coding question; there was no code to review."
+    return "Thank you for working through the coding question."
+
+
 def draft_items(data: InterviewData) -> dict[str, dict[str, Any]]:
     """A draft of the five items, in words a candidate can read. No scores, flags or integrity
     signals ever go into it; the recruiter edits it before approving."""
@@ -130,11 +144,8 @@ def draft_items(data: InterviewData) -> dict[str, dict[str, Any]]:
             if gaps
             else "We have no specific technical feedback to share from this interview."
         ),
-        "coding_feedback": (
-            "Thank you for working through the coding question. Your code was reviewed after the "
-            "interview."
-            if any(q.kind == "coding" for q in data.questions)
-            else "There was no coding assessment in this interview."
+        "coding_feedback": coding_feedback(
+            summary.get("coding") or {}, asked=any(q.kind == "coding" for q in data.questions)
         ),
         "next_step": NEXT_STEP[data.application.hiring_status],
     }

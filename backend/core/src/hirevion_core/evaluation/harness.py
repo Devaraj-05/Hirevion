@@ -287,6 +287,11 @@ def gate(
         if not ok:
             failures.append(message)
 
+    check(
+        "coding_cases",
+        bool(run.coding_results),
+        "the coding set produced no results, so the coding reviewer wasn't checked",
+    )
     for clause in run.lint:
         which, _, name = clause.rpartition(":")
         check(
@@ -315,14 +320,17 @@ def gate(
                 value=value,
                 baseline=baseline[name],
             )
-    latency = run.metrics["latency_p95_ms"]
-    check(
-        "latency_p95_ms",
-        latency <= thresholds.latency_p95_ms,
-        f"latency_p95_ms is {latency:.0f}, over {thresholds.latency_p95_ms:.0f}",
-        value=latency,
-        threshold=thresholds.latency_p95_ms,
-    )
+    for name in ("latency_p95_ms", CODING_PREFIX + "latency_p95_ms"):
+        if name not in run.metrics:
+            continue
+        latency = run.metrics[name]
+        check(
+            name,
+            latency <= thresholds.latency_p95_ms,
+            f"{name} is {latency:.0f}, over {thresholds.latency_p95_ms:.0f}",
+            value=latency,
+            threshold=thresholds.latency_p95_ms,
+        )
     return GateResult(not failures, failures, checks)
 
 

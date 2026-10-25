@@ -173,6 +173,30 @@ async def test_each_clause_of_the_coding_prompt_is_guarded_by_a_metric(
     assert any(name.startswith("prompt:coding:") for name in failed(result))
 
 
+async def test_a_run_without_coding_results_is_blocked_not_waved_through() -> None:
+    llm, recorder = offline_llm()
+    run = await run_eval(llm, coding_cases=[], recorder_rows=recorder.rows)
+    result = gate(run)
+    assert not result.passed and "coding_cases" in failed(result)
+
+
+async def test_the_coding_reviewers_latency_is_bounded_too() -> None:
+    run, _ = await evaluate()
+    assert "coding_latency_p95_ms" in run.metrics
+    slow = {**run.metrics, "coding_latency_p95_ms": 60_000.0}
+    result = gate(
+        EvalRun(
+            run.results,
+            slow,
+            run.prompt_version,
+            run.rubric_version,
+            run.lint,
+            coding_results=run.coding_results,
+        )
+    )
+    assert "coding_latency_p95_ms" in failed(result)
+
+
 async def test_a_change_that_falls_below_the_baseline_is_blocked_even_above_the_thresholds() -> (
     None
 ):

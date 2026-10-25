@@ -65,6 +65,13 @@ class TelemetryEvent:
     chars: int | None = None
 
 
+def offered_languages(languages: Sequence[str]) -> list[str]:
+    """The languages the console offers and a submission may use: the question's supported ones,
+    else all four (a question whose languages aren't supported must still be answerable)."""
+    chosen = [lang for lang in (q.lower() for q in languages) if lang in CODING_LANGUAGES]
+    return chosen or list(CODING_LANGUAGES)
+
+
 def sha256(code: str) -> str:
     return hashlib.sha256(code.encode("utf-8")).hexdigest()
 
@@ -102,9 +109,7 @@ async def coding_question(
     """The open coding question for the console, or None when the open question isn't one."""
     if question is None or question.kind != "coding":
         return None
-    languages = [
-        lang for lang in (q.lower() for q in question.languages) if lang in CODING_LANGUAGES
-    ] or list(CODING_LANGUAGES)
+    languages = offered_languages(question.languages)
     snapshot = await _latest_snapshot(session, UUID(question.id))
     return CodingQuestion(
         question_id=question.id,

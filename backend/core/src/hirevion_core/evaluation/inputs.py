@@ -18,6 +18,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from hirevion_core.coding.final import final_codes
 from hirevion_core.engine.analysis import ANSWER_MAX
 from hirevion_core.evaluation.aggregate import SkillPlan
 from hirevion_core.evaluation.coding import CodingCase
@@ -186,24 +187,14 @@ async def _coding_cases(
             .order_by(WorkspaceSnapshot.created_at, WorkspaceSnapshot.id)
         )
     ).all()
-    final = {s.question_id: s for s in submissions}  # oldest first, so the latest wins
-    saved = {s.question_id: s for s in snapshots}
+    finals = final_codes(submissions, snapshots)
     cases = []
     for question in coding:
-        submitted, snapshot = final.get(question.id), saved.get(question.id)
-        language: str | None
-        ref: str | None
-        if submitted is not None:
-            code, language, source, ref = (
-                submitted.code,
-                submitted.language,
-                submitted.source,
-                str(submitted.id),
-            )
-        elif snapshot is not None:
-            code, language, source, ref = snapshot.content, snapshot.language, "snapshot", None
-        else:
-            code, language, source, ref = "", None, "none", None
+        final = finals.get(question.id)
+        code = final.code if final else ""
+        language = final.language if final else None
+        source = final.source if final else "none"
+        ref = final.submission_id if final else None
         cases.append(
             CodingCase(
                 question_id=str(question.id),

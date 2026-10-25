@@ -159,6 +159,41 @@ async def test_the_weights_decide_the_questions_score() -> None:
     assert score.overall == pytest.approx(10 * WEIGHTS["correctness"] / sum(WEIGHTS.values()))
 
 
+async def test_a_pinned_re_run_scores_with_the_weights_it_pinned() -> None:
+    llm, _ = offline_llm()
+    body = scripted(**{c: reply(0.0, ["seen = {}"]) for c in CRITERIA})
+    body["readability"] = reply(10.0, ["seen = {}"])
+    llm.scripted[PURPOSE] = body
+    pinned = {"correctness": 50, "readability": 50} | dict.fromkeys(
+        set(CRITERIA) - {"correctness", "readability"}, 0
+    )
+    evaluator = CodingEvaluator(llm, weights=pinned)
+    score = await evaluator.evaluate(ORG, case(STRONG), refs=REFS)
+    assert score.overall == 5.0
+    assert evaluator.rubric_version == coding_rubric_version(weights=pinned)
+    assert evaluator.rubric_version != coding_rubric_version()
+    assert coding_slot([score])["weights"] == pinned
+
+
+def test_the_evaluation_rebuilds_the_coding_reviewer_from_its_pins() -> None:
+    from hirevion_core.evaluation.service import coding_reviewer_for
+
+    llm, _ = offline_llm()
+    weights = dict(WEIGHTS) | {"correctness": 40, "readability": 0}
+    reviewer = coding_reviewer_for(
+        llm,
+        {
+            "coding_prompt_version": registry.ACTIVE_CODING_PROMPT,
+            "coding_rubric": {"base": "coding-v1", "weights": weights},
+        },
+        registry.EVALUATION_VERSION,
+    )
+    assert reviewer.weights == weights
+    assert reviewer.rubric_version == coding_rubric_version(weights=weights)
+    # An evaluation from before SP-16 pinned nothing for coding: the versions in force.
+    assert coding_reviewer_for(llm, {}, registry.EVALUATION_VERSION).weights == WEIGHTS
+
+
 async def test_an_instruction_in_a_comment_is_data_and_is_flagged() -> None:
     llm, _ = offline_llm()
     evaluator = CodingEvaluator(llm)

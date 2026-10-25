@@ -21,13 +21,18 @@ from hirevion_core.evaluation.offline import offline_llm
 from hirevion_core.evaluation.service import evaluate_interview
 from hirevion_core.identity.permissions import permissions_for
 from hirevion_core.ids import uuid7
-from hirevion_core.models import CodingTelemetry, Interview, InterviewQuestion
+from hirevion_core.models import (
+    CodingTelemetry,
+    Interview,
+    InterviewQuestion,
+    WorkspaceSnapshot,
+)
 from hirevion_core.proctoring.catalogue import EVENTS
 from hirevion_core.reports import interview as interview_report
 from hirevion_core.reports import proctoring as proctoring_report
 from hirevion_core.reports import visible
 from hirevion_core.reports.blocks import digest
-from hirevion_core.reports.coding import coding_report
+from hirevion_core.reports.coding import coding_report, signals_for
 from hirevion_core.reports.data import InterviewData, load_interview_data
 from hirevion_core.reports.html import render_html
 from hirevion_core.reports.labels import EVENT_LABELS, SECTION_OF_EVENT
@@ -242,7 +247,7 @@ CODE = (
 )
 
 
-async def _with_coding(app_db: Database, scene: Any) -> UUID:
+async def _with_coding(app_db: Database, scene: Any, *, submitted: bool = True) -> UUID:
     """Adds an answered coding question to a finished interview: its submission (kept when the
     time ran out) and the console's events."""
     question_id = uuid7()
@@ -270,9 +275,12 @@ async def _with_coding(app_db: Database, scene: Any) -> UUID:
             )
         )
         await session.flush()
-        session.add(
-            submission(interview, question_id, language="python", code=CODE, source="time_limit")
-        )
+        if submitted:
+            session.add(
+                submission(
+                    interview, question_id, language="python", code=CODE, source="time_limit"
+                )
+            )
         for kind, second, chars in (
             ("focus", 1, None),
             ("typing_started", 2, None),
@@ -291,6 +299,32 @@ async def _with_coding(app_db: Database, scene: Any) -> UUID:
                 )
             )
     return question_id
+
+
+async def test_a_question_closed_without_a_submission_shows_the_draft_that_was_reviewed(
+    app_db: Database, make_organization: MakeOrganization, make_completed_interview: Any
+) -> None:
+    scene = await make_completed_interview(await make_organization("Acme"))
+    question = await _with_coding(app_db, scene, submitted=False)
+    async with app_db.tenant(scene.organization_id) as session:
+        session.add(
+            WorkspaceSnapshot(
+                organization_id=scene.organization_id,
+                interview_id=scene.interview_id,
+                question_id=question,
+                kind="code",
+                language="python",
+                content=CODE,
+                size=len(CODE),
+            )
+        )
+    data = await load(app_db, scene)
+    sections = {s["key"]: s for s in coding_report(data)["sections"]}
+    final = sections["final_code"]["blocks"][0]
+    assert final["text"] == CODE and "the last saved text" in final["caption"]
+    assert "No code was given" not in str(sections["final_code"])
+    # The paste of 150 characters is measured against the reviewed draft, not against nothing.
+    assert signals_for(data, next(q for q in data.questions if q.id == question)).paste_share
 
 
 async def test_without_a_coding_question_the_coding_report_says_so(

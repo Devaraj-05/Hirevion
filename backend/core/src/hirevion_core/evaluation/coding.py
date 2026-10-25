@@ -57,9 +57,21 @@ _TRIM = " \t\r\n`…"
 Source = Literal["submitted", "time_limit", "closed", "snapshot", "none"]
 
 
-def coding_rubric_version(base: str = registry.ACTIVE_CODING_RUBRIC) -> str:
-    canonical = json.dumps(WEIGHTS, sort_keys=True)
+def coding_rubric_version(
+    base: str = registry.ACTIVE_CODING_RUBRIC, weights: Mapping[str, int] = WEIGHTS
+) -> str:
+    canonical = json.dumps({c: int(weights.get(c, 0)) for c in CRITERIA}, sort_keys=True)
     return f"{base}+w{hashlib.sha256(canonical.encode()).hexdigest()[:8]}"
+
+
+def checked_weights(weights: Mapping[str, Any] | None) -> dict[str, int]:
+    """Weights for every criterion (pinned ones, or the ones in force); none may be negative."""
+    if weights is None:
+        return dict(WEIGHTS)
+    chosen = {c: int(weights.get(c, 0)) for c in CRITERIA}
+    if any(w < 0 for w in chosen.values()) or sum(chosen.values()) <= 0:
+        raise ValueError(f"unusable coding weights: {dict(weights)!r}")
+    return chosen
 
 
 @dataclass(frozen=True, slots=True)
@@ -199,6 +211,7 @@ class CodingScore:
     criteria: dict[str, CriterionScore]
     prompt_version: str
     rubric_version: str
+    weights: dict[str, int] = field(default_factory=lambda: dict(WEIGHTS))
     summary: str = ""
     edge_cases_missed: list[str] = field(default_factory=list)
     flags: list[str] = field(default_factory=list)
@@ -245,11 +258,11 @@ def _digest(request: Mapping[str, Any]) -> str:
     ).hexdigest()
 
 
-def weighted(scores: Mapping[str, float]) -> float:
-    total = sum(WEIGHTS[c] for c in CRITERIA if c in scores)
+def weighted(scores: Mapping[str, float], weights: Mapping[str, int] = WEIGHTS) -> float:
+    total = sum(weights[c] for c in CRITERIA if c in scores)
     if total <= 0:
         return 0.0
-    return sum(WEIGHTS[c] * scores[c] for c in CRITERIA if c in scores) / total
+    return sum(weights[c] * scores[c] for c in CRITERIA if c in scores) / total
 
 
 class CodingEvaluator:
@@ -265,11 +278,14 @@ class CodingEvaluator:
         rubric_base: str = registry.ACTIVE_CODING_RUBRIC,
         rubric_text: str | None = None,
         evaluation_version: str = registry.EVALUATION_VERSION,
+        weights: Mapping[str, Any] | None = None,
     ) -> None:
+        """`weights`: a pinned re-run passes the ones its evaluation stored."""
         self._llm = llm
         self.prompt_version = prompt_version
         self.rubric_base = rubric_base
-        self.rubric_version = coding_rubric_version(rubric_base)
+        self.weights = checked_weights(weights)
+        self.rubric_version = coding_rubric_version(rubric_base, self.weights)
         self.evaluation_version = evaluation_version
         self.system = registry.system_message(
             prompt_text if prompt_text is not None else registry.load_prompt(prompt_version),
@@ -293,6 +309,7 @@ class CodingEvaluator:
                 criteria={},
                 prompt_version=self.prompt_version,
                 rubric_version=self.rubric_version,
+                weights=dict(self.weights),
                 flags=[*flags, "coding_not_answered"],
             )
         request = build_request(case)
@@ -340,10 +357,11 @@ class CodingEvaluator:
             submission_id=case.submission_id,
             source=case.source,
             status="scored",
-            overall=round(weighted({n: c.score for n, c in criteria.items()}), 2),
+            overall=round(weighted({n: c.score for n, c in criteria.items()}, self.weights), 2),
             criteria=criteria,
             prompt_version=self.prompt_version,
             rubric_version=self.rubric_version,
+            weights=dict(self.weights),
             summary=" ".join(reply.summary.split())[:600],
             edge_cases_missed=[
                 " ".join(e.split())[:200] for e in reply.edge_cases_missed if e.strip()
@@ -366,7 +384,7 @@ def coding_slot(scores: Sequence[CodingScore]) -> dict[str, Any]:
         "score": round(sum(s.overall for s in scores) / len(scores), 2),
         "prompt_version": scores[0].prompt_version,
         "rubric_version": scores[0].rubric_version,
-        "weights": dict(WEIGHTS),
+        "weights": dict(scores[0].weights),
         "questions": [s.as_json() for s in scores],
     }
 

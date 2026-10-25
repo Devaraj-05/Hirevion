@@ -12,7 +12,7 @@ from hirevion_core.reports import blocks as b
 from hirevion_core.reports.blocks import Block, Document, Section
 from hirevion_core.reports.candidate360 import Candidate360
 from hirevion_core.reports.coding import METHOD as CODING_METHOD
-from hirevion_core.reports.coding import coding_questions, signals_for
+from hirevion_core.reports.coding import coding_questions, coding_signals
 from hirevion_core.reports.coding import review as coding_review
 from hirevion_core.reports.data import InterviewData
 from hirevion_core.reports.labels import (
@@ -179,7 +179,7 @@ def _coding(c360: Candidate360) -> Section:
         if not questions:
             continue
         slot = coding_review(data)
-        notable = sum(signals_for(data, q).notable for q in questions)
+        notable = sum(s.notable for s in coding_signals(data).values())
         rows.append(
             [
                 f"IV-{data.interview.number:04d}",

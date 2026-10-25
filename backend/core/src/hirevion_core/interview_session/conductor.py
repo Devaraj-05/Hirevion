@@ -1072,8 +1072,8 @@ class Conductor:
                     )
                 if question.kind != "coding":
                     raise Conflict("not-a-coding-question", "The open question isn't coding")
-                offered = [lang.lower() for lang in question.languages]
-                if offered and language not in offered:
+                offered = console.offered_languages(question.languages)
+                if language not in offered:
                     raise Invalid(
                         "language-not-offered",
                         f"Choose one of {', '.join(offered)}",
@@ -1081,7 +1081,10 @@ class Conductor:
                     )
                 expected = row.state_seq
                 now = self._clock()
-                turn = self._engine.submit_code(state, now, language=language, chars=len(code))
+                try:
+                    turn = self._engine.submit_code(state, now, language=language, chars=len(code))
+                except EngineError as error:
+                    raise Conflict(error.code, str(error)) from error
                 timing = Speech(question.asked_at, now)
                 try:
                     async with self._db.tenant(organization_id) as session:

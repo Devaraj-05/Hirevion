@@ -13,8 +13,9 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+from hirevion_core.coding.final import FinalCode, final_codes
 from hirevion_core.coding.signals import Event, IntegritySignals, integrity_signals
-from hirevion_core.models import CodingSubmission, InterviewQuestion
+from hirevion_core.models import InterviewQuestion
 from hirevion_core.reports import blocks as b
 from hirevion_core.reports.blocks import Block, Document, Section
 from hirevion_core.reports.data import InterviewData
@@ -52,11 +53,9 @@ def coding_questions(data: InterviewData) -> list[InterviewQuestion]:
     return [q for q in data.questions if q.kind == "coding"]
 
 
-def final_submissions(data: InterviewData) -> dict[UUID, CodingSubmission]:
-    final: dict[UUID, CodingSubmission] = {}
-    for item in data.submissions:  # oldest first, so the latest wins
-        final[item.question_id] = item
-    return final
+def finals(data: InterviewData) -> dict[UUID, FinalCode]:
+    """Each coding question's final code, as the evaluator reviewed it."""
+    return final_codes(data.submissions, data.snapshots)
 
 
 def review(data: InterviewData) -> Mapping[str, Any]:
@@ -70,15 +69,39 @@ def reviews_by_question(data: InterviewData) -> dict[str, Mapping[str, Any]]:
     return {str(q.get("question_id")): q for q in review(data).get("questions") or []}
 
 
+def coding_signals(data: InterviewData) -> dict[UUID, IntegritySignals]:
+    """Each coding question's integrity signals, in one pass over the console's events."""
+    final = finals(data)
+    events: dict[UUID, list[Event]] = {}
+    for item in data.console_events:
+        events.setdefault(item.question_id, []).append(
+            Event(item.kind, item.occurred_at, item.chars)
+        )
+    signals = {}
+    for question in coding_questions(data):
+        code = final.get(question.id)
+        end = question.closed_at or (code.at if code else None) or datetime.now(UTC)
+        signals[question.id] = integrity_signals(
+            events.get(question.id, []),
+            final_chars=len(code.code) if code else 0,
+            closed_at=end,
+        )
+    return signals
+
+
 def signals_for(data: InterviewData, question: InterviewQuestion) -> IntegritySignals:
-    final = final_submissions(data).get(question.id)
-    events = [
-        Event(e.kind, e.occurred_at, e.chars)
-        for e in data.console_events
-        if e.question_id == question.id
-    ]
-    end = question.closed_at or (final.created_at if final else None) or datetime.now(UTC)
-    return integrity_signals(events, final_chars=len(final.code) if final else 0, closed_at=end)
+    return coding_signals(data)[question.id]
+
+
+def question_line(item: Mapping[str, Any]) -> str | None:
+    """A coding question's line in the summary: its score and the estimated time, if any."""
+    if item.get("status") == "no_code":
+        return "No code was given"
+    if item.get("status") != "scored":
+        return None
+    time = ((item.get("criteria") or {}).get("time_complexity") or {}).get("estimate")
+    score = b.score(item.get("score"))
+    return f"{score}, estimated {time} time" if time else score
 
 
 def coding_blocks(data: InterviewData) -> list[Block]:
@@ -101,16 +124,8 @@ def coding_blocks(data: InterviewData) -> list[Block]:
     ]
     reviewed = reviews_by_question(data)
     for question in questions:
-        item = reviewed.get(str(question.id)) or {}
-        criteria = item.get("criteria") or {}
-        time = (criteria.get("time_complexity") or {}).get("estimate")
         rows.append(
-            (
-                f"Question {question.position}",
-                f"{b.score(item.get('score'))}, estimated {time} time"
-                if item.get("status") == "scored"
-                else ("No code was given" if item.get("status") == "no_code" else None),
-            )
+            (f"Question {question.position}", question_line(reviewed.get(str(question.id)) or {}))
         )
     return [b.notice(METHOD), b.facts(rows)]
 
@@ -180,23 +195,24 @@ def coding_report(data: InterviewData, *, generated_at: datetime | None = None) 
     tz = data.timezone
     questions = coding_questions(data)
     numbers = {q.id: q.position for q in questions}
-    final = final_submissions(data)
     code_blocks = [
         b.code(
             item.code[:CODE_MAX],
             language=item.language,
             caption=(
-                f"Question {numbers.get(item.question_id, '?')}, {item.language}, "
-                f"{SOURCE_LABELS.get(item.source, item.source)} {b.when(item.created_at, tz)}"
+                f"Question {numbers.get(item.question_id, '?')}, {item.language or 'text'}, "
+                f"{SOURCE_LABELS.get(item.source, item.source)} {b.when(item.at, tz)}"
             ),
         )
-        for item in final.values()
+        for item in finals(data).values()
+        if item.question_id in numbers
     ]
     evaluated = data.evaluation is not None
     assessment = _assessment(data, questions)
     signal_blocks: list[Block] = []
+    signals_by_question = coding_signals(data)
     for question in questions:
-        signals = signals_for(data, question)
+        signals = signals_by_question[question.id]
         signal_blocks += [
             b.text(f"Question {question.position}"),
             b.bullets(signals.statements),

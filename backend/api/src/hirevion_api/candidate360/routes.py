@@ -19,7 +19,7 @@ from hirevion_core.access.scope import resource_scope
 from hirevion_core.hiring.scores import ScoreValue
 from hirevion_core.interviews.lifecycle import reference
 from hirevion_core.reports.candidate360 import Candidate360, load_candidate_360
-from hirevion_core.reports.coding import coding_questions, signals_for
+from hirevion_core.reports.coding import coding_questions, coding_signals
 from hirevion_core.reports.coding import review as coding_review
 from hirevion_core.reports.data import InterviewData
 from hirevion_core.reports.review import track_kind
@@ -120,7 +120,7 @@ def _coding(data: InterviewData) -> schemas.CodingBrief:
         submissions=len(data.submissions),
         status=status,  # type: ignore[arg-type]
         score=slot.get("score") if status in ("scored", "no_code") else None,
-        notable_signals=sum(signals_for(data, q).notable for q in questions),
+        notable_signals=sum(s.notable for s in coding_signals(data).values()),
     )
 
 
