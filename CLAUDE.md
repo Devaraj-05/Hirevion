@@ -34,6 +34,6 @@ Hirevion is an enterprise AI recruitment and interview platform with two separat
 - Plans are ≤1 page: decisions, task list, files, test list. No code.
 - Same error twice: stop, state a hypothesis, change approach. Three failed attempts: stop and ask me.
 - Subagents: one at a time (never two in parallel), only for independent work, narrow brief plus file list. Resume a stopped subagent with SendMessage instead of respawning.
-- CI: wait with one blocking command (`gh pr checks <n> --watch`), never repeated polling. While GitHub Actions are off (minutes used up), the merge gate is `bash scripts/ci-local.sh`; paste its summary into the PR.
+- CI: wait with one blocking command (`gh pr checks <n> --watch`), never repeated polling. While GitHub Actions are off (minutes used up): no GitHub Actions and no PRs — the gate is `bash scripts/ci-local.sh`; when it passes, push the branch, fast-forward `main`, and record the commit and the local result in docs/STATUS.md.
 - Models: strongest for security-critical parts (auth/DPoP, sandbox, recording, proctoring, SSO); Sonnet for CRUD, docs, i18n, CI config.
 - No narration between tool calls; final report ≤5 lines.

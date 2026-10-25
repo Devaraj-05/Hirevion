@@ -98,7 +98,7 @@ The desktop calls APIs that other lanes build. The five contracts live in `docs/
    - regenerate `packages/api-client/openapi.json` (`uv run hv openapi`) and `schema.d.ts` (`pnpm --filter @hirevion/api-codegen generate`) if the API changed;
    - re-run the local checks.
 3. **Open the PR.** Push the branch and open a PR to `main`. Run one background CI watcher that polls every 60–90 s; never poll by hand.
-   - **While GitHub Actions are off** (the free minutes are used up until they reset), the gate is `bash scripts/ci-local.sh` on the branch: it runs CI's jobs for what the branch touched. Paste its summary (`.ci-local/summary.md`) into the PR, and merge only when every job it ran passed.
+   - **While GitHub Actions are off** (the free minutes are used up until they reset), the gate is `bash scripts/ci-local.sh` on the branch: it runs CI's jobs for what the branch touched. Don't open PRs or trigger Actions: when every job it ran passed, push the branch, fast-forward `main` (step 4), and record the commit and the local result in docs/STATUS.md.
 4. **Merge when CI (or, while Actions are off, the local CI) is green:**
 
    ```bash
@@ -149,8 +149,7 @@ A box is ticked in the PR that merges the part. Deliverables are in MASTER §14;
   - Exit: a replayed proof, a stolen token without the key, and an outdated version are each refused.
 - [x] **A3 SP-07b Candidate portal.** Depends on: A1, D1 policy drafts. See MASTER §14 SP-07 (§6.3).
   - Exit (Playwright): invitation email → set password → the interview is listed; a reschedule request reaches the recruiter.
-- [ ] **A4 SP-18 Notifications and webhooks.** Depends on: SP-01, A1 (takes over A1's scheduler loop). See MASTER §14 SP-18.
-  - Exit: the reference receiver verifies signatures; retry and dead-letter work; a replayed delivery is refused.
+- [-] **A4 SP-18 Notifications and webhooks — skipped by product-owner decision, 2026-10-25.** Not built; A1's emails and scheduler loop stay as they are. See MASTER §6.14.
 - [x] **A5 SP-17 Reports, review and Candidate 360.** Depends on: C4, C5, D2. See MASTER §14 SP-17.
   - Exit: the CP3 golden path passes; every report section is populated from a simulator run; views, downloads and score changes are audited.
 - [ ] **A6 SP-21 Analytics and KPIs.** Depends on: A5. See MASTER §14 SP-21.
@@ -213,7 +212,7 @@ A box is ticked in the PR that merges the part. Deliverables are in MASTER §14;
   - Exit: Keycloak logins work; SCIM compliance passes; SAML signature wrapping is refused.
 - [ ] **D5 SP-22 Administration and governance.** Depends on: A5, C5. See MASTER §14 SP-22.
   - Exit: retention respects holds; the DSR bundle is complete; every change is audited.
-- [ ] **D6 SP-20 ATS integrations and public API.** Depends on: A4, A5. See MASTER §14 SP-20.
+- [ ] **D6 SP-20 ATS integrations and public API.** Depends on: A5 (the outbound webhook adapter was skipped with A4). See MASTER §14 SP-20.
   - Exit: as in MASTER §14 SP-20.
 - [ ] **D7 SP-23 Automated hardening.** Depends on: everything above. See MASTER §14 SP-23.
   - Exit: the §107 golden-path test passes on the mock (with C's simulator); every CI gate is green; the §105 checklist status is recorded.
@@ -279,7 +278,7 @@ pnpm --filter @hirevion/ai-interviewer-desktop tauri dev       # the candidate a
 - **C5 (SP-14):** `Conductor.note_proctor_event` fills §34's proctor summary and the CRITICAL-event reminder; `/ws/proctoring` and `/ws/recruiter`.
 - **C5 (SP-14) and D5 (SP-22):** proctoring presets become editable policies.
 - **A5 (SP-17):** done (ADR-0023): pipeline-board moves, all thirteen Candidate 360 tabs, the five reports, the review workspace and the hiring workflow. Left for C6 (SP-16): the coding report's test results and grading (the pages say so); for SP-18: the `report.ready` notification; for SP-22: retention of `report_exports` and an audit-log viewer.
-- **A4 (SP-18):** the notification centre's content; the scheduler.
+- **A4 (SP-18):** skipped by product-owner decision, 2026-10-25; the notification centre isn't built and A1's scheduler loop stays.
 - **D4 (SP-19):** MFA, moved from SP-02.
 - **D5 (SP-22):**
   - server-backed saved views;

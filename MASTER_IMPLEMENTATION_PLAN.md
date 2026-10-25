@@ -703,6 +703,8 @@ Pairing again revokes the old device. Egress records the stream.
 
 ### 6.14 Notifications & webhooks (§75, §77)
 
+> **Not built: skipped by product-owner decision, 2026-10-25.** The emails the platform already sends stay: the invitation, reminders, rescheduling and cancellation (SP-07a), the one-time code and password resets (SP-07c, SP-07b), and the portal's request acknowledgements (SP-07b). Not built: the in-app notification centre, per-user preferences, the other §75 events, and every §77 outbound webhook. The design below is kept for a later release.
+
 - **Notification channels:** email, in-app and webhook.
 - **Notification events** (all 8 in §75): invitation, reminder, reschedule, interview completed, report ready, candidate shortlisted, candidate status changed, proctoring alert.
 - **Localised templates** and per-user preferences.
@@ -730,7 +732,7 @@ Pairing again revokes the old device. Egress records the stream.
   - No provider-specific logic lives in the core services; a lint rule enforces this.
 - **Adapters:**
   - Custom REST (outbound, with field mapping)
-  - Webhooks
+  - Webhooks (not built: skipped by product-owner decision, 2026-10-25, with SP-18)
   - Greenhouse
   - Lever
   - Workday
@@ -1375,7 +1377,7 @@ It starts with the interview simulator as its client.
   - All 4 languages run end to end.
   - Time and memory are stored for every run.
 
-**SP-18 Notifications & webhooks** (CP4; depends on SP-01)
+**SP-18 Notifications & webhooks** (CP4; depends on SP-01) — **not built: skipped by product-owner decision, 2026-10-25 (see §6.14).**
 - **Deliverables:** everything in §6.14, plus webhook endpoint administration.
 - **Exit criteria:**
   - The reference receiver verifies signatures.
@@ -1390,7 +1392,7 @@ It starts with the interview simulator as its client.
   - SCIM compliance tests pass.
   - SAML signature-wrapping attacks are rejected.
 
-**SP-20 ATS integrations & public API** (CP5; depends on SP-05, SP-17 and SP-18)
+**SP-20 ATS integrations & public API** (CP5; depends on SP-05 and SP-17; its outbound webhook adapter was skipped with SP-18)
 - **Deliverables:** everything in §6.16.
 - **Exit criteria:**
   - Contract tests pass for every adapter.
@@ -1650,9 +1652,9 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 72 | 9 hiring statuses, audited | SP-17 (delivered: `hirevion_core.hiring.workflow`: the nine statuses beside the screening stage, every change in the status history and the audit log, the final decision only with its own permission; the pipeline's moves in `pipeline-board.tsx`; `test_hiring_workflow.py`) |
 | 73 | 12 analytics | SP-21 |
 | 74 | 9 funnel stages | SP-21 |
-| 75 | 3 channels; 8 notification events | SP-18 |
-| 76 | 8 ATS/integration targets; no provider logic in core | SP-20 |
-| 77 | 9 webhook events; 5 security measures | SP-18 |
+| 75 | 3 channels; 8 notification events | SP-18: skipped by product-owner decision, 2026-10-25 (§6.14). The existing emails cover the invitation, reminder and reschedule: SP-07a, SP-07b, SP-07c |
+| 76 | 8 ATS/integration targets; no provider logic in core | SP-20 (the webhook target: skipped by product-owner decision, 2026-10-25, with SP-18) |
+| 77 | 9 webhook events; 5 security measures | SP-18: skipped by product-owner decision, 2026-10-25 (§6.14) |
 | 78 | AIProvider (5) and 5 services | SP-01 |
 | 79 | 8 governance fields | SP-10 (`ai_invocations` fields set by `evaluation.service`, pinned re-runs `hv eval-rerun`, the gate `hv eval-interviews`; `test_evaluation_service.py`, `test_harness.py`) |
 | 80 | Immutable template versions; interviews pin a version | SP-06 (insert-only version tables for templates and questions), SP-07a (interviews pin `(template_id, template_version)` and a policy snapshot) |
