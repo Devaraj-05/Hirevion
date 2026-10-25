@@ -27,6 +27,9 @@ export default defineConfig({
           include: ["src/**/*.test.tsx"],
           environment: "jsdom",
           setupFiles: ["./vitest.setup.ts"],
+          // Above Testing Library's 5 s async wait (vitest.setup.ts), so a slow render fails on
+          // what it waited for, not on the test's own clock.
+          testTimeout: 20_000,
         },
       },
     ],

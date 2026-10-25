@@ -1,6 +1,11 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup } from "@testing-library/react";
+import { cleanup, configure } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
+
+// `findBy` and `waitFor` wait up to 5 s instead of 1 s. Rendering a whole page in jsdom can take
+// longer than a second while every package's tests run at once on a busy PC (the local CI gate),
+// which failed different tests on each run; the assertions themselves are unchanged.
+configure({ asyncUtilTimeout: 5_000 });
 
 vi.mock("next/navigation", async () => (await import("./src/test/navigation")).nextNavigation);
 
