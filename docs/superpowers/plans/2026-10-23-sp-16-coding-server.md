@@ -12,7 +12,7 @@
 
 ## Tasks (tests first)
 
-1. Migration 0022 and models; schema tests (RLS, insert-only).
+1. Migration 0023 and models; schema tests (RLS, insert-only).
 2. Engine and conductor: submit, time limit, auto-final; `hirevion_core.coding` (question view, submissions, telemetry, signals).
 3. API: `GET /interviews/{id}/coding`, `POST …/coding/submissions`, `POST …/coding/telemetry`.
 4. Evaluation: coding prompt, rubric, evaluator, evidence, mock grader, slot, pin and re-run; gate set and baseline.
@@ -21,7 +21,7 @@
 
 ## Files
 
-`backend/migrations/versions/0022_coding.py`, `models/coding.py`, `hirevion_core/coding/`, `engine/{coding,state,orchestrator,phrasing}.py`, `interview_session/conductor.py`, `evaluation/{coding,mockgrader,registry,inputs,aggregate,service,harness}.py` with `prompts/`, `rubrics/`, `eval_set/`, `reports/{coding,interview,candidate}.py`, `hirevion_api/{coding,candidate360,evaluation}/`, `tools/{devcli,interview-simulator}`, `recruitment-platform/src/{candidates,interviews}/`.
+`backend/migrations/versions/0023_coding.py`, `models/coding.py`, `hirevion_core/coding/`, `engine/{coding,state,orchestrator,phrasing}.py`, `interview_session/conductor.py`, `evaluation/{coding,mockgrader,registry,inputs,aggregate,service,harness}.py` with `prompts/`, `rubrics/`, `eval_set/`, `reports/{coding,interview,candidate}.py`, `hirevion_api/{coding,candidate360,evaluation}/`, `tools/{devcli,interview-simulator}`, `recruitment-platform/src/{candidates,interviews}/`.
 
 ## Tests
 

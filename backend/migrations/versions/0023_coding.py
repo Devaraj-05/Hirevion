@@ -8,8 +8,8 @@
 
 Both are tenant-scoped and insert-only.
 
-Revision ID: 0022
-Revises: 0021
+Revision ID: 0023
+Revises: 0022
 Create Date: 2026-10-23
 """
 
@@ -21,8 +21,8 @@ from alembic import op
 
 from hirevion_core.db.rls import grant_sql, tenant_policy_sql
 
-revision: str = "0022"
-down_revision: str | Sequence[str] | None = "0021"
+revision: str = "0023"
+down_revision: str | Sequence[str] | None = "0022"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

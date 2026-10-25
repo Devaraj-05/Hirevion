@@ -1,4 +1,4 @@
-"""The coding tables (SP-16, migration 0022): every submission and every integrity event is kept,
+"""The coding tables (SP-16, migration 0023): every submission and every integrity event is kept,
 tenant-scoped and insert-only, and an event never carries the text the candidate pasted."""
 
 from __future__ import annotations
