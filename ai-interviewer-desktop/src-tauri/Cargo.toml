@@ -22,6 +22,8 @@ windows = { version = "0.62.2", features = [
   "Win32_Graphics_Dxgi",
   "Win32_Graphics_Dxgi_Common",
   "Win32_Graphics_Gdi",
+  # B4: evidence snapshots are JPEG-encoded by the in-box Windows Imaging Component.
+  "Win32_Graphics_Imaging",
   "Win32_Media_MediaFoundation",
   "Win32_Security_Cryptography",
   "Win32_System_Com",
