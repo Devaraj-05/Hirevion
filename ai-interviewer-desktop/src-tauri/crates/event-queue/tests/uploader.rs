@@ -367,3 +367,64 @@ async fn heartbeats_carry_the_high_sequence_and_the_device_status() {
         })
     );
 }
+
+#[tokio::test]
+async fn snapshot_requests_in_heartbeat_answers_are_handed_on_once() {
+    let server = MockServer::start().await;
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("time")
+        .as_millis();
+    let now = i64::try_from(now).expect("ms");
+    let fresh = hv_event_queue::rfc3339_ms(now - 5_000);
+    let expired = hv_event_queue::rfc3339_ms(now - 200_000);
+    // The server repeats a pending request in every answer until it is answered; a request of
+    // a kind this app doesn't know must not cost the rest of the answer.
+    Mock::given(method("POST"))
+        .and(path("/api/v1/proctoring/heartbeat"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "server_time": "2026-10-12T05:01:02.120Z",
+            "missing": [],
+            "snapshot_requests": [
+                { "request_id": "0b0e6f9c-0000-4000-8000-000000000001", "event_id": "0b0e6f9c-0000-4000-8000-0000000000e1",
+                  "kind": "screen", "requested_at": fresh },
+                { "request_id": "0b0e6f9c-0000-4000-8000-000000000002", "event_id": "0b0e6f9c-0000-4000-8000-0000000000e1",
+                  "kind": "camera", "requested_at": fresh },
+                { "request_id": "0b0e6f9c-0000-4000-8000-000000000003", "event_id": "0b0e6f9c-0000-4000-8000-0000000000e2",
+                  "kind": "screen", "requested_at": expired },
+                { "request_id": "0b0e6f9c-0000-4000-8000-000000000004", "event_id": "0b0e6f9c-0000-4000-8000-0000000000e2",
+                  "kind": "hologram", "requested_at": fresh }
+            ]
+        })))
+        .mount(&server)
+        .await;
+    let dir = TempDir::new();
+    let queue = Arc::new(EventQueue::open(&dir.0, SESSION).expect("queue"));
+    let uploader = Uploader::spawn(
+        client(&server),
+        queue,
+        SESSION.into(),
+        TOKEN.into(),
+        status(),
+        UploaderConfig {
+            heartbeat_interval: Duration::from_millis(30),
+            ..fast(10)
+        },
+    );
+    let mut requests = uploader.snapshot_requests().expect("the receiver, once");
+    assert!(uploader.snapshot_requests().is_none());
+    tokio::time::sleep(Duration::from_millis(250)).await;
+    uploader.stop().await;
+
+    let mut seen = Vec::new();
+    while let Ok(request) = requests.try_recv() {
+        seen.push((request.request_id, request.kind.as_str()));
+    }
+    assert_eq!(
+        seen,
+        [
+            ("0b0e6f9c-0000-4000-8000-000000000001".to_owned(), "screen"),
+            ("0b0e6f9c-0000-4000-8000-000000000002".to_owned(), "camera"),
+        ]
+    );
+}

@@ -7,15 +7,21 @@
 //! - Failures back off exponentially with jitter, capped at 30 s ([`backoff`]); a refused
 //!   segment or track stops for good.
 //! - [`Bandwidth`] caps the upload so live media keeps the link.
+//! - [`upload_evidence`] answers a proctoring snapshot request: a slot for its `request_id`,
+//!   then a PUT of the picture.
 
 pub mod api;
 pub mod backoff;
 mod bandwidth;
+mod evidence;
 mod put;
 pub mod time;
 mod uploader;
 
 pub use bandwidth::{Bandwidth, TokenBucket};
+pub use evidence::{
+    BlobClient, EvidenceAnswer, EvidenceError, MAX_EVIDENCE_BYTES, upload_evidence,
+};
 pub use put::{PutError, check_upload_url};
 pub use uploader::{
     RecordingSession, RecoverySummary, TokenFuture, UploadError, UploadEvent, Uploader,

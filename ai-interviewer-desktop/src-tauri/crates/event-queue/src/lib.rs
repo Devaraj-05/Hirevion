@@ -7,6 +7,8 @@
 //!   acknowledges them, and survives restarts.
 //! - [`Uploader`] sends the queue in batches, resends what the server says is missing, backs
 //!   off on failure, sends heartbeats, and stops for good on `409 proctor-session-closed`.
+//!   The server's snapshot requests in heartbeat answers come out once each
+//!   ([`UploaderHandle::snapshot_requests`], [`SnapshotTracker`]).
 //!
 //! No event ever carries what a key typed: nothing here reads input (a test enforces that).
 
@@ -14,15 +16,19 @@ mod event;
 mod policy;
 mod queue;
 mod rules;
+mod snapshot;
 mod uploader;
 
-pub use event::{EventDraft, EventName, Evidence, ProctorEvent, Source, rfc3339_ms};
+pub use event::{
+    EventDraft, EventName, Evidence, ProctorEvent, Source, parse_rfc3339_ms, rfc3339_ms,
+};
 pub use policy::{
     AppRule, AppRules, BlockMatch, Condition, MatchKind, PolicyMatcher, SessionPolicy,
     SeverityHint, Threshold,
 };
 pub use queue::EventQueue;
 pub use rules::{DeviceRules, Thresholds};
+pub use snapshot::{SNAPSHOT_TTL_MS, SnapshotKind, SnapshotRequest, SnapshotTracker};
 pub use uploader::{
     ApiSource, DeviceStatus, SESSION_CLOSED, UploadState, Uploader, UploaderConfig, UploaderHandle,
     open_session,

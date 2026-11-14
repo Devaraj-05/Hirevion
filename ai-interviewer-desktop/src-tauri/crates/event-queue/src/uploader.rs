@@ -10,12 +10,16 @@ use std::time::Duration;
 
 use hv_api_client::{ApiClient, ApiError, Method, SessionManager};
 use serde::{Deserialize, Serialize};
-use tokio::sync::watch;
+use tokio::sync::{mpsc, watch};
 use tokio::task::JoinHandle;
 
 use crate::event::ProctorEvent;
 use crate::policy::SessionPolicy;
 use crate::queue::EventQueue;
+use crate::snapshot::{SnapshotRequest, SnapshotTracker, lenient_requests};
+
+/// Snapshot requests waiting for the app; the server never has more than five pending.
+const SNAPSHOT_BACKLOG: usize = 16;
 
 /// The problem code that ends a proctor session for good (the interview completed).
 pub const SESSION_CLOSED: &str = "proctor-session-closed";
@@ -142,9 +146,33 @@ struct Shared {
     stop: watch::Sender<bool>,
     status: Arc<dyn Fn() -> DeviceStatus + Send + Sync>,
     config: UploaderConfig,
+    snapshots: Mutex<SnapshotTracker>,
+    snapshot_tx: mpsc::Sender<SnapshotRequest>,
 }
 
 impl Shared {
+    /// Hands on the snapshot requests not seen before and not expired (server time).
+    fn want_snapshots(&self, requests: Vec<SnapshotRequest>) {
+        if requests.is_empty() {
+            return;
+        }
+        let now_ms = self.api.api().server_now_ms();
+        let mut tracker = self
+            .snapshots
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        for request in requests {
+            if !tracker.accept(&request, now_ms) {
+                continue;
+            }
+            let request_id = request.request_id.clone();
+            if self.snapshot_tx.try_send(request).is_err() {
+                // Nobody is answering, or too many wait: let a later answer bring it again.
+                tracker.forget(&request_id);
+            }
+        }
+    }
+
     fn token(&self) -> String {
         self.token
             .lock()
@@ -212,6 +240,7 @@ impl Uploader {
     ) -> UploaderHandle {
         let (state, _) = watch::channel(UploadState::Idle);
         let (stop, _) = watch::channel(false);
+        let (snapshot_tx, snapshot_rx) = mpsc::channel(SNAPSHOT_BACKLOG);
         let shared = Arc::new(Shared {
             api,
             queue,
@@ -222,12 +251,18 @@ impl Uploader {
             stop,
             status,
             config,
+            snapshots: Mutex::new(SnapshotTracker::default()),
+            snapshot_tx,
         });
         let tasks = vec![
             tokio::spawn(events_loop(shared.clone())),
             tokio::spawn(heartbeat_loop(shared.clone())),
         ];
-        UploaderHandle { shared, tasks }
+        UploaderHandle {
+            shared,
+            tasks,
+            snapshot_rx: Mutex::new(Some(snapshot_rx)),
+        }
     }
 }
 
@@ -236,6 +271,7 @@ impl Uploader {
 pub struct UploaderHandle {
     shared: Arc<Shared>,
     tasks: Vec<JoinHandle<()>>,
+    snapshot_rx: Mutex<Option<mpsc::Receiver<SnapshotRequest>>>,
 }
 
 impl std::fmt::Debug for Shared {
@@ -260,6 +296,15 @@ impl UploaderHandle {
 
     pub fn state(&self) -> UploadState {
         self.shared.state.borrow().clone()
+    }
+
+    /// The server's snapshot requests from heartbeat answers, each once and none expired.
+    /// There is one receiver: the first call takes it, later calls get `None`.
+    pub fn snapshot_requests(&self) -> Option<mpsc::Receiver<SnapshotRequest>> {
+        self.snapshot_rx
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .take()
     }
 
     /// Follows state changes.
@@ -326,6 +371,8 @@ struct HeartbeatBody<'a> {
 struct HeartbeatAck {
     #[serde(default)]
     missing: Vec<u64>,
+    #[serde(default, deserialize_with = "lenient_requests")]
+    snapshot_requests: Vec<SnapshotRequest>,
 }
 
 /// Waits for `period`; `true` when stopped meanwhile.
@@ -449,7 +496,10 @@ async fn heartbeat_loop(shared: Arc<Shared>) {
             _ = stop.changed() => return,
         };
         match sent {
-            Ok(ack) => shared.want_resend(&ack.missing),
+            Ok(ack) => {
+                shared.want_resend(&ack.missing);
+                shared.want_snapshots(ack.snapshot_requests);
+            }
             Err(error) if error.is_problem(SESSION_CLOSED) => {
                 shared.close();
                 return;
@@ -482,13 +532,23 @@ mod tests {
     use super::HeartbeatAck;
 
     #[test]
-    fn a_heartbeat_answer_with_snapshot_requests_still_reads() {
-        // The server (SP-14) may ask for evidence pictures in the heartbeat answer; answering
-        // them is still open (PENDING_TASKS B3), but the new field must not break the reader.
+    fn a_heartbeat_answer_with_snapshot_requests_reads_them() {
         let answer = r#"{ "acked_through": 41, "missing": [42, 44],
             "snapshot_requests": [{ "request_id": "r1", "event_id": "e1", "kind": "screen",
+                                    "requested_at": "2026-10-12T05:01:02.120Z" },
+                                  { "request_id": "r2", "event_id": "e1", "kind": "smell",
                                     "requested_at": "2026-10-12T05:01:02.120Z" }] }"#;
         let ack: HeartbeatAck = serde_json::from_str(answer).expect("an answer");
         assert_eq!(ack.missing, [42, 44]);
+        assert_eq!(
+            ack.snapshot_requests.len(),
+            1,
+            "the unknown kind is skipped"
+        );
+        let none: HeartbeatAck = serde_json::from_str(r#"{ "missing": [] }"#).expect("old");
+        assert!(none.snapshot_requests.is_empty());
+        let null: HeartbeatAck =
+            serde_json::from_str(r#"{ "missing": [], "snapshot_requests": null }"#).expect("null");
+        assert!(null.snapshot_requests.is_empty());
     }
 }

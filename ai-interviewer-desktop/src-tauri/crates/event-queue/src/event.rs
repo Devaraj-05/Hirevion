@@ -207,3 +207,98 @@ fn civil_from_days(days: i64) -> (i64, i64, i64) {
     let year = yoe + era * 400 + i64::from(month <= 2);
     (year, month, day)
 }
+
+/// `2026-10-12T05:01:02.120Z` (or with a `±HH:MM` offset) to milliseconds since the Unix epoch;
+/// `None` without a time zone or for anything that isn't a valid time. The inverse of
+/// [`rfc3339_ms`].
+pub fn parse_rfc3339_ms(text: &str) -> Option<i64> {
+    let bytes = text.as_bytes();
+    let digits = |from: usize, count: usize| -> Option<i64> {
+        let slice = bytes.get(from..from + count)?;
+        slice
+            .iter()
+            .all(u8::is_ascii_digit)
+            .then(|| slice.iter().fold(0, |n, d| n * 10 + i64::from(d - b'0')))
+    };
+    let punct = |at: usize, expected: u8| (bytes.get(at) == Some(&expected)).then_some(());
+
+    let year = digits(0, 4)?;
+    punct(4, b'-')?;
+    let month = digits(5, 2)?;
+    punct(7, b'-')?;
+    let day = digits(8, 2)?;
+    punct(10, b'T')?;
+    let hour = digits(11, 2)?;
+    punct(13, b':')?;
+    let minute = digits(14, 2)?;
+    punct(16, b':')?;
+    let second = digits(17, 2)?;
+    let mut at = 19;
+
+    let mut millis = 0;
+    if bytes.get(at) == Some(&b'.') {
+        at += 1;
+        let start = at;
+        while bytes.get(at).is_some_and(u8::is_ascii_digit) {
+            at += 1;
+        }
+        let fraction = &bytes[start..at];
+        if fraction.is_empty() || fraction.len() > 9 {
+            return None;
+        }
+        // Milliseconds are the first three digits.
+        for index in 0..3 {
+            millis = millis * 10 + fraction.get(index).map_or(0, |d| i64::from(d - b'0'));
+        }
+    }
+
+    let offset_minutes = match bytes.get(at)? {
+        b'Z' => {
+            at += 1;
+            0
+        }
+        sign @ (b'+' | b'-') => {
+            let hours = digits(at + 1, 2)?;
+            punct(at + 3, b':')?;
+            let minutes = digits(at + 4, 2)?;
+            at += 6;
+            if hours > 23 || minutes > 59 {
+                return None;
+            }
+            let total = hours * 60 + minutes;
+            if *sign == b'-' { -total } else { total }
+        }
+        _ => return None,
+    };
+    if at != bytes.len() {
+        return None;
+    }
+
+    if !(1..=12).contains(&month) || hour > 23 || minute > 59 || second > 59 {
+        return None;
+    }
+    let leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
+    let days_in_month = match month {
+        2 if leap => 29,
+        2 => 28,
+        4 | 6 | 9 | 11 => 30,
+        _ => 31,
+    };
+    if !(1..=days_in_month).contains(&day) {
+        return None;
+    }
+    let seconds = days_from_civil(year, month, day) * 86_400 + hour * 3600 + minute * 60 + second
+        - offset_minutes * 60;
+    Some(seconds * 1000 + millis)
+}
+
+/// Days since 1970-01-01 of a proleptic Gregorian date (Howard Hinnant's algorithm).
+fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
+    let year = if month <= 2 { year - 1 } else { year };
+    let era = year.div_euclid(400);
+    let year_of_era = year - era * 400;
+    let month_index = (month + 9) % 12;
+    let day_of_year = (153 * month_index + 2) / 5 + day - 1;
+    let day_of_era = year_of_era * 365 + year_of_era / 4 - year_of_era / 100 + day_of_year;
+    era * 146_097 + day_of_era - 719_468
+}
