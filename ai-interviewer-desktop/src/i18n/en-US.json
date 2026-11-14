@@ -247,7 +247,8 @@
       "idle": "Not saved yet",
       "saving": "Saving…",
       "saved": "Saved at {time}",
-      "failed": "Couldn't save. Trying again…"
+      "failed": "Couldn't save. Trying again…",
+      "refused": "This code couldn't be saved. Your next change will be saved."
     },
     "timeUp": "Time's up for this question. Your last saved code is kept; submit now if you can.",
     "submit": "Submit code",
@@ -262,7 +263,8 @@
       "code-too-large": "Your code is over 256 KB. Shorten it to submit.",
       "interview-not-in-progress": "The interview has ended, so your code can't be submitted.",
       "network": "Your code wasn't sent. Check your connection and try again.",
-      "unknown": "Your code wasn't sent. Try again."
+      "unknown": "Your code wasn't sent. Try again.",
+      "closed": "This question isn't open for code right now. Try again in a moment."
     }
   },
   "completed": {

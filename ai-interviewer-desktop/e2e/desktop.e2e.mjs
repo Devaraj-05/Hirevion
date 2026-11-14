@@ -22,11 +22,11 @@ const heading = (text) => `//h1[normalize-space()="${text}"]`;
 /** The text box under the label with exactly this text. */
 const field = (label) => `//label[normalize-space()="${label}"]/following-sibling::textarea`;
 
-async function keepScreenshot(t, error) {
-  // Keep a picture of where it stopped (uploaded by CI).
+async function keepScreenshot(t, error, name) {
+  // Keep a picture of where it stopped, one per test (CI uploads the folder).
   try {
     mkdirSync("e2e/output", { recursive: true });
-    writeFileSync("e2e/output/failure.png", await session.screenshot());
+    writeFileSync(`e2e/output/failure-${name}.png`, await session.screenshot());
   } catch {
     // The screenshot is a courtesy.
   }
@@ -34,6 +34,8 @@ async function keepScreenshot(t, error) {
 }
 
 let session;
+/** The coding test goes on from where "launch → ready" stops; without it, it is skipped. */
+let ready = false;
 
 before(async () => {
   session = await Session.start(SERVER, application);
@@ -79,20 +81,27 @@ test("launch → ready", async (t) => {
     // Ready.
     await session.waitFor(heading("You're ready"));
     assert.ok(await session.find(button("Start the interview")));
+    ready = true;
   } catch (error) {
-    await keepScreenshot(t, error);
+    await keepScreenshot(t, error, "ready");
     throw error;
   }
 });
 
 test("the coding console saves the code and submits it once", async (t) => {
+  if (!ready) {
+    t.skip('needs "launch → ready" to reach the Ready screen');
+    return;
+  }
   try {
     // The stub's interview runs in text mode: no LiveKit, the answers go through the API.
     await session.click(button("Start the interview"));
     await session.waitFor(heading("Interview"), 60_000);
 
     // Question 1 is spoken-style: answer it in the text box.
-    await (await session.waitFor(field("Your answer"))).type("I built an order service on a queue.");
+    await (await session.waitFor(field("Your answer"))).type(
+      "I built an order service on a queue.",
+    );
     await session.click(button("Send answer"));
 
     // Question 2 is the coding question: the console opens on the starter code.
@@ -110,7 +119,7 @@ test("the coding console saves the code and submits it once", async (t) => {
     await session.waitFor(`//span[normalize-space()="Question 3"]`, 20_000);
     assert.equal((await session.findAll(`//h2[normalize-space()="Your code"]`)).length, 0);
   } catch (error) {
-    await keepScreenshot(t, error);
+    await keepScreenshot(t, error, "coding");
     throw error;
   }
 });

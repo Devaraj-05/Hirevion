@@ -283,7 +283,8 @@ impl Stub {
                 json!({ "state": {
                     "status": if question.is_some() { "in_progress" } else { "completed" },
                     "remaining_seconds": 2700 - 300 * answered,
-                    "third_eye": "optional", "workspace": "none", "answer_mode": "text",
+                    "third_eye": "optional", "answer_mode": "text",
+                    "workspace": QUESTIONS.get(answered).map_or("none", |q| q.workspace),
                     "question": question,
                     "voice": if question.is_some() { "waiting" } else { "ended" },
                     "stage": if question.is_some() { "medium" } else { "completion" },
@@ -390,7 +391,11 @@ impl Stub {
                     return Err(CommandError::new("question-not-found", None));
                 }
                 let events = body["events"].as_array().cloned().unwrap_or_default();
-                if events.is_empty() || events.len() > 200 {
+                // The server's schema takes 1 to 200 events.
+                if events.is_empty() {
+                    return Err(CommandError::new("validation-failed", None));
+                }
+                if events.len() > 200 {
                     return Err(CommandError::new("too-many-events", None));
                 }
                 if !events.iter().all(valid_event) {
@@ -595,6 +600,10 @@ mod tests {
             .expect("answer");
         let asked = &state["state"]["question"];
         assert_eq!(asked["workspace"], "code");
+        assert_eq!(
+            state["state"]["workspace"], "code",
+            "the state names the open workspace"
+        );
         assert_eq!(asked["languages"], json!(["python", "javascript"]));
         let id = asked["id"].as_str().expect("an id").to_owned();
 
@@ -642,6 +651,14 @@ mod tests {
                 .unwrap_err()
                 .code,
             "unknown-event"
+        );
+        // As the server's schema: 1 to 200 events, else a validation error.
+        let empty = json!({ "question_id": id, "events": [] });
+        assert_eq!(
+            stub.interview("iv", InterviewAction::CodingTelemetry, Some(&empty))
+                .unwrap_err()
+                .code,
+            "validation-failed"
         );
 
         // A language the question doesn't offer is refused; then one submission moves on.

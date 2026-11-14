@@ -40,14 +40,35 @@ export interface CodeInBox {
 }
 
 /** What the box holds when the console opens: the saved draft (after a restart), else the
- * first language with its starter code. */
+ * first language with its starter code. A draft's code is always kept; when its language
+ * isn't one the question offers, only the label falls back to the first one. */
 export function openingCode(question: CodingQuestion): CodeInBox {
+  const first = question.languages[0] ?? "";
   const draft = question.draft;
-  if (draft && question.languages.includes(draft.language)) {
-    return { language: draft.language, content: draft.content };
+  if (draft) {
+    const wanted = draft.language.toLowerCase();
+    const offered = question.languages.find((language) => language.toLowerCase() === wanted);
+    return { language: offered ?? first, content: draft.content };
   }
-  const language = question.languages[0] ?? "";
-  return { language, content: question.starter_code[language] ?? "" };
+  return { language: first, content: question.starter_code[first] ?? "" };
+}
+
+/** Problem codes that may pass on their own: offline, rate-limited, the server busy. A
+ * refusal (anything else from the server) isn't sent again unchanged. */
+const TRANSIENT = new Set([
+  "network",
+  "rate-limited",
+  "service-unavailable",
+  "internal-error",
+  "unexpected-response",
+  "token-invalid",
+  "signed-out",
+]);
+
+export function isRetryable(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return true;
+  const code = (error as { code?: unknown }).code;
+  return typeof code !== "string" || TRANSIENT.has(code);
 }
 
 /** The box after the candidate picks another language: that language's starter code when the
@@ -63,15 +84,33 @@ export function switchLanguage(
   return untouched ? (question.starter_code[to] ?? "") : content;
 }
 
-/** Tab in the box: four spaces at the cursor, replacing any selection. */
-export function indent(
-  value: string,
-  start: number,
-  end: number,
-): { value: string; cursor: number } {
+/** One replacement in the box: `value[from:to]` becomes `text`, then the selection. */
+export interface BoxEdit {
+  from: number;
+  to: number;
+  text: string;
+  selectionStart: number;
+  selectionEnd: number;
+}
+
+/** Tab in the box: four spaces at the cursor, or, with a selection, four spaces at the start
+ * of every line it touches. Selected text is never replaced. */
+export function indentation(value: string, start: number, end: number): BoxEdit {
+  if (start === end) {
+    const at = start + INDENT.length;
+    return { from: start, to: end, text: INDENT, selectionStart: at, selectionEnd: at };
+  }
+  const lineStart = value.lastIndexOf("\n", start - 1) + 1;
+  const lines = value.slice(lineStart, end).split("\n");
+  // A selection that ends just after a newline doesn't take in the next line.
+  const last = lines.length > 1 && lines[lines.length - 1] === "" ? lines.length - 1 : lines.length;
+  const text = lines.map((line, index) => (index < last ? INDENT + line : line)).join("\n");
   return {
-    value: value.slice(0, start) + INDENT + value.slice(end),
-    cursor: start + INDENT.length,
+    from: lineStart,
+    to: end,
+    text,
+    selectionStart: start + INDENT.length,
+    selectionEnd: end + INDENT.length * last,
   };
 }
 
@@ -90,7 +129,10 @@ export type SaveStatus =
   | { kind: "idle" }
   | { kind: "saving" }
   | { kind: "saved"; at: number }
-  | { kind: "failed" };
+  /** It will try again. */
+  | { kind: "failed" }
+  /** The server refused this text; the next change is tried. */
+  | { kind: "refused" };
 
 export interface DraftSaverOptions {
   save(draft: CodeInBox): Promise<void>;
@@ -98,14 +140,20 @@ export interface DraftSaverOptions {
   intervalMs?: number;
 }
 
+function same(a: CodeInBox | null, b: CodeInBox): boolean {
+  return a !== null && a.language === b.language && a.content === b.content;
+}
+
 /**
  * Saves the box's latest text as the question's draft: at most once per interval while the
  * candidate types, at once on `flush()` (blur, just before the time limit, before Submit),
- * and again after a failure. Text it has already saved isn't sent again.
+ * and again after a failure that may pass. Text it has saved, or that the server refused,
+ * isn't sent again.
  */
 export class DraftSaver {
   private latest: CodeInBox | null = null;
   private saved: CodeInBox | null = null;
+  private refused: CodeInBox | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private running: Promise<void> | null = null;
   private disposed = false;
@@ -144,12 +192,7 @@ export class DraftSaver {
 
   private pending(): boolean {
     const latest = this.latest;
-    if (latest === null) return false;
-    return (
-      this.saved === null ||
-      this.saved.language !== latest.language ||
-      this.saved.content !== latest.content
-    );
+    return latest !== null && !same(this.saved, latest) && !same(this.refused, latest);
   }
 
   private schedule(): void {
@@ -170,8 +213,13 @@ export class DraftSaver {
       await this.options.save(draft);
       this.saved = draft;
       this.options.onStatus({ kind: "saved", at: Date.now() });
-    } catch {
-      this.options.onStatus({ kind: "failed" });
+    } catch (error) {
+      if (isRetryable(error)) {
+        this.options.onStatus({ kind: "failed" });
+      } else {
+        this.refused = draft;
+        this.options.onStatus({ kind: "refused" });
+      }
     }
     // Text typed during the save, or a failed save, goes in the next interval.
     if (this.pending()) this.schedule();
@@ -242,6 +290,14 @@ export class CodingTelemetry {
     }
   }
 
+  /** The console is closing: typing (if any) stops now, what is queued is sent, and the
+   * timers stop. */
+  async end(): Promise<void> {
+    this.stopTyping();
+    await this.flush();
+    this.dispose();
+  }
+
   /** Stops the timers. Call `flush()` first to send what is left. */
   dispose(): void {
     if (this.pauseTimer !== null) clearTimeout(this.pauseTimer);
@@ -269,8 +325,10 @@ export class CodingTelemetry {
       const batch = this.queue.slice(0, MAX_BATCH);
       try {
         await this.options.send(batch);
-      } catch {
-        return; // Offline or refused for now: the batch stays at the front.
+      } catch (error) {
+        // Offline or busy: the batch stays at the front for the next flush. Refused for good
+        // (a time out of range, the interview over): it is dropped so the rest can go.
+        if (isRetryable(error)) return;
       }
       this.queue.splice(0, batch.length);
     }

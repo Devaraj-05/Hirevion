@@ -14,7 +14,7 @@ import {
   CodingTelemetry,
   codeBytes,
   DraftSaver,
-  indent,
+  indentation,
   languageName,
   MAX_CODE_BYTES,
   openingCode,
@@ -32,9 +32,11 @@ import {
 import { recordingCommands } from "../recording/native";
 import { ErrorText } from "./shell";
 
-/** Save the draft this many seconds before the question's limit: the server keeps the last
- * saved draft when time runs out. */
+/** In the question's last seconds the draft is saved every second, and once more at zero:
+ * the server keeps the last saved draft when time runs out. */
 const SAVE_BEFORE_LIMIT_SECONDS = 5;
+/** The server's clock offset is read again this often (a failed read keeps the last one). */
+const CLOCK_SYNC_MS = 30_000;
 const SUBMIT_ERRORS = [
   "question-not-current",
   "not-a-coding-question",
@@ -43,7 +45,7 @@ const SUBMIT_ERRORS = [
   "interview-not-in-progress",
   "network",
 ] as const;
-type SubmitError = (typeof SUBMIT_ERRORS)[number] | "unknown" | "load";
+type SubmitError = (typeof SUBMIT_ERRORS)[number] | "unknown" | "load" | "closed";
 /** Keys that change the text; only whether one went down is noted, never which. */
 const EDITING_KEYS = new Set(["Backspace", "Delete", "Enter", "Tab"]);
 
@@ -84,26 +86,35 @@ export function CodingConsole({
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<SubmitError | null>(null);
-  const [cursor, setCursor] = useState<number | null>(null);
+  const [selection, setSelection] = useState<{ start: number; end: number } | null>(null);
   const offset = useRef(0);
   const drafts = useRef<DraftSaver | null>(null);
   const telemetry = useRef<CodingTelemetry | null>(null);
   const escaped = useRef(false);
-  const savedForLimit = useRef(false);
+  const savedAtSecond = useRef<number | null>(null);
   // The latest callback, so a new one from the parent never reloads the box (and the code).
   const closed = useRef(onClosed);
   useEffect(() => {
     closed.current = onClosed;
   });
 
+  const syncClock = useCallback(async () => {
+    try {
+      offset.current = (await recordingCommands.clock()).server_offset_ms;
+    } catch {
+      // Keep the last offset; the next read may work.
+    }
+  }, []);
+
   const load = useCallback(async () => {
     setError(null);
+    await syncClock();
     try {
-      const clock = await recordingCommands.clock().catch(() => ({ server_offset_ms: 0 }));
-      offset.current = clock.server_offset_ms;
       const answer = await commands.coding(interviewId);
       const open = answer.question;
       if (open === null || open.question_id !== questionId) {
+        // The state is behind the server: refresh it, and let the candidate try again.
+        setError("closed");
         closed.current();
         return;
       }
@@ -114,11 +125,16 @@ export function CodingConsole({
     } catch {
       setError("load");
     }
-  }, [interviewId, questionId]);
+  }, [interviewId, questionId, syncClock]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => void syncClock(), CLOCK_SYNC_MS);
+    return () => window.clearInterval(timer);
+  }, [syncClock]);
 
   // The draft saver and the integrity events live as long as the question is open here.
   useEffect(() => {
@@ -140,7 +156,8 @@ export function CodingConsole({
     telemetry.current = events;
     return () => {
       void saver.flush().finally(() => saver.dispose());
-      void events.flush().finally(() => events.dispose());
+      // Closing mid-typing still records that typing stopped.
+      void events.end();
       if (drafts.current === saver) drafts.current = null;
       if (telemetry.current === events) telemetry.current = null;
     };
@@ -155,24 +172,30 @@ export function CodingConsole({
     return () => window.clearInterval(timer);
   }, [question]);
 
-  // Just before the limit, save what is in the box: it becomes the final code if time runs out.
+  // In the last seconds, save what is in the box every second (and once at zero): it becomes
+  // the final code if time runs out. A save with nothing new sends nothing.
   useEffect(() => {
-    if (secondsLeft === null || secondsLeft > SAVE_BEFORE_LIMIT_SECONDS || savedForLimit.current)
-      return;
-    savedForLimit.current = true;
+    if (secondsLeft === null || secondsLeft > SAVE_BEFORE_LIMIT_SECONDS) return;
+    if (savedAtSecond.current === secondsLeft) return;
+    savedAtSecond.current = secondsLeft;
     void drafts.current?.flush();
   }, [secondsLeft]);
 
-  // After Tab indents, put the cursor after the inserted spaces.
+  // When the browser couldn't insert the indent itself, restore the selection after React.
   useLayoutEffect(() => {
-    if (cursor === null || box.current === null) return;
-    box.current.setSelectionRange(cursor, cursor);
-    setCursor(null);
-  }, [cursor]);
+    if (selection === null || box.current === null) return;
+    box.current.setSelectionRange(selection.start, selection.end);
+    setSelection(null);
+  }, [selection]);
+
+  /** Code over the server's limit isn't saved (it would be refused); the box says why. */
+  function remember(nextLanguage: string, next: string) {
+    if (codeBytes(next) <= MAX_CODE_BYTES) drafts.current?.change(nextLanguage, next);
+  }
 
   function edit(next: string) {
     setContent(next);
-    drafts.current?.change(language, next);
+    remember(language, next);
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -188,9 +211,15 @@ export function CodingConsole({
     if (event.key === "Tab" && !event.shiftKey && !shortcut && !escaped.current) {
       event.preventDefault();
       const target = event.currentTarget;
-      const next = indent(target.value, target.selectionStart, target.selectionEnd);
-      edit(next.value);
-      setCursor(next.cursor);
+      const change = indentation(target.value, target.selectionStart, target.selectionEnd);
+      target.setSelectionRange(change.from, change.to);
+      // insertText keeps the box's undo history (Ctrl+Z) and reaches React as normal input.
+      if (document.execCommand("insertText", false, change.text)) {
+        target.setSelectionRange(change.selectionStart, change.selectionEnd);
+      } else {
+        edit(target.value.slice(0, change.from) + change.text + target.value.slice(change.to));
+        setSelection({ start: change.selectionStart, end: change.selectionEnd });
+      }
     }
     escaped.current = false;
   }
@@ -210,7 +239,7 @@ export function CodingConsole({
     const replaced = switchLanguage(question, content, language, next);
     setLanguage(next);
     setContent(replaced);
-    drafts.current?.change(next, replaced);
+    remember(next, replaced);
   }
 
   async function submit() {
@@ -238,9 +267,9 @@ export function CodingConsole({
   }
 
   if (question === null) {
-    return error === "load" ? (
+    return error === "load" || error === "closed" ? (
       <div className="grid gap-2">
-        <ErrorText>{t("errors.load")}</ErrorText>
+        <ErrorText>{t(`errors.${error}`)}</ErrorText>
         <Button variant="secondary" className="w-fit" onClick={() => void load()}>
           {t("retry")}
         </Button>
