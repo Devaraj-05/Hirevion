@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge } from "@hirevion/ui";
+import { Badge, TableScroll } from "@hirevion/ui";
 import { useTranslations } from "next-intl";
 import { useId } from "react";
 import type { ReportBlock, ReportDocument, ReportSection } from "./api";
@@ -110,12 +110,7 @@ function Block({ block }: { block: ReportBlock }) {
       );
     case "table":
       return (
-        <section
-          aria-label={block.caption}
-          // biome-ignore lint/a11y/noNoninteractiveTabindex: a table that scrolls sideways must be reachable by keyboard.
-          tabIndex={0}
-          className="overflow-x-auto rounded-lg border border-border"
-        >
+        <TableScroll label={block.caption} className="rounded-lg border border-border">
           <table className="w-full text-left text-sm">
             <caption className="px-3 py-2 text-left font-medium">{block.caption}</caption>
             <thead className="bg-surface-muted">
@@ -149,7 +144,7 @@ function Block({ block }: { block: ReportBlock }) {
               )}
             </tbody>
           </table>
-        </section>
+        </TableScroll>
       );
     case "quotes":
       return (

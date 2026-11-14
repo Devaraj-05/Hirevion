@@ -161,3 +161,34 @@ describe("CommandPalette", () => {
     expect(screen.getByRole("button", { name: "Search" })).toHaveFocus();
   });
 });
+
+describe("Tabs", () => {
+  it("hides a kept (force-mounted) panel while another tab is open", async () => {
+    const { Tabs, TabsContent, TabsList, TabsTrigger } = await import("./tabs");
+    const user = userEvent.setup();
+    render(
+      <Tabs defaultValue="details">
+        <TabsList label="Job">
+          <TabsTrigger value="details">Details</TabsTrigger>
+          <TabsTrigger value="description">Description</TabsTrigger>
+        </TabsList>
+        <TabsContent value="details" forceMount>
+          <label>
+            Title <input />
+          </label>
+        </TabsContent>
+        <TabsContent value="description" forceMount>
+          <label>
+            Title <input />
+          </label>
+        </TabsContent>
+      </Tabs>,
+    );
+    await user.click(screen.getByRole("tab", { name: "Description" }));
+    const panels = screen.getAllByRole("tabpanel", { hidden: true });
+    const details = panels.find((panel) => panel.dataset.state === "inactive");
+    expect(details).toBeDefined();
+    // Radix renders a kept panel without `hidden`; the class keeps it off screen (Tailwind).
+    expect(details?.className).toContain("data-[state=inactive]:hidden");
+  });
+});

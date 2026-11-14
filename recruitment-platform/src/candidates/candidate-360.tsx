@@ -1,6 +1,15 @@
 "use client";
 
-import { Badge, Button, Label, SeverityBadge, Skeleton, Textarea, toast } from "@hirevion/ui";
+import {
+  Badge,
+  Button,
+  Label,
+  SeverityBadge,
+  Skeleton,
+  TableScroll,
+  Textarea,
+  toast,
+} from "@hirevion/ui";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
@@ -36,7 +45,7 @@ function Table({
   children: ReactNode;
 }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-border">
+    <TableScroll label={caption} className="rounded-lg border border-border">
       <table className="w-full text-left text-sm">
         <caption className="sr-only">{caption}</caption>
         <thead className="bg-surface-muted">
@@ -50,7 +59,7 @@ function Table({
         </thead>
         <tbody>{children}</tbody>
       </table>
-    </div>
+    </TableScroll>
   );
 }
 

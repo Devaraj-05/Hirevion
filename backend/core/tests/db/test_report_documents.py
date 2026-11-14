@@ -81,6 +81,9 @@ async def test_the_interview_report_has_thirteen_sections_and_each_is_populated(
     assert status.pop("coding_evaluation") == "empty"
     assert set(status.values()) == {"populated"}, status
     assert doc["confidential"] is True and doc["audience"] == "internal"
+    # Each table's caption names its scroll region on the web page, so none may repeat.
+    captions = [b["caption"] for s in doc["sections"] for b in s["blocks"] if b["type"] == "table"]
+    assert len(captions) == len(set(captions)), captions
 
     sections = {s["key"]: s for s in doc["sections"]}
     assert "no coding question" in str(sections["coding_evaluation"]["blocks"])
@@ -365,6 +368,7 @@ async def test_the_coding_report_shows_the_code_every_submission_the_review_and_
     assert "never run" in blocks[0]["text"]
     criteria = next(b for b in blocks if b["type"] == "table")
     assert [row[0] for row in criteria["rows"]][3] == "Time complexity (estimated)"
+    assert criteria["caption"].startswith("Criteria for question ")
     quotes = next(b for b in blocks if b["type"] == "quotes")
     assert all(" · line " in item["source"] for item in quotes["items"])
     assert all(item["text"] in CODE for item in quotes["items"])

@@ -56,7 +56,7 @@ class TraceStateGuard:
             kept = [
                 (key, value)
                 for key, value in headers
-                if key not in _TRACE_HEADERS or len(value) <= TRACESTATE_LIMIT
+                if key.lower() not in _TRACE_HEADERS or len(value) <= TRACESTATE_LIMIT
             ]
             if len(kept) != len(headers):
                 scope = {**scope, "headers": kept}

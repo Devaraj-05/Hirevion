@@ -84,9 +84,9 @@ describe("ReportView", () => {
     ).toEqual(["Executive summary", "Coding evaluation", "Timeline"]);
     const summary = screen.getByRole("region", { name: "Executive summary" });
     expect(within(summary).getByRole("table", { name: "Skill scores" })).toBeInTheDocument();
-    // A wide table scrolls sideways in a narrow panel; its scroller is a named region that the
+    // A wide table scrolls sideways in a narrow panel; its scroller is a named group that the
     // keyboard can reach (WCAG 2.1.1, axe "scrollable-region-focusable").
-    expect(within(summary).getByRole("region", { name: "Skill scores" })).toHaveAttribute(
+    expect(within(summary).getByRole("group", { name: "Skill scores" })).toHaveAttribute(
       "tabindex",
       "0",
     );

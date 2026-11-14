@@ -123,10 +123,20 @@ async def test_trace_headers_longer_than_the_w3c_limit_never_reach_the_app() -> 
         None,  # type: ignore[arg-type]
         None,  # type: ignore[arg-type]
     )
+    # uvicorn's websocket protocols keep the client's header case; OpenTelemetry matches any case.
+    await guard(
+        {
+            "type": "websocket",
+            "headers": [(b"Traceparent", long_value), (b"TraceState", long_value)],
+        },
+        None,  # type: ignore[arg-type]
+        None,  # type: ignore[arg-type]
+    )
     await guard(
         {"type": "http", "headers": [(b"traceparent", parent), (b"tracestate", b"vendor=v1")]},
         None,  # type: ignore[arg-type]
         None,  # type: ignore[arg-type]
     )
     assert seen[0] == []
-    assert seen[1] == [(b"traceparent", parent), (b"tracestate", b"vendor=v1")]
+    assert seen[1] == []
+    assert seen[2] == [(b"traceparent", parent), (b"tracestate", b"vendor=v1")]

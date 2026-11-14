@@ -13,6 +13,7 @@ import {
   Label,
   NativeSelect,
   Skeleton,
+  TableScroll,
   Textarea,
   toast,
 } from "@hirevion/ui";
@@ -88,12 +89,7 @@ export function ScoresPanel({ id, canModify }: { id: string; canModify: boolean 
         ) : null}
       </CardHeader>
       <CardContent className="grid gap-3">
-        <section
-          aria-label={t("caption")}
-          // biome-ignore lint/a11y/noNoninteractiveTabindex: a table that scrolls sideways must be reachable by keyboard.
-          tabIndex={0}
-          className="overflow-x-auto"
-        >
+        <TableScroll label={t("caption")}>
           <table className="w-full text-left text-sm">
             <caption className="sr-only">{t("caption")}</caption>
             <thead>
@@ -132,7 +128,7 @@ export function ScoresPanel({ id, canModify }: { id: string; canModify: boolean 
               ))}
             </tbody>
           </table>
-        </section>
+        </TableScroll>
         {data.changes.length > 0 ? (
           <details>
             <summary className="cursor-pointer text-sm">

@@ -55,6 +55,7 @@ export {
   Tooltip,
   TooltipProvider,
 } from "./components/menus";
+export { TableScroll } from "./components/table-scroll";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/tabs";
 export { Toaster, toast } from "./components/toast";
 export {

@@ -52,9 +52,9 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 - [ ] D3: not yet tried on real phones (iOS Safari 16.4+, Android Chrome; the owner's check, runbook "Third eye") or with the real Egress container (its image is about 1 GB; tests used the adapter's fake). Run both before CP3.
 - [ ] A5/D2: ffmpeg isn't installed on this PC, so recordings stay assembly-pending and the review player's sync is tested only with pure functions and jsdom. Install ffmpeg (see the runbook's "Recordings") and play a simulator interview's recordings end to end before CP3.
 - [ ] B2/SP-11: `event-queue`'s end-to-end test (a blocked process is queued within 2 s) failed once in a full local CI run on a heavily loaded PC (65 s run time; it took 14 s alone and passed). The 2 s is the product requirement, so it stays; watch whether detection really slows under load.
-- [ ] D1: GHSA-xcq7-p3pf-p88h and GHSA-mf5v-w3w3-f6cg (OpenTelemetry `tracestate` and `traceparent` parsing, medium) are accepted until 2026-12-31: the API drops either header over 512 characters (`TraceStateGuard`). The real fix, opentelemetry-api 1.45.1, needs livekit-agents 1.8.8 and so the OpenAI SDK 3; do that upgrade (AI layer and interview agent) before the expiry.
+- [ ] D1: GHSA-xcq7-p3pf-p88h and GHSA-mf5v-w3w3-f6cg (OpenTelemetry `tracestate` and `traceparent` parsing, medium) are accepted until 2026-12-31: the API drops either header over 512 characters (`TraceStateGuard`). The real fix, opentelemetry-api 1.45.2, needs livekit-agents 1.8.8 and so the OpenAI SDK 3; do that upgrade (AI layer and interview agent) before the expiry.
 
-- [ ] Desktop: RUSTSEC-2026-0387 (crypto-bigint 0.5 timing, via p256 0.13 in `hv-security`) is accepted until 2027-02-28: DPoP proofs are signed by the Windows key store, and p256 signs only in the no-key-store fallback. Upgrade `hv-security` to p256 0.14 before the expiry.
+- [ ] Desktop: RUSTSEC-2026-0387 (crypto-bigint 0.5 timing, via p256 0.13 in `hv-security`) is accepted until 2027-02-28: The Windows app signs DPoP proofs only through the Windows key store (NCrypt: the TPM or the Microsoft software KSP); it never falls back to a software key. p256 only verifies public signatures there, and signs only in non-Windows builds (not shipped) and tests. Upgrade `hv-security` to p256 0.14 before the expiry.
 
 ## Known blockers
 

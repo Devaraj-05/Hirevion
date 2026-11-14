@@ -32,6 +32,13 @@ export function TabsTrigger({ className, ...props }: ComponentProps<typeof TabsP
   );
 }
 
+/** A panel. Radix renders a kept (`forceMount`) panel without `hidden`, so an inactive one is
+ * hidden here: only the open tab's panel is ever on screen. */
 export function TabsContent({ className, ...props }: ComponentProps<typeof TabsPrimitive.Content>) {
-  return <TabsPrimitive.Content className={cn("pt-4", className)} {...props} />;
+  return (
+    <TabsPrimitive.Content
+      className={cn("pt-4 data-[state=inactive]:hidden", className)}
+      {...props}
+    />
+  );
 }

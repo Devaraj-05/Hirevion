@@ -1,6 +1,6 @@
 "use client";
 
-import { Skeleton } from "@hirevion/ui";
+import { Skeleton, TableScroll } from "@hirevion/ui";
 import { useFormatter, useTranslations } from "next-intl";
 import { Pager } from "@/data/pager";
 import { QueryFailed } from "@/data/query-failed";
@@ -25,7 +25,7 @@ export function HistoryPanel({ jobId }: { jobId: string }) {
   if (rows.length === 0) return <p className="text-muted-foreground text-sm">{t("empty")}</p>;
   return (
     <div className="grid gap-2">
-      <div className="overflow-x-auto rounded-lg border border-border">
+      <TableScroll label={t("caption")} className="rounded-lg border border-border">
         <table className="w-full text-sm">
           <caption className="sr-only">{t("caption")}</caption>
           <thead className="bg-surface-muted">
@@ -60,7 +60,7 @@ export function HistoryPanel({ jobId }: { jobId: string }) {
             ))}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
       <Pager
         hasPrevious={page.hasPrevious}
         hasNext={page.hasNext}

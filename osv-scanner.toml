@@ -31,10 +31,11 @@ id = "RUSTSEC-2026-0372"
 ignoreUntil = 2027-04-19
 reason = "zvariant_derive is Tauri's Linux D-Bus stack; not in the Windows graph"
 
-# Python: opentelemetry-api 1.45.1 fixes GHSA-xcq7-p3pf-p88h, but every livekit-agents release that
-# allows it also requires the OpenAI SDK 3 (a major upgrade of the AI layer, done separately).
-# Until then the API drops any `tracestate` longer than the W3C limit before tracing parses it
-# (hirevion_api.middleware.TraceStateGuard, test_telemetry.py); the interview agent takes no
+# Python: opentelemetry-api 1.45.2 fixes GHSA-xcq7-p3pf-p88h (`tracestate`) and GHSA-mf5v-w3w3-f6cg
+# (`traceparent`), but every livekit-agents release that allows it also requires the OpenAI
+# SDK 3 (a major upgrade of the AI layer, done separately). Until then the API drops either
+# header when it is longer than 512 characters, whatever its case, before tracing parses it
+# (hirevion_api.middleware.TraceStateGuard, test_middleware.py); the interview agent takes no
 # inbound HTTP. Short expiry: upgrade as soon as the AI-layer change lands.
 [[IgnoredVulns]]
 id = "GHSA-xcq7-p3pf-p88h"
@@ -47,12 +48,13 @@ ignoreUntil = 2026-12-31
 reason = "Mitigated like GHSA-xcq7-p3pf-p88h: TraceStateGuard drops a traceparent over 512 chars before OpenTelemetry parses it; the fix (opentelemetry-api 1.45.2) needs livekit-agents 1.8.8, which requires the OpenAI SDK 3"
 
 # Rust: crypto-bigint 0.5 (via p256 0.13 in hv-security) has timing variability in operations
-# meant to be constant-time. The desktop signs DPoP proofs with a Windows key store (NCrypt: the
-# TPM or the Microsoft software KSP); p256 only verifies public signatures and signs in
-# SoftwareKey, the fallback when no key store works, on the candidate's own machine. The fix is
-# p256 0.14 (elliptic-curve 0.14, crypto-bigint 0.7), an API upgrade of the device-key crate
-# tracked in docs/STATUS.md.
+# meant to be constant-time. The Windows app signs DPoP proofs only through the Windows key store
+# (NCrypt: the TPM or the Microsoft software KSP) and never falls back to a software key; p256
+# only verifies public signatures there, and signs only in non-Windows builds (not shipped) and
+# tests.
+# The fix is p256 0.14 (elliptic-curve 0.14, crypto-bigint 0.7), an API upgrade of the
+# device-key crate tracked in docs/STATUS.md.
 [[IgnoredVulns]]
 id = "RUSTSEC-2026-0387"
 ignoreUntil = 2027-02-28
-reason = "Timing side channel in crypto-bigint 0.5; p256 signs only in the no-key-store fallback on the candidate's own PC; upgrade to p256 0.14 tracked in STATUS"
+reason = "Timing side channel in crypto-bigint 0.5; the shipped Windows app signs only through NCrypt, and p256 signs only in non-Windows builds and tests; p256 0.14 upgrade tracked in STATUS"

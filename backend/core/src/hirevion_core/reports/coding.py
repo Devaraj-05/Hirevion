@@ -144,7 +144,7 @@ def _assessment(data: InterviewData, questions: Sequence[InterviewQuestion]) -> 
         criteria = item.get("criteria") or {}
         content.append(
             b.table(
-                "Criteria",
+                f"Criteria for question {question.position}",
                 ["Criterion", "Score", "Estimate", "Evidence", "Why"],
                 [
                     [

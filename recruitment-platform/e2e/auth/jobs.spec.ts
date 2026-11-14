@@ -52,6 +52,8 @@ test("a recruiter creates a job, has its description read, applies it and opens 
   });
   await expect(page.getByText(/^From the description: /).first()).toBeVisible();
   await noAxeViolations(page);
+  // Only the open tab's panel is on screen, even though Details was kept mounted.
+  await expect(page.getByRole("tabpanel", { name: "Details" })).toBeHidden();
   // The review suggests the description's own title; keep the test's, so the list finds it. The
   // Details tab has a Title field too, so aim at the description's.
   await page.getByRole("tabpanel", { name: "Description" }).getByLabel("Title").fill(title);

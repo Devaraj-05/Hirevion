@@ -1,3 +1,4 @@
+import { TableScroll } from "@hirevion/ui";
 import type { ReactNode } from "react";
 
 /**
@@ -219,7 +220,7 @@ function render(block: Block, key: string): ReactNode {
       );
     case "table":
       return (
-        <div key={key} className="overflow-x-auto">
+        <TableScroll key={key} label={block.header.join(", ")}>
           <table className="w-full border-collapse text-left text-sm">
             <thead>
               <tr>
@@ -251,7 +252,7 @@ function render(block: Block, key: string): ReactNode {
               })}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       );
     case "list":
       return list(

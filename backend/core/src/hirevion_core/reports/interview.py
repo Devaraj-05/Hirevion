@@ -249,7 +249,7 @@ def skill_evaluation(data: InterviewData) -> Section:
         return _pending("skill_evaluation", "Skill evaluation", data)
     content: list[Block] = [
         b.table(
-            "Skill scores",
+            "Skill scores with weights and evidence",
             ["Skill", "Weight", "Score", "Questions", "Verified evidence"],
             [
                 [
