@@ -121,7 +121,8 @@ pub struct StatusSnapshot {
     pub mic_on: bool,
     pub screen_capturing: bool,
     pub displays: u32,
-    /// `connected`, `disconnected` or `not_required` (the third-eye link is SP-10's).
+    /// The heartbeat's third eye: `not_required`, `not_paired`, `connecting`, `connected` or
+    /// `disconnected`, kept current by the interview's third-eye watcher.
     pub third_eye: &'static str,
 }
 

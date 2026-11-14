@@ -21,6 +21,8 @@ use super::state::{AppState, Backend};
 
 /// White space around the code, in modules (the QR standard's quiet zone).
 const QUIET_ZONE: i32 = 4;
+/// How often the interview's watcher reads the pairing (plan: every 5 s).
+const WATCH_EVERY: std::time::Duration = std::time::Duration::from_secs(5);
 
 /// The QR code as an SVG path in a `size`×`size` view box: one square per dark module.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -64,6 +66,66 @@ pub fn qr_view(text: &str) -> Result<QrView, String> {
 /// unscanned, or it was revoked. A phone that disconnected (a lock) reconnects by itself.
 pub fn needs_code(status: &str) -> bool {
     matches!(status, "expired" | "revoked")
+}
+
+/// The heartbeat's `third_eye` (proctoring.md) from the interview's mode and the pairing's
+/// status (`None`: no pairing).
+pub fn heartbeat_value(mode: &str, status: Option<&str>) -> &'static str {
+    if mode == "off" {
+        return "not_required";
+    }
+    match status {
+        Some("redeemed") => "connecting",
+        Some("connected") => "connected",
+        Some("disconnected") => "disconnected",
+        _ => "not_paired",
+    }
+}
+
+/// The interview watcher's value after one read (`None`: no pairing); a failed read keeps the
+/// last value.
+pub fn watched(
+    mode: &str,
+    read: Option<CommandResult<String>>,
+    last: &'static str,
+) -> &'static str {
+    match read {
+        None => heartbeat_value(mode, None),
+        Some(Ok(status)) => heartbeat_value(mode, Some(&status)),
+        Some(Err(_)) => last,
+    }
+}
+
+/// What the interview's third-eye watcher needs: the mode the briefing named, and the pairing.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ThirdEyeWatch {
+    pub mode: String,
+    pub pairing_id: Option<String>,
+}
+
+/// Reads the pairing every five seconds during the interview and keeps the heartbeat's value
+/// current through `set`.
+pub async fn watch_third_eye(
+    session: std::sync::Arc<SessionManager>,
+    tokens: std::sync::Arc<SessionTokens>,
+    interview_id: String,
+    watch: ThirdEyeWatch,
+    set: impl Fn(&'static str) + Send + Sync,
+) {
+    let mut last = heartbeat_value(&watch.mode, None);
+    loop {
+        let read = match (&watch.pairing_id, watch.mode.as_str()) {
+            (_, "off") | (None, _) => None,
+            (Some(pairing_id), _) => Some(
+                status(&session, &tokens, &interview_id, pairing_id)
+                    .await
+                    .map(|view| view.status),
+            ),
+        };
+        last = watched(&watch.mode, read, last);
+        set(last);
+        tokio::time::sleep(WATCH_EVERY).await;
+    }
 }
 
 /// What becomes of the remembered pairing, from its status read before a code is issued.
@@ -140,6 +202,9 @@ pub fn issued_view(answer: &Value) -> CommandResult<PairingView> {
 pub struct Pairings {
     file: Option<PathBuf>,
     ids: Mutex<HashMap<String, String>>,
+    /// Each interview's third-eye mode, from the briefing the server last sent (not saved: the
+    /// briefing is read again before every interview).
+    modes: Mutex<HashMap<String, String>>,
 }
 
 impl Pairings {
@@ -152,6 +217,36 @@ impl Pairings {
         Self {
             file: Some(file),
             ids: Mutex::new(ids),
+            modes: Mutex::new(HashMap::new()),
+        }
+    }
+
+    /// Notes the briefing's `third_eye` (the server's word, with a waiver already applied).
+    pub fn note_briefing(&self, interview_id: &str, briefing: &Value) {
+        let Some(mode) = briefing["third_eye"].as_str() else {
+            return;
+        };
+        if matches!(mode, "off" | "optional" | "required")
+            && let Ok(mut modes) = self.modes.lock()
+        {
+            modes.insert(interview_id.to_owned(), mode.to_owned());
+        }
+    }
+
+    /// The interview's third-eye mode; `off` until a briefing named it.
+    pub fn mode(&self, interview_id: &str) -> String {
+        self.modes
+            .lock()
+            .ok()
+            .and_then(|modes| modes.get(interview_id).cloned())
+            .unwrap_or_else(|| "off".to_owned())
+    }
+
+    /// What the interview's watcher needs.
+    pub fn watch(&self, interview_id: &str) -> ThirdEyeWatch {
+        ThirdEyeWatch {
+            mode: self.mode(interview_id),
+            pairing_id: self.get(interview_id),
         }
     }
 
@@ -233,6 +328,16 @@ pub async fn third_eye_pair(
         }
     }
     issue(session, tokens, &state.third_eye, &interview_id).await
+}
+
+/// The third eye's heartbeat value during the interview (`None` when nothing watches it);
+/// the interview screen's status bar shows it.
+#[tauri::command]
+pub async fn third_eye_live(state: State<'_, AppState>) -> CommandResult<Option<String>> {
+    if let Backend::Stub(stub) = &state.backend {
+        return Ok(Some(stub.third_eye_live().to_owned()));
+    }
+    Ok(state.services.third_eye_value().map(str::to_owned))
 }
 
 /// The pairing's status, read every two seconds while the phone step is open.
@@ -338,6 +443,48 @@ mod tests {
         assert!(seen.qr.is_none() && seen.link.is_none());
         let fresh = status_view("p1", &json!({ "status": "issued", "device": null }));
         assert_eq!(fresh.device, None);
+    }
+
+    #[test]
+    fn the_heartbeat_reports_the_phone_as_the_contract_names_it() {
+        assert_eq!(heartbeat_value("off", Some("connected")), "not_required");
+        assert_eq!(heartbeat_value("required", None), "not_paired");
+        for status in ["issued", "expired", "revoked"] {
+            assert_eq!(
+                heartbeat_value("optional", Some(status)),
+                "not_paired",
+                "{status}"
+            );
+        }
+        assert_eq!(heartbeat_value("required", Some("redeemed")), "connecting");
+        assert_eq!(heartbeat_value("required", Some("connected")), "connected");
+        assert_eq!(
+            heartbeat_value("optional", Some("disconnected")),
+            "disconnected"
+        );
+    }
+
+    #[test]
+    fn a_failed_read_keeps_the_last_value() {
+        let failed = Err(CommandError::new("network", None));
+        assert_eq!(watched("required", Some(failed), "connected"), "connected");
+        assert_eq!(
+            watched("required", Some(Ok("disconnected".into())), "connected"),
+            "disconnected"
+        );
+        // No pairing at all.
+        assert_eq!(watched("required", None, "connected"), "not_paired");
+    }
+
+    #[test]
+    fn remembers_each_interviews_mode_from_its_briefing() {
+        let pairings = Pairings::default();
+        assert_eq!(pairings.mode("iv"), "off");
+        pairings.note_briefing("iv", &json!({ "third_eye": "required" }));
+        assert_eq!(pairings.mode("iv"), "required");
+        // Anything the contract doesn't name is ignored.
+        pairings.note_briefing("iv", &json!({ "third_eye": "sometimes" }));
+        assert_eq!(pairings.mode("iv"), "required");
     }
 
     #[test]

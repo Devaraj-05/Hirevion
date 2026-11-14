@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { onlyThirdEyeFailed, phoneState } from "./pairing";
+import { liveView, onlyThirdEyeFailed, phoneState } from "./pairing";
 
 describe("the phone step", () => {
   it("names what the candidate sees for each pairing status", () => {
@@ -17,5 +17,15 @@ describe("the phone step", () => {
     expect(onlyThirdEyeFailed(["third_eye"])).toBe(true);
     expect(onlyThirdEyeFailed(["camera", "third_eye"])).toBe(false);
     expect(onlyThirdEyeFailed([])).toBe(false);
+  });
+});
+
+describe("the third eye during the interview", () => {
+  it("shows the phone's camera as the heartbeat reports it", () => {
+    expect(liveView("connected")).toEqual({ tone: "success", alert: false });
+    expect(liveView("connecting")).toEqual({ tone: "warning", alert: false });
+    // A lost camera is worth telling the candidate, so they can unlock the phone.
+    expect(liveView("disconnected")).toEqual({ tone: "warning", alert: true });
+    expect(liveView("not_paired")).toEqual({ tone: "neutral", alert: false });
   });
 });

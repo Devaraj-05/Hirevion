@@ -44,6 +44,7 @@ use super::interview::{SessionTokens, check_interview_id, session_token};
 use super::proctoring::{FaceEvent, StatusSnapshot, device_label, heartbeat_status};
 use super::progress::UploadProgress;
 use super::snapshots::{CameraFrames, LiveAnswers, LivePictures, LiveTime, Release, answer_all};
+use super::third_eye::{ThirdEyeWatch, watch_third_eye};
 
 /// Sent to the webview when the server won't take a camera or microphone track
 /// (`track-not-recorded`); the payload is the track name. The webview stops recording it.
@@ -186,6 +187,14 @@ impl ProctoringShared {
         heartbeat_status(&lock(&self.status))
     }
 
+    fn set_third_eye(&self, value: &'static str) {
+        lock(&self.status).third_eye = value;
+    }
+
+    fn third_eye(&self) -> &'static str {
+        lock(&self.status).third_eye
+    }
+
     fn set_screen_capturing(&self, capturing: bool, displays: Option<u32>) {
         let mut status = lock(&self.status);
         status.screen_capturing = capturing;
@@ -243,6 +252,8 @@ struct ProctoringRun {
     watcher: tauri::async_runtime::JoinHandle<()>,
     /// Answers the server's snapshot requests while the session runs.
     snapshots: Option<tauri::async_runtime::JoinHandle<()>>,
+    /// Keeps the heartbeat's third eye current while the session runs.
+    third_eye: tauri::async_runtime::JoinHandle<()>,
     monitor: Option<(MonitorHandle, ThreadHandle<()>)>,
     clock: Clock,
 }
@@ -256,12 +267,14 @@ impl ProctoringRun {
             uploader,
             watcher,
             snapshots,
+            third_eye,
             monitor,
             clock,
             ..
         } = self;
         watcher.abort();
         let _ = watcher.await;
+        third_eye.abort();
         if let Some(snapshots) = snapshots {
             snapshots.abort();
         }
@@ -628,6 +641,7 @@ impl Services {
         notify: Notify,
         interview_id: &str,
         startup_integrity: Vec<(String, Option<String>)>,
+        third_eye: ThirdEyeWatch,
     ) -> CommandResult<ServicesStarted> {
         check_interview_id(interview_id)?;
         let Some(live) = self.inner.live.as_ref() else {
@@ -658,6 +672,7 @@ impl Services {
                     &token,
                     startup_integrity,
                     active.notify.clone(),
+                    third_eye,
                 )
                 .await
             {
@@ -690,6 +705,7 @@ impl Services {
         token: &str,
         startup_integrity: Vec<(String, Option<String>)>,
         notify: Notify,
+        third_eye: ThirdEyeWatch,
     ) -> CommandResult<ProctoringRun> {
         let policy: SessionPolicy =
             open_session(live.session.api(), token, interview_id, &live.version).await?;
@@ -752,6 +768,16 @@ impl Services {
             &uploader,
             notify,
         );
+        let third_eye = {
+            let shared = shared.clone();
+            tauri::async_runtime::spawn(watch_third_eye(
+                live.session.clone(),
+                live.tokens.clone(),
+                interview_id.to_owned(),
+                third_eye,
+                move |value| shared.set_third_eye(value),
+            ))
+        };
         let watcher = self.spawn_session_watcher(live, interview_id, uploader.clone());
         Ok(ProctoringRun {
             shared,
@@ -762,9 +788,17 @@ impl Services {
             uploader,
             watcher,
             snapshots,
+            third_eye,
             monitor,
             clock,
         })
+    }
+
+    /// The heartbeat's third eye while a proctor session runs.
+    pub fn third_eye_value(&self) -> Option<&'static str> {
+        lock(&self.inner.proctoring)
+            .as_ref()
+            .map(|shared| shared.third_eye())
     }
 
     /// Answers the server's snapshot requests (screen here, camera from the webview) for as
@@ -1472,7 +1506,15 @@ mod tests {
         let services = Services::disabled();
         let notify: Notify = Arc::new(|_, _| {});
         let started = services
-            .start(notify, INTERVIEW, Vec::new())
+            .start(
+                notify,
+                INTERVIEW,
+                Vec::new(),
+                ThirdEyeWatch {
+                    mode: "off".into(),
+                    pairing_id: None,
+                },
+            )
             .await
             .expect("start");
         assert_eq!(started, ServicesStarted::default());
@@ -1499,7 +1541,15 @@ mod tests {
         let services = Services::disabled();
         let notify: Notify = Arc::new(|_, _| {});
         let error = services
-            .start(notify, "../etc", Vec::new())
+            .start(
+                notify,
+                "../etc",
+                Vec::new(),
+                ThirdEyeWatch {
+                    mode: "off".into(),
+                    pairing_id: None,
+                },
+            )
             .await
             .unwrap_err();
         assert_eq!(error.code, "invalid-interview");

@@ -1,6 +1,7 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 import type { SystemCheckPayload } from "../checks/payload";
 import type { CheckResult } from "../checks/types";
+import type { LiveThirdEye } from "../third-eye/pairing";
 import type { ProctoringEventDraft } from "../vision/types";
 
 /**
@@ -141,6 +142,8 @@ export const commands = {
    * third-eye.md); Rust issues it with the session token and draws the QR code. */
   thirdEyePair: (interviewId: string, replace: boolean) =>
     invoke<PairingView>("third_eye_pair", { interviewId, replace }),
+  /** The third eye's heartbeat value during the interview (`null` when nothing watches it). */
+  thirdEyeLive: () => invoke<LiveThirdEye | null>("third_eye_live"),
   /** The pairing's status (read every 2 s while the phone step is open). */
   thirdEyeStatus: (interviewId: string) => invoke<PairingView>("third_eye_status", { interviewId }),
   /** The open coding question with its starter code and last draft (contract coding.md). */

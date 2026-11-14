@@ -26,11 +26,14 @@ import {
   type StartResult,
   type UploadProgress,
 } from "../native/commands";
+import { type LiveThirdEye, liveView } from "../third-eye/pairing";
 import { CodingConsole } from "./coding-console";
 import { type ErrorKey, errorKey } from "./errors";
 import { ErrorText } from "./shell";
 
 const CAPTION_TOPIC = "lk.transcription";
+/** How often the screen reads the third eye's status from Rust (its watcher reads every 5 s). */
+const PHONE_POLL_MS = 5_000;
 
 /** PRD §32–33: the interview itself, fullscreen. Voice runs over LiveKit (the agent speaks and
  * listens; captions come from its transcription stream); text mode answers through the API. */
@@ -58,6 +61,7 @@ export function InterviewScreen({
   const [error, setError] = useState<ErrorKey | null>(null);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [servicesProblem, setServicesProblem] = useState(false);
+  const [phone, setPhone] = useState<LiveThirdEye | null>(null);
   const room = useRef<Room | null>(null);
   const services = useRef<InterviewServices | null>(null);
   const ended = useRef(false);
@@ -155,6 +159,25 @@ export function InterviewScreen({
     };
   }, [start.livekit_url, start.participant_token]);
 
+  // The phone's camera, as Rust's watcher reports it to the server (every 5 s).
+  const usesPhone = state.third_eye !== undefined && state.third_eye !== "off";
+  useEffect(() => {
+    if (!usesPhone) return;
+    let cancelled = false;
+    let timer: number | undefined;
+    const read = async () => {
+      const value = await commands.thirdEyeLive().catch(() => null);
+      if (cancelled) return;
+      setPhone(value);
+      timer = window.setTimeout(() => void read(), PHONE_POLL_MS);
+    };
+    void read();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [usesPhone]);
+
   function control(action: ControlAction) {
     void room.current?.localParticipant
       .publishData(controlMessage(action), { reliable: true, topic: CONTROL_TOPIC })
@@ -200,6 +223,9 @@ export function InterviewScreen({
           >
             {t(`connection.${connection}`)}
           </Badge>
+          {phone && phone !== "not_required" ? (
+            <Badge tone={liveView(phone).tone}>{t(`phone.${phone}`)}</Badge>
+          ) : null}
           <span className="font-mono text-lg">
             <span className="sr-only">{t("timeLeft")} </span>
             <time>{formatClock(remaining)}</time>
@@ -217,6 +243,12 @@ export function InterviewScreen({
           <p className="max-w-xl text-center text-muted-foreground text-sm">{caption}</p>
         ) : null}
       </div>
+
+      {phone && liveView(phone).alert ? (
+        <p role="alert" className="rounded-md bg-warning-subtle p-3 text-sm text-warning">
+          {t("phoneLost")}
+        </p>
+      ) : null}
 
       {servicesProblem ? (
         <p role="status" className="rounded-md bg-warning-subtle p-3 text-sm text-warning">

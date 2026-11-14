@@ -31,3 +31,28 @@ export function phoneState(status: string): PhoneState {
 export function onlyThirdEyeFailed(failedMandatory: readonly string[]): boolean {
   return failedMandatory.length > 0 && failedMandatory.every((check) => check === "third_eye");
 }
+
+/** The heartbeat's third eye (Rust's watcher, contract proctoring.md). */
+export type LiveThirdEye =
+  | "not_required"
+  | "not_paired"
+  | "connecting"
+  | "connected"
+  | "disconnected";
+
+/** How the interview screen shows the phone's camera: a badge, and an alert when it dropped. */
+export function liveView(value: LiveThirdEye): {
+  tone: "success" | "warning" | "neutral";
+  alert: boolean;
+} {
+  switch (value) {
+    case "connected":
+      return { tone: "success", alert: false };
+    case "connecting":
+      return { tone: "warning", alert: false };
+    case "disconnected":
+      return { tone: "warning", alert: true };
+    default:
+      return { tone: "neutral", alert: false };
+  }
+}

@@ -268,7 +268,14 @@
     "end": "End the interview",
     "endConfirm": "Yes, end it now",
     "keepGoing": "Keep going",
-    "servicesProblem": "Some of the checks that protect your interview didn't start. Please keep this window open; the app is trying again."
+    "servicesProblem": "Some of the checks that protect your interview didn't start. Please keep this window open; the app is trying again.",
+    "phone": {
+      "not_paired": "Phone camera: not connected",
+      "connecting": "Phone camera: connecting",
+      "connected": "Phone camera: connected",
+      "disconnected": "Phone camera: disconnected"
+    },
+    "phoneLost": "Your phone's camera disconnected. Unlock the phone and keep its page open; it reconnects by itself."
   },
   "coding": {
     "title": "Your code",

@@ -25,7 +25,11 @@ pub async fn services_start(
         let _ = app.emit(event, payload);
     });
     let integrity = startup_integrity(&state.integrity_variables, state.debugger_present);
-    state.services.start(notify, &interview_id, integrity).await
+    let third_eye = state.third_eye.watch(&interview_id);
+    state
+        .services
+        .start(notify, &interview_id, integrity, third_eye)
+        .await
 }
 
 /// Ends monitoring and screen recording; what's left uploads in the background

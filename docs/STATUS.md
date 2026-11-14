@@ -32,16 +32,16 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 | AI fallback | Owner decision, 2026-11-14: when OpenRouter can't serve (no credit, down, rate-limited) screening answers, vision and page reading go to NVIDIA Nemotron (OpenRouter then rests 60 s); every vector comes from Nemotron (`nemotron-3.5-embed-1b`, 1,536-d; jobs as queries, resumes as passages); live checks green on both providers (8 of 8) | unit, wire and live tests (full gate deferred) / ADR-0034 |
 | B4b-1a SP-14 desktop | Snapshot answers: the server's `snapshot_requests` from heartbeats are answered once each within two minutes, the screen by WGC + WIC (≤1280×720 JPEG), the camera by one frame of the interview's track from the webview; uploads with `request_id`, retried until expiry | Rust and webview unit tests, uploader wiremock tests, desktop e2e (full gate deferred) |
 | B4b-1b SP-13 desktop | The phone step: QR code drawn in Rust (`qrcodegen`) from a pairing Rust issues with the session token, the link to type, status every 2 s, a new code only when spent, a remembered pairing across restarts, the check that waited for a required phone sent again, Ready's `third-eye-required` back to the phone | Rust and webview unit tests, desktop e2e consent → phone → ready (full gate deferred) / ADR-0040 |
+| B4b-1c SP-13 desktop | Third-eye status during the interview: the heartbeat's `third_eye` from the briefing's mode and a 5 s pairing watcher, a status badge and a lost-camera warning on the interview screen | Rust and webview unit tests, desktop e2e (full gate deferred) |
 
 ## In progress (unmerged worktree branches)
 
 | Part | Branch | Exact next step |
 |---|---|---|
-| B4b-1c third-eye status | from `main` | The uncommitted `interview.rs` change from `worktree-agent-a206a1da835999881` (third-eye mode from the briefing) starts it; then the heartbeat's `third_eye` and the status bar |
 
 ## Remaining, in priority order (dependency in brackets)
 
-- **P1:** C7 vision agent [C5, D3] · B4b-1c third-eye status in heartbeats and the status bar [B4b-1b] · B4b-2 whiteboard [B4a] · B4b-3 advanced CV [B3, C7]
+- **P1:** C7 vision agent [C5, D3] · B4b-2 whiteboard [B4a] · B4b-3 advanced CV [B3, C7]
 - **P2:** D4 SP-19 enterprise identity [SP-02] · D5 SP-22 admin/governance [A5, C5] · A6 SP-21 analytics [A5] · D6 SP-20 ATS/public API [A5]
 - **P3:** D7 SP-23 automated hardening [all] · B5 Windows golden path and chaos drills [B3, B4a, B4b]
 - **Last:** the full local gate, `bash scripts/ci-local.sh --all` (deferred to the end by the product owner, 2026-11-14; each part meanwhile runs its own tests and checks)

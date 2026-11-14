@@ -106,6 +106,9 @@ test("the coding console saves the code and submits it once", async (t) => {
     await session.click(button("Start the interview"));
     await session.waitFor(heading("Interview"), 60_000);
 
+    // The phone paired before Ready stays in view: the status bar shows its camera.
+    await session.waitFor(`//*[normalize-space()="Phone camera: connected"]`, 15_000);
+
     // Question 1 is spoken-style: answer it in the text box.
     await (await session.waitFor(field("Your answer"))).type(
       "I built an order service on a queue.",

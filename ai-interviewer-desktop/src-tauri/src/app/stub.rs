@@ -12,7 +12,7 @@ use serde_json::{Value, json};
 
 use super::error::{CommandError, CommandResult};
 use super::interview::InterviewAction;
-use super::third_eye::{PairingView, issued_view, status_view};
+use super::third_eye::{PairingView, heartbeat_value, issued_view, status_view};
 use super::views::{ChecksSubmitted, ProfileView, SignInView};
 
 pub const PASSWORD: &str = "stub";
@@ -500,6 +500,18 @@ impl Stub {
             STUB_PAIRING,
             &json!({ "status": status, "device": device }),
         ))
+    }
+
+    /// The stub interview's third eye for the status bar: its phone's last status.
+    pub fn third_eye_live(&self) -> &'static str {
+        let polls = self.third_eye_polls.lock().map_or(0, |polls| *polls);
+        let status = match polls {
+            0 => None,
+            1 => Some("issued"),
+            2 => Some("redeemed"),
+            _ => Some("connected"),
+        };
+        heartbeat_value("optional", status)
     }
 
     fn email(&self) -> CommandResult<String> {

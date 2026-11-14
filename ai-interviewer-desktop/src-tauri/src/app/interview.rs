@@ -154,7 +154,7 @@ pub async fn interview_request(
     action: InterviewAction,
     body: Option<serde_json::Value>,
 ) -> CommandResult<serde_json::Value> {
-    match &state.backend {
+    let answer = match &state.backend {
         Backend::Stub(stub) => stub.interview(&interview_id, action, body.as_ref()),
         Backend::Live(session) => {
             send(
@@ -166,7 +166,12 @@ pub async fn interview_request(
             )
             .await
         }
+    }?;
+    if action == InterviewAction::Briefing {
+        // The server's word on the third eye (a waiver already applied), for the heartbeat.
+        state.third_eye.note_briefing(&interview_id, &answer);
     }
+    Ok(answer)
 }
 
 #[cfg(test)]
