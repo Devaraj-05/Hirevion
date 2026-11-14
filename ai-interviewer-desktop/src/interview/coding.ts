@@ -8,8 +8,9 @@ import type { CodingQuestion, CodingTelemetryEvent } from "../native/commands";
 
 /** The server's limit on code and drafts: 256 KB of UTF-8. */
 export const MAX_CODE_BYTES = 256 * 1024;
-/** At most one draft save in this many milliseconds (the server allows 30 a minute). */
-export const DRAFT_INTERVAL_MS = 5_000;
+/** While the candidate types, a draft is saved at most this often (product-owner decision,
+ * 2026-11-14); blur and the question's last seconds save at once. */
+export const DRAFT_INTERVAL_MS = 30_000;
 /** Typing stops after this pause; the next key starts it again. */
 export const TYPING_PAUSE_MS = 2_000;
 /** Queued integrity events are sent this often, in batches of at most `MAX_BATCH`. */

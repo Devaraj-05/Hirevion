@@ -110,8 +110,8 @@ test("the coding console saves the code and submits it once", async (t) => {
     assert.match(await code.property("value"), /def two_sum/);
     await code.type("    seen = {}\n");
 
-    // The draft is saved within a few seconds (the server keeps it if time runs out).
-    await session.waitFor(`//p[starts-with(normalize-space(), "Saved at")]`, 20_000);
+    // While typing, the draft is saved every 30 s (the server keeps it if time runs out).
+    await session.waitFor(`//p[starts-with(normalize-space(), "Saved at")]`, 45_000);
 
     // One Submit, confirmed; the interview moves on to question 3.
     await session.click(button("Submit code"));

@@ -131,16 +131,18 @@ describe("DraftSaver", () => {
     return { drafts, save, statuses };
   }
 
-  it("saves at most every five seconds, with the latest text", async () => {
+  it("saves at most every 30 seconds while typing, with the latest text", async () => {
+    // Product-owner decision, 2026-11-14: a draft every 30 s (plus blur and the time limit).
     const { drafts, save } = saver();
     drafts.change("python", "a");
     drafts.change("python", "ab");
+    await vi.advanceTimersByTimeAsync(29_999);
     expect(save).not.toHaveBeenCalled();
-    await vi.advanceTimersByTimeAsync(5_000);
+    await vi.advanceTimersByTimeAsync(1);
     expect(save).toHaveBeenCalledTimes(1);
     expect(save).toHaveBeenLastCalledWith({ language: "python", content: "ab" });
     drafts.change("python", "abc");
-    await vi.advanceTimersByTimeAsync(4_999);
+    await vi.advanceTimersByTimeAsync(29_999);
     expect(save).toHaveBeenCalledTimes(1);
     await vi.advanceTimersByTimeAsync(1);
     expect(save).toHaveBeenCalledTimes(2);
@@ -152,7 +154,7 @@ describe("DraftSaver", () => {
     drafts.change("python", "x");
     await drafts.flush();
     drafts.change("python", "x");
-    await vi.advanceTimersByTimeAsync(10_000);
+    await vi.advanceTimersByTimeAsync(60_000);
     expect(save).toHaveBeenCalledTimes(1);
     drafts.dispose();
   });
@@ -175,7 +177,7 @@ describe("DraftSaver", () => {
     drafts.change("python", "a");
     await drafts.flush();
     expect(statuses.at(-1)?.kind).toBe("failed");
-    await vi.advanceTimersByTimeAsync(5_000);
+    await vi.advanceTimersByTimeAsync(30_000);
     expect(save).toHaveBeenCalledTimes(2);
     expect(statuses.at(-1)?.kind).toBe("saved");
     drafts.dispose();
@@ -190,10 +192,10 @@ describe("DraftSaver", () => {
     drafts.change("python", "a");
     await drafts.flush();
     expect(statuses.at(-1)?.kind).toBe("refused");
-    await vi.advanceTimersByTimeAsync(30_000);
+    await vi.advanceTimersByTimeAsync(90_000);
     expect(save).toHaveBeenCalledTimes(1);
     drafts.change("python", "ab");
-    await vi.advanceTimersByTimeAsync(5_000);
+    await vi.advanceTimersByTimeAsync(30_000);
     expect(save).toHaveBeenCalledTimes(2);
     drafts.dispose();
   });

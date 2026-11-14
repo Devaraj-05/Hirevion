@@ -6,7 +6,7 @@
 - Rust gains three interview actions: `coding` (GET), `coding_submit` (POST `coding/submissions`) and `coding_telemetry` (POST `coding/telemetry`). Like the other actions, the webview only names the action, and Rust adds the session token and DPoP (ADR-0018).
 - The stub backend gains a coding question so the console can be developed and tested end to end without an API.
 - The console's logic is in `src/interview/coding.ts`, plain TypeScript tested with Vitest:
-  - the draft saver: at most one save every 5 s, a save on blur, and a save just before the time limit;
+  - the draft saver: at most one save every 30 s while typing (product-owner decision, 2026-11-14; first planned at 5 s), a save on blur, and a save every second in the question's last five seconds;
   - the integrity events: typing started and stopped after a 2 s pause, paste, copy and cut sending lengths only, and focus and blur. They are sent in batches of up to 200, and queued and retried while offline;
   - the starter code;
   - the question's clock, corrected by the server offset from `GET /time`;
