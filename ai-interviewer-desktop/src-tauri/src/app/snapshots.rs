@@ -28,6 +28,8 @@ pub const SNAPSHOT_EVENT: &str = "hv:snapshot-request";
 pub const CAMERA_WAIT: Duration = Duration::from_secs(10);
 const FIRST_RETRY: Duration = Duration::from_secs(1);
 const LONGEST_RETRY: Duration = Duration::from_secs(15);
+/// The last try is made this long before the request expires, so it can still arrive in time.
+const LAST_TRY_MS: i64 = 1_000;
 const JPEG_START: [u8; 3] = [0xFF, 0xD8, 0xFF];
 
 /// How sending an answer failed.
@@ -97,42 +99,62 @@ pub async fn answer(
             Ok(()) => return Outcome::Answered,
             Err(Failure::Final(code)) => return Outcome::Refused(code),
             Err(Failure::Retry(_)) => {
-                let wait_ms = i64::try_from(wait.as_millis()).unwrap_or(i64::MAX);
-                if time.now_ms().saturating_add(wait_ms) >= expires_at {
+                // Wait as planned, but never past the last moment worth a try.
+                let room = expires_at - LAST_TRY_MS - time.now_ms();
+                if room <= 0 {
                     return Outcome::Expired;
                 }
-                time.sleep(wait).await;
+                let room = Duration::from_millis(u64::try_from(room).unwrap_or(0));
+                time.sleep(wait.min(room)).await;
                 wait = (wait * 2).min(LONGEST_RETRY);
             }
         }
     }
 }
 
+/// Lets a request be handed on again when a later heartbeat repeats it.
+pub type Release = Arc<dyn Fn(&str) + Send + Sync>;
+
 /// Answers every request from the heartbeat until the channel closes, each on its own task so
-/// a slow one never holds up the next.
+/// a slow one never holds up the next. The tasks belong to this future: when it is stopped
+/// (the proctor session ended), the answers in flight stop with it. A request that got no
+/// picture here is released, so the server's repeat of it is answered.
 pub async fn answer_all<P, A, T>(
     mut requests: mpsc::Receiver<SnapshotRequest>,
     pictures: Arc<P>,
     answers: Arc<A>,
     time: Arc<T>,
+    release: Release,
 ) where
     P: Pictures + 'static,
     A: Answers + 'static,
     T: Time + 'static,
 {
-    while let Some(request) = requests.recv().await {
-        let (pictures, answers, time) = (pictures.clone(), answers.clone(), time.clone());
-        tauri::async_runtime::spawn(async move {
-            let outcome = answer(&request, &*pictures, &*answers, &*time).await;
-            if outcome != Outcome::Answered {
-                eprintln!(
-                    "proctoring: snapshot {} ({}) not answered: {outcome:?}",
-                    request.request_id,
-                    request.kind.as_str()
-                );
+    let mut running = tokio::task::JoinSet::new();
+    loop {
+        tokio::select! {
+            request = requests.recv() => {
+                let Some(request) = request else { break };
+                let (pictures, answers, time, release) =
+                    (pictures.clone(), answers.clone(), time.clone(), release.clone());
+                running.spawn(async move {
+                    let outcome = answer(&request, &*pictures, &*answers, &*time).await;
+                    if matches!(outcome, Outcome::NoPicture(_)) {
+                        release(&request.request_id);
+                    }
+                    if outcome != Outcome::Answered {
+                        eprintln!(
+                            "proctoring: snapshot {} ({}) not answered: {outcome:?}",
+                            request.request_id,
+                            request.kind.as_str()
+                        );
+                    }
+                });
             }
-        });
+            Some(_) = running.join_next(), if !running.is_empty() => {}
+        }
     }
+    while running.join_next().await.is_some() {}
 }
 
 pub fn is_jpeg(bytes: &[u8]) -> bool {
@@ -156,9 +178,9 @@ impl CameraFrames {
     }
 
     /// The webview's frame for `request_id`: refused unless it was asked for and is a JPEG
-    /// within the server's limit.
-    pub fn deliver(&self, request_id: &str, jpeg: Vec<u8>) -> Result<(), &'static str> {
-        if !is_jpeg(&jpeg) {
+    /// within the server's limit. Checked before anything is copied.
+    pub fn deliver(&self, request_id: &str, jpeg: &[u8]) -> Result<(), &'static str> {
+        if !is_jpeg(jpeg) {
             return Err("not-a-jpeg");
         }
         if jpeg.len() > MAX_EVIDENCE_BYTES {
@@ -170,7 +192,7 @@ impl CameraFrames {
             .ok()
             .and_then(|mut waiting| waiting.remove(request_id));
         match sender {
-            Some(sender) => sender.send(jpeg).map_err(|_| "not-requested"),
+            Some(sender) => sender.send(jpeg.to_vec()).map_err(|_| "not-requested"),
             None => Err("not-requested"),
         }
     }
@@ -458,7 +480,7 @@ mod tests {
         let wanted = request(SnapshotKind::Camera);
         // Nothing asked: a frame is refused, as is anything that isn't a JPEG.
         assert_eq!(
-            frames.deliver(&wanted.request_id, jpeg()),
+            frames.deliver(&wanted.request_id, &jpeg()),
             Err("not-requested")
         );
         let frame = camera_frame(
@@ -466,10 +488,10 @@ mod tests {
             &wanted,
             || {
                 assert_eq!(
-                    frames.deliver(&wanted.request_id, b"GIF89a".to_vec()),
+                    frames.deliver(&wanted.request_id, b"GIF89a"),
                     Err("not-a-jpeg")
                 );
-                assert_eq!(frames.deliver(&wanted.request_id, jpeg()), Ok(()));
+                assert_eq!(frames.deliver(&wanted.request_id, &jpeg()), Ok(()));
             },
             CAMERA_WAIT,
         )
@@ -477,7 +499,7 @@ mod tests {
         assert_eq!(frame, Ok(jpeg()));
         // Used once: the same request can't deliver again.
         assert_eq!(
-            frames.deliver(&wanted.request_id, jpeg()),
+            frames.deliver(&wanted.request_id, &jpeg()),
             Err("not-requested")
         );
     }
@@ -489,7 +511,7 @@ mod tests {
         let frame = camera_frame(&frames, &wanted, || {}, Duration::from_millis(20)).await;
         assert_eq!(frame, Err("camera-frame-timeout".into()));
         assert_eq!(
-            frames.deliver(&wanted.request_id, jpeg()),
+            frames.deliver(&wanted.request_id, &jpeg()),
             Err("not-requested")
         );
     }
@@ -500,6 +522,93 @@ mod tests {
         let _receiver = frames.expect("r1");
         let mut big = jpeg();
         big.resize(MAX_EVIDENCE_BYTES + 1, 0);
-        assert_eq!(frames.deliver("r1", big), Err("too-large"));
+        assert_eq!(frames.deliver("r1", &big), Err("too-large"));
+    }
+
+    #[tokio::test]
+    async fn uses_the_last_seconds_before_the_request_expires() {
+        // 10 s left: waits of 1, 2 and 4 s, then the last try waits only 2 s, not 8.
+        let answers = Script::new(vec![
+            Err(Failure::Retry("network".into())),
+            Err(Failure::Retry("network".into())),
+            Err(Failure::Retry("network".into())),
+            Err(Failure::Retry("network".into())),
+            Ok(()),
+        ]);
+        let time = FakeTime(AtomicI64::new(ASKED_MS + 110_000));
+        let outcome = answer(
+            &request(SnapshotKind::Screen),
+            &Picture(Ok(jpeg())),
+            &answers,
+            &time,
+        )
+        .await;
+        assert_eq!(outcome, Outcome::Answered);
+        assert_eq!(answers.sent.load(Ordering::SeqCst), 5);
+        assert!(time.now_ms() < ASKED_MS + 120_000);
+    }
+
+    #[tokio::test]
+    async fn a_request_with_no_picture_can_come_again() {
+        let (sender, receiver) = mpsc::channel(4);
+        let released = Arc::new(Mutex::new(Vec::<String>::new()));
+        let noted = released.clone();
+        let task = tokio::spawn(answer_all(
+            receiver,
+            Arc::new(Picture(Err("camera-frame-timeout".into()))),
+            Arc::new(Script::new(vec![Ok(())])),
+            Arc::new(FakeTime(AtomicI64::new(ASKED_MS))),
+            Arc::new(move |id: &str| noted.lock().expect("lock").push(id.to_owned())),
+        ));
+        sender
+            .send(request(SnapshotKind::Camera))
+            .await
+            .expect("sent");
+        drop(sender);
+        task.await.expect("finished");
+        // The server repeats its request in later heartbeats: it can be handed on again.
+        assert_eq!(
+            *released.lock().expect("lock"),
+            vec![request(SnapshotKind::Camera).request_id]
+        );
+    }
+
+    /// Notes when the picture it was taking is dropped (its task stopped).
+    struct Endless(Arc<AtomicUsize>);
+    struct Dropped(Arc<AtomicUsize>);
+    impl Drop for Dropped {
+        fn drop(&mut self) {
+            self.0.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+    impl Pictures for Endless {
+        async fn take(&self, _request: &SnapshotRequest) -> Result<Vec<u8>, String> {
+            let _dropped = Dropped(self.0.clone());
+            std::future::pending::<()>().await;
+            Ok(jpeg())
+        }
+    }
+
+    #[tokio::test]
+    async fn stopping_the_answerer_stops_the_answers_in_flight() {
+        let (sender, receiver) = mpsc::channel(4);
+        let dropped = Arc::new(AtomicUsize::new(0));
+        let task = tokio::spawn(answer_all(
+            receiver,
+            Arc::new(Endless(dropped.clone())),
+            Arc::new(Script::new(vec![Ok(())])),
+            Arc::new(FakeTime(AtomicI64::new(ASKED_MS))),
+            Arc::new(|_: &str| {}),
+        ));
+        sender
+            .send(request(SnapshotKind::Screen))
+            .await
+            .expect("sent");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        task.abort();
+        let _ = task.await;
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        // The session ended: the picture being taken for it is abandoned, not finished later.
+        assert_eq!(dropped.load(Ordering::SeqCst), 1);
     }
 }

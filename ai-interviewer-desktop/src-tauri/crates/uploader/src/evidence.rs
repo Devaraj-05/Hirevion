@@ -14,7 +14,7 @@ use crate::put::{self, PutError};
 
 /// The server's limit for one picture (2 MiB).
 pub const MAX_EVIDENCE_BYTES: usize = 2 * 1024 * 1024;
-/// Pictures are small; one piece is enough.
+/// The PUT body goes in pieces of this size (a 2 MiB picture is eight).
 const CHUNK: usize = 256 * 1024;
 
 /// What the picture answers.

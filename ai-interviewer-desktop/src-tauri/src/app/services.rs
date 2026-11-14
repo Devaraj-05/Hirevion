@@ -43,7 +43,7 @@ use super::error::{CommandError, CommandResult};
 use super::interview::{SessionTokens, check_interview_id, session_token};
 use super::proctoring::{FaceEvent, StatusSnapshot, device_label, heartbeat_status};
 use super::progress::UploadProgress;
-use super::snapshots::{CameraFrames, LiveAnswers, LivePictures, LiveTime, answer_all};
+use super::snapshots::{CameraFrames, LiveAnswers, LivePictures, LiveTime, Release, answer_all};
 
 /// Sent to the webview when the server won't take a camera or microphone track
 /// (`track-not-recorded`); the payload is the track name. The webview stops recording it.
@@ -774,7 +774,7 @@ impl Services {
         live: &Live,
         interview_id: &str,
         proctor_session_id: &str,
-        uploader: &UploaderHandle,
+        uploader: &Arc<UploaderHandle>,
         notify: Notify,
     ) -> Option<tauri::async_runtime::JoinHandle<()>> {
         let requests = uploader.snapshot_requests()?;
@@ -800,13 +800,17 @@ impl Services {
         let time = Arc::new(LiveTime {
             session: live.session.clone(),
         });
+        let release: Release = {
+            let uploader = uploader.clone();
+            Arc::new(move |request_id: &str| uploader.release_snapshot(request_id))
+        };
         Some(tauri::async_runtime::spawn(answer_all(
-            requests, pictures, answers, time,
+            requests, pictures, answers, time, release,
         )))
     }
 
     /// The webview's camera frame for a snapshot request Rust made.
-    pub fn deliver_snapshot(&self, request_id: &str, jpeg: Vec<u8>) -> CommandResult<()> {
+    pub fn deliver_snapshot(&self, request_id: &str, jpeg: &[u8]) -> CommandResult<()> {
         self.inner
             .camera_frames
             .deliver(request_id, jpeg)

@@ -298,6 +298,16 @@ impl UploaderHandle {
         self.shared.state.borrow().clone()
     }
 
+    /// Lets a request that couldn't be answered here (no picture could be taken) be handed on
+    /// again when a later heartbeat answer repeats it.
+    pub fn release_snapshot(&self, request_id: &str) {
+        self.shared
+            .snapshots
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .forget(request_id);
+    }
+
     /// The server's snapshot requests from heartbeat answers, each once and none expired.
     /// There is one receiver: the first call takes it, later calls get `None`.
     pub fn snapshot_requests(&self) -> Option<mpsc::Receiver<SnapshotRequest>> {

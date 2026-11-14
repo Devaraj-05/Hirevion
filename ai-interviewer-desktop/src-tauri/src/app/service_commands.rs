@@ -116,7 +116,7 @@ pub async fn proctoring_snapshot(
             "no request id".to_owned(),
         ));
     };
-    state.services.deliver_snapshot(&request_id, bytes.clone())
+    state.services.deliver_snapshot(&request_id, bytes)
 }
 
 /// How much of the interview's recording the server has acknowledged.
