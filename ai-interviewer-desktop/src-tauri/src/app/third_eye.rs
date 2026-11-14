@@ -92,6 +92,9 @@ pub fn watched(
     match read {
         None => heartbeat_value(mode, None),
         Some(Ok(status)) => heartbeat_value(mode, Some(&status)),
+        Some(Err(error)) if matches!(error.code.as_str(), "pairing-not-found" | "not-found") => {
+            heartbeat_value(mode, None)
+        }
         Some(Err(_)) => last,
     }
 }
@@ -112,17 +115,18 @@ pub async fn watch_third_eye(
     watch: ThirdEyeWatch,
     set: impl Fn(&'static str) + Send + Sync,
 ) {
+    // The first heartbeats carry the mode's value at once, before any read returns.
     let mut last = heartbeat_value(&watch.mode, None);
+    set(last);
+    // Nothing to follow: no third eye, or no phone was paired (an optional one skipped).
+    let Some(pairing_id) = watch.pairing_id.filter(|_| watch.mode != "off") else {
+        return;
+    };
     loop {
-        let read = match (&watch.pairing_id, watch.mode.as_str()) {
-            (_, "off") | (None, _) => None,
-            (Some(pairing_id), _) => Some(
-                status(&session, &tokens, &interview_id, pairing_id)
-                    .await
-                    .map(|view| view.status),
-            ),
-        };
-        last = watched(&watch.mode, read, last);
+        let read = status(&session, &tokens, &interview_id, &pairing_id)
+            .await
+            .map(|view| view.status);
+        last = watched(&watch.mode, Some(read), last);
         set(last);
         tokio::time::sleep(WATCH_EVERY).await;
     }
@@ -221,9 +225,10 @@ impl Pairings {
         }
     }
 
-    /// Notes the briefing's `third_eye` (the server's word, with a waiver already applied).
-    pub fn note_briefing(&self, interview_id: &str, briefing: &Value) {
-        let Some(mode) = briefing["third_eye"].as_str() else {
+    /// Notes the `third_eye` of a briefing or an interview state (the server's word, with a
+    /// waiver already applied).
+    pub fn note_mode(&self, interview_id: &str, answer: &Value) {
+        let Some(mode) = answer["third_eye"].as_str() else {
             return;
         };
         if matches!(mode, "off" | "optional" | "required")
@@ -468,6 +473,9 @@ mod tests {
     fn a_failed_read_keeps_the_last_value() {
         let failed = Err(CommandError::new("network", None));
         assert_eq!(watched("required", Some(failed), "connected"), "connected");
+        // Gone for good: never a stale "connected" for the rest of the interview.
+        let gone = Err(CommandError::new("pairing-not-found", None));
+        assert_eq!(watched("required", Some(gone), "connected"), "not_paired");
         assert_eq!(
             watched("required", Some(Ok("disconnected".into())), "connected"),
             "disconnected"
@@ -480,10 +488,10 @@ mod tests {
     fn remembers_each_interviews_mode_from_its_briefing() {
         let pairings = Pairings::default();
         assert_eq!(pairings.mode("iv"), "off");
-        pairings.note_briefing("iv", &json!({ "third_eye": "required" }));
+        pairings.note_mode("iv", &json!({ "third_eye": "required" }));
         assert_eq!(pairings.mode("iv"), "required");
         // Anything the contract doesn't name is ignored.
-        pairings.note_briefing("iv", &json!({ "third_eye": "sometimes" }));
+        pairings.note_mode("iv", &json!({ "third_eye": "sometimes" }));
         assert_eq!(pairings.mode("iv"), "required");
     }
 

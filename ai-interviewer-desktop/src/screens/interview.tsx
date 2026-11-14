@@ -162,7 +162,10 @@ export function InterviewScreen({
   // The phone's camera, as Rust's watcher reports it to the server (every 5 s).
   const usesPhone = state.third_eye !== undefined && state.third_eye !== "off";
   useEffect(() => {
-    if (!usesPhone) return;
+    if (!usesPhone) {
+      setPhone(null);
+      return;
+    }
     let cancelled = false;
     let timer: number | undefined;
     const read = async () => {

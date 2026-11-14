@@ -274,7 +274,9 @@ impl ProctoringRun {
         } = self;
         watcher.abort();
         let _ = watcher.await;
+        // Awaited, so its hold on the queue is gone before the queue is purged.
         third_eye.abort();
+        let _ = third_eye.await;
         if let Some(snapshots) = snapshots {
             snapshots.abort();
         }

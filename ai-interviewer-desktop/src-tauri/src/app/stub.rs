@@ -86,6 +86,17 @@ fn starter_code(language: &str) -> &'static str {
     }
 }
 
+/// The stub phone after `polls` status reads: nothing yet, then the code waits, is scanned,
+/// and the camera connects.
+fn stub_phone(polls: usize) -> Option<&'static str> {
+    match polls {
+        0 => None,
+        1 => Some("issued"),
+        2 => Some("redeemed"),
+        _ => Some("connected"),
+    }
+}
+
 fn question_id(index: usize) -> String {
     format!("stub-q{index}")
 }
@@ -488,13 +499,11 @@ impl Stub {
             *polls += 1;
             *polls
         });
-        let (status, device) = match polls {
-            1 => ("issued", Value::Null),
-            2 => ("redeemed", Value::Null),
-            _ => (
-                "connected",
-                json!({ "platform": "Android 15 Chrome (stub)" }),
-            ),
+        let status = stub_phone(polls).unwrap_or("issued");
+        let device = if status == "connected" {
+            json!({ "platform": "Android 15 Chrome (stub)" })
+        } else {
+            Value::Null
         };
         Ok(status_view(
             STUB_PAIRING,
@@ -505,13 +514,7 @@ impl Stub {
     /// The stub interview's third eye for the status bar: its phone's last status.
     pub fn third_eye_live(&self) -> &'static str {
         let polls = self.third_eye_polls.lock().map_or(0, |polls| *polls);
-        let status = match polls {
-            0 => None,
-            1 => Some("issued"),
-            2 => Some("redeemed"),
-            _ => Some("connected"),
-        };
-        heartbeat_value("optional", status)
+        heartbeat_value("optional", stub_phone(polls))
     }
 
     fn email(&self) -> CommandResult<String> {

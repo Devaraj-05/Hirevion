@@ -167,9 +167,13 @@ pub async fn interview_request(
             .await
         }
     }?;
-    if action == InterviewAction::Briefing {
-        // The server's word on the third eye (a waiver already applied), for the heartbeat.
-        state.third_eye.note_briefing(&interview_id, &answer);
+    // The server's word on the third eye (a waiver already applied), for the heartbeat.
+    match action {
+        InterviewAction::Briefing => state.third_eye.note_mode(&interview_id, &answer),
+        InterviewAction::Start | InterviewAction::Session => {
+            state.third_eye.note_mode(&interview_id, &answer["state"]);
+        }
+        _ => {}
     }
     Ok(answer)
 }
