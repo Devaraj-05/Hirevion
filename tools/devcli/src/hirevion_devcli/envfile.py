@@ -82,12 +82,14 @@ def render_env(example_text: str, generated: dict[str, str]) -> str:
 
 
 def sync_env(example_text: str, env_text: str, generated: dict[str, str]) -> tuple[str, list[str]]:
-    """Append keys that are in the example but missing from the env text; keep existing values."""
-    existing = parse_env(env_text)
+    """Append keys that are in the example but missing from the env text; keep existing values.
+    Names match in any case, as the settings read them: a key written `nemotron_API_KEY` is
+    the example's NEMOTRON_API_KEY, and an empty copy appended after it would override it."""
+    existing = {key.lower() for key in parse_env(env_text)}
     added: list[str] = []
     lines: list[str] = []
     for key, example_value in parse_env(example_text).items():
-        if key in existing:
+        if key.lower() in existing:
             continue
         added.append(key)
         lines.append(f"{key}={example_value or generated.get(key, '')}")

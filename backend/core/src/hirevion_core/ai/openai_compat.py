@@ -1,8 +1,10 @@
-"""The OpenAI-compatible backend: LLM, embeddings, vision and OCR (ADR-0003, ADR-0011).
+"""The OpenAI-compatible backend: LLM, embeddings, vision and OCR (ADR-0003, ADR-0011,
+ADR-0034).
 
-One code path serves both profiles: Gemini's OpenAI-compatible endpoint in `dev`, and OpenAI
-in `production`. Answers are JSON-schema structured outputs validated with Pydantic, with one
-repair attempt. Untrusted text (resumes, answers, JDs) goes in user messages wrapped by
+One code path serves every provider: OpenRouter and NVIDIA Nemotron in `dev` (routed by task,
+hirevion_core.ai.routing), Gemini when a route is set to it, and OpenAI in `production`.
+Answers are JSON-schema structured outputs validated with Pydantic, with one repair attempt.
+Untrusted text (resumes, answers, JDs) goes in user messages wrapped by
 `as_data()`, and the system message tells the model to treat it as data only (master plan §9).
 """
 
@@ -19,10 +21,10 @@ from typing import Any, Literal, cast
 
 import openai
 from openai import AsyncOpenAI
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, SecretStr, ValidationError
 
 from hirevion_core.ai.recorder import Recorder
-from hirevion_core.ai.settings import AiSettings
+from hirevion_core.ai.settings import AiSettings, Provider
 from hirevion_core.ai.types import (
     AiContext,
     AiOutputInvalid,
@@ -37,8 +39,6 @@ from hirevion_core.ai.types import (
     Usage,
     VisionResult,
 )
-
-Provider = Literal["gemini", "openai"]
 
 DEFAULT_TIMEOUT = 30.0
 FAST_TIMEOUT = 10.0
@@ -148,8 +148,82 @@ class _OcrReading(BaseModel):
     confidence: float
 
 
+@dataclass(frozen=True, slots=True)
+class Endpoint:
+    """One provider as this backend calls it: where, with which key, which models, and how it
+    takes a JSON schema."""
+
+    provider: Provider
+    key: SecretStr
+    key_name: str
+    base_url: str | None
+    model_fast: str
+    model_strong: str
+    embedding_model: str
+    vision_model: str
+    # "response_format": OpenAI's strict json_schema. "guided_json": NVIDIA's hosted endpoint,
+    # which answers `response_format` with empty content and applies `guided_json` only as a
+    # top-level field.
+    structured: Literal["response_format", "guided_json"] = "response_format"
+    # Sent with every chat request (OpenRouter's provider preferences).
+    extra_body: dict[str, Any] | None = None
+
+
+def endpoint(settings: AiSettings, provider: Provider) -> Endpoint:
+    """The endpoint for `provider` from the settings."""
+    if provider == "openrouter":
+        return Endpoint(
+            "openrouter",
+            settings.openrouter_api_key,
+            "OPENROUTER_API_KEY",
+            settings.openrouter_base_url,
+            settings.openrouter_model_fast,
+            settings.openrouter_model_strong,
+            settings.openrouter_embedding_model,
+            settings.openrouter_vision_model,
+            # Only providers that apply the schema, and none that train on the prompts.
+            extra_body={"provider": {"require_parameters": True, "data_collection": "deny"}},
+        )
+    if provider == "nemotron":
+        return Endpoint(
+            "nemotron",
+            settings.nemotron_api_key,
+            "NEMOTRON_API_KEY",
+            settings.nemotron_base_url,
+            settings.nemotron_model_fast,
+            settings.nemotron_model_strong,
+            # Nemotron serves the interview route only; embeddings and page reading are routed
+            # to the screening provider.
+            settings.embedding_model,
+            settings.vision_model,
+            structured="guided_json",
+        )
+    if provider == "gemini":
+        return Endpoint(
+            "gemini",
+            settings.gemini_api_key,
+            "GEMINI_API_KEY",
+            settings.gemini_base_url,
+            settings.llm_model_fast,
+            settings.llm_model_strong,
+            settings.embedding_model,
+            settings.vision_model,
+        )
+    return Endpoint(
+        "openai",
+        settings.openai_api_key,
+        "OPENAI_API_KEY",
+        settings.openai_base_url,
+        settings.llm_model_fast,
+        settings.llm_model_strong,
+        settings.embedding_model,
+        settings.vision_model,
+    )
+
+
 class OpenAICompatible:
-    """LLM, embeddings, vision and OCR through the OpenAI SDK, for Gemini or OpenAI."""
+    """LLM, embeddings, vision and OCR through the OpenAI SDK, for any OpenAI-compatible
+    provider."""
 
     def __init__(
         self,
@@ -163,24 +237,15 @@ class OpenAICompatible:
         self.settings = settings
         self.recorder = recorder
         self.provider = provider
-        base_url: str | None
-        if provider == "gemini":
-            key, base_url, key_name = (
-                settings.gemini_api_key,
-                settings.gemini_base_url,
-                "GEMINI_API_KEY",
-            )
-        else:
-            key, base_url, key_name = (
-                settings.openai_api_key,
-                settings.openai_base_url,
-                "OPENAI_API_KEY",
-            )
+        self.endpoint = endpoint(settings, provider)
+        key = self.endpoint.key
         if client is None and not key.get_secret_value():
-            raise ValueError(f"the {settings.profile} AI profile needs {key_name} in .env")
+            raise ValueError(
+                f"the {settings.profile} AI profile needs {self.endpoint.key_name} in .env"
+            )
         self.client = client or AsyncOpenAI(
             api_key=key.get_secret_value(),
-            base_url=base_url,
+            base_url=self.endpoint.base_url,
             max_retries=max_retries,
             timeout=DEFAULT_TIMEOUT,
         )
@@ -211,14 +276,21 @@ class OpenAICompatible:
         timeout: float,
         output: Callable[[T], Any],
     ) -> _Reply[T]:
-        response_format = {
-            "type": "json_schema",
-            "json_schema": {
-                "name": _SCHEMA_NAME.sub("_", schema.__name__)[:64],
-                "schema": strict_schema(schema),
-                "strict": True,
-            },
-        }
+        shape: dict[str, Any] = {}
+        body: dict[str, Any] = dict(self.endpoint.extra_body or {})
+        if self.endpoint.structured == "guided_json":
+            body["guided_json"] = strict_schema(schema)
+        else:
+            shape["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": _SCHEMA_NAME.sub("_", schema.__name__)[:64],
+                    "schema": strict_schema(schema),
+                    "strict": True,
+                },
+            }
+        if body:
+            shape["extra_body"] = body
         conversation = [{"role": "system", "content": GUARD}, *messages]
 
         async def attempt(extra: list[dict[str, Any]]) -> _Reply[T]:
@@ -226,8 +298,8 @@ class OpenAICompatible:
                 lambda: self.client.chat.completions.create(
                     model=model,
                     messages=cast(Any, [*conversation, *extra]),
-                    response_format=cast(Any, response_format),
                     timeout=timeout,
+                    **shape,
                 )
             )
             content = (response.choices[0].message.content or "") if response.choices else ""
@@ -272,7 +344,7 @@ class OpenAICompatible:
         tier: Tier = "strong",
     ) -> LlmResult[T]:
         fast = tier == "fast"
-        model = self.settings.llm_model_fast if fast else self.settings.llm_model_strong
+        model = self.endpoint.model_fast if fast else self.endpoint.model_strong
         reply = await self._structured(
             ctx,
             "llm",
@@ -285,7 +357,7 @@ class OpenAICompatible:
         return LlmResult(reply.value, model, reply.usage.input_tokens, reply.usage.output_tokens)
 
     async def embed(self, ctx: AiContext, texts: Sequence[str]) -> Embeddings:
-        model, dimensions = self.settings.embedding_model, self.settings.embedding_dimensions
+        model, dimensions = self.endpoint.embedding_model, self.settings.embedding_dimensions
         inputs = list(texts)
 
         async def run() -> _Embedded:
@@ -337,7 +409,7 @@ class OpenAICompatible:
     async def analyze[T: BaseModel](
         self, ctx: AiContext, image: bytes, content_type: str, instruction: str, schema: type[T]
     ) -> VisionResult[T]:
-        model = self.settings.vision_model
+        model = self.endpoint.vision_model
         content = [
             {"type": "text", "text": instruction},
             {"type": "image_url", "image_url": {"url": _data_url(image, content_type)}},
@@ -354,7 +426,7 @@ class OpenAICompatible:
         return VisionResult(reply.value, model, reply.usage.input_tokens, reply.usage.output_tokens)
 
     async def read_page(self, ctx: AiContext, image: bytes, content_type: str) -> OcrPage:
-        model = self.settings.vision_model
+        model = self.endpoint.vision_model
         content = [
             {"type": "text", "text": OCR_INSTRUCTION},
             {"type": "image_url", "image_url": {"url": _data_url(image, content_type)}},

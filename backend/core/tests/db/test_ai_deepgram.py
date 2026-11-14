@@ -19,6 +19,7 @@ from hirevion_core.ai.deepgram import Deepgram
 from hirevion_core.ai.mock import MOCK_PRICES, MockLLM
 from hirevion_core.ai.openai_compat import OpenAICompatible
 from hirevion_core.ai.recorder import Recorder
+from hirevion_core.ai.routing import PurposeRouter
 from hirevion_core.ai.settings import AiSettings
 from hirevion_core.ai.types import AiContext, AiRequestError, AiUnavailable
 from hirevion_core.db.session import Database
@@ -182,15 +183,35 @@ async def test_build_ai_wires_each_profile(app_db: Database) -> None:
     keys = {
         "gemini_api_key": SecretStr("g"),
         "openai_api_key": SecretStr("o"),
+        "openrouter_api_key": SecretStr("r"),
+        "nemotron_api_key": SecretStr("n"),
         "deepgram_api_key": SecretStr("d"),
     }
-    for profile, provider in (("dev", "gemini"), ("production", "openai")):
-        ai = build_ai(AiSettings(profile=profile, **keys), app_db, prices=MOCK_PRICES)  # type: ignore[arg-type]
+    # One provider for both routes (Gemini here, or OpenAI in production): one backend.
+    for settings, provider in (
+        (
+            AiSettings(
+                profile="dev", screening_provider="gemini", interview_provider="gemini", **keys
+            ),
+            "gemini",
+        ),
+        (AiSettings(profile="production", **keys), "openai"),
+    ):
+        ai = build_ai(settings, app_db, prices=MOCK_PRICES)  # type: ignore[arg-type]
         assert isinstance(ai.llm, OpenAICompatible)
         assert ai.llm.provider == provider
         assert ai.embeddings is ai.llm and ai.vision is ai.llm and ai.ocr is ai.llm
         assert isinstance(ai.stt, Deepgram) and ai.tts is ai.stt
         await ai.aclose()
+
+    # The default `dev`: screening on OpenRouter, interviews on Nemotron (ADR-0034).
+    ai = build_ai(AiSettings(profile="dev", **keys), app_db, prices=MOCK_PRICES)  # type: ignore[arg-type]
+    assert isinstance(ai.llm, PurposeRouter)
+    screening, interview = ai.llm.parts
+    assert isinstance(screening, OpenAICompatible) and isinstance(interview, OpenAICompatible)
+    assert (screening.provider, interview.provider) == ("openrouter", "nemotron")
+    assert ai.embeddings is screening and ai.vision is screening and ai.ocr is screening
+    await ai.aclose()
 
 
 async def test_the_mock_profile_reads_scripted_answers_from_a_file(

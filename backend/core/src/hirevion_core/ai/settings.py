@@ -12,6 +12,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from hirevion_core.settings import repo_env_file
 
 GEMINI_OPENAI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+NEMOTRON_BASE_URL = "https://integrate.api.nvidia.com/v1"
+Provider = Literal["openrouter", "nemotron", "gemini", "openai"]
 
 
 def _env(name: str, env: str) -> AliasChoices:
@@ -19,13 +22,57 @@ def _env(name: str, env: str) -> AliasChoices:
 
 
 class AiSettings(BaseSettings):
-    """`dev` = Gemini + Deepgram, `production` = OpenAI + Deepgram, `mock` = no network
-    (ADR-0003). The model names apply to whichever profile is active."""
+    """`dev` = OpenRouter for screening + NVIDIA Nemotron for interviews + Deepgram for speech
+    (ADR-0034; each route's provider is configurable), `production` = OpenAI + Deepgram,
+    `mock` = no network. Names are read in any case (`nemotron_API_KEY` works)."""
 
     model_config = SettingsConfigDict(extra="ignore", hide_input_in_errors=True)
 
     profile: Literal["dev", "production", "mock"] = Field(
         "dev", validation_alias=_env("profile", "HV_AI_PROFILE")
+    )
+    # The `dev` profile's providers per route (hirevion_core.ai.routing).
+    screening_provider: Provider = Field(
+        "openrouter", validation_alias=_env("screening_provider", "HV_AI_SCREENING_PROVIDER")
+    )
+    interview_provider: Provider = Field(
+        "nemotron", validation_alias=_env("interview_provider", "HV_AI_INTERVIEW_PROVIDER")
+    )
+    openrouter_api_key: SecretStr = Field(
+        SecretStr(""), validation_alias=_env("openrouter_api_key", "OPENROUTER_API_KEY")
+    )
+    nemotron_api_key: SecretStr = Field(
+        SecretStr(""), validation_alias=_env("nemotron_api_key", "NEMOTRON_API_KEY")
+    )
+    openrouter_base_url: str = Field(
+        OPENROUTER_BASE_URL, validation_alias=_env("openrouter_base_url", "HV_OPENROUTER_BASE_URL")
+    )
+    nemotron_base_url: str = Field(
+        NEMOTRON_BASE_URL, validation_alias=_env("nemotron_base_url", "HV_NEMOTRON_BASE_URL")
+    )
+    openrouter_model_fast: str = Field(
+        "openai/gpt-5.4-nano",
+        validation_alias=_env("openrouter_model_fast", "HV_OPENROUTER_MODEL_FAST"),
+    )
+    openrouter_model_strong: str = Field(
+        "openai/gpt-5-mini",
+        validation_alias=_env("openrouter_model_strong", "HV_OPENROUTER_MODEL_STRONG"),
+    )
+    openrouter_embedding_model: str = Field(
+        "openai/text-embedding-3-small",
+        validation_alias=_env("openrouter_embedding_model", "HV_OPENROUTER_EMBEDDING_MODEL"),
+    )
+    openrouter_vision_model: str = Field(
+        "openai/gpt-5.4-nano",
+        validation_alias=_env("openrouter_vision_model", "HV_OPENROUTER_VISION_MODEL"),
+    )
+    nemotron_model_fast: str = Field(
+        "nvidia/nemotron-3.5-lightning-30b-a3b",
+        validation_alias=_env("nemotron_model_fast", "HV_NEMOTRON_MODEL_FAST"),
+    )
+    nemotron_model_strong: str = Field(
+        "nvidia/nemotron-3.5-super-vl-120b-a12b",
+        validation_alias=_env("nemotron_model_strong", "HV_NEMOTRON_MODEL_STRONG"),
     )
     gemini_api_key: SecretStr = Field(
         SecretStr(""), validation_alias=_env("gemini_api_key", "GEMINI_API_KEY")

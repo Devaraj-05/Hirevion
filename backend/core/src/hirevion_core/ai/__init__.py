@@ -4,7 +4,8 @@
     result = await ai.llm.complete(AiContext(org_id, "screening.rank", prompt_version="v3"),
                                    messages, RankingSchema)
 
-Profiles: `dev` (Gemini + Deepgram), `production` (OpenAI + Deepgram), `mock` (no network).
+Profiles: `dev` (OpenRouter for screening, NVIDIA Nemotron for interviews, Deepgram for speech;
+ADR-0034), `production` (OpenAI + Deepgram), `mock` (no network).
 Every call is budget-checked and recorded in `ai_invocations` with its usage and cost.
 """
 
@@ -25,6 +26,7 @@ from hirevion_core.ai.mock import (
 from hirevion_core.ai.openai_compat import OpenAICompatible
 from hirevion_core.ai.prices import PriceBook
 from hirevion_core.ai.recorder import Recorder
+from hirevion_core.ai.routing import PurposeRouter
 from hirevion_core.ai.settings import AiSettings
 from hirevion_core.ai.types import (
     EmbeddingService,
@@ -47,12 +49,16 @@ class AiServices:
     ocr: OCRService
 
     async def aclose(self) -> None:
-        """Close the vendor connections (each backend once, however many services it serves)."""
+        """Close the vendor connections (each backend once, however many services it serves;
+        a router's backends count as its own)."""
         seen: set[int] = set()
+        backends: list[object] = []
         for service in (self.llm, self.embeddings, self.stt, self.tts, self.vision, self.ocr):
-            close = getattr(service, "aclose", None)
-            if close is not None and id(service) not in seen:
-                seen.add(id(service))
+            backends.extend(getattr(service, "parts", (service,)))
+        for backend in backends:
+            close = getattr(backend, "aclose", None)
+            if close is not None and id(backend) not in seen:
+                seen.add(id(backend))
                 await close()
 
 
@@ -71,12 +77,24 @@ def build_ai(settings: AiSettings, db: Database, prices: PriceBook | None = None
             vision=MockVision(recorder, settings),
             ocr=MockOCR(recorder, settings),
         )
-    compat = OpenAICompatible(
-        settings, recorder, "gemini" if settings.profile == "dev" else "openai"
+    if settings.profile == "production":
+        compat = OpenAICompatible(settings, recorder, "openai")
+        speech = Deepgram(settings, recorder)
+        return AiServices(
+            llm=compat, embeddings=compat, stt=speech, tts=speech, vision=compat, ocr=compat
+        )
+    # `dev`: screening (with its embeddings and page reading) and interviews each go to their
+    # route's provider (ADR-0034).
+    screening = OpenAICompatible(settings, recorder, settings.screening_provider)
+    interview = (
+        screening
+        if settings.interview_provider == settings.screening_provider
+        else OpenAICompatible(settings, recorder, settings.interview_provider)
     )
+    chat: LLMService = screening if interview is screening else PurposeRouter(screening, interview)
     speech = Deepgram(settings, recorder)
     return AiServices(
-        llm=compat, embeddings=compat, stt=speech, tts=speech, vision=compat, ocr=compat
+        llm=chat, embeddings=screening, stt=speech, tts=speech, vision=screening, ocr=screening
     )
 
 

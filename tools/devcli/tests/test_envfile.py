@@ -115,3 +115,13 @@ def test_the_candidate_token_key_is_a_p256_signing_key() -> None:
     key = serialization.load_der_private_key(der, password=None)
     assert isinstance(key, ec.EllipticCurvePrivateKey)
     assert isinstance(key.curve, ec.SECP256R1)
+
+
+def test_sync_env_matches_names_in_any_case() -> None:
+    # The settings read names in any case, so a key written as `nemotron_API_KEY` is the
+    # example's NEMOTRON_API_KEY: appending an empty copy after it would override its value.
+    example = "NEMOTRON_API_KEY=\nOPENROUTER_API_KEY=\nHV_NEW=1\n"
+    env = "nemotron_API_KEY=n-key\nOpenRouter_API_KEY=o-key\n"
+    text, added = sync_env(example, env, {})
+    assert added == ["HV_NEW"]
+    assert text.count("API_KEY") == 2
