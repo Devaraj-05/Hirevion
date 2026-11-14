@@ -88,7 +88,12 @@ export function ScoresPanel({ id, canModify }: { id: string; canModify: boolean 
         ) : null}
       </CardHeader>
       <CardContent className="grid gap-3">
-        <div className="overflow-x-auto">
+        <section
+          aria-label={t("caption")}
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: a table that scrolls sideways must be reachable by keyboard.
+          tabIndex={0}
+          className="overflow-x-auto"
+        >
           <table className="w-full text-left text-sm">
             <caption className="sr-only">{t("caption")}</caption>
             <thead>
@@ -127,7 +132,7 @@ export function ScoresPanel({ id, canModify }: { id: string; canModify: boolean 
               ))}
             </tbody>
           </table>
-        </div>
+        </section>
         {data.changes.length > 0 ? (
           <details>
             <summary className="cursor-pointer text-sm">

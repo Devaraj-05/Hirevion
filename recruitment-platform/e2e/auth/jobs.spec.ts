@@ -52,8 +52,9 @@ test("a recruiter creates a job, has its description read, applies it and opens 
   });
   await expect(page.getByText(/^From the description: /).first()).toBeVisible();
   await noAxeViolations(page);
-  // The review suggests the description's own title; keep the test's, so the list finds it.
-  await page.getByLabel("Title").fill(title);
+  // The review suggests the description's own title; keep the test's, so the list finds it. The
+  // Details tab has a Title field too, so aim at the description's.
+  await page.getByRole("tabpanel", { name: "Description" }).getByLabel("Title").fill(title);
   await page.getByRole("button", { name: "Apply to job" }).click();
   await expect(page.getByText("The description was applied to the job.")).toBeVisible();
 

@@ -110,7 +110,12 @@ function Block({ block }: { block: ReportBlock }) {
       );
     case "table":
       return (
-        <div className="overflow-x-auto rounded-lg border border-border">
+        <section
+          aria-label={block.caption}
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: a table that scrolls sideways must be reachable by keyboard.
+          tabIndex={0}
+          className="overflow-x-auto rounded-lg border border-border"
+        >
           <table className="w-full text-left text-sm">
             <caption className="px-3 py-2 text-left font-medium">{block.caption}</caption>
             <thead className="bg-surface-muted">
@@ -144,7 +149,7 @@ function Block({ block }: { block: ReportBlock }) {
               )}
             </tbody>
           </table>
-        </div>
+        </section>
       );
     case "quotes":
       return (
