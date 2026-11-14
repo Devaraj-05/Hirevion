@@ -55,21 +55,18 @@ class AiServices:
         a router's backends count as its own)."""
         seen: set[int] = set()
         backends: list[object] = []
-        pending: list[object] = [
-            self.llm,
-            self.embeddings,
-            self.stt,
-            self.tts,
-            self.vision,
-            self.ocr,
-        ]
-        while pending:  # a router's parts may themselves have parts (a fallback)
-            service = pending.pop(0)
+
+        def collect(service: object) -> None:
+            # A router's parts may themselves have parts (a fallback).
             parts = getattr(service, "parts", None)
             if parts is None:
                 backends.append(service)
             else:
-                pending.extend(parts)
+                for part in parts:
+                    collect(part)
+
+        for service in (self.llm, self.embeddings, self.stt, self.tts, self.vision, self.ocr):
+            collect(service)
         for backend in backends:
             close = getattr(backend, "aclose", None)
             if close is not None and id(backend) not in seen:
@@ -104,22 +101,18 @@ def build_ai(settings: AiSettings, db: Database, prices: PriceBook | None = None
     # `dev` (ADR-0034): screening (with page reading) and interviews each go to their route's
     # provider; screening falls back to a second provider when its own can't serve; every
     # stored vector comes from the one embedding provider.
-    fallback = settings.screening_fallback
-    used: list[Provider] = [settings.screening_provider]
-    if fallback != "none" and fallback != settings.screening_provider:
-        used.append(fallback)
-    used += [settings.interview_provider, settings.embedding_provider]
-    used = list(dict.fromkeys(used))
+    first = settings.screening_provider
+    choice = settings.screening_fallback
+    fallback: Provider | None = None if choice == "none" or choice == first else choice
+    wanted = [first, fallback, settings.interview_provider, settings.embedding_provider]
+    used: list[Provider] = list(dict.fromkeys(p for p in wanted if p is not None))
     # Every key first: a client opened before a later key fails would never be closed.
     for provider in used:
         require_key(settings, provider)
     require_deepgram_key(settings)
     backends = {provider: OpenAICompatible(settings, recorder, provider) for provider in used}
-    primary = backends[settings.screening_provider]
     screening: Fallback | OpenAICompatible = (
-        Fallback(primary, backends[fallback])
-        if fallback in backends and fallback != settings.screening_provider
-        else primary
+        backends[first] if fallback is None else Fallback(backends[first], backends[fallback])
     )
     interview = backends[settings.interview_provider]
     chat: LLMService = screening if interview is screening else PurposeRouter(screening, interview)

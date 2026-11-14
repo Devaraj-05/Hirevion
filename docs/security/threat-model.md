@@ -563,6 +563,8 @@ By product-owner decision (2026-11-14) the `dev` profile sends screening work (j
 | Denial of service | AI spend runs away | OpenRouter's default models are priced in `prices.yaml`, so the monthly budget counts and stops them |
 
 **Residual risks:**
-- `data_collection: "deny"` is a routing preference, not a contract; neither OpenRouter nor NVIDIA has a DPA yet.
+- `data_collection: "deny"` is a routing preference, not a contract; neither OpenRouter nor NVIDIA has a DPA yet, and NVIDIA's hosted API has no per-request no-training flag at all (it receives every embedding's resume text).
+- One NVIDIA key serves live interviews, every embedding and screening fallbacks: a bulk import while OpenRouter has no credit can rate-limit interview turns. Separate keys or OpenRouter credit before heavy screening.
+- Embeddings depend on NVIDIA alone (no fallback, so vectors stay comparable): an NVIDIA outage stops document processing at the embedding step.
 - NVIDIA publishes no per-token price for its hosted Nemotron, so those calls record no cost and the monthly budget doesn't stop them; NVIDIA's own key limits are the only cap.
 - Stored vectors don't record their embedding model, so vectors from different providers can be compared after a switch; re-process documents after switching.

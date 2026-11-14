@@ -58,19 +58,25 @@ def is_placeholder(value: str) -> bool:
     return not stripped or _PLACEHOLDER.match(stripped) is not None
 
 
+def _env_name(field: str) -> str:
+    """The environment name the app reads `field` from (its last alias), in lower case."""
+    alias = AiSettings.model_fields[field].validation_alias
+    choices = getattr(alias, "choices", [alias])
+    return str(choices[-1]).lower()
+
+
 def required_keys(values: dict[str, str]) -> tuple[str, ...]:
     """The keys the providers in `values` need (the screening and interview routes, the
     screening fallback, the embeddings), with the app's defaults for unset ones."""
     by_name = {key.lower(): value.strip().lower() for key, value in values.items()}
-    settings = {
-        "screening_provider": "hv_ai_screening_provider",
-        "screening_fallback": "hv_ai_screening_fallback",
-        "interview_provider": "hv_ai_interview_provider",
-        "embedding_provider": "hv_ai_embedding_provider",
-    }
+    fields = (
+        "screening_provider",
+        "screening_fallback",
+        "interview_provider",
+        "embedding_provider",
+    )
     providers = [
-        by_name.get(env) or AiSettings.model_fields[field].default
-        for field, env in settings.items()
+        by_name.get(_env_name(field)) or AiSettings.model_fields[field].default for field in fields
     ]
     keys = [_ROUTE_KEYS[provider] for provider in providers if provider in _ROUTE_KEYS]
     return tuple(dict.fromkeys([*keys, "DEEPGRAM_API_KEY"]))

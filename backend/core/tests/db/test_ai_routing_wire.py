@@ -159,17 +159,21 @@ async def test_embeddings_come_from_nemotron_and_page_reading_from_openrouter(
     )
     ai = build_ai(SETTINGS, app_db, MOCK_PRICES)
     try:
-        vectors = await ai.embeddings.embed(AiContext(org, "resume.parse"), ["Python engineer"])
+        vectors = await ai.embeddings.embed(AiContext(org, "resume.embed"), ["Python engineer"])
+        await ai.embeddings.embed(AiContext(org, "jd.embed"), ["We need a Python engineer"])
+        await ai.embeddings.embed(AiContext(org, "job.embed"), ["Backend Engineer"])
         read = await ai.ocr.read_page(AiContext(org, "resume.ocr"), b"\x89PNG", "image/png")
     finally:
         await ai.aclose()
 
     assert vectors.vectors == [[1.0, 0.0, 0.0]]
     # One embedding model for every stored vector, so they stay comparable (ADR-0034).
-    assert sent(embed)["model"] == "nvidia/embed"
-    assert sent(embed)["dimensions"] == 3
-    # NVIDIA's retrieval models embed a document as a "passage".
-    assert sent(embed)["input_type"] == "passage"
+    bodies = [json.loads(call.request.content) for call in embed.calls]
+    assert {body["model"] for body in bodies} == {"nvidia/embed"}
+    assert {body["dimensions"] for body in bodies} == {3}
+    # NVIDIA's retrieval models are asymmetric: a resume is a "passage", and the job it is
+    # matched against is the "query".
+    assert [body["input_type"] for body in bodies] == ["passage", "query", "query"]
     assert embed.calls.last.request.headers["authorization"] == "Bearer n-key"
     assert read.text == "HIREVION" and sent(page)["model"] == "router/vision"
 
@@ -202,12 +206,12 @@ async def test_screening_falls_back_to_nemotron_when_openrouter_cannot_serve(
         "nvidia/strong",
         "nvidia/vision",
     ]
-    assert router.call_count == 2
-    # Both attempts are on record: OpenRouter's refusal (no credit), then Nemotron's answer.
+    # After OpenRouter's refusal it rests for the cooldown: page reading goes straight on.
+    assert router.call_count == 1
+    # Every attempt is on record: OpenRouter's refusal (no credit), then Nemotron's answers.
     assert await providers(admin_engine, org) == [
         ("screening.assess", "openrouter"),
         ("screening.assess", "nemotron"),
-        ("resume.ocr", "openrouter"),
         ("resume.ocr", "nemotron"),
     ]
 

@@ -53,6 +53,9 @@ REPAIR = (
     "That reply doesn't match the required JSON schema ({errors}). Reply again with only JSON "
     "that matches the schema."
 )
+# Embedding purposes whose text is matched against resumes: embedded as queries where the
+# model tells queries from passages (NVIDIA's `input_type`).
+QUERY_AREAS = frozenset({"jd", "job"})
 OCR_INSTRUCTION = (
     "Transcribe all text on this page exactly, in reading order, keeping line breaks. Set "
     "confidence between 0 and 1 for how legible the page is."
@@ -380,7 +383,10 @@ class OpenAICompatible:
 
     async def embed(self, ctx: AiContext, texts: Sequence[str]) -> Embeddings:
         model, dimensions = self.endpoint.embedding_model, self.settings.embedding_dimensions
-        extra = self.endpoint.embedding_body
+        extra = dict(self.endpoint.embedding_body or {})
+        if "input_type" in extra and ctx.purpose.split(".", 1)[0] in QUERY_AREAS:
+            # Asymmetric retrieval models: the job is the query a resume (a passage) answers.
+            extra["input_type"] = "query"
         inputs = list(texts)
 
         async def run() -> _Embedded:
