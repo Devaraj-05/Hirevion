@@ -138,7 +138,14 @@ def test_the_required_keys_follow_the_routes() -> None:
         "OPENROUTER_API_KEY": "o" * 40,
         "DEEPGRAM_API_KEY": "d" * 40,
     }
-    assert missing_required(by_openrouter) == []
+    # Screening's fallback and every vector are on Nemotron unless set otherwise.
+    assert missing_required(by_openrouter) == ["NEMOTRON_API_KEY"]
+    only_openrouter = {
+        **by_openrouter,
+        "HV_AI_SCREENING_FALLBACK": "none",
+        "HV_AI_EMBEDDING_PROVIDER": "openrouter",
+    }
+    assert missing_required(only_openrouter) == []
     assert missing_required({"hv_ai_screening_provider": "gemini"}) == [
         "GEMINI_API_KEY",
         "NEMOTRON_API_KEY",

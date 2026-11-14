@@ -59,14 +59,20 @@ def is_placeholder(value: str) -> bool:
 
 
 def required_keys(values: dict[str, str]) -> tuple[str, ...]:
-    """The keys the routes in `values` need, with the app's defaults for unset routes."""
+    """The keys the providers in `values` need (the screening and interview routes, the
+    screening fallback, the embeddings), with the app's defaults for unset ones."""
     by_name = {key.lower(): value.strip().lower() for key, value in values.items()}
-    routes = [
-        by_name.get(f"hv_ai_{route}_provider")
-        or AiSettings.model_fields[f"{route}_provider"].default
-        for route in ("screening", "interview")
+    settings = {
+        "screening_provider": "hv_ai_screening_provider",
+        "screening_fallback": "hv_ai_screening_fallback",
+        "interview_provider": "hv_ai_interview_provider",
+        "embedding_provider": "hv_ai_embedding_provider",
+    }
+    providers = [
+        by_name.get(env) or AiSettings.model_fields[field].default
+        for field, env in settings.items()
     ]
-    keys = [_ROUTE_KEYS[provider] for provider in routes if provider in _ROUTE_KEYS]
+    keys = [_ROUTE_KEYS[provider] for provider in providers if provider in _ROUTE_KEYS]
     return tuple(dict.fromkeys([*keys, "DEEPGRAM_API_KEY"]))
 
 

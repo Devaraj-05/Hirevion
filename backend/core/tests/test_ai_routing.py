@@ -25,6 +25,8 @@ def test_the_provider_keys_load_from_the_env_file_in_any_case(
     assert settings.nemotron_api_key.get_secret_value() == "n-key"
     assert settings.openrouter_api_key.get_secret_value() == "o-key"
     assert (settings.screening_provider, settings.interview_provider) == ("openrouter", "nemotron")
+    # If OpenRouter isn't working, screening uses Nemotron; every vector comes from Nemotron.
+    assert (settings.screening_fallback, settings.embedding_provider) == ("nemotron", "nemotron")
 
 
 @pytest.mark.parametrize(
@@ -133,8 +135,6 @@ def test_every_task_in_the_code_has_a_route() -> None:
 @pytest.mark.parametrize(
     ("setting", "provider"),
     [
-        # Nemotron serves no embeddings or page reading here.
-        ("screening_provider", "nemotron"),
         # In `dev`, OpenAI would read Gemini's model names (HV_LLM_MODEL_*).
         ("screening_provider", "openai"),
         ("interview_provider", "openai"),

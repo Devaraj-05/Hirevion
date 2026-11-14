@@ -550,7 +550,7 @@ By product-owner decision (2026-11-14) the `dev` profile sends screening work (j
 
 **Trust boundaries:**
 - the API, worker and interview agent → OpenRouter → the upstream provider OpenRouter picks;
-- the API, worker and interview agent → NVIDIA's hosted API (`integrate.api.nvidia.com`).
+- the API, worker and interview agent → NVIDIA's hosted API (`integrate.api.nvidia.com`), which also receives resume text for every embedding and screening calls when OpenRouter can't serve.
 
 | Threat (STRIDE) | Example | Control |
 |---|---|---|
@@ -559,7 +559,7 @@ By product-owner decision (2026-11-14) the `dev` profile sends screening work (j
 | Repudiation | Nobody can say which model produced a score | Each call's provider, model, prompt version, tokens and cost (NULL for Nemotron) are rows in `ai_invocations` |
 | Information disclosure | Candidate data reaches a provider that stores or trains on prompts | Development uses synthetic data only until DPAs are signed (§17); OpenRouter requests carry `data_collection: "deny"`, so only providers that don't collect prompts serve them |
 | Information disclosure | A key leaks | Keys only in the gitignored root `.env`, read server side (never in the desktop app or a web bundle); `hv doctor` never prints a key or OpenRouter's key label; vendor errors carry the status, never the body |
-| Denial of service | OpenRouter refuses calls (402) because it reserves credit for a model's whole output | Every chat call caps its answer at `HV_LLM_MAX_OUTPUT_TOKENS` (16,384, reasoning included) |
+| Denial of service | OpenRouter refuses calls (402) because it reserves credit for a model's whole output, or runs out of credit | Every chat call caps its answer at `HV_LLM_MAX_OUTPUT_TOKENS` (16,384, reasoning included); a call OpenRouter can't serve (402, 429, 5xx, unreachable) goes to Nemotron (`HV_AI_SCREENING_FALLBACK`); a refused request is never moved |
 | Denial of service | AI spend runs away | OpenRouter's default models are priced in `prices.yaml`, so the monthly budget counts and stops them |
 
 **Residual risks:**

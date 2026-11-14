@@ -16,6 +16,7 @@ from dataclasses import dataclass
 
 from hirevion_core.ai.deepgram import Deepgram
 from hirevion_core.ai.deepgram import require_key as require_deepgram_key
+from hirevion_core.ai.fallback import Fallback
 from hirevion_core.ai.mock import (
     MockEmbeddings,
     MockLLM,
@@ -28,7 +29,7 @@ from hirevion_core.ai.openai_compat import OpenAICompatible, require_key
 from hirevion_core.ai.prices import PriceBook
 from hirevion_core.ai.recorder import Recorder
 from hirevion_core.ai.routing import PurposeRouter
-from hirevion_core.ai.settings import AiSettings
+from hirevion_core.ai.settings import AiSettings, Provider
 from hirevion_core.ai.types import (
     EmbeddingService,
     LLMService,
@@ -54,8 +55,21 @@ class AiServices:
         a router's backends count as its own)."""
         seen: set[int] = set()
         backends: list[object] = []
-        for service in (self.llm, self.embeddings, self.stt, self.tts, self.vision, self.ocr):
-            backends.extend(getattr(service, "parts", (service,)))
+        pending: list[object] = [
+            self.llm,
+            self.embeddings,
+            self.stt,
+            self.tts,
+            self.vision,
+            self.ocr,
+        ]
+        while pending:  # a router's parts may themselves have parts (a fallback)
+            service = pending.pop(0)
+            parts = getattr(service, "parts", None)
+            if parts is None:
+                backends.append(service)
+            else:
+                pending.extend(parts)
         for backend in backends:
             close = getattr(backend, "aclose", None)
             if close is not None and id(backend) not in seen:
@@ -87,21 +101,36 @@ def build_ai(settings: AiSettings, db: Database, prices: PriceBook | None = None
         return AiServices(
             llm=compat, embeddings=compat, stt=speech, tts=speech, vision=compat, ocr=compat
         )
-    # `dev`: screening (with its embeddings and page reading) and interviews each go to their
-    # route's provider (ADR-0034).
-    require_key(settings, settings.screening_provider)
-    require_key(settings, settings.interview_provider)
+    # `dev` (ADR-0034): screening (with page reading) and interviews each go to their route's
+    # provider; screening falls back to a second provider when its own can't serve; every
+    # stored vector comes from the one embedding provider.
+    fallback = settings.screening_fallback
+    used: list[Provider] = [settings.screening_provider]
+    if fallback != "none" and fallback != settings.screening_provider:
+        used.append(fallback)
+    used += [settings.interview_provider, settings.embedding_provider]
+    used = list(dict.fromkeys(used))
+    # Every key first: a client opened before a later key fails would never be closed.
+    for provider in used:
+        require_key(settings, provider)
     require_deepgram_key(settings)
-    screening = OpenAICompatible(settings, recorder, settings.screening_provider)
-    interview = (
-        screening
-        if settings.interview_provider == settings.screening_provider
-        else OpenAICompatible(settings, recorder, settings.interview_provider)
+    backends = {provider: OpenAICompatible(settings, recorder, provider) for provider in used}
+    primary = backends[settings.screening_provider]
+    screening: Fallback | OpenAICompatible = (
+        Fallback(primary, backends[fallback])
+        if fallback in backends and fallback != settings.screening_provider
+        else primary
     )
+    interview = backends[settings.interview_provider]
     chat: LLMService = screening if interview is screening else PurposeRouter(screening, interview)
     speech = Deepgram(settings, recorder)
     return AiServices(
-        llm=chat, embeddings=screening, stt=speech, tts=speech, vision=screening, ocr=screening
+        llm=chat,
+        embeddings=backends[settings.embedding_provider],
+        stt=speech,
+        tts=speech,
+        vision=screening,
+        ocr=screening,
     )
 
 

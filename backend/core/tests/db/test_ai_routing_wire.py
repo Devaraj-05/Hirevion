@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from hirevion_core.ai import build_ai, openai_compat
 from hirevion_core.ai.mock import MOCK_PRICES
 from hirevion_core.ai.settings import AiSettings
-from hirevion_core.ai.types import AiContext
+from hirevion_core.ai.types import AiContext, AiRequestError
 from hirevion_core.db.session import Database
 
 pytestmark = pytest.mark.db
@@ -39,6 +39,8 @@ SETTINGS = AiSettings(
     openrouter_vision_model="router/vision",
     nemotron_model_fast="nvidia/fast",
     nemotron_model_strong="nvidia/strong",
+    nemotron_embedding_model="nvidia/embed",
+    nemotron_vision_model="nvidia/vision",
     embedding_dimensions=3,
     max_output_tokens=1234,
 )
@@ -67,6 +69,10 @@ def completion(content: str, model: str) -> httpx.Response:
             "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
         },
     )
+
+
+def problem(status: int) -> httpx.Response:
+    return httpx.Response(status, json={"error": {"message": "refused", "code": status}})
 
 
 def sent(route: respx.Route) -> dict[str, Any]:
@@ -133,16 +139,16 @@ async def test_screening_goes_to_openrouter_and_interviews_to_nemotron(
 
 
 @respx.mock
-async def test_resume_embeddings_and_page_reading_go_to_openrouter(
+async def test_embeddings_come_from_nemotron_and_page_reading_from_openrouter(
     app_db: Database, make_organization: MakeOrganization
 ) -> None:
     org = await make_organization("RoutingEmbed")
-    embed = respx.post(f"{OPENROUTER}/embeddings").mock(
+    embed = respx.post(f"{NEMOTRON}/embeddings").mock(
         return_value=httpx.Response(
             200,
             json={
                 "object": "list",
-                "model": "router/embed",
+                "model": "nvidia/embed",
                 "data": [{"object": "embedding", "index": 0, "embedding": [1.0, 0.0, 0.0]}],
                 "usage": {"prompt_tokens": 3, "total_tokens": 3},
             },
@@ -159,11 +165,91 @@ async def test_resume_embeddings_and_page_reading_go_to_openrouter(
         await ai.aclose()
 
     assert vectors.vectors == [[1.0, 0.0, 0.0]]
-    assert sent(embed)["model"] == "router/embed"
+    # One embedding model for every stored vector, so they stay comparable (ADR-0034).
+    assert sent(embed)["model"] == "nvidia/embed"
     assert sent(embed)["dimensions"] == 3
-    # Resume text is the most personal payload: embeddings get the same provider preferences.
-    assert sent(embed)["provider"] == {"require_parameters": True, "data_collection": "deny"}
+    # NVIDIA's retrieval models embed a document as a "passage".
+    assert sent(embed)["input_type"] == "passage"
+    assert embed.calls.last.request.headers["authorization"] == "Bearer n-key"
     assert read.text == "HIREVION" and sent(page)["model"] == "router/vision"
+
+
+@respx.mock
+async def test_screening_falls_back_to_nemotron_when_openrouter_cannot_serve(
+    app_db: Database, admin_engine: AsyncEngine, make_organization: MakeOrganization
+) -> None:
+    """Product-owner decision, 2026-11-14: if OpenRouter isn't working, use Nemotron."""
+    org = await make_organization("RoutingFallback")
+    router = respx.post(f"{OPENROUTER}/chat/completions").mock(return_value=problem(402))
+    nvidia = respx.post(f"{NEMOTRON}/chat/completions").mock(
+        side_effect=[
+            completion('{"summary": "fits", "score": 4}', "nvidia/strong"),
+            completion('{"text": "HIREVION", "confidence": 0.9}', "nvidia/vision"),
+        ]
+    )
+    ai = build_ai(SETTINGS, app_db, MOCK_PRICES)
+    try:
+        messages = [{"role": "user", "content": "<resume>x</resume>"}]
+        assessed = await ai.llm.complete(AiContext(org, "screening.assess"), messages, Verdict)
+        read = await ai.ocr.read_page(AiContext(org, "resume.ocr"), b"\x89PNG", "image/png")
+    finally:
+        await ai.aclose()
+
+    assert assessed.value == Verdict(summary="fits", score=4)
+    assert assessed.model == "nvidia/strong"
+    assert read.text == "HIREVION"
+    assert [json.loads(call.request.content)["model"] for call in nvidia.calls] == [
+        "nvidia/strong",
+        "nvidia/vision",
+    ]
+    assert router.call_count == 2
+    # Both attempts are on record: OpenRouter's refusal (no credit), then Nemotron's answer.
+    assert await providers(admin_engine, org) == [
+        ("screening.assess", "openrouter"),
+        ("screening.assess", "nemotron"),
+        ("resume.ocr", "openrouter"),
+        ("resume.ocr", "nemotron"),
+    ]
+
+
+@respx.mock
+async def test_a_refused_request_does_not_fall_back(
+    app_db: Database, make_organization: MakeOrganization
+) -> None:
+    org = await make_organization("RoutingRefused")
+    respx.post(f"{OPENROUTER}/chat/completions").mock(return_value=problem(400))
+    nvidia = respx.post(f"{NEMOTRON}/chat/completions").mock(
+        return_value=completion('{"summary": "x", "score": 1}', "nvidia/strong")
+    )
+    ai = build_ai(SETTINGS, app_db, MOCK_PRICES)
+    try:
+        with pytest.raises(AiRequestError):
+            await ai.llm.complete(
+                AiContext(org, "resume.parse"), [{"role": "user", "content": "x"}], Verdict
+            )
+    finally:
+        await ai.aclose()
+    # A bad request is a bug to fix, not an outage: sending it elsewhere would hide it.
+    assert not nvidia.called
+
+
+@respx.mock
+async def test_screening_can_run_on_nemotron_alone(
+    app_db: Database, make_organization: MakeOrganization
+) -> None:
+    org = await make_organization("RoutingNemotronOnly")
+    router = respx.post(f"{OPENROUTER}/chat/completions").mock(return_value=problem(500))
+    nvidia = respx.post(f"{NEMOTRON}/chat/completions").mock(
+        return_value=completion('{"text": "HIREVION", "confidence": 0.9}', "nvidia/vision")
+    )
+    settings = SETTINGS.model_copy(update={"screening_provider": "nemotron"})
+    ai = build_ai(settings, app_db, MOCK_PRICES)
+    try:
+        read = await ai.ocr.read_page(AiContext(org, "resume.ocr"), b"\x89PNG", "image/png")
+    finally:
+        await ai.aclose()
+    assert read.text == "HIREVION" and sent(nvidia)["model"] == "nvidia/vision"
+    assert not router.called
 
 
 @pytest.mark.parametrize(

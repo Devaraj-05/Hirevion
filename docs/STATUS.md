@@ -29,12 +29,13 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 | D3 SP-13 | Third eye: single-use QR pairing, the phone page (permission guidance, placement, 720p/15 fps rear camera, Wake Lock, pause on lock, reconnect), LiveKit-observed status into proctoring, the `start` gate; Egress of the conversation audio and the third-eye video into playback | #17 / ADR-0040 |
 | AI routing | Product-owner decision, 2026-11-14: in `dev`, OpenRouter screens (job descriptions, resumes, screening, embeddings, page reading) and NVIDIA Nemotron interviews (questions, interview turns, evaluation), Deepgram keeps speech; every answer's tokens capped (a cut-off answer isn't retried); embeddings carry OpenRouter's no-collection preference; the interview gate scores the interview route; `hv doctor` checks the keys the routes need; live checks green on both providers | hooks, python, contract and js green at 07d9611 (full gate deferred to the end) / ADR-0034 |
 | B4a SP-16 desktop | The coding console (product-owner decisions 2026-10-23 and 2026-11-14): a plain monospace text box with the language as a label, the question's own clock, drafts saved every 30 s while typing (owner, 2026-11-14), on blur and every second in the question's last five (restored after a restart), integrity events with lengths only, and one confirmed Submit; nothing is executed | Rust and desktop unit tests, desktop e2e (the full gate is deferred to the end) / ADR-0033 |
+| AI fallback | Owner decision, 2026-11-14: when OpenRouter can't serve (no credit, down, rate-limited) screening answers, vision and page reading go to NVIDIA Nemotron; every vector comes from Nemotron (`nemotron-3.5-embed-1b`, 1,536-d); live checks green on both providers (8 of 8) | unit, wire and live tests (full gate deferred) / ADR-0034 |
 
 ## In progress (unmerged worktree branches)
 
 | Part | Branch | Exact next step |
 |---|---|---|
-| B4b snapshots | `worktree-agent-a206a1da835999881` (local) | Commits 83a170b and 85e428b (snapshot requests from heartbeats, WIC screen stills) plus an uncommitted `interview.rs` change: review, test, rebase on `main` |
+| B4b-1 third eye and snapshots | `feat/b4b-third-eye-snapshots` (local) | Rebased WIP commits 2376c2c and 9baffdb on `main`; the uncommitted `interview.rs` change is saved as a patch; continue with the plan's task 4 (the app's third-eye module) |
 
 ## Remaining, in priority order (dependency in brackets)
 
@@ -65,7 +66,7 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 
 ## Known blockers
 
-- The OpenRouter account has no purchased credit (2026-11-14: `total_credits` 0, $0.008 used by the live checks). Add credit before the real screening run, or OpenRouter answers 402.
+- The OpenRouter account has no purchased credit (2026-11-14: `total_credits` 0). Screening no longer stops on it: OpenRouter's 402 sends each call to Nemotron (owner decision, 2026-11-14). Add credit to screen on OpenRouter's models.
 - The account usage limit (resets about every 5 hours) stops subagents mid-part; resume them with SendMessage.
 - Needs the product owner: hardware matrix, real phones for third-eye, NVDA pass.
 - Needs a third party: code-signing certificate, Entra test tenant, ATS sandboxes, counsel review of `docs/policies/`, external pentest.

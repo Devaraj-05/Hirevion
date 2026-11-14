@@ -15,10 +15,12 @@ GEMINI_OPENAI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/opena
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 NEMOTRON_BASE_URL = "https://integrate.api.nvidia.com/v1"
 Provider = Literal["openrouter", "nemotron", "gemini", "openai"]
-# What each `dev` route can use. The screening route also embeds and reads pages, which Nemotron
-# doesn't serve here; OpenAI is the production profile (in `dev` it would get Gemini's models).
-ScreeningProvider = Literal["openrouter", "gemini"]
+# What each `dev` route can use. OpenAI is the production profile (in `dev` it would get
+# Gemini's model names).
+ScreeningProvider = Literal["openrouter", "nemotron", "gemini"]
 InterviewProvider = Literal["openrouter", "nemotron", "gemini"]
+ScreeningFallback = Literal["nemotron", "openrouter", "gemini", "none"]
+EmbeddingProvider = Literal["nemotron", "openrouter", "gemini"]
 
 
 def _env(name: str, env: str) -> AliasChoices:
@@ -41,6 +43,16 @@ class AiSettings(BaseSettings):
     )
     interview_provider: InterviewProvider = Field(
         "nemotron", validation_alias=_env("interview_provider", "HV_AI_INTERVIEW_PROVIDER")
+    )
+    # Product-owner decision, 2026-11-14: when the screening provider can't serve (out of
+    # credit, down, rate-limited) the same call goes here; `none` turns it off.
+    screening_fallback: ScreeningFallback = Field(
+        "nemotron", validation_alias=_env("screening_fallback", "HV_AI_SCREENING_FALLBACK")
+    )
+    # Every stored vector comes from this one provider, never a fallback: vectors from two
+    # models aren't comparable.
+    embedding_provider: EmbeddingProvider = Field(
+        "nemotron", validation_alias=_env("embedding_provider", "HV_AI_EMBEDDING_PROVIDER")
     )
     openrouter_api_key: SecretStr = Field(
         SecretStr(""), validation_alias=_env("openrouter_api_key", "OPENROUTER_API_KEY")
@@ -79,6 +91,16 @@ class AiSettings(BaseSettings):
     nemotron_model_strong: str = Field(
         "nvidia/nemotron-3.5-super-vl-120b-a12b",
         validation_alias=_env("nemotron_model_strong", "HV_NEMOTRON_MODEL_STRONG"),
+    )
+    # Checked on NVIDIA's API on 2026-11-14: 1,536-dimensional vectors (`dimensions`), and the
+    # VL model read the live check's rendered word in two runs of two.
+    nemotron_embedding_model: str = Field(
+        "nvidia/nemotron-3.5-embed-1b",
+        validation_alias=_env("nemotron_embedding_model", "HV_NEMOTRON_EMBEDDING_MODEL"),
+    )
+    nemotron_vision_model: str = Field(
+        "nvidia/nemotron-3.5-super-vl-120b-a12b",
+        validation_alias=_env("nemotron_vision_model", "HV_NEMOTRON_VISION_MODEL"),
     )
     gemini_api_key: SecretStr = Field(
         SecretStr(""), validation_alias=_env("gemini_api_key", "GEMINI_API_KEY")

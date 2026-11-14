@@ -243,12 +243,12 @@ Decided on 2026-09-28 (ADR-0002, ADR-0003): AI runs on hosted APIs through your 
 
 | Capability | `dev` profile | `production` profile | Fallback | `mock` (CI and load tests) |
 |---|---|---|---|---|
-| LLM (JSON-schema output) | By task (ADR-0034): OpenRouter for job descriptions, resumes and screening; NVIDIA Nemotron for questions, interview turns and evaluation. A fast model for live interview turns, the strongest model for the rest | OpenAI: same split | Azure OpenAI deployment of the production models (recommended) | Deterministic fake |
-| Embeddings (1,536-d) | OpenRouter `openai/text-embedding-3-small` | OpenAI `text-embedding-3-large` with `dimensions=1536` | — | Deterministic fake vectors |
+| LLM (JSON-schema output) | By task (ADR-0034): OpenRouter for job descriptions, resumes and screening, falling back to NVIDIA Nemotron when OpenRouter can't serve; Nemotron for questions, interview turns and evaluation. A fast model for live interview turns, the strongest model for the rest | OpenAI: same split | Azure OpenAI deployment of the production models (recommended) | Deterministic fake |
+| Embeddings (1,536-d) | NVIDIA `nvidia/nemotron-3.5-embed-1b` (one provider for every vector) | OpenAI `text-embedding-3-large` with `dimensions=1536` | — | Deterministic fake vectors |
 | STT | Deepgram streaming (Nova-3, or Flux for conversational end-of-turn) with keyterms from the JD and resume | same | OpenAI transcription | Scripted transcript |
 | TTS | Deepgram Aura-2 streaming | same | OpenAI TTS; ElevenLabs/Cartesia optional later | Silent audio of realistic length |
 | VAD / turn-taking | Silero VAD + LiveKit turn detector (+ Flux end-of-turn when used) | same | — | same |
-| OCR | Tesseract 5, with OpenRouter vision (`openai/gpt-5-mini`) for low-confidence pages | Tesseract 5 + OpenAI vision | — | Fixture text |
+| OCR | Tesseract 5, with OpenRouter vision (`openai/gpt-5-mini`) for low-confidence pages, falling back to Nemotron VL | Tesseract 5 + OpenAI vision | — | Fixture text |
 | Vision (proctoring) | MediaPipe on-device; OpenCV + ONNX Runtime + an Apache-2.0 detector server-side | same | — | Fixture detections |
 
 - **Voice wiring:** LiveKit Agents' `deepgram` plugin for STT and TTS, with `FallbackAdapter` for STT, LLM and TTS. The interview's LLM turns go through `hirevion_core`'s AI services (the conductor), so they follow the interview route: Nemotron in `dev` (ADR-0034), OpenAI in `production`.

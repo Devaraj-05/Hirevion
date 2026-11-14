@@ -109,12 +109,16 @@ The design is in [ADR-0011](../architecture/adr/0011-storage-ai-metering.md).
 - **Signed URLs.** Upload and download URLs point at `https://storage.hirevion.localhost`. `hv smoke` checks one round trip through Caddy (`signed-storage`).
 - **AI profile.**
   - `HV_AI_PROFILE=dev` routes each call by its task ([ADR-0034](../architecture/adr/0034-ai-routing-openrouter-nemotron.md)):
-    OpenRouter reads job descriptions and resumes, screens, embeds and reads scanned pages;
-    NVIDIA Nemotron writes interview questions, runs the interview turns and evaluates;
-    Deepgram speaks and listens.
-  - `HV_AI_SCREENING_PROVIDER` (`openrouter` or `gemini`) and `HV_AI_INTERVIEW_PROVIDER`
+    OpenRouter reads job descriptions and resumes, screens and reads scanned pages;
+    NVIDIA Nemotron writes interview questions, runs the interview turns, evaluates, and
+    embeds every document; Deepgram speaks and listens.
+  - When OpenRouter can't serve (no credit: 402, down, rate-limited), the same screening call
+    goes to Nemotron (`HV_AI_SCREENING_FALLBACK`, or `none`); the API log says `ai.fallback`.
+    A bad request is never moved.
+  - `HV_AI_SCREENING_PROVIDER`, `HV_AI_INTERVIEW_PROVIDER` and `HV_AI_EMBEDDING_PROVIDER`
     (`openrouter`, `nemotron` or `gemini`) move a route; `hv doctor` then asks for that
-    provider's key.
+    provider's key. Changing the embedding provider makes stored vectors incomparable:
+    re-process the documents.
   - `mock` needs no network (tests use it).
   - Model names are the `HV_OPENROUTER_*` and `HV_NEMOTRON_*` settings (`HV_LLM_MODEL_*`,
     `HV_EMBEDDING_MODEL` and `HV_VISION_MODEL` for Gemini and OpenAI).

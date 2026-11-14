@@ -167,6 +167,9 @@ class Endpoint:
     structured: Literal["response_format", "guided_json"] = "response_format"
     # Sent with every chat request (OpenRouter's provider preferences).
     extra_body: dict[str, Any] | None = None
+    # Sent with every embeddings request: OpenRouter's provider preferences (resume text goes
+    # there), NVIDIA's `input_type` (its retrieval models embed documents as passages).
+    embedding_body: dict[str, Any] | None = None
     # The parameter that caps an answer's tokens: OpenAI's newer models refuse `max_tokens`
     # and take `max_completion_tokens`; the other providers take `max_tokens`.
     cap: Literal["max_tokens", "max_completion_tokens"] = "max_tokens"
@@ -186,6 +189,7 @@ def endpoint(settings: AiSettings, provider: Provider) -> Endpoint:
             settings.openrouter_vision_model,
             # Only providers that apply the schema, and none that train on the prompts.
             extra_body={"provider": {"require_parameters": True, "data_collection": "deny"}},
+            embedding_body={"provider": {"require_parameters": True, "data_collection": "deny"}},
         )
     if provider == "nemotron":
         return Endpoint(
@@ -195,11 +199,10 @@ def endpoint(settings: AiSettings, provider: Provider) -> Endpoint:
             settings.nemotron_base_url,
             settings.nemotron_model_fast,
             settings.nemotron_model_strong,
-            # Nemotron serves the interview route only; embeddings and page reading are routed
-            # to the screening provider.
-            settings.embedding_model,
-            settings.vision_model,
+            settings.nemotron_embedding_model,
+            settings.nemotron_vision_model,
             structured="guided_json",
+            embedding_body={"input_type": "passage"},
         )
     if provider == "gemini":
         return Endpoint(
@@ -268,6 +271,10 @@ class OpenAICompatible:
         except openai.APIConnectionError as error:  # includes timeouts
             raise AiUnavailable(f"{self.provider} could not be reached") from error
         except openai.APIStatusError as error:
+            if error.status_code == 402:
+                # Out of credit (OpenRouter): unavailable to us until topped up, so a fallback
+                # provider may serve the call.
+                raise AiUnavailable(f"{self.provider} needs credit (402)") from error
             if error.status_code == 429 or error.status_code >= 500:
                 raise AiUnavailable(f"{self.provider} answered {error.status_code}") from error
             raise AiRequestError(
@@ -373,7 +380,7 @@ class OpenAICompatible:
 
     async def embed(self, ctx: AiContext, texts: Sequence[str]) -> Embeddings:
         model, dimensions = self.endpoint.embedding_model, self.settings.embedding_dimensions
-        extra = self.endpoint.extra_body
+        extra = self.endpoint.embedding_body
         inputs = list(texts)
 
         async def run() -> _Embedded:

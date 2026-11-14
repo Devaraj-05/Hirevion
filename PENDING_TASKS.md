@@ -199,6 +199,7 @@ A box is ticked in the PR that merges the part. Deliverables are in MASTER §14;
   - OpenRouter serves the screening route (job descriptions, resumes, screening, embeddings, page reading); NVIDIA Nemotron serves the interview route (questions, interview turns, evaluation); Deepgram keeps speech.
   - Exit met: the live checks pass on both providers (structured answers on both tiers, embeddings, page reading) and `hv doctor` validates both keys.
   - Follow-up (open, see STATUS): record each stored vector's embedding model, compare only matching vectors, and re-embed when the model changes.
+  - Fallback (product-owner decision, 2026-11-14: "if OpenRouter is not working then use Nemotron"): screening answers, vision and page reading go to Nemotron when OpenRouter can't serve (402, 429, 5xx, unreachable); every vector comes from Nemotron's `nemotron-3.5-embed-1b` (1,536-d). Done, with wire and live tests.
 - [ ] **C7 Vision agent (SP-15a and SP-15b server).** Depends on: C5, D3. See MASTER §14 SP-15a, SP-15b.
   - Exit: each detector's precision and recall is reported on the labelled set; no signal is shown as proof.
 

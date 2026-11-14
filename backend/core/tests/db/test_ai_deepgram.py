@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from hirevion_core.ai import build_ai
 from hirevion_core.ai.deepgram import Deepgram
+from hirevion_core.ai.fallback import Fallback
 from hirevion_core.ai.mock import MOCK_PRICES, MockLLM
 from hirevion_core.ai.openai_compat import OpenAICompatible
 from hirevion_core.ai.recorder import Recorder
@@ -187,11 +188,16 @@ async def test_build_ai_wires_each_profile(app_db: Database) -> None:
         "nemotron_api_key": SecretStr("n"),
         "deepgram_api_key": SecretStr("d"),
     }
-    # One provider for both routes (Gemini here, or OpenAI in production): one backend.
+    # One provider for everything (Gemini here, or OpenAI in production): one backend.
     for settings, provider in (
         (
             AiSettings(
-                profile="dev", screening_provider="gemini", interview_provider="gemini", **keys
+                profile="dev",
+                screening_provider="gemini",
+                interview_provider="gemini",
+                screening_fallback="none",
+                embedding_provider="gemini",
+                **keys,
             ),
             "gemini",
         ),
@@ -204,13 +210,16 @@ async def test_build_ai_wires_each_profile(app_db: Database) -> None:
         assert isinstance(ai.stt, Deepgram) and ai.tts is ai.stt
         await ai.aclose()
 
-    # The default `dev`: screening on OpenRouter, interviews on Nemotron (ADR-0034).
+    # The default `dev` (ADR-0034): screening on OpenRouter falling back to Nemotron,
+    # interviews and every vector on Nemotron, one Nemotron client for all of it.
     ai = build_ai(AiSettings(profile="dev", **keys), app_db, prices=MOCK_PRICES)  # type: ignore[arg-type]
     assert isinstance(ai.llm, PurposeRouter)
     screening, interview = ai.llm.parts
-    assert isinstance(screening, OpenAICompatible) and isinstance(interview, OpenAICompatible)
-    assert (screening.provider, interview.provider) == ("openrouter", "nemotron")
-    assert ai.embeddings is screening and ai.vision is screening and ai.ocr is screening
+    assert isinstance(screening, Fallback) and isinstance(interview, OpenAICompatible)
+    primary, secondary = screening.parts
+    assert (primary.provider, secondary.provider) == ("openrouter", "nemotron")
+    assert secondary is interview and ai.embeddings is interview
+    assert ai.vision is screening and ai.ocr is screening
     await ai.aclose()
 
 

@@ -1,8 +1,8 @@
 """Opt-in checks against the real vendors (`uv run pytest --live backend/core/tests/live`).
 
 They use the keys in `.env`, cost a few cents, and never run in CI. The `dev` profile is
-OpenRouter for screening (answers, embeddings, page reading) and NVIDIA Nemotron for interviews
-(answers), with Deepgram (ADR-0034); Gemini is checked when its key is set, and OpenAI when
+OpenRouter for screening, falling back to NVIDIA Nemotron, which also serves interviews and
+every embedding, with Deepgram (ADR-0034); Gemini is checked when its key is set, and OpenAI when
 `OPENAI_API_KEY` and `HV_OPENAI_TEST_MODEL` are set.
 """
 
@@ -59,11 +59,11 @@ def backend_for(provider: str, app_db: Database) -> OpenAICompatible:
     return OpenAICompatible(production, Recorder(app_db, PriceBook.load(), production), "openai")
 
 
-@pytest.fixture(params=["openrouter", "gemini", "openai"])
+@pytest.fixture(params=["openrouter", "nemotron", "gemini", "openai"])
 async def backend(
     request: pytest.FixtureRequest, app_db: Database
 ) -> AsyncIterator[OpenAICompatible]:
-    """The providers that serve the screening route: answers, embeddings, page reading."""
+    """The providers that can serve screening: answers, embeddings, page reading."""
     client = backend_for(request.param, app_db)
     yield client
     await client.aclose()  # inside the test's event loop, not after it has closed
