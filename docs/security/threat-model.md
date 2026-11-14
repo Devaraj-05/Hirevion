@@ -451,6 +451,7 @@
 | Threat (STRIDE) | Example | Control |
 |---|---|---|
 | Spoofing | Someone else's phone joins as the third eye (a photographed or leaked QR code) | The token is 256 random bits, spent once under a row lock within 2 minutes; issuing again revokes it and removes the phone; the desktop and the recruiter see the phone's platform and every change; the redeem is audited with its address |
+| Information disclosure | The desktop leaks the pairing or a session token | B4b-1b: Rust issues and reads the pairing with the session token and DPoP; the webview gets only the QR code, its link (the short-lived, single-use pairing token the candidate types) and the status; the app keeps only pairing ids on disk, never a token; pairing ids are checked before they reach a URL |
 | Spoofing | A desktop pairs a phone to another candidate's interview | The interview-session token (with DPoP) must name the body's interview (`403`); another interview's pairing is `404`; the pairing row holds the interview's own candidate |
 | Spoofing | The phone claims to be connected while it isn't | The phone reports nothing; the status comes only from LiveKit's signed webhooks, and only the current pairing's |
 | Tampering | A phone publishes a microphone, a screen or data, or watches the room | Its LiveKit token grants only `camera` publishing in one room: no subscribe, data, metadata, recording or admin |

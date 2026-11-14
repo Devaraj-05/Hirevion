@@ -103,6 +103,40 @@
       "os": "Windows version"
     }
   },
+  "thirdEye": {
+    "title": "Connect your phone",
+    "introRequired": "This interview uses your phone as a second camera. Scan the code with your phone to connect it.",
+    "introOptional": "This interview can use your phone as a second camera. Scan the code with your phone, or continue without it.",
+    "qrLabel": "Code for your phone",
+    "scan": "Open your phone's camera and point it at the code. The code works once and for two minutes.",
+    "orType": "Or type this link in your phone's browser:",
+    "copy": "Copy link",
+    "copied": "Copied",
+    "yourPhone": "your phone",
+    "state": {
+      "waiting": "Waiting for your phone to scan the code…",
+      "starting": "Code scanned. Starting {device}'s camera…",
+      "connected": "Phone connected: {device}",
+      "reconnecting": "Your phone disconnected. Unlock it and keep the page open; it reconnects by itself.",
+      "new-code": "This code can't be used any more. Get a new one."
+    },
+    "placement": {
+      "where": "Place the phone about an arm's length behind you and to one side, so it sees you, your desk and your screen.",
+      "power": "Keep it plugged in, with the screen on.",
+      "lock": "Don't lock the phone or switch apps during the interview."
+    },
+    "newCode": "Get a new code",
+    "continue": "Continue",
+    "skip": "Continue without a phone",
+    "back": "Back",
+    "errors": {
+      "media-unavailable": "The phone can't connect right now. Try again in a minute.",
+      "check-failed": "Your phone is connected, but the check still didn't pass. Go back and run the check again.",
+      "interview-not-open": "This interview isn't open now.",
+      "network": "We couldn't reach the server. Check your connection and try again.",
+      "unknown": "Something went wrong. Try again."
+    }
+  },
   "ready": {
     "title": "You're ready",
     "body": "Your computer passed the check and your consent is recorded. The interview starts as soon as you press Start.",
@@ -110,7 +144,7 @@
     "starting": "Starting…",
     "back": "Back to your interviews",
     "errors": {
-      "third-eye-required": "This interview needs your phone as a second camera first.",
+      "third-eye-required": "Your phone's camera isn't connected yet. Set up your phone to start.",
       "media-unavailable": "The interview service is busy. Try again in a moment.",
       "checks-incomplete": "Run the system check again before starting.",
       "consents-missing": "Give your consent before starting.",
@@ -118,7 +152,8 @@
       "interview-expired": "The window for this interview has closed.",
       "resume-limit-reached": "This interview can't be resumed again. Contact the company.",
       "unknown": "The interview couldn't start. Try again."
-    }
+    },
+    "phone": "Set up your phone"
   },
   "errors": {
     "invalid-credentials": "That email address and password don't match.",

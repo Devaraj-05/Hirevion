@@ -134,6 +134,7 @@ export function ReadyScreen({
   systemCheckId,
   consentId,
   onStarted,
+  onThirdEye,
   onBack,
   onError,
 }: {
@@ -141,6 +142,8 @@ export function ReadyScreen({
   systemCheckId: string;
   consentId: string;
   onStarted: (start: StartResult) => void;
+  /** Back to the phone step: the server waits for a required third eye's camera. */
+  onThirdEye: () => void;
   onBack: () => void;
   onError: (error: unknown) => void;
 }) {
@@ -178,6 +181,11 @@ export function ReadyScreen({
         <Button disabled={working} onClick={() => void begin()}>
           {working ? t("starting") : t("start")}
         </Button>
+        {failure === "third-eye-required" ? (
+          <Button variant="secondary" onClick={onThirdEye}>
+            {t("phone")}
+          </Button>
+        ) : null}
         <Button variant="ghost" onClick={onBack}>
           {t("back")}
         </Button>

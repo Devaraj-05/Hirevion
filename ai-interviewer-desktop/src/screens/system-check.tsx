@@ -4,11 +4,13 @@ import { useTranslations } from "use-intl";
 import { checkCamera } from "../checks/camera";
 import { checkMicrophone } from "../checks/microphone";
 import { networkResult } from "../checks/network";
+import type { SystemCheckPayload } from "../checks/payload";
 import { buildPayload, missingMandatory } from "../checks/payload";
 import { playTestTone, speakerResult } from "../checks/speaker";
 import { webview2Result } from "../checks/thresholds";
 import type { CheckResult, Status } from "../checks/types";
 import { commands } from "../native/commands";
+import { onlyThirdEyeFailed, type ThirdEyeMode } from "../third-eye/pairing";
 import { type ErrorKey, errorKey } from "./errors";
 import { ErrorText } from "./shell";
 
@@ -46,9 +48,13 @@ export function SystemCheckScreen({
   onPassed,
   onBack,
   onError,
+  thirdEye,
 }: {
   interviewId: string;
-  onPassed: (systemCheckId: string) => void;
+  /** `waitingForPhone`: it failed only on a required third eye, which the phone step sets up
+   * and then sends this check again. */
+  onPassed: (systemCheckId: string, payload: SystemCheckPayload, waitingForPhone: boolean) => void;
+  thirdEye: ThirdEyeMode;
   onBack: () => void;
   onError: (error: unknown) => void;
 }) {
@@ -87,7 +93,10 @@ export function SystemCheckScreen({
       const submitted = await commands.submitChecks(interviewId, payload);
       setFailed(submitted.failed_mandatory);
       setPhase("done");
-      if (submitted.passed) onPassed(submitted.id);
+      if (submitted.passed) onPassed(submitted.id, payload, false);
+      else if (thirdEye === "required" && onlyThirdEyeFailed(submitted.failed_mandatory)) {
+        onPassed(submitted.id, payload, true);
+      }
     } catch (failure) {
       onError(failure);
       setFailed(missingMandatory(payload.results));

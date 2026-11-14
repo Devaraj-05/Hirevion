@@ -98,6 +98,8 @@ hv-uploader = { path = "crates/uploader" }
 tauri-plugin-updater = { version = "2.13.3", default-features = false, features = ["rustls-tls", "system-proxy"] }
 semver = "1.0.28"
 regex = { version = "1.13.1", default-features = false, features = ["std", "unicode-case", "unicode-perl"] }
+# B4b-1b: the third eye's pairing QR code, drawn in Rust as SVG path data (MIT, no dependencies).
+qrcodegen = "1.8.0"
 # Panics and webview errors go to GlitchTip (Sentry-compatible) when HV_GLITCHTIP_DSN was set at
 # build time. No default features: no debug-images, logs, metrics or release-health. The ring
 # provider is installed by hand (rustls-no-provider), as the API client does, so no aws-lc.

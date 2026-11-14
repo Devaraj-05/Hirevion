@@ -1,6 +1,7 @@
 // The candidate's way to "Ready", in the real app: launch → version ok → sign in → interviews →
-// briefing → system check → consent → ready; then the interview's coding question (ADR-0033):
-// code typed in the console is saved as a draft and submitted once, and nothing runs it. Run by `pnpm e2e` (e2e/run.mjs), which starts
+// briefing → system check → consent → phone (third eye) → ready; then the interview's coding
+// question (ADR-0033): code typed in the console is saved as a draft and submitted once, and
+// nothing runs it. Run by `pnpm e2e` (e2e/run.mjs), which starts
 // tauri-driver and passes the debug build in HV_E2E_APP. The app runs on its stub backend
 // (HV_DESKTOP_STUB=1: any email, password "stub") with fake camera/microphone devices and
 // canned native checks, so the test needs no API, no hardware and no operator.
@@ -77,6 +78,13 @@ test("launch → ready", async (t) => {
     await session.waitFor(heading("Your consent"), 30_000);
     for (const box of await session.findAll("button[role=checkbox]")) await box.click();
     await session.click(button("I agree, continue"));
+
+    // The phone as a third eye (the stub's interview offers one): a QR code, then the stub
+    // phone scans it and its camera connects within a few status reads.
+    await session.waitFor(heading("Connect your phone"), 30_000);
+    assert.ok(await session.find("svg[role=img] path"), "the QR code is drawn");
+    await session.waitFor(`//p[starts-with(normalize-space(), "Phone connected")]`, 20_000);
+    await session.click(button("Continue"));
 
     // Ready.
     await session.waitFor(heading("You're ready"));

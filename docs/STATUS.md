@@ -31,16 +31,17 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 | B4a SP-16 desktop | The coding console (product-owner decisions 2026-10-23 and 2026-11-14): a plain monospace text box with the language as a label, the question's own clock, drafts saved every 30 s while typing (owner, 2026-11-14), on blur and every second in the question's last five (restored after a restart), integrity events with lengths only, and one confirmed Submit; nothing is executed | Rust and desktop unit tests, desktop e2e (the full gate is deferred to the end) / ADR-0033 |
 | AI fallback | Owner decision, 2026-11-14: when OpenRouter can't serve (no credit, down, rate-limited) screening answers, vision and page reading go to NVIDIA Nemotron (OpenRouter then rests 60 s); every vector comes from Nemotron (`nemotron-3.5-embed-1b`, 1,536-d; jobs as queries, resumes as passages); live checks green on both providers (8 of 8) | unit, wire and live tests (full gate deferred) / ADR-0034 |
 | B4b-1a SP-14 desktop | Snapshot answers: the server's `snapshot_requests` from heartbeats are answered once each within two minutes, the screen by WGC + WIC (≤1280×720 JPEG), the camera by one frame of the interview's track from the webview; uploads with `request_id`, retried until expiry | Rust and webview unit tests, uploader wiremock tests, desktop e2e (full gate deferred) |
+| B4b-1b SP-13 desktop | The phone step: QR code drawn in Rust (`qrcodegen`) from a pairing Rust issues with the session token, the link to type, status every 2 s, a new code only when spent, a remembered pairing across restarts, the check that waited for a required phone sent again, Ready's `third-eye-required` back to the phone | Rust and webview unit tests, desktop e2e consent → phone → ready (full gate deferred) / ADR-0040 |
 
 ## In progress (unmerged worktree branches)
 
 | Part | Branch | Exact next step |
 |---|---|---|
-| B4b-1b third eye | from `main` | The uncommitted `interview.rs` change from `worktree-agent-a206a1da835999881` (third-eye mode from the briefing) starts it; then the plan's tasks 4–6 |
+| B4b-1c third-eye status | from `main` | The uncommitted `interview.rs` change from `worktree-agent-a206a1da835999881` (third-eye mode from the briefing) starts it; then the heartbeat's `third_eye` and the status bar |
 
 ## Remaining, in priority order (dependency in brackets)
 
-- **P1:** C7 vision agent [C5, D3] · B4b-1b desktop third eye [B3, D3] · B4b-2 whiteboard [B4a] · B4b-3 advanced CV [B3, C7]
+- **P1:** C7 vision agent [C5, D3] · B4b-1c third-eye status in heartbeats and the status bar [B4b-1b] · B4b-2 whiteboard [B4a] · B4b-3 advanced CV [B3, C7]
 - **P2:** D4 SP-19 enterprise identity [SP-02] · D5 SP-22 admin/governance [A5, C5] · A6 SP-21 analytics [A5] · D6 SP-20 ATS/public API [A5]
 - **P3:** D7 SP-23 automated hardening [all] · B5 Windows golden path and chaos drills [B3, B4a, B4b]
 - **Last:** the full local gate, `bash scripts/ci-local.sh --all` (deferred to the end by the product owner, 2026-11-14; each part meanwhile runs its own tests and checks)
@@ -57,6 +58,7 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 - [ ] B3: the desktop e2e (`scripts/ci-local.sh desktop-e2e`) has stalled at the system check four times: once with "Camera: not available" right after the desktop job (October), and three times on 2026-11-14 on both this branch and `main`, right after WebView2 updated to 157 while the Docker stack was starting. An instrumented run then passed, and the unchanged test passed twice in about 10 s. Hypothesis: the first launches after a WebView2 update, or a saturated PC, push the camera/microphone checks past the test's waits. If it recurs on a quiet PC, have `e2e/desktop.e2e.mjs` log the page text and a screenshot each second from "Run the check" to consent before changing anything.
 - [ ] B4b-1a: snapshot answers are unit-tested (and the upload against wiremock) but not yet tried against a running API raising a CRITICAL event; do it in the next simulator or real-interview run.
 - [ ] B4b-1a review, kept for later: a screen snapshot shows the primary display only (the recording has every display), and each one opens its own capture session (a D3D device and a WGC border flash) instead of reusing the recorder's; fine at CRITICAL events' rate, worth folding into the recorder in B4b-3.
+- [ ] B4b-1b: the phone step is tested on the stub's phone; try it with a real phone against the local stack (runbook "Third eye") together with D3's real-phone check.
 - [ ] D3: not yet tried on real phones (iOS Safari 16.4+, Android Chrome; the owner's check, runbook "Third eye") or with the real Egress container (its image is about 1 GB; tests used the adapter's fake). Run both before CP3.
 - [ ] A5/D2: ffmpeg isn't installed on this PC, so recordings stay assembly-pending and the review player's sync is tested only with pure functions and jsdom. Install ffmpeg (see the runbook's "Recordings") and play a simulator interview's recordings end to end before CP3.
 - [ ] B2/SP-11: `event-queue`'s end-to-end test (a blocked process is queued within 2 s) failed once in a full local CI run on a heavily loaded PC (65 s run time; it took 14 s alone and passed). The 2 s is the product requirement, so it stays; watch whether detection really slows under load.

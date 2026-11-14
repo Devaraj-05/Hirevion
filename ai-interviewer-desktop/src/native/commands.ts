@@ -137,6 +137,12 @@ export const commands = {
     }),
   complete: (interviewId: string, reason: "finished" | "candidate_ended") =>
     interviewRequest<{ status: string }>(interviewId, "complete", { reason }),
+  /** The phone step's code: kept for a phone already in place unless `replace` (contract
+   * third-eye.md); Rust issues it with the session token and draws the QR code. */
+  thirdEyePair: (interviewId: string, replace: boolean) =>
+    invoke<PairingView>("third_eye_pair", { interviewId, replace }),
+  /** The pairing's status (read every 2 s while the phone step is open). */
+  thirdEyeStatus: (interviewId: string) => invoke<PairingView>("third_eye_status", { interviewId }),
   /** The open coding question with its starter code and last draft (contract coding.md). */
   coding: (interviewId: string) =>
     interviewRequest<{ question: CodingQuestion | null }>(interviewId, "coding"),
@@ -359,4 +365,16 @@ export interface CodingTelemetryEvent {
   kind: CodingTelemetryKind;
   at: string;
   chars?: number;
+}
+
+/** The phone step's pairing (Rust's view of contract third-eye.md). */
+export interface PairingView {
+  pairing_id: string;
+  status: string;
+  /** Only for a code that was just issued: an SVG path in a `size`×`size` view box. */
+  qr: { size: number; path: string } | null;
+  /** The code's link, for typing on the phone when the camera can't scan. */
+  link: string | null;
+  expires_at: string | null;
+  device: string | null;
 }

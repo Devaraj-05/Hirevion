@@ -12,6 +12,7 @@ use serde_json::{Value, json};
 
 use super::error::{CommandError, CommandResult};
 use super::interview::InterviewAction;
+use super::third_eye::{PairingView, issued_view, status_view};
 use super::views::{ChecksSubmitted, ProfileView, SignInView};
 
 pub const PASSWORD: &str = "stub";
@@ -25,6 +26,9 @@ pub struct Stub {
     /// When the coding question was first served, and its last saved draft.
     coding_asked_at: Mutex<Option<SystemTime>>,
     coding_draft: Mutex<Option<Value>>,
+    /// Status reads since the third eye's code was issued: a stub phone scans it on the second
+    /// and connects on the third.
+    third_eye_polls: Mutex<usize>,
     /// `HV_DESKTOP_STUB_NATIVE=1`: the native system checks answer "pass" without touching the
     /// machine, so the end-to-end test runs the same on any runner.
     canned_native: bool,
@@ -61,6 +65,7 @@ const QUESTIONS: [StubQuestion; 4] = [
     },
 ];
 const CODING_LIMIT_SECONDS: u64 = 600;
+const STUB_PAIRING: &str = "00000000-0000-7000-8000-0000000000e1";
 /// The server's limit on code and drafts (256 KB of UTF-8).
 const MAX_CODE_BYTES: usize = 256 * 1024;
 const TELEMETRY_KINDS: [&str; 7] = [
@@ -462,6 +467,41 @@ impl Stub {
                 "draft": draft })
     }
 
+    /// A code for the stub's phone step (a fresh pairing each time).
+    pub fn third_eye_pair(&self) -> CommandResult<PairingView> {
+        self.email()?;
+        if let Ok(mut polls) = self.third_eye_polls.lock() {
+            *polls = 0;
+        }
+        issued_view(&json!({
+            "pairing_id": STUB_PAIRING,
+            "qr_url": "https://eye.hirevion.localhost/#t=stub-pairing-token",
+            "expires_at": iso(SystemTime::now() + Duration::from_secs(120)),
+            "status": "issued"
+        }))
+    }
+
+    /// The stub phone: the code waits, is scanned, then the camera connects.
+    pub fn third_eye_status(&self) -> CommandResult<PairingView> {
+        self.email()?;
+        let polls = self.third_eye_polls.lock().map_or(3, |mut polls| {
+            *polls += 1;
+            *polls
+        });
+        let (status, device) = match polls {
+            1 => ("issued", Value::Null),
+            2 => ("redeemed", Value::Null),
+            _ => (
+                "connected",
+                json!({ "platform": "Android 15 Chrome (stub)" }),
+            ),
+        };
+        Ok(status_view(
+            STUB_PAIRING,
+            &json!({ "status": status, "device": device }),
+        ))
+    }
+
     fn email(&self) -> CommandResult<String> {
         self.email
             .lock()
@@ -682,6 +722,28 @@ mod tests {
                 .code,
             "question-not-current"
         );
+    }
+
+    #[test]
+    fn the_stub_phone_scans_the_code_then_connects() {
+        let stub = Stub::default();
+        assert_eq!(stub.third_eye_pair().unwrap_err().code, "signed-out");
+        stub.sign_in("asha@x.test", PASSWORD).expect("signed in");
+        let code = stub.third_eye_pair().expect("a code");
+        assert_eq!(code.status, "issued");
+        assert!(code.qr.is_some() && code.link.is_some());
+        let seen: Vec<String> = (0..4)
+            .map(|_| stub.third_eye_status().expect("status").status)
+            .collect();
+        assert_eq!(seen, ["issued", "redeemed", "connected", "connected"]);
+        let connected = stub.third_eye_status().expect("status");
+        assert_eq!(
+            connected.device.as_deref(),
+            Some("Android 15 Chrome (stub)")
+        );
+        // A new code starts over.
+        stub.third_eye_pair().expect("a new code");
+        assert_eq!(stub.third_eye_status().expect("status").status, "issued");
     }
 
     #[test]

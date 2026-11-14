@@ -11,6 +11,7 @@ mod services;
 mod snapshots;
 pub mod state;
 mod stub;
+pub mod third_eye;
 pub mod update;
 mod views;
 

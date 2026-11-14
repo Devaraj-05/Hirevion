@@ -117,11 +117,25 @@ pub async fn send(
 ) -> CommandResult<serde_json::Value> {
     let (method, rest) = action.route();
     let path = interview_path(interview_id, rest)?;
+    send_path(session, tokens, interview_id, method, &path, body).await
+}
+
+/// Sends a call that the interview's session token authorises (`path` is fixed by Rust, never
+/// by the webview); a rejected token is replaced once.
+pub async fn send_path(
+    session: &SessionManager,
+    tokens: &SessionTokens,
+    interview_id: &str,
+    method: Method,
+    path: &str,
+    body: Option<&serde_json::Value>,
+) -> CommandResult<serde_json::Value> {
+    check_interview_id(interview_id)?;
     for attempt in 0..2 {
         let token = session_token(session, tokens, interview_id).await?;
         let answer = session
             .api()
-            .send_value(method.clone(), &path, body, Some(&token))
+            .send_value(method.clone(), path, body, Some(&token))
             .await;
         match answer {
             Err(error) if attempt == 0 && error.is_problem("token-invalid") => {

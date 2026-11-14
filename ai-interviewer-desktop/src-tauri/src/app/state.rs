@@ -10,6 +10,7 @@ use hv_security::{Signer, Vault};
 use super::interview::SessionTokens;
 use super::services::Services;
 use super::stub::Stub;
+use super::third_eye::Pairings;
 use super::views::AppInfoView;
 
 /// The API root compiled into release builds (`HV_API_URL` at build time).
@@ -36,6 +37,8 @@ pub struct AppState {
     /// the monitor reports them as `CLIENT_INTEGRITY_WARNING` events.
     pub integrity_variables: Vec<String>,
     pub debugger_present: bool,
+    /// Each interview's third-eye pairing (its id only), kept across restarts.
+    pub third_eye: Pairings,
 }
 
 /// The API root: the build-time default, which debug builds may override at run time.
@@ -119,6 +122,11 @@ impl AppState {
             services,
             integrity_variables,
             debugger_present,
+            third_eye: if stub {
+                Pairings::default()
+            } else {
+                Pairings::load(data_dir.join("third-eye.json"))
+            },
         })
     }
 }

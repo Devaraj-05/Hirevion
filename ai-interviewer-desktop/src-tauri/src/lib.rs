@@ -127,6 +127,8 @@ pub fn run() {
             app::service_commands::recording_clock,
             app::service_commands::recording_store_segment,
             app::service_commands::proctoring_snapshot,
+            app::third_eye::third_eye_pair,
+            app::third_eye::third_eye_status,
             app::service_commands::upload_progress,
             spike::spike_config,
             spike::spike_report,
@@ -154,6 +156,8 @@ pub fn run() {
         app::service_commands::recording_clock,
         app::service_commands::recording_store_segment,
         app::service_commands::proctoring_snapshot,
+        app::third_eye::third_eye_pair,
+        app::third_eye::third_eye_status,
         app::service_commands::upload_progress
     ]);
 

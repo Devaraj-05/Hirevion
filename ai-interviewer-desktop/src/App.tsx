@@ -1,5 +1,6 @@
 import { Toaster } from "@hirevion/ui";
 import { lazy, Suspense, useCallback, useEffect, useReducer, useState } from "react";
+import type { SystemCheckPayload } from "./checks/payload";
 import { type FlowEvent, initialState, transition } from "./flow/flow";
 import { I18nProvider, type Locale, pickLocale } from "./i18n/i18n";
 import {
@@ -17,6 +18,7 @@ import { LaunchScreen, ReadyScreen, UpdateRequiredScreen } from "./screens/launc
 import { Shell } from "./screens/shell";
 import { CodeScreen, SignInScreen } from "./screens/sign-in";
 import { SystemCheckScreen } from "./screens/system-check";
+import { ThirdEyeScreen } from "./screens/third-eye";
 
 // The SP-00d spike pages are compiled into debug builds only.
 const SpikeApp = import.meta.env.DEV
@@ -83,6 +85,9 @@ function CandidateApp() {
   const [checkId, setCheckId] = useState("");
   const [consentId, setConsentId] = useState("");
   const [started, setStarted] = useState<StartResult | null>(null);
+  // A check that failed only on a required third eye waits for the phone step.
+  const [checkPayload, setCheckPayload] = useState<SystemCheckPayload | null>(null);
+  const [waitingForPhone, setWaitingForPhone] = useState(false);
 
   const profile = "profile" in state ? state.profile : undefined;
   return (
@@ -130,8 +135,11 @@ function CandidateApp() {
         {state.screen === "system-check" ? (
           <SystemCheckScreen
             interviewId={state.interviewId}
-            onPassed={(id) => {
+            thirdEye={briefing?.third_eye ?? "off"}
+            onPassed={(id, payload, waiting) => {
               setCheckId(id);
+              setCheckPayload(payload);
+              setWaitingForPhone(waiting);
               send({ type: "check-passed" });
             }}
             onBack={() => send({ type: "back" })}
@@ -144,7 +152,23 @@ function CandidateApp() {
             briefing={briefing}
             onConsented={(id) => {
               setConsentId(id);
-              send({ type: "consented" });
+              send({ type: "consented", thirdEye: briefing.third_eye });
+            }}
+            onBack={() => send({ type: "back" })}
+            onError={lost}
+          />
+        ) : null}
+        {state.screen === "third-eye" && briefing && briefing.third_eye !== "off" ? (
+          <ThirdEyeScreen
+            interviewId={state.interviewId}
+            mode={briefing.third_eye}
+            recheck={waitingForPhone ? checkPayload : null}
+            onDone={(id) => {
+              if (id) {
+                setCheckId(id);
+                setWaitingForPhone(false);
+              }
+              send({ type: "third-eye-done" });
             }}
             onBack={() => send({ type: "back" })}
             onError={lost}
@@ -159,6 +183,7 @@ function CandidateApp() {
               setStarted(start);
               send({ type: "started" });
             }}
+            onThirdEye={() => send({ type: "third-eye-needed" })}
             onBack={() => send({ type: "back" })}
             onError={lost}
           />
