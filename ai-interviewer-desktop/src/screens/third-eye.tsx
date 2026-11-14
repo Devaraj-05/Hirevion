@@ -3,12 +3,17 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslations } from "use-intl";
 import type { SystemCheckPayload } from "../checks/payload";
 import { commands, isCommandError, type PairingView } from "../native/commands";
-import { canContinue, phoneState, type ThirdEyeMode } from "../third-eye/pairing";
+import { phoneState, type ThirdEyeMode } from "../third-eye/pairing";
 import { ErrorText } from "./shell";
 
 /** How often the step reads the pairing's status (contract third-eye.md: every 2 s). */
 const POLL_MS = 2_000;
 const KNOWN_ERRORS = ["media-unavailable", "check-failed", "network", "interview-not-open"];
+
+function errorCode(failure: unknown): string {
+  const code = isCommandError(failure) ? failure.code : "unknown";
+  return KNOWN_ERRORS.includes(code) ? code : "unknown";
+}
 
 /**
  * §6.4's phone step: the candidate scans a code with their phone, which becomes the interview's
@@ -40,70 +45,91 @@ export function ThirdEyeScreen({
   const [error, setError] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
   const [copied, setCopied] = useState(false);
-  // The parent's callbacks change every render; the latest is called, nothing re-pairs.
-  const latest = useRef({ onDone, onError });
+  // The parent's props change every render; the latest are used and nothing re-pairs.
+  const latest = useRef({ onDone, onError, recheck });
   useEffect(() => {
-    latest.current = { onDone, onError };
+    latest.current = { onDone, onError, recheck };
   });
+  // Only the newest pairing request's answer counts (a new code supersedes an old one).
+  const request = useRef(0);
+  const started = useRef(false);
 
-  const pair = useCallback(
-    async (replace: boolean) => {
-      setError(null);
-      try {
-        const next = await commands.thirdEyePair(interviewId, replace);
-        setPairing(next);
-        setStatus(next.status);
-        setDevice(next.device);
-      } catch (failure) {
-        latest.current.onError(failure);
-        const code = isCommandError(failure) ? failure.code : "unknown";
-        // The interview no longer uses a third eye: nothing to set up.
-        if (code === "third-eye-off") latest.current.onDone(null);
-        else setError(KNOWN_ERRORS.includes(code) ? code : "unknown");
-      }
-    },
-    [interviewId],
-  );
-
-  useEffect(() => {
-    void pair(false);
-  }, [pair]);
-
-  // Follow the pairing while the step is open (a scan, the camera, a lock, an expiry).
-  useEffect(() => {
-    if (pairing === null) return;
-    const timer = window.setInterval(() => {
-      commands
-        .thirdEyeStatus(interviewId)
-        .then((seen) => {
-          setStatus(seen.status);
-          setDevice(seen.device);
-        })
-        .catch(() => undefined); // The next read may work; the last status stays.
-    }, POLL_MS);
-    return () => window.clearInterval(timer);
-  }, [interviewId, pairing]);
-
-  async function goOn() {
-    if (recheck === null) {
+  /** Done with the phone: the check that waited for it is sent again first. */
+  const finish = useCallback(async () => {
+    const waiting = latest.current.recheck;
+    if (waiting === null) {
       latest.current.onDone(null);
       return;
     }
     setWorking(true);
     setError(null);
     try {
-      // The check that waited for the phone: the server now sees the phone's camera.
-      const submitted = await commands.submitChecks(interviewId, recheck);
+      // The server now sees the phone's camera (or no longer needs one).
+      const submitted = await commands.submitChecks(interviewId, waiting);
       if (submitted.passed) latest.current.onDone(submitted.id);
       else setError("check-failed");
     } catch (failure) {
       latest.current.onError(failure);
-      const code = isCommandError(failure) ? failure.code : "unknown";
-      setError(KNOWN_ERRORS.includes(code) ? code : "unknown");
+      setError(errorCode(failure));
     } finally {
       setWorking(false);
     }
-  }
+  }, [interviewId]);
+
+  const pair = useCallback(
+    async (replace: boolean) => {
+      const mine = ++request.current;
+      setError(null);
+      try {
+        const next = await commands.thirdEyePair(interviewId, replace);
+        if (mine !== request.current) return;
+        setPairing(next);
+        setStatus(next.status);
+        setDevice(next.device);
+        setCopied(false);
+      } catch (failure) {
+        if (mine !== request.current) return;
+        latest.current.onError(failure);
+        // The interview no longer uses a third eye: nothing to set up.
+        if (isCommandError(failure) && failure.code === "third-eye-off") void finish();
+        else setError(errorCode(failure));
+      }
+    },
+    [interviewId, finish],
+  );
+
+  // One pairing request when the step opens (development's double mount doesn't make two:
+  // a second code would revoke the first).
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    void pair(false);
+  }, [pair]);
+
+  // Follow this pairing (a scan, the camera, a lock, an expiry): one read at a time, and an
+  // answer about another pairing is ignored.
+  useEffect(() => {
+    if (pairing === null) return;
+    let cancelled = false;
+    let timer: number | undefined;
+    const read = async () => {
+      try {
+        const seen = await commands.thirdEyeStatus(interviewId);
+        if (cancelled || seen.pairing_id !== pairing.pairing_id) return;
+        setStatus(seen.status);
+        setDevice(seen.device);
+      } catch (failure) {
+        // A lost session goes back to sign-in; anything else waits for the next read.
+        if (!cancelled) latest.current.onError(failure);
+      }
+      if (!cancelled) timer = window.setTimeout(() => void read(), POLL_MS);
+    };
+    timer = window.setTimeout(() => void read(), POLL_MS);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [interviewId, pairing]);
 
   async function copyLink(link: string) {
     try {
@@ -154,9 +180,11 @@ export function ThirdEyeScreen({
         </figure>
       ) : null}
 
-      <p role="status" aria-live="polite" className="font-medium">
-        {t(`state.${phone}`, { device: device ?? t("yourPhone") })}
-      </p>
+      {pairing ? (
+        <p role="status" aria-live="polite" className="font-medium">
+          {t(`state.${phone}`, { device: device ?? t("yourPhone") })}
+        </p>
+      ) : null}
 
       <ul className="grid list-disc gap-1 pl-5 text-sm">
         <li>{t("placement.where")}</li>
@@ -164,20 +192,28 @@ export function ThirdEyeScreen({
         <li>{t("placement.lock")}</li>
       </ul>
 
-      {phone === "new-code" ? (
-        <Button variant="secondary" className="w-fit" onClick={() => void pair(true)}>
-          {t("newCode")}
-        </Button>
-      ) : null}
-
       {error ? <ErrorText>{t(`errors.${error}`)}</ErrorText> : null}
 
       <div className="flex flex-wrap gap-2">
-        <Button disabled={working || phone !== "connected"} onClick={() => void goOn()}>
+        <Button disabled={working || phone !== "connected"} onClick={() => void finish()}>
           {t("continue")}
         </Button>
-        {mode === "optional" && canContinue(status, mode) && phone !== "connected" ? (
-          <Button variant="secondary" onClick={() => latest.current.onDone(null)}>
+        {pairing === null && error ? (
+          <Button variant="secondary" onClick={() => void pair(false)}>
+            {t("retry")}
+          </Button>
+        ) : null}
+        {pairing !== null && phone !== "connected" ? (
+          // Also for a phone that scanned but never sent its camera: a new code replaces it.
+          <Button
+            variant={phone === "new-code" ? "secondary" : "ghost"}
+            onClick={() => void pair(true)}
+          >
+            {t("newCode")}
+          </Button>
+        ) : null}
+        {mode === "optional" && phone !== "connected" ? (
+          <Button variant="secondary" disabled={working} onClick={() => void finish()}>
             {t("skip")}
           </Button>
         ) : null}

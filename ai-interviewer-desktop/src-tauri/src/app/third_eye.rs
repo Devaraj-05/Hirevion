@@ -5,6 +5,7 @@
 //! disconnect a phone that is already in place.
 
 use std::collections::HashMap;
+use std::fmt::Write as _;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
@@ -49,7 +50,7 @@ pub fn qr_view(text: &str) -> Result<QrView, String> {
     for y in 0..code.size() {
         for x in 0..code.size() {
             if code.get_module(x, y) {
-                path.push_str(&format!("M{} {}h1v1h-1z", x + QUIET_ZONE, y + QUIET_ZONE));
+                let _ = write!(path, "M{} {}h1v1h-1z", x + QUIET_ZONE, y + QUIET_ZONE);
             }
         }
     }
@@ -63,6 +64,29 @@ pub fn qr_view(text: &str) -> Result<QrView, String> {
 /// unscanned, or it was revoked. A phone that disconnected (a lock) reconnects by itself.
 pub fn needs_code(status: &str) -> bool {
     matches!(status, "expired" | "revoked")
+}
+
+/// What becomes of the remembered pairing, from its status read before a code is issued.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Remembered {
+    /// A phone is in place (or on its way): keep it.
+    Keep(PairingView),
+    /// The pairing is gone, spent, or an unscanned code whose token isn't kept: issue a new one.
+    Replace,
+    /// The read failed for another reason: say so, and never revoke a phone that may be in
+    /// place by issuing a new code.
+    Fail(CommandError),
+}
+
+pub fn remembered(read: CommandResult<PairingView>) -> Remembered {
+    match read {
+        Ok(view) if needs_code(&view.status) || view.status == "issued" => Remembered::Replace,
+        Ok(view) => Remembered::Keep(view),
+        Err(error) if matches!(error.code.as_str(), "pairing-not-found" | "not-found") => {
+            Remembered::Replace
+        }
+        Err(error) => Remembered::Fail(error),
+    }
 }
 
 /// Pairing ids are UUIDs; anything else never reaches a URL path.
@@ -201,13 +225,11 @@ pub async fn third_eye_pair(
     };
     let tokens = &state.session_tokens;
     if !replace && let Some(pairing_id) = state.third_eye.get(&interview_id) {
-        // A restart: keep a phone that is in place. An unscanned code can't be shown again
-        // (its token isn't kept), so it is replaced like an expired one.
-        if let Ok(view) = status(session, tokens, &interview_id, &pairing_id).await
-            && !needs_code(&view.status)
-            && view.status != "issued"
-        {
-            return Ok(view);
+        // A restart, or back to this step: keep a phone that is in place.
+        match remembered(status(session, tokens, &interview_id, &pairing_id).await) {
+            Remembered::Keep(view) => return Ok(view),
+            Remembered::Fail(error) => return Err(error),
+            Remembered::Replace => {}
         }
     }
     issue(session, tokens, &state.third_eye, &interview_id).await
@@ -252,6 +274,30 @@ mod tests {
             "the finder pattern's corner"
         );
         assert_eq!(qr_view(link), Ok(qr));
+    }
+
+    #[test]
+    fn keeps_a_phone_in_place_unless_the_pairing_is_gone_or_spent() {
+        let view = |status: &str| status_view("p1", &json!({ "status": status }));
+        for status in ["redeemed", "connected", "disconnected"] {
+            assert_eq!(
+                remembered(Ok(view(status))),
+                Remembered::Keep(view(status)),
+                "{status}"
+            );
+        }
+        for status in ["issued", "expired", "revoked"] {
+            assert_eq!(
+                remembered(Ok(view(status))),
+                Remembered::Replace,
+                "{status}"
+            );
+        }
+        let gone = CommandError::new("pairing-not-found", None);
+        assert_eq!(remembered(Err(gone)), Remembered::Replace);
+        // A blip must not revoke a connected phone by issuing a new code.
+        let blip = CommandError::new("network", None);
+        assert_eq!(remembered(Err(blip.clone())), Remembered::Fail(blip));
     }
 
     #[test]

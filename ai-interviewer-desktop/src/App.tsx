@@ -158,10 +158,11 @@ function CandidateApp() {
             onError={lost}
           />
         ) : null}
-        {state.screen === "third-eye" && briefing && briefing.third_eye !== "off" ? (
+        {state.screen === "third-eye" ? (
           <ThirdEyeScreen
             interviewId={state.interviewId}
-            mode={briefing.third_eye}
+            // Ready can send here when the server wants a phone the briefing didn't ask for.
+            mode={briefing && briefing.third_eye !== "off" ? briefing.third_eye : "required"}
             recheck={waitingForPhone ? checkPayload : null}
             onDone={(id) => {
               if (id) {

@@ -26,11 +26,6 @@ export function phoneState(status: string): PhoneState {
   }
 }
 
-/** A required third eye needs the phone's camera live; an optional one can be skipped. */
-export function canContinue(status: string, mode: ThirdEyeMode): boolean {
-  return mode !== "required" || phoneState(status) === "connected";
-}
-
 /** The system check failed on the third eye alone: the phone isn't paired yet, so the check
  * waits for the phone step, which sends it again once the phone is connected. */
 export function onlyThirdEyeFailed(failedMandatory: readonly string[]): boolean {

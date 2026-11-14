@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canContinue, onlyThirdEyeFailed, phoneState } from "./pairing";
+import { onlyThirdEyeFailed, phoneState } from "./pairing";
 
 describe("the phone step", () => {
   it("names what the candidate sees for each pairing status", () => {
@@ -11,13 +11,6 @@ describe("the phone step", () => {
     expect(phoneState("expired")).toBe("new-code");
     expect(phoneState("revoked")).toBe("new-code");
     expect(phoneState("something-new")).toBe("waiting");
-  });
-
-  it("goes on with a connected phone, or without one when it is optional", () => {
-    expect(canContinue("connected", "required")).toBe(true);
-    expect(canContinue("redeemed", "required")).toBe(false);
-    expect(canContinue("disconnected", "required")).toBe(false);
-    expect(canContinue("issued", "optional")).toBe(true);
   });
 
   it("lets a check that failed only on the third eye wait for the phone", () => {

@@ -135,7 +135,8 @@
       "interview-not-open": "This interview isn't open now.",
       "network": "We couldn't reach the server. Check your connection and try again.",
       "unknown": "Something went wrong. Try again."
-    }
+    },
+    "retry": "Try again"
   },
   "ready": {
     "title": "You're ready",
