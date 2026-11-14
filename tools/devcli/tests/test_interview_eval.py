@@ -3,8 +3,10 @@
 from pathlib import Path
 
 import pytest
+from pydantic import SecretStr
 from typer.testing import CliRunner
 
+from hirevion_core.ai.settings import AiSettings
 from hirevion_devcli import interview_eval
 from hirevion_devcli.cli import app
 
@@ -71,3 +73,31 @@ def test_a_rerun_needs_an_interview_id(tmp_path: Path, monkeypatch: pytest.Monke
     monkeypatch.chdir(tmp_path)
     result = runner.invoke(app, ["eval-rerun", "not-an-id"])
     assert result.exit_code == 1 and "UUID" in result.output
+
+
+class _Built(Exception):
+    """Stops the gate once the backend is chosen."""
+
+
+@pytest.mark.parametrize("provider", ["nemotron", "openrouter"])
+async def test_live_scores_the_model_the_interview_route_uses(
+    monkeypatch: pytest.MonkeyPatch, provider: str
+) -> None:
+    """The gate must certify the model that really evaluates interviews (ADR-0034)."""
+    settings = AiSettings(
+        profile="dev",
+        interview_provider=provider,  # type: ignore[arg-type]
+        openrouter_api_key=SecretStr("o-key"),
+        nemotron_api_key=SecretStr("n-key"),
+    )
+    chosen: list[str] = []
+
+    def build(_settings: AiSettings, _recorder: object, name: str) -> None:
+        chosen.append(name)
+        raise _Built
+
+    monkeypatch.setattr(interview_eval, "load_ai_settings", lambda: settings)
+    monkeypatch.setattr(interview_eval, "OpenAICompatible", build)
+    with pytest.raises(_Built):
+        await interview_eval.run_gate(live=True)
+    assert chosen == [provider]

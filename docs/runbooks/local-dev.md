@@ -112,8 +112,9 @@ The design is in [ADR-0011](../architecture/adr/0011-storage-ai-metering.md).
     OpenRouter reads job descriptions and resumes, screens, embeds and reads scanned pages;
     NVIDIA Nemotron writes interview questions, runs the interview turns and evaluates;
     Deepgram speaks and listens.
-  - `HV_AI_SCREENING_PROVIDER` and `HV_AI_INTERVIEW_PROVIDER` move a route to `openrouter`,
-    `nemotron`, `gemini` or `openai`.
+  - `HV_AI_SCREENING_PROVIDER` (`openrouter` or `gemini`) and `HV_AI_INTERVIEW_PROVIDER`
+    (`openrouter`, `nemotron` or `gemini`) move a route; `hv doctor` then asks for that
+    provider's key.
   - `mock` needs no network (tests use it).
   - Model names are the `HV_OPENROUTER_*` and `HV_NEMOTRON_*` settings (`HV_LLM_MODEL_*`,
     `HV_EMBEDDING_MODEL` and `HV_VISION_MODEL` for Gemini and OpenAI).

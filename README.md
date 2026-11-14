@@ -31,7 +31,7 @@ Key documents:
 1. `git config core.hooksPath .githooks` turns on the repository's git guards.
 2. `uv sync` creates the Python environment.
 3. `uv run hv init-env` creates `.env` with fresh local secrets. Later, `uv run hv env-sync` adds any new settings without touching your values.
-4. Add `GEMINI_API_KEY` and `DEEPGRAM_API_KEY` to `.env` (Gemini is the development LLM; `OPENAI_API_KEY` is only needed for production). `.env` is gitignored; never commit it.
+4. Add `OPENROUTER_API_KEY`, `NEMOTRON_API_KEY` and `DEEPGRAM_API_KEY` to `.env` and check them with `uv run hv doctor`. In development OpenRouter screens and NVIDIA Nemotron runs the interviews ([ADR-0034](docs/architecture/adr/0034-ai-routing-openrouter-nemotron.md)); `OPENAI_API_KEY` is only needed for production. `.env` is gitignored; never commit it.
 5. `uv run hv up` starts the local stack (Postgres, Valkey, storage, ClamAV, Mailpit, LiveKit, HTTPS).
 6. `uv run hv hosts` and `uv run hv trust-ca` (each asks Windows for one confirmation) make `https://*.hirevion.localhost` work everywhere.
 7. `uv run hv doctor` and `uv run hv smoke` check tools, keys and every service.

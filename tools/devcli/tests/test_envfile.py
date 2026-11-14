@@ -129,3 +129,18 @@ def test_sync_env_matches_names_in_any_case() -> None:
     text, added = sync_env(example, env, {})
     assert added == ["HV_NEW"]
     assert text.count("API_KEY") == 2
+
+
+def test_the_required_keys_follow_the_routes() -> None:
+    """Only the providers the routes use need keys (ADR-0034); Deepgram always does."""
+    by_openrouter = {
+        "HV_AI_INTERVIEW_PROVIDER": "openrouter",
+        "OPENROUTER_API_KEY": "o" * 40,
+        "DEEPGRAM_API_KEY": "d" * 40,
+    }
+    assert missing_required(by_openrouter) == []
+    assert missing_required({"hv_ai_screening_provider": "gemini"}) == [
+        "GEMINI_API_KEY",
+        "NEMOTRON_API_KEY",
+        "DEEPGRAM_API_KEY",
+    ]

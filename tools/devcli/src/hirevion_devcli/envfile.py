@@ -7,11 +7,15 @@ import re
 import secrets
 from pathlib import Path
 
+from hirevion_core.ai.settings import AiSettings
 from hirevion_core.candidate_access.tokens import generate_key_b64
 
-# The dev profile's providers (ADR-0034): OpenRouter screens, Nemotron interviews,
-# Deepgram speaks.
-REQUIRED_KEYS: tuple[str, ...] = ("OPENROUTER_API_KEY", "NEMOTRON_API_KEY", "DEEPGRAM_API_KEY")
+# The key each `dev` route provider needs (ADR-0034); Deepgram speaks in every profile.
+_ROUTE_KEYS = {
+    "openrouter": "OPENROUTER_API_KEY",
+    "nemotron": "NEMOTRON_API_KEY",
+    "gemini": "GEMINI_API_KEY",
+}
 GENERATED_KEYS: dict[str, int] = {
     "POSTGRES_PASSWORD": 32,
     # Passwords for the application and outbox-relay database roles (ADR-0009).
@@ -54,11 +58,22 @@ def is_placeholder(value: str) -> bool:
     return not stripped or _PLACEHOLDER.match(stripped) is not None
 
 
-def missing_required(
-    values: dict[str, str], required: tuple[str, ...] = REQUIRED_KEYS
-) -> list[str]:
+def required_keys(values: dict[str, str]) -> tuple[str, ...]:
+    """The keys the routes in `values` need, with the app's defaults for unset routes."""
+    by_name = {key.lower(): value.strip().lower() for key, value in values.items()}
+    routes = [
+        by_name.get(f"hv_ai_{route}_provider")
+        or AiSettings.model_fields[f"{route}_provider"].default
+        for route in ("screening", "interview")
+    ]
+    keys = [_ROUTE_KEYS[provider] for provider in routes if provider in _ROUTE_KEYS]
+    return tuple(dict.fromkeys([*keys, "DEEPGRAM_API_KEY"]))
+
+
+def missing_required(values: dict[str, str], required: tuple[str, ...] | None = None) -> list[str]:
     by_name = {key.lower(): value for key, value in values.items()}  # names in any case
-    return [key for key in required if is_placeholder(by_name.get(key.lower(), ""))]
+    needed = required if required is not None else required_keys(values)
+    return [key for key in needed if is_placeholder(by_name.get(key.lower(), ""))]
 
 
 def generate_local_secrets() -> dict[str, str]:

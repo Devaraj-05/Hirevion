@@ -31,6 +31,14 @@ MAX_KEYTERMS = 50
 MAX_SPEECH_CHARACTERS = 2000  # Deepgram's limit per /v1/speak request
 
 
+def require_key(settings: AiSettings) -> str:
+    """The Deepgram key, or a ValueError naming it when `.env` lacks it."""
+    key = settings.deepgram_api_key.get_secret_value()
+    if not key:
+        raise ValueError(f"the {settings.profile} AI profile needs DEEPGRAM_API_KEY in .env")
+    return key
+
+
 class Deepgram:
     def __init__(
         self,
@@ -41,9 +49,7 @@ class Deepgram:
     ) -> None:
         self.settings = settings
         self.recorder = recorder
-        key = settings.deepgram_api_key.get_secret_value()
-        if client is None and not key:
-            raise ValueError(f"the {settings.profile} AI profile needs DEEPGRAM_API_KEY in .env")
+        key = settings.deepgram_api_key.get_secret_value() if client else require_key(settings)
         self.client = client or httpx.AsyncClient(
             base_url=DEEPGRAM_URL,
             headers={"Authorization": f"Token {key}"},

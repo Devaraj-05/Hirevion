@@ -333,3 +333,21 @@ async def test_ocr_reads_text_and_clamps_confidence(
 async def test_unsupported_images_are_refused(backend: OpenAICompatible) -> None:
     with pytest.raises(ValueError, match="image"):
         await backend.read_page(AiContext(UUID(int=1), "resume.ocr"), b"GIF89a", "image/gif")
+
+
+@respx.mock
+async def test_an_answer_cut_off_at_the_cap_is_not_repaired(
+    backend: OpenAICompatible, admin_engine: AsyncEngine, make_organization: MakeOrganization
+) -> None:
+    org = await make_organization("CompatCapped")
+    cut = completion('{"headline": "Strong Pyth')
+    body = json.loads(cut.content)
+    body["choices"][0]["finish_reason"] = "length"
+    route = respx.post(f"{BASE}/chat/completions").mock(return_value=httpx.Response(200, json=body))
+    with pytest.raises(AiOutputInvalid, match="HV_LLM_MAX_OUTPUT_TOKENS"):
+        await backend.complete(
+            AiContext(org, "screening.rank"), [{"role": "user", "content": "x"}], Summary
+        )
+    # A repair under the same cap would be cut off again: one call, one failed row.
+    assert route.call_count == 1
+    assert [row["error_code"] for row in await rows(admin_engine, org)] == ["invalid_output"]

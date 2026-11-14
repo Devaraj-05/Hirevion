@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import httpx
 
+from hirevion_core.ai.settings import NEMOTRON_BASE_URL, OPENROUTER_BASE_URL
+
 from .checks import CheckResult
 
 OPENAI_MODELS_URL = "https://api.openai.com/v1/models"
@@ -55,14 +57,18 @@ def check_deepgram(api_key: str, client: httpx.Client) -> CheckResult:
     return CheckResult("deepgram", "ok", f"key valid; {len(projects)} project(s)")
 
 
-OPENROUTER_KEY_URL = "https://openrouter.ai/api/v1/key"
-NEMOTRON_CHAT_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
+# The app's own endpoints (hirevion_core.ai.settings), so the doctor asks what the app asks.
+OPENROUTER_KEY_URL = f"{OPENROUTER_BASE_URL}/key"
+NEMOTRON_CHAT_URL = f"{NEMOTRON_BASE_URL}/chat/completions"
 
 
-def check_openrouter(api_key: str, client: httpx.Client) -> CheckResult:
+def check_openrouter(
+    api_key: str, client: httpx.Client, base_url: str = OPENROUTER_BASE_URL
+) -> CheckResult:
     """OpenRouter's key endpoint answers only a valid key and spends nothing."""
+    url = f"{base_url.rstrip('/')}/key"
     try:
-        response = client.get(OPENROUTER_KEY_URL, headers={"Authorization": f"Bearer {api_key}"})
+        response = client.get(url, headers={"Authorization": f"Bearer {api_key}"})
     except httpx.HTTPError as exc:
         return CheckResult("openrouter", "fail", f"network error ({type(exc).__name__})")
     if response.status_code in (401, 403):
@@ -78,11 +84,13 @@ def check_openrouter(api_key: str, client: httpx.Client) -> CheckResult:
     )
 
 
-def check_nemotron(api_key: str, model: str, client: httpx.Client) -> CheckResult:
+def check_nemotron(
+    api_key: str, model: str, client: httpx.Client, base_url: str = NEMOTRON_BASE_URL
+) -> CheckResult:
     """A one-token answer from the interview model proves the key and the model together."""
     try:
         response = client.post(
-            NEMOTRON_CHAT_URL,
+            f"{base_url.rstrip('/')}/chat/completions",
             headers={"Authorization": f"Bearer {api_key}"},
             json={
                 "model": model,

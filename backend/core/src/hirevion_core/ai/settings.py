@@ -15,6 +15,10 @@ GEMINI_OPENAI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/opena
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 NEMOTRON_BASE_URL = "https://integrate.api.nvidia.com/v1"
 Provider = Literal["openrouter", "nemotron", "gemini", "openai"]
+# What each `dev` route can use. The screening route also embeds and reads pages, which Nemotron
+# doesn't serve here; OpenAI is the production profile (in `dev` it would get Gemini's models).
+ScreeningProvider = Literal["openrouter", "gemini"]
+InterviewProvider = Literal["openrouter", "nemotron", "gemini"]
 
 
 def _env(name: str, env: str) -> AliasChoices:
@@ -32,10 +36,10 @@ class AiSettings(BaseSettings):
         "dev", validation_alias=_env("profile", "HV_AI_PROFILE")
     )
     # The `dev` profile's providers per route (hirevion_core.ai.routing).
-    screening_provider: Provider = Field(
+    screening_provider: ScreeningProvider = Field(
         "openrouter", validation_alias=_env("screening_provider", "HV_AI_SCREENING_PROVIDER")
     )
-    interview_provider: Provider = Field(
+    interview_provider: InterviewProvider = Field(
         "nemotron", validation_alias=_env("interview_provider", "HV_AI_INTERVIEW_PROVIDER")
     )
     openrouter_api_key: SecretStr = Field(

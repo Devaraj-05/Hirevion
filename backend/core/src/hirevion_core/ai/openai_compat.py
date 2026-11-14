@@ -225,6 +225,14 @@ def endpoint(settings: AiSettings, provider: Provider) -> Endpoint:
     )
 
 
+def require_key(settings: AiSettings, provider: Provider) -> Endpoint:
+    """`provider`'s endpoint, or a ValueError naming the key `.env` lacks."""
+    point = endpoint(settings, provider)
+    if not point.key.get_secret_value():
+        raise ValueError(f"the {settings.profile} AI profile needs {point.key_name} in .env")
+    return point
+
+
 class OpenAICompatible:
     """LLM, embeddings, vision and OCR through the OpenAI SDK, for any OpenAI-compatible
     provider."""
@@ -241,14 +249,10 @@ class OpenAICompatible:
         self.settings = settings
         self.recorder = recorder
         self.provider = provider
-        self.endpoint = endpoint(settings, provider)
-        key = self.endpoint.key
-        if client is None and not key.get_secret_value():
-            raise ValueError(
-                f"the {settings.profile} AI profile needs {self.endpoint.key_name} in .env"
-            )
+        # An injected client (tests) needs no key.
+        self.endpoint = endpoint(settings, provider) if client else require_key(settings, provider)
         self.client = client or AsyncOpenAI(
-            api_key=key.get_secret_value(),
+            api_key=self.endpoint.key.get_secret_value(),
             base_url=self.endpoint.base_url,
             max_retries=max_retries,
             timeout=DEFAULT_TIMEOUT,
@@ -313,6 +317,13 @@ class OpenAICompatible:
                 output_tokens=tokens.completion_tokens if tokens else 0,
                 model_version=response.model,
             )
+            if response.choices and response.choices[0].finish_reason == "length":
+                # Cut off at the cap: a repair under the same cap would be cut off again.
+                raise AiOutputInvalid(
+                    f"the answer reached the output cap ({self.settings.max_output_tokens} "
+                    "tokens, reasoning included; HV_LLM_MAX_OUTPUT_TOKENS)",
+                    usage,
+                )
             try:
                 value = schema.model_validate_json(content)
             except ValidationError as error:
@@ -362,6 +373,7 @@ class OpenAICompatible:
 
     async def embed(self, ctx: AiContext, texts: Sequence[str]) -> Embeddings:
         model, dimensions = self.endpoint.embedding_model, self.settings.embedding_dimensions
+        extra = self.endpoint.extra_body
         inputs = list(texts)
 
         async def run() -> _Embedded:
@@ -375,6 +387,8 @@ class OpenAICompatible:
                         model=model,
                         input=batch,
                         dimensions=dimensions,
+                        # OpenRouter's provider preferences cover the resume text sent here too.
+                        extra_body=dict(extra) if extra else None,
                     )
                 )
                 items = list(response.data)

@@ -195,6 +195,7 @@ A box is ticked in the PR that merges the part. Deliverables are in MASTER §14;
 - [x] **AI provider routing** (product-owner decision, 2026-11-14). Depends on: SP-01. ADR-0034. Plan: `docs/superpowers/plans/2026-11-14-ai-provider-routing.md`.
   - OpenRouter serves the screening route (job descriptions, resumes, screening, embeddings, page reading); NVIDIA Nemotron serves the interview route (questions, interview turns, evaluation); Deepgram keeps speech.
   - Exit met: the live checks pass on both providers (structured answers on both tiers, embeddings, page reading) and `hv doctor` validates both keys.
+  - Follow-up (open, see STATUS): record each stored vector's embedding model, compare only matching vectors, and re-embed when the model changes.
 - [ ] **C7 Vision agent (SP-15a and SP-15b server).** Depends on: C5, D3. See MASTER §14 SP-15a, SP-15b.
   - Exit: each detector's precision and recall is reported on the labelled set; no signal is shown as proof.
 

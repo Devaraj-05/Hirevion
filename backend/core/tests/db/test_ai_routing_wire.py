@@ -11,11 +11,11 @@ from uuid import UUID
 import httpx
 import pytest
 import respx
-from pydantic import BaseModel
+from pydantic import BaseModel, SecretStr
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from hirevion_core.ai import build_ai
+from hirevion_core.ai import build_ai, openai_compat
 from hirevion_core.ai.mock import MOCK_PRICES
 from hirevion_core.ai.settings import AiSettings
 from hirevion_core.ai.types import AiContext
@@ -161,15 +161,25 @@ async def test_resume_embeddings_and_page_reading_go_to_openrouter(
     assert vectors.vectors == [[1.0, 0.0, 0.0]]
     assert sent(embed)["model"] == "router/embed"
     assert sent(embed)["dimensions"] == 3
+    # Resume text is the most personal payload: embeddings get the same provider preferences.
+    assert sent(embed)["provider"] == {"require_parameters": True, "data_collection": "deny"}
     assert read.text == "HIREVION" and sent(page)["model"] == "router/vision"
 
 
-def test_the_dev_profile_names_the_key_it_is_missing(app_db: Database) -> None:
-    settings = SETTINGS.model_copy(
-        update={"nemotron_api_key": SETTINGS.nemotron_api_key.__class__("")}
-    )
-    with pytest.raises(ValueError, match="NEMOTRON_API_KEY"):
+@pytest.mark.parametrize(
+    ("missing", "named"),
+    [("nemotron_api_key", "NEMOTRON_API_KEY"), ("deepgram_api_key", "DEEPGRAM_API_KEY")],
+)
+def test_a_missing_key_is_named_before_any_client_opens(
+    app_db: Database, monkeypatch: pytest.MonkeyPatch, missing: str, named: str
+) -> None:
+    opened: list[dict[str, Any]] = []
+    monkeypatch.setattr(openai_compat, "AsyncOpenAI", lambda **kwargs: opened.append(kwargs))
+    settings = SETTINGS.model_copy(update={missing: SecretStr("")})
+    with pytest.raises(ValueError, match=named):
         build_ai(settings, app_db, MOCK_PRICES)
+    # Nothing to close: the callers carry on without AI, so an opened client would leak.
+    assert opened == []
 
 
 @respx.mock

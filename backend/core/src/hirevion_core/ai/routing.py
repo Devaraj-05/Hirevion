@@ -22,6 +22,7 @@ INTERVIEW: Route = "interview"
 
 _ROUTES: dict[str, Route] = {
     "jd": SCREENING,
+    "job": SCREENING,
     "resume": SCREENING,
     "screening": SCREENING,
     "questions": INTERVIEW,

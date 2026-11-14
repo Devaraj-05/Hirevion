@@ -15,6 +15,7 @@ import json
 from dataclasses import dataclass
 
 from hirevion_core.ai.deepgram import Deepgram
+from hirevion_core.ai.deepgram import require_key as require_deepgram_key
 from hirevion_core.ai.mock import (
     MockEmbeddings,
     MockLLM,
@@ -23,7 +24,7 @@ from hirevion_core.ai.mock import (
     MockTextToSpeech,
     MockVision,
 )
-from hirevion_core.ai.openai_compat import OpenAICompatible
+from hirevion_core.ai.openai_compat import OpenAICompatible, require_key
 from hirevion_core.ai.prices import PriceBook
 from hirevion_core.ai.recorder import Recorder
 from hirevion_core.ai.routing import PurposeRouter
@@ -78,6 +79,9 @@ def build_ai(settings: AiSettings, db: Database, prices: PriceBook | None = None
             ocr=MockOCR(recorder, settings),
         )
     if settings.profile == "production":
+        # Every key first: a client opened before a later key fails would never be closed.
+        require_key(settings, "openai")
+        require_deepgram_key(settings)
         compat = OpenAICompatible(settings, recorder, "openai")
         speech = Deepgram(settings, recorder)
         return AiServices(
@@ -85,6 +89,9 @@ def build_ai(settings: AiSettings, db: Database, prices: PriceBook | None = None
         )
     # `dev`: screening (with its embeddings and page reading) and interviews each go to their
     # route's provider (ADR-0034).
+    require_key(settings, settings.screening_provider)
+    require_key(settings, settings.interview_provider)
+    require_deepgram_key(settings)
     screening = OpenAICompatible(settings, recorder, settings.screening_provider)
     interview = (
         screening

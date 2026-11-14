@@ -7,6 +7,8 @@ from pathlib import Path
 
 import httpx
 
+from hirevion_core.ai.settings import NEMOTRON_BASE_URL, OPENROUTER_BASE_URL, AiSettings
+
 from . import hosts
 from .checks import (
     CheckResult,
@@ -35,8 +37,8 @@ _VENDOR_KEYS = (
     "GEMINI_API_KEY",
     "OPENAI_API_KEY",
 )
-# The interview model the Nemotron check asks (HV_NEMOTRON_MODEL_FAST overrides it).
-DEFAULT_NEMOTRON_MODEL = "nvidia/nemotron-3.5-lightning-30b-a3b"
+# The interview model the Nemotron check asks: the app's default, or HV_NEMOTRON_MODEL_FAST.
+DEFAULT_NEMOTRON_MODEL: str = AiSettings.model_fields["nemotron_model_fast"].default
 
 
 def summarize_models(models: list[str]) -> list[str]:
@@ -88,10 +90,12 @@ def gather(
     http = client if client is not None else httpx.Client(timeout=20)
     try:
         if "OPENROUTER_API_KEY" in present:
-            results.append(check_openrouter(values["OPENROUTER_API_KEY"], http))
+            base = values.get("HV_OPENROUTER_BASE_URL") or OPENROUTER_BASE_URL
+            results.append(check_openrouter(values["OPENROUTER_API_KEY"], http, base))
         if "NEMOTRON_API_KEY" in present:
             model = values.get("HV_NEMOTRON_MODEL_FAST") or DEFAULT_NEMOTRON_MODEL
-            results.append(check_nemotron(values["NEMOTRON_API_KEY"], model, http))
+            base = values.get("HV_NEMOTRON_BASE_URL") or NEMOTRON_BASE_URL
+            results.append(check_nemotron(values["NEMOTRON_API_KEY"], model, http, base))
         if "GEMINI_API_KEY" in present:
             gemini_result, models["gemini"] = check_gemini(values["GEMINI_API_KEY"], http)
             results.append(gemini_result)

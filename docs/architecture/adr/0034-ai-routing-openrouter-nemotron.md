@@ -19,9 +19,9 @@
   - **Screening route:** `jd`, `resume`, `screening`. Default provider: OpenRouter.
   - **Interview route:** `questions`, `interview`, `evaluation`. Default provider: NVIDIA Nemotron.
   - An unknown area raises an error. A test scans the code and fails if any purpose has no route.
-- **Shared services.** Embeddings, page reading (OCR) and vision always use the screening route's provider.
+- **Shared services.** Embeddings, page reading (OCR) and vision always use the screening route's provider. OpenRouter's provider preferences go with the embeddings too: they carry resume text.
 - **Configuration.**
-  - `HV_AI_SCREENING_PROVIDER` and `HV_AI_INTERVIEW_PROVIDER` choose each route's provider: `openrouter`, `nemotron`, `gemini` or `openai`.
+  - `HV_AI_SCREENING_PROVIDER` chooses `openrouter` or `gemini`; `HV_AI_INTERVIEW_PROVIDER` chooses `openrouter`, `nemotron` or `gemini`. Nemotron serves no embeddings or page reading here, and OpenAI is the production profile (in `dev` it would get Gemini's model names), so the settings refuse those.
   - When both routes name the same provider, one client serves both.
 - **Default models.** Each can be changed with `HV_OPENROUTER_*` or `HV_NEMOTRON_*`.
 
@@ -34,11 +34,12 @@
   - OpenRouter, OpenAI and Gemini get a strict `response_format` JSON schema; NVIDIA gets a top-level `guided_json`.
   - OpenRouter requests also send `provider: {require_parameters: true, data_collection: "deny"}`.
   - Pydantic validation and its one repair retry are unchanged.
-- **Output cap.** Every chat call sends `HV_LLM_MAX_OUTPUT_TOKENS` (default 16,384, reasoning included). OpenAI takes it as `max_completion_tokens`; the other providers take it as `max_tokens`.
+- **Output cap.** Every chat call sends `HV_LLM_MAX_OUTPUT_TOKENS` (default 16,384, reasoning included). OpenAI takes it as `max_completion_tokens`; the other providers take it as `max_tokens`. An answer cut off at the cap (`finish_reason: length`) fails at once with a message naming the setting; a repair under the same cap would be cut off again.
 - **Keys.**
   - Required locally: `OPENROUTER_API_KEY`, `NEMOTRON_API_KEY` and `DEEPGRAM_API_KEY`. Names may be in any case, e.g. `nemotron_API_KEY`.
   - Optional locally: the Gemini and OpenAI keys.
-  - `hv doctor` checks OpenRouter through `GET /api/v1/key`, which spends nothing, and Nemotron with a one-token chat. It never prints a key or the key's label.
+  - `hv doctor` checks OpenRouter through `GET /api/v1/key`, which spends nothing, and Nemotron with a one-token chat, at the app's base URLs and model. It asks only for the keys the configured routes need, and never prints a key or the key's label.
+  - `build_ai` checks every key it needs before it opens any client.
 - **Other profiles.** `production` (OpenAI + Deepgram) and `mock` are unchanged.
 
 ## Consequences

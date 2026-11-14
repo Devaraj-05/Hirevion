@@ -75,9 +75,9 @@ async def run_gate(
         if settings.profile == "mock":
             raise NotUsable("HV_AI_PROFILE is mock; choose dev or production for --live")
         recorder = MemoryRecorder(settings)
-        compat = OpenAICompatible(
-            settings, recorder, "gemini" if settings.profile == "dev" else "openai"
-        )
+        # The interview route's provider: the model that evaluates real interviews (ADR-0034).
+        provider = settings.interview_provider if settings.profile == "dev" else "openai"
+        compat = OpenAICompatible(settings, recorder, provider)
         llm, close, profile = compat, compat.aclose, settings.profile
     else:
         llm, recorder = offline_llm()

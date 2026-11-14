@@ -8,6 +8,7 @@ from typing import Any
 import httpx
 import respx
 
+from hirevion_core.ai.settings import AiSettings
 from hirevion_devcli.doctor import gather, summarize_models
 from hirevion_devcli.vendors import (
     DEEPGRAM_PROJECTS_URL,
@@ -168,3 +169,32 @@ def test_gather_checks_openrouter_and_nemotron_whatever_the_case_of_their_names(
     assert json.loads(nemotron.calls.last.request.content)["model"] == "nvidia/test-fast"
     keys = (OPENROUTER_KEY, NEMOTRON_KEY, DEEPGRAM_KEY)
     assert all(key not in r.detail for r in results for key in keys)
+
+
+@respx.mock
+def test_gather_probes_the_endpoints_and_model_the_app_uses(tmp_path: Path) -> None:
+    """The doctor asks what the app would ask: its base URLs (overridable) and its model."""
+    write_env(
+        tmp_path,
+        OPENROUTER_API_KEY=OPENROUTER_KEY,
+        NEMOTRON_API_KEY=NEMOTRON_KEY,
+        DEEPGRAM_API_KEY=DEEPGRAM_KEY,
+        HV_OPENROUTER_BASE_URL="https://router.test/api/v1",
+        HV_NEMOTRON_BASE_URL="https://nim.test/v1/",
+    )
+    key = respx.get("https://router.test/api/v1/key").mock(
+        return_value=httpx.Response(200, json={"data": {"usage": 0, "limit": None}})
+    )
+    chat = respx.post("https://nim.test/v1/chat/completions").mock(
+        return_value=httpx.Response(200, json={"choices": [{"message": {"content": "OK"}}]})
+    )
+    respx.get(DEEPGRAM_PROJECTS_URL).mock(return_value=httpx.Response(200, json={"projects": []}))
+    with httpx.Client() as client:
+        results, _ = gather(
+            tmp_path, which=lambda name: name, runner=runner, client=client, resolve=loopback
+        )
+    by_name = {r.name: r for r in results}
+    assert by_name["openrouter"].status == "ok" and key.called
+    assert by_name["nemotron"].status == "ok"
+    default = AiSettings.model_fields["nemotron_model_fast"].default
+    assert json.loads(chat.calls.last.request.content)["model"] == default
