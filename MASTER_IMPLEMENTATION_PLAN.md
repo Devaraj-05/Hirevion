@@ -17,7 +17,7 @@
   2. The **Candidate Windows Desktop AI Interview** (`AI-Interview.exe`), which candidates install and log into to take the AI interview.
   3. **Third-Eye**, a mobile-browser camera.
   4. The **shared backend**.
-- **Where it runs:** everything runs end-to-end locally on Docker Desktop. AI runs on hosted APIs through your keys (decided 2026-09-28, replacing the earlier local-model idea): Gemini for development and testing, OpenAI in production, Deepgram for speech. Everything else is free and local.
+- **Where it runs:** everything runs end-to-end locally on Docker Desktop. AI runs on hosted APIs through your keys (decided 2026-09-28, replacing the earlier local-model idea): in development and testing OpenRouter for screening and NVIDIA Nemotron for interviews (ADR-0034, 2026-11-14, replacing Gemini), OpenAI in production, Deepgram for speech. Everything else is free and local.
   - The move to Azure (Central India) is a separate **Cloud Migration Plan** written after the local build.
   - That move must be configuration plus deployment, not a rewrite.
 - **Decisions made with you:**
@@ -26,7 +26,7 @@
   - **No PRD feature is skipped.**
   - Security, robustness and usability are non-negotiable.
   - Recruiter identity is built in-house, following your answer "build everything locally first".
-  - AI vendors: Gemini (your paid key) for LLM, embeddings and vision in development and testing; OpenAI for the same in production; Deepgram for speech-to-text and text-to-speech in both. ElevenLabs/Cartesia stay optional text-to-speech upgrades for later.
+  - AI vendors: in development and testing, OpenRouter for resume parsing, screening, embeddings and vision, and NVIDIA Nemotron for interview questions, interview turns and evaluation (ADR-0034, replacing Gemini); OpenAI for all of it in production; Deepgram for speech-to-text and text-to-speech in both. ElevenLabs/Cartesia stay optional text-to-speech upgrades for later.
   - Customers and data are in India, so the DPDP Act 2023 applies.
   - Launch is full GA with internal security testing, followed by an external pentest.
 - **Git hygiene:** commits and pushes go out only as Devaraj-05, with no Claude attribution anywhere (§13 and CLAUDE.md).
@@ -57,7 +57,7 @@ Each application has its own build, tests and release pipeline.
 | D3 | Web stack: Next.js (App Router, React 19), TypeScript, Tailwind v4, shadcn/ui, TanStack Query and Table, Zustand, ECharts, next-intl, react-hook-form + zod, and an OpenAPI-generated client. | §94. |
 | D4 | Desktop stack: Tauri 2 with React/TS/Vite and Monaco. Native code uses the Rust `windows` crate. MediaPipe Tasks (WASM) runs on-device computer vision. NSIS per-user installer and a signed updater. | §27 and §94. |
 | D5 | Self-hosted LiveKit server and Egress in Docker. The voice pipeline runs on LiveKit Agents (Python), with our orchestrator plugged in. | Provides turn detection, barge-in, streaming and fallbacks; serves §52, §65 and §92. |
-| D6 | An AI provider abstraction (§78) with three profiles: `dev` (Gemini + Deepgram) for development and testing, `production` (OpenAI + Deepgram), and `mock` (deterministic fakes) for CI and load tests. Providers and models are set per route in configuration. | Real model quality and latency from day one, no GPU needed, and the cost model measures real spend. |
+| D6 | An AI provider abstraction (§78) with three profiles: `dev` (OpenRouter for screening, NVIDIA Nemotron for interviews, Deepgram; ADR-0034) for development and testing, `production` (OpenAI + Deepgram), and `mock` (deterministic fakes) for CI and load tests. Providers and models are set per route in configuration. | Real model quality and latency from day one, no GPU needed, and the cost model measures real spend. |
 | D7 | In-house identity:<br>• **Recruiters:** argon2id passwords, TOTP and passkeys, sessions, lockout, SSO (Entra ID/OIDC/SAML) and SCIM.<br>• **Candidates:** invitation → set password → desktop login (plus an email OTP on a new device, org-configurable) → device-bound DPoP tokens. | Your choice; also delivers §8 device and session binding. |
 | D8 | Storage uses the Azure Blob API everywhere (Azurite locally), behind a storage-service and URL-signer interface. ClamAV scans files. Email goes over SMTP (Mailpit locally). | The cloud move needs no rework. |
 | D9 | Coding answers are typed in a plain text console and never executed; the AI reviews the code after the interview (ADR-0033). Superseded the per-run hardened sandbox (by product-owner decision, 2026-10-23: no code execution or sandbox; code is evaluated by AI review after the interview). | §45–§47. |
@@ -209,7 +209,7 @@ Docker Desktop (WSL2)
   media: livekit-server (7880 ws / 7881 tcp / 7882 udp-mux) · livekit-egress
   obs  : otel-lgtm (Grafana/Tempo/Loki/Prometheus) · glitchtip
   test : keycloak (SAML/OIDC test IdP) · webhook-receiver · ats-mocks
-External APIs (HTTPS, keys in the gitignored root .env): Gemini (dev LLM, embeddings, vision) · OpenAI (production LLM, embeddings, vision, TTS fallback) · Deepgram (STT, TTS)
+External APIs (HTTPS, keys in the gitignored root .env): OpenRouter (dev screening LLM, embeddings, vision) · NVIDIA Nemotron (dev interview LLM) · OpenAI (production LLM, embeddings, vision, TTS fallback) · Deepgram (STT, TTS)
 ```
 
 ### 5.2 Docker Desktop stack
@@ -221,7 +221,7 @@ External APIs (HTTPS, keys in the gitignored root .env): Gemini (dev LLM, embedd
   - If file-watching on Windows mounts is too slow, the API can run natively with uv instead.
 - **`doctor` script:**
   - Checks Docker resources, ports, hosts entries, Caddy CA trust, WebView2 and the MSVC build tools.
-  - Verifies the Gemini, Deepgram and (when set) OpenAI keys with a harmless API call and lists the models your keys can use.
+  - Verifies the OpenRouter, Nemotron, Deepgram and (when set) Gemini and OpenAI keys with a harmless API call and lists the models your keys can use.
 - **Seed data:**
   - A super admin, 2 organisations (for tenant-isolation checks) and users for every role.
   - Departments, teams, jobs, templates and a question library.
@@ -232,31 +232,31 @@ External APIs (HTTPS, keys in the gitignored root .env): Gemini (dev LLM, embedd
     - hidden-text injection samples
     - an EICAR malware test file
 
-### 5.3 AI stack (Gemini for development, OpenAI for production, Deepgram for speech)
+### 5.3 AI stack (OpenRouter and Nemotron for development, OpenAI for production, Deepgram for speech)
 
-Decided on 2026-09-28 (ADR-0002, ADR-0003): AI runs on hosted APIs through your keys, instead of local models, so no GPU is needed. Gemini (your paid key) is the LLM for development and testing; OpenAI is the production LLM; Deepgram handles speech in both.
+Decided on 2026-09-28 (ADR-0002, ADR-0003): AI runs on hosted APIs through your keys, instead of local models, so no GPU is needed. Gemini (your paid key) was the LLM for development and testing; OpenAI is the production LLM; Deepgram handles speech in both. Since 2026-11-14 (ADR-0034) development routes each call by its task: OpenRouter reads job descriptions and resumes and screens; NVIDIA Nemotron writes the interview questions, runs the interview turns and evaluates.
 
 - **One interface layer:** every AI call goes through `hirevion_core.ai`:
   - `LLMService`, `EmbeddingService`, `SpeechToTextService`, `TextToSpeechService`, `VisionService` (§78), plus `OCRService`.
   - Each call records model, prompt and rubric versions plus usage.
-- **Profiles:** `dev` (Gemini + Deepgram) for development and testing, `production` (OpenAI + Deepgram), and `mock` (CI and load tests). The provider and model for each route are set in configuration.
+- **Profiles:** `dev` (OpenRouter + Nemotron + Deepgram, routed by task: ADR-0034) for development and testing, `production` (OpenAI + Deepgram), and `mock` (CI and load tests). The provider and model for each route are set in configuration.
 
 | Capability | `dev` profile | `production` profile | Fallback | `mock` (CI and load tests) |
 |---|---|---|---|---|
-| LLM (JSON-schema output) | Gemini through its OpenAI-compatible endpoint: a fast model for live interview turns, the strongest model for screening and evaluation | OpenAI: same split | Azure OpenAI deployment of the production models (recommended) | Deterministic fake |
-| Embeddings (1,536-d) | Gemini `gemini-embedding-001` with `output_dimensionality=1536` | OpenAI `text-embedding-3-large` with `dimensions=1536` | — | Deterministic fake vectors |
+| LLM (JSON-schema output) | By task (ADR-0034): OpenRouter for job descriptions, resumes and screening; NVIDIA Nemotron for questions, interview turns and evaluation. A fast model for live interview turns, the strongest model for the rest | OpenAI: same split | Azure OpenAI deployment of the production models (recommended) | Deterministic fake |
+| Embeddings (1,536-d) | OpenRouter `openai/text-embedding-3-small` | OpenAI `text-embedding-3-large` with `dimensions=1536` | — | Deterministic fake vectors |
 | STT | Deepgram streaming (Nova-3, or Flux for conversational end-of-turn) with keyterms from the JD and resume | same | OpenAI transcription | Scripted transcript |
 | TTS | Deepgram Aura-2 streaming | same | OpenAI TTS; ElevenLabs/Cartesia optional later | Silent audio of realistic length |
 | VAD / turn-taking | Silero VAD + LiveKit turn detector (+ Flux end-of-turn when used) | same | — | same |
-| OCR | Tesseract 5, with Gemini vision for low-confidence pages | Tesseract 5 + OpenAI vision | — | Fixture text |
+| OCR | Tesseract 5, with OpenRouter vision (`openai/gpt-5-mini`) for low-confidence pages | Tesseract 5 + OpenAI vision | — | Fixture text |
 | Vision (proctoring) | MediaPipe on-device; OpenCV + ONNX Runtime + an Apache-2.0 detector server-side | same | — | Fixture detections |
 
-- **Voice wiring:** LiveKit Agents' `deepgram` and `openai` plugins (the `openai` plugin points at Gemini's OpenAI-compatible endpoint in `dev`), with `FallbackAdapter` for STT, LLM and TTS.
-- **Other LLM work:** the OpenAI Python SDK with JSON-schema structured outputs, against Gemini's OpenAI-compatible endpoint in `dev` and OpenAI in `production`, so one code path serves both. Pydantic validates every response, with one repair retry.
+- **Voice wiring:** LiveKit Agents' `deepgram` plugin for STT and TTS, with `FallbackAdapter` for STT, LLM and TTS. The interview's LLM turns go through `hirevion_core`'s AI services (the conductor), so they follow the interview route: Nemotron in `dev` (ADR-0034), OpenAI in `production`.
+- **Other LLM work:** the OpenAI Python SDK with JSON-schema structured outputs, against OpenRouter's and NVIDIA's OpenAI-compatible endpoints in `dev` (NVIDIA takes the schema as a top-level `guided_json`) and OpenAI in `production`, so one code path serves all of them. Every call caps its answer's tokens (`HV_LLM_MAX_OUTPUT_TOKENS`). Pydantic validates every response, with one repair retry.
 - **Embeddings across providers:** vectors from different providers aren't comparable, so each stored vector records its model, and switching providers runs the re-embed job.
 - **Model choice:** model names live in configuration, never in code. The SP-00 benchmark lists the models your keys can use and picks the ones that keep the AI's first spoken word at p95 ≤ 2.5 s.
 - **Keys:** only in the gitignored root `.env` locally (Key Vault in the cloud). Never in the repo, the desktop app or the web bundle.
-- **Data rule:** development uses synthetic data. Real candidate data goes to an AI vendor only after its DPA is signed and its data-retention and model-improvement opt-outs are in place (§17). Gemini's paid tier doesn't use prompts to improve Google's products.
+- **Data rule:** development uses synthetic data. Real candidate data goes to an AI vendor only after its DPA is signed and its data-retention and model-improvement opt-outs are in place (§17). OpenRouter requests ask only for providers that don't collect prompts (`data_collection: deny`); that is not a DPA, and neither is NVIDIA's hosted API (ADR-0034).
 - **Cost control:** every call is metered (§11) against per-organisation budgets, so the cost model is built from real spend.
 
 ### 5.4 Cloud-portability contract (input to the Cloud Migration Plan)
@@ -1074,7 +1074,7 @@ Each SP gets its own detailed TDD plan before work starts. "CP" is the checkpoin
 - **Exit criteria:**
   - The tenant-isolation harness fails any table that lacks row-level security.
   - The outbox delivery test passes.
-  - Provider contract tests pass on `mock`, plus a small opt-in live check against Gemini and Deepgram (and OpenAI when its key is set).
+  - Provider contract tests pass on `mock`, plus a small opt-in live check against OpenRouter, Nemotron and Deepgram (and Gemini or OpenAI when their keys are set).
 
 **SP-02 Identity & access** (CP1; depends on SP-01 and SP-03). Built in two parts: SP-02a (accounts and sign-in) and SP-02b (organisations and access).
 - **Deliverables:**
@@ -1493,7 +1493,7 @@ A checkpoint is a demo plus quality gates. Lanes, order and priorities are in [P
   - It answers with TTS audio from persona scripts: strong, partial, weak, silent, adversarial, cheating.
   - It emits telemetry and uploads segments.
   - Tests assert the transcript, evaluation, events, recordings and reports.
-  - It runs in CI with the `mock` profile and nightly against Gemini and Deepgram.
+  - It runs in CI with the `mock` profile and nightly against the `dev` providers (OpenRouter, Nemotron, Deepgram).
 - **Chaos drills:** each drill must end with complete recordings, the correct events, and the interview resumed. The drills cover all seven §95 failure modes:
   - Drop the network mid-answer.
   - Force a server timeout.
@@ -1525,7 +1525,7 @@ A checkpoint is a demo plus quality gates. Lanes, order and priorities are in [P
 
 ## 17. Owner actions still open
 
-- **API keys:** put your Gemini and Deepgram keys in the gitignored root `.env` (`uv run hv env-sync` adds any missing settings); the OpenAI key is needed only for production. No GPU is needed.
+- **API keys:** put your OpenRouter, Nemotron and Deepgram keys in the gitignored root `.env` (`uv run hv env-sync` adds any missing settings); the OpenAI key is needed only for production. No GPU is needed.
 - **Test devices:**
   - An Android phone and an iPhone for third-eye.
   - A USB webcam.
@@ -1537,8 +1537,8 @@ A checkpoint is a demo plus quality gates. Lanes, order and priorities are in [P
   - A domain name.
   - OpenAI: check your organisation's usage tier and rate limits (they rise with spend and account age), set a monthly budget, and request zero data retention if eligible.
   - Deepgram: set a budget and opt out of model improvement.
-  - Gemini: keep the key on the paid tier (its prompts aren't used to improve Google's products) and set a budget.
-  - Sign DPAs with Google (Gemini), OpenAI and Deepgram before any real candidate data is used. ElevenLabs/Cartesia only if we add them later.
+  - OpenRouter: add credit and set the key's spending limit (its requests already deny prompt collection). NVIDIA: check the build.nvidia.com key's terms and limits before real data.
+  - Sign DPAs with OpenRouter, NVIDIA, OpenAI and Deepgram before any real candidate data is used. ElevenLabs/Cartesia only if we add them later.
   - Counsel review of the `docs/policies/` drafts.
   - Booking the external pentest.
 
@@ -1557,7 +1557,7 @@ A checkpoint is a demo plus quality gates. Lanes, order and priorities are in [P
 | DPDP compliance | Consent, DSR and retention built in; counsel review of policies; a sub-processor register. |
 | Single-person knowledge risk | ADRs, runbooks, CLAUDE.md conventions, and specs and plans kept in the repo. |
 | Unmerged stacked PRs (four at once, 2026-10-09) | Merge daily, in order; stack at most one deep; open each PR against `main`. |
-| No real-model validation yet (the Gemini key has been invalid since 2026-10-03) | Fix the key before SP-09. Run the resume and screening evaluations and the live provider tests, and tune prompts before building the interview engine on top of them. |
+| Little real-model validation yet (the Gemini key was invalid from 2026-10-03; ADR-0034 moved development to OpenRouter and Nemotron on 2026-11-14, and their live checks pass) | Add OpenRouter credit, then run the resume, screening and interview evaluation sets and tune prompts on the new routes. |
 | The desktop lane started late (no native work since the SP-00 spikes) | Start SP-08a now against a stub sign-in, so capture, recording and proctoring risks surface before CP2. |
 | Merge conflicts once lanes run in parallel | The shared-file rules in §15. Rebase onto `main` before each PR, then regenerate the generated files. |
 
@@ -1648,7 +1648,7 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 75 | 3 channels; 8 notification events | SP-18: skipped by product-owner decision, 2026-10-25 (§6.14). The existing emails cover the invitation, reminder and reschedule: SP-07a, SP-07b, SP-07c |
 | 76 | 8 ATS/integration targets; no provider logic in core | SP-20 (the webhook target: skipped by product-owner decision, 2026-10-25, with SP-18) |
 | 77 | 9 webhook events; 5 security measures | SP-18: skipped by product-owner decision, 2026-10-25 (§6.14) |
-| 78 | AIProvider (5) and 5 services | SP-01 |
+| 78 | AIProvider (5) and 5 services | SP-01; routed by task in `dev` (ADR-0034) |
 | 79 | 8 governance fields | SP-10 (`ai_invocations` fields set by `evaluation.service`, pinned re-runs `hv eval-rerun`, the gate `hv eval-interviews`; `test_evaluation_service.py`, `test_harness.py`) |
 | 80 | Immutable template versions; interviews pin a version | SP-06 (insert-only version tables for templates and questions), SP-07a (interviews pin `(template_id, template_version)` and a policy snapshot) |
 | 81 | Tenant scoping; server-side authorisation | SP-01, SP-02 |

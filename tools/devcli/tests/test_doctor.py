@@ -1,3 +1,4 @@
+import json
 import socket
 import subprocess
 from collections.abc import Sequence
@@ -8,11 +9,19 @@ import httpx
 import respx
 
 from hirevion_devcli.doctor import gather, summarize_models
-from hirevion_devcli.vendors import DEEPGRAM_PROJECTS_URL, GEMINI_MODELS_URL, OPENAI_MODELS_URL
+from hirevion_devcli.vendors import (
+    DEEPGRAM_PROJECTS_URL,
+    GEMINI_MODELS_URL,
+    NEMOTRON_CHAT_URL,
+    OPENAI_MODELS_URL,
+    OPENROUTER_KEY_URL,
+)
 
 GEMINI_KEY = "gemini-test-" + "g" * 40
 OPENAI_KEY = "openai-test-" + "x" * 40
 DEEPGRAM_KEY = "deepgram-test-" + "y" * 40
+OPENROUTER_KEY = "openrouter-test-" + "r" * 40
+NEMOTRON_KEY = "nemotron-test-" + "n" * 40
 
 
 def runner(args: Sequence[str]) -> subprocess.CompletedProcess[str]:
@@ -63,7 +72,8 @@ def test_gather_checks_gemini_and_deepgram(tmp_path: Path) -> None:
             tmp_path, which=lambda name: name, runner=runner, client=client, resolve=loopback
         )
     by_name = {r.name: r for r in results}
-    assert by_name[".env"].status == "ok"
+    # Gemini is optional now (ADR-0034): still checked when its key is set.
+    assert by_name[".env"].status == "fail"
     assert by_name["gemini"].status == "ok"
     assert by_name["deepgram"].status == "ok"
     assert "openai" not in by_name
@@ -127,3 +137,34 @@ def test_summarize_models_keeps_relevant_families() -> None:
         "text-embedding-3-large",
         "whisper-1",
     ]
+
+
+@respx.mock
+def test_gather_checks_openrouter_and_nemotron_whatever_the_case_of_their_names(
+    tmp_path: Path,
+) -> None:
+    write_env(
+        tmp_path,
+        OpenRouter_API_KEY=OPENROUTER_KEY,
+        nemotron_API_KEY=NEMOTRON_KEY,
+        DEEPGRAM_API_KEY=DEEPGRAM_KEY,
+        HV_NEMOTRON_MODEL_FAST="nvidia/test-fast",
+    )
+    respx.get(OPENROUTER_KEY_URL).mock(
+        return_value=httpx.Response(200, json={"data": {"usage": 0, "limit": None}})
+    )
+    nemotron = respx.post(NEMOTRON_CHAT_URL).mock(
+        return_value=httpx.Response(200, json={"choices": [{"message": {"content": "OK"}}]})
+    )
+    respx.get(DEEPGRAM_PROJECTS_URL).mock(return_value=httpx.Response(200, json={"projects": []}))
+    with httpx.Client() as client:
+        results, _ = gather(
+            tmp_path, which=lambda name: name, runner=runner, client=client, resolve=loopback
+        )
+    by_name = {r.name: r for r in results}
+    assert by_name[".env"].status == "ok"
+    assert by_name["openrouter"].status == "ok"
+    assert by_name["nemotron"].status == "ok"
+    assert json.loads(nemotron.calls.last.request.content)["model"] == "nvidia/test-fast"
+    keys = (OPENROUTER_KEY, NEMOTRON_KEY, DEEPGRAM_KEY)
+    assert all(key not in r.detail for r in results for key in keys)

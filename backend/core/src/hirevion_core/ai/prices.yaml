@@ -28,6 +28,26 @@ models:
     retrieved: 2026-09-29
     input_per_million_tokens: "0.20"  # text
 
+  # OpenRouter (the dev profile's screening route, ADR-0034), from its public model list.
+  # NVIDIA's hosted Nemotron (build.nvidia.com) publishes no per-token price, so its calls
+  # record cost_usd = NULL.
+  openai/gpt-5.4-nano:
+    source: https://openrouter.ai/api/v1/models
+    retrieved: 2026-11-14
+    input_per_million_tokens: "0.20"
+    output_per_million_tokens: "1.25"
+
+  openai/gpt-5-mini:
+    source: https://openrouter.ai/api/v1/models
+    retrieved: 2026-11-14
+    input_per_million_tokens: "0.25"
+    output_per_million_tokens: "2.00"
+
+  openai/text-embedding-3-small:
+    source: https://openrouter.ai/api/v1/embeddings/models
+    retrieved: 2026-11-14
+    input_per_million_tokens: "0.02"
+
   text-embedding-3-large:
     source: https://developers.openai.com/api/docs/pricing
     retrieved: 2026-09-29

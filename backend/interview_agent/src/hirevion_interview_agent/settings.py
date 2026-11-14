@@ -8,7 +8,6 @@ from pydantic import PositiveInt, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 TurnDetection = Literal["vad", "multilingual", "inference"]
-ReasoningEffort = Literal["none", "minimal", "low", "medium", "high"]
 
 
 class AgentSettings(BaseSettings):
@@ -17,13 +16,9 @@ class AgentSettings(BaseSettings):
     livekit_url: str = "ws://127.0.0.1:7880"
     livekit_api_key: str
     livekit_api_secret: SecretStr
-    gemini_api_key: SecretStr
+    # Speech runs in the agent itself. Its LLM calls go through hirevion_core's AI services,
+    # routed by task (ADR-0034), so their keys live in AiSettings, not here.
     deepgram_api_key: SecretStr
-
-    # LLM through Gemini's OpenAI-compatible endpoint in development (ADR-0003).
-    hv_llm_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
-    hv_llm_model_fast: str = "gemini-2.5-flash"
-    hv_llm_reasoning_effort: ReasoningEffort | None = None
 
     hv_stt_model: str = "nova-3"
     hv_stt_language: str = "en"

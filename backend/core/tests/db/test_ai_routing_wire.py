@@ -40,6 +40,7 @@ SETTINGS = AiSettings(
     nemotron_model_fast="nvidia/fast",
     nemotron_model_strong="nvidia/strong",
     embedding_dimensions=3,
+    max_output_tokens=1234,
 )
 
 
@@ -113,11 +114,14 @@ async def test_screening_goes_to_openrouter_and_interviews_to_nemotron(
     assert screening["response_format"]["type"] == "json_schema"
     assert screening["response_format"]["json_schema"]["strict"] is True
     assert screening["provider"] == {"require_parameters": True, "data_collection": "deny"}
+    # A cap on every answer: OpenRouter reserves credit for the model's whole output otherwise.
+    assert screening["max_tokens"] == 1234
     assert router.calls.last.request.headers["authorization"] == "Bearer o-key"
 
     interview = sent(nvidia)
     assert interview["model"] == "nvidia/fast"
     assert "response_format" not in interview
+    assert interview["max_tokens"] == 1234
     assert interview["guided_json"]["properties"].keys() == {"summary", "score"}
     assert interview["guided_json"]["additionalProperties"] is False
     assert nvidia.calls.last.request.headers["authorization"] == "Bearer n-key"
@@ -166,3 +170,30 @@ def test_the_dev_profile_names_the_key_it_is_missing(app_db: Database) -> None:
     )
     with pytest.raises(ValueError, match="NEMOTRON_API_KEY"):
         build_ai(settings, app_db, MOCK_PRICES)
+
+
+@respx.mock
+async def test_openai_takes_the_cap_as_max_completion_tokens(
+    app_db: Database, make_organization: MakeOrganization
+) -> None:
+    org = await make_organization("RoutingOpenAI")
+    route = respx.post("https://openai.test/v1/chat/completions").mock(
+        return_value=completion('{"summary": "ok", "score": 1}', "gpt-test")
+    )
+    settings = AiSettings(
+        profile="production",
+        openai_api_key="p-key",  # type: ignore[arg-type]
+        openai_base_url="https://openai.test/v1",
+        deepgram_api_key="d-key",  # type: ignore[arg-type]
+        max_output_tokens=1234,
+    )
+    ai = build_ai(settings, app_db, MOCK_PRICES)
+    try:
+        await ai.llm.complete(
+            AiContext(org, "screening.rank"), [{"role": "user", "content": "x"}], Verdict
+        )
+    finally:
+        await ai.aclose()
+    body = sent(route)
+    # OpenAI's newer models refuse max_tokens and take max_completion_tokens.
+    assert body["max_completion_tokens"] == 1234 and "max_tokens" not in body

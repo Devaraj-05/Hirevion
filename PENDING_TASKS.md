@@ -22,7 +22,7 @@
 | P3 | SP-23 automated hardening: load, fuzzing, ZAP, backup drills, dashboards, cost model | CP6 |
 
 - **Outside what the agents can do.** These need you or a third party, after the build:
-  - live Gemini, Deepgram and OpenAI tuning, which needs your valid keys;
+  - live tuning on OpenRouter (screening), Nemotron (interviews), Deepgram and, for production, OpenAI (ADR-0034; OpenRouter needs credit first);
   - the desktop hardware matrix (webcams, two monitors, headset, Windows 10, N edition, low-spec laptop);
   - real phones for third-eye;
   - a manual NVDA accessibility pass;
@@ -192,6 +192,9 @@ A box is ticked in the PR that merges the part. Deliverables are in MASTER §14;
 - [x] **C6 SP-16 Coding, server side.** Depends on: C3. See MASTER §14 SP-16. ADR-0033.
   - Re-scoped by product-owner decision, 2026-10-23: coding answers are typed in a text console and reviewed by AI after the interview; no sandbox, no execution, no Run, no test cases.
   - Exit met: a simulated interview submits code that is stored and reviewed with evidence verified against the code; the time limit keeps the last draft; the coding set passes the eval gate and each removed prompt clause fails a coding metric.
+- [x] **AI provider routing** (product-owner decision, 2026-11-14). Depends on: SP-01. ADR-0034. Plan: `docs/superpowers/plans/2026-11-14-ai-provider-routing.md`.
+  - OpenRouter serves the screening route (job descriptions, resumes, screening, embeddings, page reading); NVIDIA Nemotron serves the interview route (questions, interview turns, evaluation); Deepgram keeps speech.
+  - Exit met: the live checks pass on both providers (structured answers on both tiers, embeddings, page reading) and `hv doctor` validates both keys.
 - [ ] **C7 Vision agent (SP-15a and SP-15b server).** Depends on: C5, D3. See MASTER §14 SP-15a, SP-15b.
   - Exit: each detector's precision and recall is reported on the labelled set; no signal is shown as proof.
 
@@ -236,7 +239,7 @@ Everything is built and tested on this PC. GitHub's Windows CI can compile and u
 
 **Setting up once:**
 1. Keep this PC awake, Docker Desktop running, and Claude Code open in the repo.
-2. Fix `GEMINI_API_KEY` in the local `.env`.
+2. Put `OPENROUTER_API_KEY`, `NEMOTRON_API_KEY` and `DEEPGRAM_API_KEY` in the local `.env`, add credit to the OpenRouter account, and check them with `uv run hv doctor` (ADR-0034).
 
 **Each time you test** (in Git Bash, from `D:/Deva/Hirevion`):
 
@@ -250,7 +253,7 @@ pnpm --filter @hirevion/recruitment-platform dev               # https://app.hir
 pnpm --filter @hirevion/ai-interviewer-desktop tauri dev       # the candidate app
 ```
 
-- **The AI:** set `HV_AI_PROFILE=mock` in `.env` for predictable runs, or `dev` to use Gemini and Deepgram.
+- **The AI:** set `HV_AI_PROFILE=mock` in `.env` for predictable runs, or `dev` to use OpenRouter (screening), Nemotron (interviews) and Deepgram (speech).
 - **Email:** invitations, codes and resets arrive in Mailpit at http://127.0.0.1:8025.
 - **Sign-in:** the seeded recruiter is `recruiter@acme.example.test`, and the password is `HV_SEED_PASSWORD` in `.env`.
 

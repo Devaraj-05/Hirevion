@@ -27,6 +27,7 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 | A5 SP-17 | Reports, review and Candidate 360: five reports as a web view and a stored PDF, the review workspace (11 actions, synchronised recordings), score changes with reasons, Hiring Manager input, the nine hiring statuses and the human decision, the candidate-visible report with a recruiter's release, 13 Candidate 360 tabs with one timeline, the pending-review queue, pipeline moves; CP3 golden path e2e | #18 / ADR-0023 |
 | C6 SP-16 | Coding answers without execution (product-owner decision, 2026-10-23): the AI asks, the candidate types in a text console and submits once (the time limit keeps the last draft), every submission stored; the console's integrity events (lengths only, no keystrokes) as signals; the AI reviews the code after the interview inside the evaluation (seven criteria, evidence verified against the code's lines, pinned prompt and rubric, a gated coding set); the coding report, Candidate 360 Coding tab and review panel; contract `coding.md` for B4 | local CI green at fe3505d (all 12 jobs) / ADR-0033 |
 | D3 SP-13 | Third eye: single-use QR pairing, the phone page (permission guidance, placement, 720p/15 fps rear camera, Wake Lock, pause on lock, reconnect), LiveKit-observed status into proctoring, the `start` gate; Egress of the conversation audio and the third-eye video into playback | #17 / ADR-0040 |
+| AI routing | Product-owner decision, 2026-11-14: in `dev`, OpenRouter screens (job descriptions, resumes, screening, embeddings, page reading) and NVIDIA Nemotron interviews (questions, interview turns, evaluation), Deepgram keeps speech; every answer's tokens capped; `hv doctor` checks both keys; live checks green on both providers | local CI / ADR-0034 |
 
 ## In progress (unmerged worktree branches)
 
@@ -55,10 +56,13 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 - [ ] D1: GHSA-xcq7-p3pf-p88h and GHSA-mf5v-w3w3-f6cg (OpenTelemetry `tracestate` and `traceparent` parsing, medium) are accepted until 2026-12-31: the API drops either header over 512 characters (`TraceStateGuard`). The real fix, opentelemetry-api 1.45.2, needs livekit-agents 1.8.8 and so the OpenAI SDK 3; do that upgrade (AI layer and interview agent) before the expiry.
 
 - [ ] Desktop: RUSTSEC-2026-0387 (crypto-bigint 0.5 timing, via p256 0.13 in `hv-security`) is accepted until 2027-02-28: The Windows app signs DPoP proofs only through the Windows key store (NCrypt: the TPM or the Microsoft software KSP); it never falls back to a software key. p256 only verifies public signatures there, and signs only in non-Windows builds (not shipped) and tests. Upgrade `hv-security` to p256 0.14 before the expiry.
+- [ ] AI routing: stored vectors don't record their embedding model (MASTER §5.3 assumed they would), so after a provider switch the semantic factor compares vectors from different models. Re-process documents and job descriptions after switching, until a model column and a re-embed job exist.
+- [ ] AI routing: NVIDIA's hosted Nemotron has no published per-token price, so interview and evaluation calls record no cost and the monthly budget doesn't count them.
+- [ ] AI routing: prompts and rubrics were tuned only on the mocks. Run the resume, screening and interview evaluation sets (and the voice benchmark, p95 ≤ 2.5 s) on OpenRouter and Nemotron.
 
 ## Known blockers
 
-- `GEMINI_API_KEY` in `.env` is invalid: the `dev` AI profile fails, so runs use `HV_AI_PROFILE=mock` until it's replaced.
+- The OpenRouter account has no purchased credit (2026-11-14: `total_credits` 0, $0.008 used by the live checks). Add credit before the real screening run, or OpenRouter answers 402.
 - The account usage limit (resets about every 5 hours) stops subagents mid-part; resume them with SendMessage.
 - Needs the product owner: hardware matrix, real phones for third-eye, NVDA pass.
 - Needs a third party: code-signing certificate, Entra test tenant, ATS sandboxes, counsel review of `docs/policies/`, external pentest.

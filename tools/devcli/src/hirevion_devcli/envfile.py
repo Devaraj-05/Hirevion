@@ -9,7 +9,9 @@ from pathlib import Path
 
 from hirevion_core.candidate_access.tokens import generate_key_b64
 
-REQUIRED_KEYS: tuple[str, ...] = ("GEMINI_API_KEY", "DEEPGRAM_API_KEY")
+# The dev profile's providers (ADR-0034): OpenRouter screens, Nemotron interviews,
+# Deepgram speaks.
+REQUIRED_KEYS: tuple[str, ...] = ("OPENROUTER_API_KEY", "NEMOTRON_API_KEY", "DEEPGRAM_API_KEY")
 GENERATED_KEYS: dict[str, int] = {
     "POSTGRES_PASSWORD": 32,
     # Passwords for the application and outbox-relay database roles (ADR-0009).
@@ -55,7 +57,8 @@ def is_placeholder(value: str) -> bool:
 def missing_required(
     values: dict[str, str], required: tuple[str, ...] = REQUIRED_KEYS
 ) -> list[str]:
-    return [key for key in required if is_placeholder(values.get(key, ""))]
+    by_name = {key.lower(): value for key, value in values.items()}  # names in any case
+    return [key for key in required if is_placeholder(by_name.get(key.lower(), ""))]
 
 
 def generate_local_secrets() -> dict[str, str]:

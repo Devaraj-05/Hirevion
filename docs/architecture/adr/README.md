@@ -4,7 +4,7 @@
 |---|---|---|
 | [0001](0001-monorepo-and-toolchains.md) | One monorepo with uv, pnpm and Cargo workspaces | Accepted |
 | [0002](0002-ai-vendors-openai-deepgram.md) | OpenAI and Deepgram APIs for all AI, from day one | Accepted, amended by 0003 |
-| [0003](0003-gemini-for-development.md) | Gemini for development and testing, OpenAI for production | Accepted, amended by 0011 |
+| [0003](0003-gemini-for-development.md) | Gemini for development and testing, OpenAI for production | Accepted, amended by 0011; development superseded by 0034 |
 | [0004](0004-local-stack.md) | Local Docker stack | Accepted |
 | [0005](0005-voice-latency.md) | Voice pipeline and measured latency | Accepted |
 | [0006](0006-screen-capture.md) | Screen capture and H.264 segment recording | Accepted |
@@ -29,6 +29,7 @@
 | [0031](0031-evaluation-and-governance.md) | Evaluation and AI governance: verified quotes, rubric-weighted scores, pinned versions and a gate | Accepted |
 | [0032](0032-proctoring-engine.md) | The proctoring engine: the server decides, what it sees itself is the ground truth, and nothing a reviewer dismisses is deleted | Accepted |
 | [0033](0033-coding-answers-without-execution.md) | Coding answers in a text console, reviewed by AI after the interview, never executed | Accepted |
+| [0034](0034-ai-routing-openrouter-nemotron.md) | Development AI routed by task: OpenRouter screens, NVIDIA Nemotron interviews | Accepted |
 | [0040](0040-third-eye-and-egress.md) | The third eye: a single-use pairing, LiveKit's view as its status, and Egress files beside the desktop's tracks | Accepted |
 
 New decisions copy [0000-template.md](0000-template.md) and take the next number.

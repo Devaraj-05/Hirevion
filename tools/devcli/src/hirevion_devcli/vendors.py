@@ -53,3 +53,50 @@ def check_deepgram(api_key: str, client: httpx.Client) -> CheckResult:
         return CheckResult("deepgram", "fail", f"unexpected HTTP {response.status_code}")
     projects = response.json().get("projects", [])
     return CheckResult("deepgram", "ok", f"key valid; {len(projects)} project(s)")
+
+
+OPENROUTER_KEY_URL = "https://openrouter.ai/api/v1/key"
+NEMOTRON_CHAT_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
+
+
+def check_openrouter(api_key: str, client: httpx.Client) -> CheckResult:
+    """OpenRouter's key endpoint answers only a valid key and spends nothing."""
+    try:
+        response = client.get(OPENROUTER_KEY_URL, headers={"Authorization": f"Bearer {api_key}"})
+    except httpx.HTTPError as exc:
+        return CheckResult("openrouter", "fail", f"network error ({type(exc).__name__})")
+    if response.status_code in (401, 403):
+        return CheckResult("openrouter", "fail", f"key rejected (HTTP {response.status_code})")
+    if response.status_code != 200:
+        return CheckResult("openrouter", "fail", f"unexpected HTTP {response.status_code}")
+    # The label can hold a prefix of the key, so only the numbers are reported.
+    data = response.json().get("data", {})
+    limit = data.get("limit")
+    spent = f"${float(data.get('usage') or 0):.2f} spent"
+    return CheckResult(
+        "openrouter", "ok", f"key valid; {spent}" + (f" of ${float(limit):.2f}" if limit else "")
+    )
+
+
+def check_nemotron(api_key: str, model: str, client: httpx.Client) -> CheckResult:
+    """A one-token answer from the interview model proves the key and the model together."""
+    try:
+        response = client.post(
+            NEMOTRON_CHAT_URL,
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={
+                "model": model,
+                "messages": [{"role": "user", "content": "Reply with OK."}],
+                "max_tokens": 1,
+            },
+            timeout=60,
+        )
+    except httpx.HTTPError as exc:
+        return CheckResult("nemotron", "fail", f"network error ({type(exc).__name__})")
+    if response.status_code in (401, 403):
+        return CheckResult("nemotron", "fail", f"key rejected (HTTP {response.status_code})")
+    if response.status_code == 404:
+        return CheckResult("nemotron", "fail", f"{model} isn't available to this key (HTTP 404)")
+    if response.status_code != 200:
+        return CheckResult("nemotron", "fail", f"unexpected HTTP {response.status_code}")
+    return CheckResult("nemotron", "ok", f"key valid; {model} answers")

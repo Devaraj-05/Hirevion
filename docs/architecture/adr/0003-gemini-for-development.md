@@ -1,6 +1,6 @@
 # ADR-0003: Gemini for development and testing, OpenAI for production
 
-- **Status:** Accepted (amends ADR-0002); embedding model amended by [ADR-0011](0011-storage-ai-metering.md) (`gemini-embedding-2`)
+- **Status:** Accepted (amends ADR-0002); embedding model amended by [ADR-0011](0011-storage-ai-metering.md) (`gemini-embedding-2`); the development choice superseded by [ADR-0034](0034-ai-routing-openrouter-nemotron.md) (OpenRouter and NVIDIA Nemotron, 2026-11-14)
 - **Date:** 2026-09-28
 - **Sub-project:** SP-00a.1
 

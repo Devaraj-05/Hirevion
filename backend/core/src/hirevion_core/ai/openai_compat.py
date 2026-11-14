@@ -167,6 +167,9 @@ class Endpoint:
     structured: Literal["response_format", "guided_json"] = "response_format"
     # Sent with every chat request (OpenRouter's provider preferences).
     extra_body: dict[str, Any] | None = None
+    # The parameter that caps an answer's tokens: OpenAI's newer models refuse `max_tokens`
+    # and take `max_completion_tokens`; the other providers take `max_tokens`.
+    cap: Literal["max_tokens", "max_completion_tokens"] = "max_tokens"
 
 
 def endpoint(settings: AiSettings, provider: Provider) -> Endpoint:
@@ -218,6 +221,7 @@ def endpoint(settings: AiSettings, provider: Provider) -> Endpoint:
         settings.llm_model_strong,
         settings.embedding_model,
         settings.vision_model,
+        cap="max_completion_tokens",
     )
 
 
@@ -276,7 +280,7 @@ class OpenAICompatible:
         timeout: float,
         output: Callable[[T], Any],
     ) -> _Reply[T]:
-        shape: dict[str, Any] = {}
+        shape: dict[str, Any] = {self.endpoint.cap: self.settings.max_output_tokens}
         body: dict[str, Any] = dict(self.endpoint.extra_body or {})
         if self.endpoint.structured == "guided_json":
             body["guided_json"] = strict_schema(schema)

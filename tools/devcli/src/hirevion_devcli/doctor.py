@@ -19,10 +19,24 @@ from .checks import (
     run_command,
 )
 from .envfile import is_placeholder, parse_env
-from .vendors import check_deepgram, check_gemini, check_openai
+from .vendors import (
+    check_deepgram,
+    check_gemini,
+    check_nemotron,
+    check_openai,
+    check_openrouter,
+)
 
 _MODEL_PREFIXES = ("gemini-", "gpt-", "o1", "o3", "o4", "text-embedding-", "tts-", "whisper-")
-_VENDOR_KEYS = ("GEMINI_API_KEY", "DEEPGRAM_API_KEY", "OPENAI_API_KEY")
+_VENDOR_KEYS = (
+    "OPENROUTER_API_KEY",
+    "NEMOTRON_API_KEY",
+    "DEEPGRAM_API_KEY",
+    "GEMINI_API_KEY",
+    "OPENAI_API_KEY",
+)
+# The interview model the Nemotron check asks (HV_NEMOTRON_MODEL_FAST overrides it).
+DEFAULT_NEMOTRON_MODEL = "nvidia/nemotron-3.5-lightning-30b-a3b"
 
 
 def summarize_models(models: list[str]) -> list[str]:
@@ -66,11 +80,18 @@ def gather(
     models: dict[str, list[str]] = {}
     if values is None:
         return results, models
+    # The settings read names in any case (`nemotron_API_KEY`), and so does the doctor.
+    values = {key.upper(): value for key, value in values.items()}
     present = {key for key in _VENDOR_KEYS if not is_placeholder(values.get(key, ""))}
     if not present:
         return results, models
     http = client if client is not None else httpx.Client(timeout=20)
     try:
+        if "OPENROUTER_API_KEY" in present:
+            results.append(check_openrouter(values["OPENROUTER_API_KEY"], http))
+        if "NEMOTRON_API_KEY" in present:
+            model = values.get("HV_NEMOTRON_MODEL_FAST") or DEFAULT_NEMOTRON_MODEL
+            results.append(check_nemotron(values["NEMOTRON_API_KEY"], model, http))
         if "GEMINI_API_KEY" in present:
             gemini_result, models["gemini"] = check_gemini(values["GEMINI_API_KEY"], http)
             results.append(gemini_result)

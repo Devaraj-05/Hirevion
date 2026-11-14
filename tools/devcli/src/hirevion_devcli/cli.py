@@ -113,8 +113,8 @@ def init_env_command() -> None:
     root = repo_root()
     if init_env(root / ".env.example", root / ".env"):
         console.print(
-            "Created .env. Add GEMINI_API_KEY and DEEPGRAM_API_KEY to it, "
-            "then run `uv run hv doctor`."
+            "Created .env. Add OPENROUTER_API_KEY, NEMOTRON_API_KEY and DEEPGRAM_API_KEY "
+            "to it, then run `uv run hv doctor`."
         )
     else:
         console.print(".env already exists; left unchanged.")

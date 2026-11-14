@@ -29,9 +29,13 @@ def test_placeholders_are_detected() -> None:
 
 
 def test_missing_required_lists_empty_and_placeholder_keys() -> None:
-    values = {"GEMINI_API_KEY": "changeme", "DEEPGRAM_API_KEY": "k" * 40}
-    assert missing_required(values) == ["GEMINI_API_KEY"]
-    assert missing_required({}) == ["GEMINI_API_KEY", "DEEPGRAM_API_KEY"]
+    values = {
+        "OPENROUTER_API_KEY": "changeme",
+        "nemotron_API_KEY": "n" * 40,  # names count in any case
+        "DEEPGRAM_API_KEY": "k" * 40,
+    }
+    assert missing_required(values) == ["OPENROUTER_API_KEY"]
+    assert missing_required({}) == ["OPENROUTER_API_KEY", "NEMOTRON_API_KEY", "DEEPGRAM_API_KEY"]
 
 
 def test_sync_env_appends_only_missing_keys() -> None:

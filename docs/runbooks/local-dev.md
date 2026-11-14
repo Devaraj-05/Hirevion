@@ -1,14 +1,15 @@
 # Local development runbook
 
 Everything Hirevion needs runs on your PC in Docker Desktop, plus hosted AI APIs
-(Gemini and Deepgram in development). This page covers first-time setup, daily use and
+(OpenRouter, NVIDIA Nemotron and Deepgram in development). This page covers first-time setup, daily use and
 fixes for common problems.
 
 ## First-time setup
 
 1. `git config core.hooksPath .githooks`
 2. `uv sync`
-3. `uv run hv init-env`, then add `GEMINI_API_KEY` and `DEEPGRAM_API_KEY` to `.env`.
+3. `uv run hv init-env`, then add `OPENROUTER_API_KEY`, `NEMOTRON_API_KEY` and `DEEPGRAM_API_KEY`
+   to `.env`, and check them with `uv run hv doctor`.
    After pulling new changes, `uv run hv env-sync` adds any new settings (your values are kept).
 4. `uv run hv up`. The first start takes a few minutes while ClamAV downloads virus signatures.
 5. `uv run hv hosts`. Windows asks once for admin rights. Browsers resolve `*.hirevion.localhost`
@@ -107,10 +108,23 @@ The design is in [ADR-0011](../architecture/adr/0011-storage-ai-metering.md).
 
 - **Signed URLs.** Upload and download URLs point at `https://storage.hirevion.localhost`. `hv smoke` checks one round trip through Caddy (`signed-storage`).
 - **AI profile.**
-  - `HV_AI_PROFILE=dev` uses Gemini and Deepgram with the keys in `.env`.
+  - `HV_AI_PROFILE=dev` routes each call by its task ([ADR-0034](../architecture/adr/0034-ai-routing-openrouter-nemotron.md)):
+    OpenRouter reads job descriptions and resumes, screens, embeds and reads scanned pages;
+    NVIDIA Nemotron writes interview questions, runs the interview turns and evaluates;
+    Deepgram speaks and listens.
+  - `HV_AI_SCREENING_PROVIDER` and `HV_AI_INTERVIEW_PROVIDER` move a route to `openrouter`,
+    `nemotron`, `gemini` or `openai`.
   - `mock` needs no network (tests use it).
-  - Model names are the `HV_LLM_MODEL_*`, `HV_EMBEDDING_MODEL` and `HV_VISION_MODEL` settings.
-- **Live checks** (a few cents): `uv run pytest --live backend/core/tests/live`. Add `OPENAI_API_KEY` and `HV_OPENAI_TEST_MODEL` to check OpenAI too.
+  - Model names are the `HV_OPENROUTER_*` and `HV_NEMOTRON_*` settings (`HV_LLM_MODEL_*`,
+    `HV_EMBEDDING_MODEL` and `HV_VISION_MODEL` for Gemini and OpenAI).
+  - `HV_LLM_MAX_OUTPUT_TOKENS` (16,384) caps every answer. Without a cap OpenRouter reserves
+    credit for the model's whole output and answers 402 when the balance is lower; a 402 means
+    the OpenRouter account needs credit.
+  - NVIDIA's hosted Nemotron has no published per-token price, so its calls record no cost and
+    the monthly budget doesn't count them.
+- **Live checks** (a few cents): `uv run pytest --live backend/core/tests/live` checks OpenRouter,
+  Nemotron and Deepgram (Gemini too when its key is set). Add `OPENAI_API_KEY` and
+  `HV_OPENAI_TEST_MODEL` to check OpenAI.
 - **Spend.** Every call is a row in `ai_invocations`. For this month's cost per organisation:
 
   ```sql
@@ -297,7 +311,7 @@ For the jobs test, start the API with the mock AI and its scripted answer, as CI
 HV_AI_PROFILE=mock HV_AI_MOCK_SCRIPTS=recruitment-platform/e2e/auth/ai-scripts.json   HV_WEB_ORIGIN=http://app.hirevion.localhost:3100 uv run hv api --no-reload
 ```
 
-Without them it reads the description with Gemini, which also passes but takes longer.
+Without them it reads the description with the `dev` profile's model (OpenRouter), which also passes but takes longer.
 
 How it runs:
 - It first clears local rate limits (`hv reset-limits`) and runs two browsers at a time, as CI
@@ -323,7 +337,7 @@ How the pipeline works is in [ADR-0015](../architecture/adr/0015-jobs-and-docume
      were left out because their quotes weren't in the text.
   4. "Apply to job" writes the reviewed fields as a new version.
 - **Where it runs:** inside `uv run hv api` (`HV_API_RUN_WORKERS=true`), or alone with
-  `uv run hv worker`. It uses the AI profile in `.env` (`HV_AI_PROFILE=dev` is Gemini).
+  `uv run hv worker`. It uses the AI profile in `.env` (`HV_AI_PROFILE=dev` is OpenRouter for this work).
 - **ClamAV** (compose profile `core`) scans uploads on `127.0.0.1:3310`
   (`HV_CLAMAV_HOST`, `HV_CLAMAV_PORT`). Its first start downloads signatures for a few minutes.
   Until it's healthy, set `HV_DOCUMENTS_SCAN=false`; production refuses that setting.

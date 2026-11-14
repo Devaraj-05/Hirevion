@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from hirevion_core.ai.mock import fake_instance, fake_vector
 from hirevion_core.ai.prices import PriceBook
+from hirevion_core.ai.settings import AiSettings
 from hirevion_core.ai.types import AiContext
 
 ORG = UUID("01920000-0000-7000-8000-000000000001")
@@ -64,6 +65,21 @@ def test_every_shipped_price_names_its_source_and_date() -> None:
     for model, entry in book.entries.items():
         assert str(entry.get("source", "")).startswith("https://"), model
         assert isinstance(entry.get("retrieved"), date), model
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "openrouter_model_fast",
+        "openrouter_model_strong",
+        "openrouter_vision_model",
+        "openrouter_embedding_model",
+    ],
+)
+def test_the_screening_routes_default_models_are_priced(field: str) -> None:
+    """The dev profile's OpenRouter calls carry a cost, so the monthly budget can stop them."""
+    model = AiSettings.model_fields[field].default
+    assert PriceBook.load().cost(model, input_tokens=1_000_000) is not None, model
 
 
 @pytest.mark.parametrize("purpose", ["", "Screening", "has space", "x" * 65])

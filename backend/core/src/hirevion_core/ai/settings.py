@@ -62,8 +62,10 @@ class AiSettings(BaseSettings):
         "openai/text-embedding-3-small",
         validation_alias=_env("openrouter_embedding_model", "HV_OPENROUTER_EMBEDDING_MODEL"),
     )
+    # Reads scanned resumes. The live check found gpt-5.4-nano misreading a rendered word in
+    # three of four runs (gpt-5-mini: none of three), and names and emails must come out exact.
     openrouter_vision_model: str = Field(
-        "openai/gpt-5.4-nano",
+        "openai/gpt-5-mini",
         validation_alias=_env("openrouter_vision_model", "HV_OPENROUTER_VISION_MODEL"),
     )
     nemotron_model_fast: str = Field(
@@ -103,6 +105,12 @@ class AiSettings(BaseSettings):
     )
     vision_model: str = Field(
         "gemini-3.1-flash-lite", validation_alias=_env("vision_model", "HV_VISION_MODEL")
+    )
+    # The most tokens one answer may use, reasoning included. Every chat call sends it:
+    # without it OpenRouter reserves credit for the model's whole output (65,536 tokens) and
+    # refuses the call when the balance is lower.
+    max_output_tokens: int = Field(
+        16384, gt=0, validation_alias=_env("max_output_tokens", "HV_LLM_MAX_OUTPUT_TOKENS")
     )
     stt_model: str = Field("nova-3", validation_alias=_env("stt_model", "HV_STT_MODEL"))
     stt_language: str = Field("en", validation_alias=_env("stt_language", "HV_STT_LANGUAGE"))

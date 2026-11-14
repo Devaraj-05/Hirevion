@@ -5,7 +5,6 @@ from pydantic import ValidationError
 
 from hirevion_interview_agent.settings import AgentSettings
 
-GEMINI = "gemini-test-" + "g" * 30
 DEEPGRAM = "deepgram-test-" + "d" * 30
 LIVEKIT_SECRET = "livekit-test-" + "l" * 30
 
@@ -24,16 +23,15 @@ def isolated_environment(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_settings_load_from_env_file_with_defaults(tmp_path: Path) -> None:
     env = write_env(
         tmp_path / ".env",
-        GEMINI_API_KEY=GEMINI,
         DEEPGRAM_API_KEY=DEEPGRAM,
         LIVEKIT_API_KEY="hirevion-local",
         LIVEKIT_API_SECRET=LIVEKIT_SECRET,
         HV_TTS_VOICE="aura-2-test-en",
     )
+    # No LLM key here: the agent's AI calls go through hirevion_core's routed services, whose
+    # keys AiSettings checks (ADR-0034).
     settings = AgentSettings(_env_file=env)
-    assert settings.gemini_api_key.get_secret_value() == GEMINI
     assert settings.livekit_url == "ws://127.0.0.1:7880"
-    assert settings.hv_llm_base_url.startswith("https://generativelanguage.googleapis.com/")
     assert settings.hv_tts_voice == "aura-2-test-en"
     assert settings.hv_turn_detection == "vad"
 
@@ -41,13 +39,11 @@ def test_settings_load_from_env_file_with_defaults(tmp_path: Path) -> None:
 def test_secrets_never_appear_in_repr(tmp_path: Path) -> None:
     env = write_env(
         tmp_path / ".env",
-        GEMINI_API_KEY=GEMINI,
         DEEPGRAM_API_KEY=DEEPGRAM,
         LIVEKIT_API_KEY="hirevion-local",
         LIVEKIT_API_SECRET=LIVEKIT_SECRET,
     )
     text = repr(AgentSettings(_env_file=env))
-    assert GEMINI not in text
     assert DEEPGRAM not in text
     assert LIVEKIT_SECRET not in text
 
@@ -55,21 +51,19 @@ def test_secrets_never_appear_in_repr(tmp_path: Path) -> None:
 def test_missing_key_is_named_without_values(tmp_path: Path) -> None:
     env = write_env(
         tmp_path / ".env",
-        DEEPGRAM_API_KEY=DEEPGRAM,
         LIVEKIT_API_KEY="hirevion-local",
         LIVEKIT_API_SECRET=LIVEKIT_SECRET,
     )
     with pytest.raises(ValidationError) as error:
         AgentSettings(_env_file=env)
     message = str(error.value)
-    assert "gemini_api_key" in message
-    assert DEEPGRAM not in message
+    assert "deepgram_api_key" in message
+    assert LIVEKIT_SECRET not in message
 
 
 def test_turn_detection_rejects_unknown_modes(tmp_path: Path) -> None:
     env = write_env(
         tmp_path / ".env",
-        GEMINI_API_KEY=GEMINI,
         DEEPGRAM_API_KEY=DEEPGRAM,
         LIVEKIT_API_KEY="hirevion-local",
         LIVEKIT_API_SECRET=LIVEKIT_SECRET,
@@ -81,7 +75,6 @@ def test_turn_detection_rejects_unknown_modes(tmp_path: Path) -> None:
 
 def test_preemptive_generation_is_off_unless_enabled(tmp_path: Path) -> None:
     base = {
-        "GEMINI_API_KEY": GEMINI,
         "DEEPGRAM_API_KEY": DEEPGRAM,
         "LIVEKIT_API_KEY": "hirevion-local",
         "LIVEKIT_API_SECRET": LIVEKIT_SECRET,
@@ -96,7 +89,6 @@ def test_preemptive_generation_is_off_unless_enabled(tmp_path: Path) -> None:
 
 def test_max_sessions_defaults_to_ten_and_must_be_positive(tmp_path: Path) -> None:
     base = {
-        "GEMINI_API_KEY": GEMINI,
         "DEEPGRAM_API_KEY": DEEPGRAM,
         "LIVEKIT_API_KEY": "hirevion-local",
         "LIVEKIT_API_SECRET": LIVEKIT_SECRET,

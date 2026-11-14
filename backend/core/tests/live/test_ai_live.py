@@ -1,14 +1,16 @@
 """Opt-in checks against the real vendors (`uv run pytest --live backend/core/tests/live`).
 
-They use the keys in `.env`, cost a few cents, and never run in CI. The `dev` profile is Gemini
-(and Deepgram); OpenAI is checked when `OPENAI_API_KEY` and `HV_OPENAI_TEST_MODEL` are set.
+They use the keys in `.env`, cost a few cents, and never run in CI. The `dev` profile is
+OpenRouter for screening (answers, embeddings, page reading) and NVIDIA Nemotron for interviews
+(answers), with Deepgram (ADR-0034); Gemini is checked when its key is set, and OpenAI when
+`OPENAI_API_KEY` and `HV_OPENAI_TEST_MODEL` are set.
 """
 
 import math
 import os
 import struct
 import zlib
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from uuid import UUID
 
 import pytest
@@ -29,10 +31,19 @@ MakeOrganization = Callable[[str], Awaitable[UUID]]
 
 def backend_for(provider: str, app_db: Database) -> OpenAICompatible:
     settings = load_ai_settings()
+    recorder = Recorder(app_db, PriceBook.load(), settings)
+    if provider == "openrouter":
+        if not settings.openrouter_api_key.get_secret_value():
+            pytest.skip("OPENROUTER_API_KEY is not set")
+        return OpenAICompatible(settings, recorder, "openrouter")
+    if provider == "nemotron":
+        if not settings.nemotron_api_key.get_secret_value():
+            pytest.skip("NEMOTRON_API_KEY is not set")
+        return OpenAICompatible(settings, recorder, "nemotron")
     if provider == "gemini":
         if not settings.gemini_api_key.get_secret_value():
             pytest.skip("GEMINI_API_KEY is not set")
-        return OpenAICompatible(settings, Recorder(app_db, PriceBook.load(), settings), "gemini")
+        return OpenAICompatible(settings, recorder, "gemini")
     model = os.environ.get("HV_OPENAI_TEST_MODEL", "")
     if not settings.openai_api_key.get_secret_value() or not model:
         pytest.skip("set OPENAI_API_KEY and HV_OPENAI_TEST_MODEL to check OpenAI")
@@ -48,9 +59,24 @@ def backend_for(provider: str, app_db: Database) -> OpenAICompatible:
     return OpenAICompatible(production, Recorder(app_db, PriceBook.load(), production), "openai")
 
 
-@pytest.fixture(params=["gemini", "openai"])
-def backend(request: pytest.FixtureRequest, app_db: Database) -> OpenAICompatible:
-    return backend_for(request.param, app_db)
+@pytest.fixture(params=["openrouter", "gemini", "openai"])
+async def backend(
+    request: pytest.FixtureRequest, app_db: Database
+) -> AsyncIterator[OpenAICompatible]:
+    """The providers that serve the screening route: answers, embeddings, page reading."""
+    client = backend_for(request.param, app_db)
+    yield client
+    await client.aclose()  # inside the test's event loop, not after it has closed
+
+
+@pytest.fixture(params=["openrouter", "nemotron", "gemini", "openai"])
+async def llm_backend(
+    request: pytest.FixtureRequest, app_db: Database
+) -> AsyncIterator[OpenAICompatible]:
+    """Every provider that answers with structured JSON, Nemotron included."""
+    client = backend_for(request.param, app_db)
+    yield client
+    await client.aclose()
 
 
 class Capital(BaseModel):
@@ -59,10 +85,10 @@ class Capital(BaseModel):
 
 @pytest.mark.parametrize("tier", ["fast", "strong"])
 async def test_a_structured_answer(
-    backend: OpenAICompatible, make_organization: MakeOrganization, tier: str
+    llm_backend: OpenAICompatible, make_organization: MakeOrganization, tier: str
 ) -> None:
     org = await make_organization("LiveLlm")
-    result = await backend.complete(
+    result = await llm_backend.complete(
         AiContext(org, "live.check"),
         [{"role": "user", "content": "What is the capital city of India?"}],
         Capital,

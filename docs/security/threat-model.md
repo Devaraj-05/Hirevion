@@ -539,3 +539,28 @@ By product-owner decision (2026-10-23; ADR-0033) candidate code is **never execu
 - An injection can still move a criterion within its bounds where a real quote supports it; the gate's injection cases and reviewers' judgement watch for it.
 - Integrity signals can mislead (pasting one's own notes is ordinary); they are worded as signals, never proof.
 - The two new tables have no retention yet (SP-22).
+
+## AI provider routing (ADR-0034)
+
+By product-owner decision (2026-11-14) the `dev` profile sends screening work (job descriptions, resumes, screening, embeddings, page reading) to OpenRouter and interview work (questions, interview turns, evaluation) to NVIDIA's hosted Nemotron; Deepgram keeps speech. `production` is unchanged (OpenAI + Deepgram).
+
+**Assets:** the text of job descriptions, resumes and interview transcripts sent to the models; the OpenRouter and NVIDIA keys; AI spend.
+
+**Trust boundaries:**
+- the API, worker and interview agent → OpenRouter → the upstream provider OpenRouter picks;
+- the API, worker and interview agent → NVIDIA's hosted API (`integrate.api.nvidia.com`).
+
+| Threat (STRIDE) | Example | Control |
+|---|---|---|
+| Spoofing | A model's reply is taken as data without checking | Every reply is checked against the call's Pydantic schema (one repair retry, then an error); OpenRouter is asked only for providers that apply the schema (`require_parameters`); NVIDIA gets the schema as `guided_json` |
+| Tampering | A call reaches the wrong provider, or a new task silently falls to a default | `route_for` raises on an area it doesn't know; a test scans the code and fails on any purpose without a route; `ai_invocations` records the provider and model of every call |
+| Repudiation | Nobody can say which model produced a score | Each call's provider, model, prompt version, tokens and cost (NULL for Nemotron) are rows in `ai_invocations` |
+| Information disclosure | Candidate data reaches a provider that stores or trains on prompts | Development uses synthetic data only until DPAs are signed (§17); OpenRouter requests carry `data_collection: "deny"`, so only providers that don't collect prompts serve them |
+| Information disclosure | A key leaks | Keys only in the gitignored root `.env`, read server side (never in the desktop app or a web bundle); `hv doctor` never prints a key or OpenRouter's key label; vendor errors carry the status, never the body |
+| Denial of service | OpenRouter refuses calls (402) because it reserves credit for a model's whole output | Every chat call caps its answer at `HV_LLM_MAX_OUTPUT_TOKENS` (16,384, reasoning included) |
+| Denial of service | AI spend runs away | OpenRouter's default models are priced in `prices.yaml`, so the monthly budget counts and stops them |
+
+**Residual risks:**
+- `data_collection: "deny"` is a routing preference, not a contract; neither OpenRouter nor NVIDIA has a DPA yet.
+- NVIDIA publishes no per-token price for its hosted Nemotron, so those calls record no cost and the monthly budget doesn't stop them; NVIDIA's own key limits are the only cap.
+- Stored vectors don't record their embedding model, so vectors from different providers can be compared after a switch; re-process documents after switching.
