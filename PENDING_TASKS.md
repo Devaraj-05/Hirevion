@@ -98,7 +98,8 @@ The desktop calls APIs that other lanes build. The five contracts live in `docs/
    - regenerate `packages/api-client/openapi.json` (`uv run hv openapi`) and `schema.d.ts` (`pnpm --filter @hirevion/api-codegen generate`) if the API changed;
    - re-run the local checks.
 3. **Open the PR.** Push the branch and open a PR to `main`. Run one background CI watcher that polls every 60–90 s; never poll by hand.
-   - **While GitHub Actions are off** (the free minutes are used up until they reset), the gate is `bash scripts/ci-local.sh` on the branch: it runs CI's jobs for what the branch touched. Don't open PRs or trigger Actions: when every job it ran passed, push the branch, fast-forward `main` (step 4), and record the commit and the local result in docs/STATUS.md.
+   - **While GitHub Actions are off**, don't open PRs or trigger Actions. Push the branch, fast-forward `main` (step 4), and record the commit and what was tested in docs/STATUS.md.
+   - **Until the build is complete** (product-owner decision, 2026-11-14: the full gate slowed development), each part runs its relevant tests, lint and type checks, its own live or end-to-end checks, `/code-review`, and `bash scripts/ci-local.sh secrets` when keys or configuration change. The full gate, `bash scripts/ci-local.sh --all`, runs once at the end, before the release, and what it finds is fixed then.
 4. **Merge when CI (or, while Actions are off, the local CI) is green:**
 
    ```bash
