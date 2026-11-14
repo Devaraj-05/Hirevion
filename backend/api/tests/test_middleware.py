@@ -102,3 +102,31 @@ async def test_resume_uploads_take_zip_archives(
     assert (await client.post(resumes, content=b"x" * 200)).status_code != 413
     assert (await client.post(resumes, content=b"x" * 201)).status_code == 413
     assert (await client.post(description, content=b"x" * 150)).status_code == 413
+
+
+async def test_trace_headers_longer_than_the_w3c_limit_never_reach_the_app() -> None:
+    """GHSA-xcq7-p3pf-p88h and GHSA-mf5v-w3w3-f6cg: OpenTelemetry parses `tracestate` and
+    `traceparent` in quadratic time, so a long header stalls the worker. The guard drops either
+    header when it is longer than 512 characters and keeps normal ones."""
+    from hirevion_api.middleware import TraceStateGuard
+
+    seen: list[list[tuple[bytes, bytes]]] = []
+
+    async def app(scope: dict[str, object], receive: object, send: object) -> None:
+        seen.append(list(scope["headers"]))  # type: ignore[call-overload]
+
+    guard = TraceStateGuard(app)  # type: ignore[arg-type]
+    parent = b"00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01"
+    long_value = b"00-" + b" " * 100_000 + b"x"
+    await guard(
+        {"type": "http", "headers": [(b"traceparent", long_value), (b"tracestate", long_value)]},
+        None,  # type: ignore[arg-type]
+        None,  # type: ignore[arg-type]
+    )
+    await guard(
+        {"type": "http", "headers": [(b"traceparent", parent), (b"tracestate", b"vendor=v1")]},
+        None,  # type: ignore[arg-type]
+        None,  # type: ignore[arg-type]
+    )
+    assert seen[0] == []
+    assert seen[1] == [(b"traceparent", parent), (b"tracestate", b"vendor=v1")]

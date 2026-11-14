@@ -40,3 +40,19 @@ reason = "zvariant_derive is Tauri's Linux D-Bus stack; not in the Windows graph
 id = "GHSA-xcq7-p3pf-p88h"
 ignoreUntil = 2026-12-31
 reason = "Mitigated: TraceStateGuard drops tracestate over 512 chars before OpenTelemetry parses it; the fix needs livekit-agents 1.8.8, which requires the OpenAI SDK 3"
+
+[[IgnoredVulns]]
+id = "GHSA-mf5v-w3w3-f6cg"
+ignoreUntil = 2026-12-31
+reason = "Mitigated like GHSA-xcq7-p3pf-p88h: TraceStateGuard drops a traceparent over 512 chars before OpenTelemetry parses it; the fix (opentelemetry-api 1.45.2) needs livekit-agents 1.8.8, which requires the OpenAI SDK 3"
+
+# Rust: crypto-bigint 0.5 (via p256 0.13 in hv-security) has timing variability in operations
+# meant to be constant-time. The desktop signs DPoP proofs with a Windows key store (NCrypt: the
+# TPM or the Microsoft software KSP); p256 only verifies public signatures and signs in
+# SoftwareKey, the fallback when no key store works, on the candidate's own machine. The fix is
+# p256 0.14 (elliptic-curve 0.14, crypto-bigint 0.7), an API upgrade of the device-key crate
+# tracked in docs/STATUS.md.
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0387"
+ignoreUntil = 2027-02-28
+reason = "Timing side channel in crypto-bigint 0.5; p256 signs only in the no-key-store fallback on the candidate's own PC; upgrade to p256 0.14 tracked in STATUS"

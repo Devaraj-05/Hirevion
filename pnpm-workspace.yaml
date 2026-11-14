@@ -13,3 +13,5 @@ allowBuilds:
 # which pin 1.2.1 loosely; the fixed release changes nothing they use.
 overrides:
   source-map-js: 1.2.2
+  # GHSA-xjj6-f33q-929c and others: jsdom (tests only) pulls undici 8.11.2.
+  undici: 8.12.2

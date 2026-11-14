@@ -30,18 +30,22 @@ def _header(scope: Scope, name: bytes) -> str | None:
     return None
 
 
-# The W3C trace-context limit for `tracestate` (32 list members, 512 characters in all).
+# The W3C trace-context limit for `tracestate` (32 list members, 512 characters in all); a
+# version-00 `traceparent` is 55 characters, so the same limit leaves room for later versions.
 TRACESTATE_LIMIT = 512
+_TRACE_HEADERS = (b"tracestate", b"traceparent")
 
 
 class TraceStateGuard:
-    """Drops a `tracestate` header longer than the W3C limit before OpenTelemetry parses it.
+    """Drops a `tracestate` or `traceparent` header longer than 512 characters before
+    OpenTelemetry parses it.
 
-    GHSA-xcq7-p3pf-p88h: `TraceState.from_header` takes quadratic time on long runs of spaces,
-    so one unauthenticated request could stall a worker for seconds. It wraps the whole stack,
-    outside the tracing middleware, so the parser never sees the long value; the trace still
-    starts from `traceparent`. Remove it once opentelemetry-api 1.45.1 is in the lock (it
-    waits for livekit-agents to allow it without the OpenAI SDK 3)."""
+    GHSA-xcq7-p3pf-p88h (`tracestate`) and GHSA-mf5v-w3w3-f6cg (`traceparent`): the parsers take
+    quadratic time on long runs of spaces, so one unauthenticated request could stall a worker
+    for seconds. It wraps the whole stack, outside the tracing middleware, so the parser never
+    sees the long value; a request whose `traceparent` is dropped starts a new trace. Remove it
+    once opentelemetry-api 1.45.2 is in the lock (it waits for livekit-agents to allow it
+    without the OpenAI SDK 3)."""
 
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
@@ -52,7 +56,7 @@ class TraceStateGuard:
             kept = [
                 (key, value)
                 for key, value in headers
-                if key != b"tracestate" or len(value) <= TRACESTATE_LIMIT
+                if key not in _TRACE_HEADERS or len(value) <= TRACESTATE_LIMIT
             ]
             if len(kept) != len(headers):
                 scope = {**scope, "headers": kept}
