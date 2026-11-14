@@ -35,7 +35,7 @@
   - when starter code is swapped in;
   - the question's time left and the size limit.
 - [x] **4. The console screen** and its wiring into the interview screen. It shows a "Saved at …" status, a hint that Tab indents (press Esc, then Tab, to leave the box), and a confirmation before the one Submit. It handles `question-not-current` by refreshing the session, and handles `language-not-offered`, `code-too-large` and network errors. Strings go into both locales.
-- [ ] **5. End-to-end test.** After "Ready", `e2e/desktop.e2e.mjs` starts the interview, answers the first question, types code into the console, waits for the save, submits and sees the next question.
+- [x] **5. End-to-end test.** After "Ready", `e2e/desktop.e2e.mjs` starts the interview, answers the first question, types code into the console, waits for the save, submits and sees the next question.
 - [x] **6. Documentation.**
   - In PENDING_TASKS, split B4: B4a (the console) is done, and B4b keeps the whiteboard, snapshot requests, third-eye status and SP-15b.
   - Update STATUS and MASTER Appendix A rows §32, §45 and §48.

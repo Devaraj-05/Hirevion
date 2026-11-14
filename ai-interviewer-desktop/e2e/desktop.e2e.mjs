@@ -99,8 +99,7 @@ test("the coding console saves the code and submits it once", async (t) => {
     await session.waitFor(`//h2[normalize-space()="Your code"]`);
     const code = await session.waitFor(field("Code"));
     assert.match(await code.property("value"), /def two_sum/);
-    await code.type("    seen = {}
-");
+    await code.type("    seen = {}\n");
 
     // The draft is saved within a few seconds (the server keeps it if time runs out).
     await session.waitFor(`//p[starts-with(normalize-space(), "Saved at")]`, 20_000);
