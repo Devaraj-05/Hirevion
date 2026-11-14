@@ -14,6 +14,8 @@
 
 ## Tasks (tests first)
 
+Status (2026-11-14): tasks 1–3 done, and the snapshot half of 4–5 (B4b-1a: `src-tauri/src/app/snapshots.rs`, `proctoring_snapshot`, `src/interview/frame.ts`, the webview handler). The third-eye half of 4–6 is B4b-1b.
+
 1. `hv-event-queue`: parse `snapshot_requests`, a tracker that drops repeats and expired requests, a channel from the heartbeat loop.
 2. `hv-uploader`: `upload_evidence` (slot with `request_id`, PUT, hash) against wiremock.
 3. `hv-screen-capture`: one-frame read-back and WIC JPEG encoding (Windows tests).

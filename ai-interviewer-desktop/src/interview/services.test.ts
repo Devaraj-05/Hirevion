@@ -23,7 +23,12 @@ vi.stubGlobal(
   },
 );
 
-const EVENTS = { trackRefused: "hv:track-refused", stopMedia: "hv:stop-media" };
+const EVENTS = {
+  trackRefused: "hv:track-refused",
+  stopMedia: "hv:stop-media",
+  snapshotRequest: "hv:snapshot-request",
+};
+const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0]);
 
 function track(kind: "camera" | "mic", state: "live" | "ended" = "live") {
   return {
@@ -112,6 +117,8 @@ function harness(started: ServicesStarted | ServicesStarted[] = ALL_UP) {
       scheduled.push(run);
       return () => undefined;
     }),
+    cameraFrame: vi.fn(async () => JPEG),
+    sendSnapshot: vi.fn(async () => null),
   };
   const problems: string[] = [];
   const ready = vi.fn();
@@ -149,6 +156,35 @@ describe("the webview's part of the interview services", () => {
     expect(h.deps.setDevices).toHaveBeenCalledWith("Integrated Camera", "Array Microphone");
     expect(h.ready).toHaveBeenCalledOnce();
     expect(h.problems).toEqual([]);
+  });
+
+  it("answers Rust's snapshot request with one frame of the interview's camera", async () => {
+    const h = harness();
+    const local = tracks();
+    await h.services.start(async () => local);
+    const ask = h.handlers.get(EVENTS.snapshotRequest);
+    if (!ask) throw new Error("no snapshot listener");
+
+    ask({ request_id: "0190f1a2-0000-7000-8000-000000000001" });
+    await vi.waitFor(() => expect(h.deps.sendSnapshot).toHaveBeenCalledOnce());
+
+    expect(h.deps.cameraFrame).toHaveBeenCalledWith(local.camera);
+    expect(h.deps.sendSnapshot).toHaveBeenCalledWith("0190f1a2-0000-7000-8000-000000000001", JPEG);
+  });
+
+  it("sends nothing for a malformed request or a camera that isn't live", async () => {
+    const h = harness();
+    await h.services.start(async () => tracks({ camera: track("camera", "ended") }));
+    const ask = h.handlers.get(EVENTS.snapshotRequest);
+    if (!ask) throw new Error("no snapshot listener");
+
+    ask({});
+    ask("r1");
+    ask({ request_id: "0190f1a2-0000-7000-8000-000000000001" });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(h.deps.cameraFrame).not.toHaveBeenCalled();
+    expect(h.deps.sendSnapshot).not.toHaveBeenCalled();
   });
 
   it("stamps face events in server time and sends them to Rust", async () => {

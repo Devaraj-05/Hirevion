@@ -119,6 +119,8 @@ wiremock = "0.6.5"
 [target.'cfg(windows)'.dependencies]
 # The screen recorder is Media Foundation, so it exists on Windows only.
 hv-recorder = { path = "crates/recorder" }
+# B4b: one-frame screen stills (JPEG by WIC) for the snapshots the server asks for.
+hv-screen-capture = { path = "crates/screen-capture" }
 webview2-com = "0.39.1"
 windows = { workspace = true }
 windows-core = { workspace = true }

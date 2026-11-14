@@ -171,6 +171,10 @@ export const commands = {
     invoke<null>("proctoring_set_devices", { camera, mic }),
   /** A camera event from the face module; Rust numbers it and sends it with the others. */
   proctoringEnqueue: (event: ProctoringEventDraft) => invoke<null>("proctoring_enqueue", { event }),
+  /** One camera frame (JPEG) for Rust's snapshot request; Rust takes it only for a request it
+   * made, and uploads it itself. */
+  proctoringSnapshot: (requestId: string, jpeg: Uint8Array) =>
+    invoke<null>("proctoring_snapshot", jpeg, { headers: { "x-hv-request-id": requestId } }),
   uploadProgress: (interviewId: string) =>
     invoke<UploadProgress>("upload_progress", { interviewId }),
 };
@@ -209,6 +213,8 @@ export const SERVICES_EVENTS = {
   trackRefused: "hv:track-refused",
   /** The services are stopping: stop recording the camera and microphone. */
   stopMedia: "hv:stop-media",
+  /** The server wants a camera picture (payload: `{ request_id }`): send one frame back. */
+  snapshotRequest: "hv:snapshot-request",
 } as const;
 
 /** The interview calls (contract interview-session), made by Rust with the session token. */

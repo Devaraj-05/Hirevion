@@ -1779,6 +1779,7 @@ dependencies = [
  "hv-event-queue",
  "hv-monitor",
  "hv-recorder",
+ "hv-screen-capture",
  "hv-security",
  "hv-segment-store",
  "hv-system-check",

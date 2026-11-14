@@ -32,7 +32,7 @@ use hv_security::Vault;
 use hv_segment_store::webview::segment_from_headers;
 use hv_segment_store::{Codec, Container, NewSegment, SegmentStore, StoreError, Track};
 use hv_uploader::{
-    RecordingSession, TokenFuture, UploadEvent, Uploader as RecordingUploader,
+    BlobClient, RecordingSession, TokenFuture, UploadEvent, Uploader as RecordingUploader,
     UploaderConfig as RecordingUploaderConfig,
 };
 use serde::Serialize;
@@ -43,6 +43,7 @@ use super::error::{CommandError, CommandResult};
 use super::interview::{SessionTokens, check_interview_id, session_token};
 use super::proctoring::{FaceEvent, StatusSnapshot, device_label, heartbeat_status};
 use super::progress::UploadProgress;
+use super::snapshots::{CameraFrames, LiveAnswers, LivePictures, LiveTime, answer_all};
 
 /// Sent to the webview when the server won't take a camera or microphone track
 /// (`track-not-recorded`); the payload is the track name. The webview stops recording it.
@@ -240,6 +241,8 @@ struct ProctoringRun {
     policy: Value,
     uploader: Arc<UploaderHandle>,
     watcher: tauri::async_runtime::JoinHandle<()>,
+    /// Answers the server's snapshot requests while the session runs.
+    snapshots: Option<tauri::async_runtime::JoinHandle<()>>,
     monitor: Option<(MonitorHandle, ThreadHandle<()>)>,
     clock: Clock,
 }
@@ -252,12 +255,16 @@ impl ProctoringRun {
             shared,
             uploader,
             watcher,
+            snapshots,
             monitor,
             clock,
             ..
         } = self;
         watcher.abort();
         let _ = watcher.await;
+        if let Some(snapshots) = snapshots {
+            snapshots.abort();
+        }
         if let Some((handle, pump)) = monitor {
             // Stopping joins the watcher threads; the pump ends when its channel closes.
             let _ = tauri::async_runtime::spawn_blocking(move || {
@@ -553,6 +560,8 @@ struct Inner {
     /// Ends every background upload (sign-out, exit). Replaced by a fresh channel when it fires,
     /// so uploads started afterwards aren't born stopped.
     background_stop: Mutex<watch::Sender<bool>>,
+    /// Camera frames the webview owes the snapshot answerer.
+    camera_frames: Arc<CameraFrames>,
 }
 
 /// The interview services. Cheap to clone.
@@ -571,6 +580,7 @@ impl Services {
                 recording: Mutex::new(None),
                 draining: Mutex::new(HashSet::new()),
                 background_stop: Mutex::new(watch::channel(false).0),
+                camera_frames: Arc::new(CameraFrames::default()),
             }),
         }
     }
@@ -642,7 +652,13 @@ impl Services {
 
         if active.proctoring.is_none() {
             match self
-                .start_proctoring(live, interview_id, &token, startup_integrity)
+                .start_proctoring(
+                    live,
+                    interview_id,
+                    &token,
+                    startup_integrity,
+                    active.notify.clone(),
+                )
                 .await
             {
                 Ok(run) => {
@@ -673,6 +689,7 @@ impl Services {
         interview_id: &str,
         token: &str,
         startup_integrity: Vec<(String, Option<String>)>,
+        notify: Notify,
     ) -> CommandResult<ProctoringRun> {
         let policy: SessionPolicy =
             open_session(live.session.api(), token, interview_id, &live.version).await?;
@@ -728,6 +745,13 @@ impl Services {
             }
         };
 
+        let snapshots = self.spawn_snapshot_answerer(
+            live,
+            interview_id,
+            &policy.proctor_session_id,
+            &uploader,
+            notify,
+        );
         let watcher = self.spawn_session_watcher(live, interview_id, uploader.clone());
         Ok(ProctoringRun {
             shared,
@@ -737,9 +761,56 @@ impl Services {
             }),
             uploader,
             watcher,
+            snapshots,
             monitor,
             clock,
         })
+    }
+
+    /// Answers the server's snapshot requests (screen here, camera from the webview) for as
+    /// long as the proctor session runs; `None` when the blob client couldn't be built.
+    fn spawn_snapshot_answerer(
+        &self,
+        live: &Live,
+        interview_id: &str,
+        proctor_session_id: &str,
+        uploader: &UploaderHandle,
+        notify: Notify,
+    ) -> Option<tauri::async_runtime::JoinHandle<()>> {
+        let requests = uploader.snapshot_requests()?;
+        // Plain HTTP only to a loopback blob emulator, and only in debug builds.
+        let blob = match BlobClient::new(cfg!(debug_assertions)) {
+            Ok(blob) => blob,
+            Err(error) => {
+                eprintln!("proctoring: snapshots are off: {error}");
+                return None;
+            }
+        };
+        let pictures = Arc::new(LivePictures {
+            notify,
+            frames: self.inner.camera_frames.clone(),
+        });
+        let answers = Arc::new(LiveAnswers {
+            session: live.session.clone(),
+            tokens: live.tokens.clone(),
+            interview_id: interview_id.to_owned(),
+            proctor_session_id: proctor_session_id.to_owned(),
+            blob,
+        });
+        let time = Arc::new(LiveTime {
+            session: live.session.clone(),
+        });
+        Some(tauri::async_runtime::spawn(answer_all(
+            requests, pictures, answers, time,
+        )))
+    }
+
+    /// The webview's camera frame for a snapshot request Rust made.
+    pub fn deliver_snapshot(&self, request_id: &str, jpeg: Vec<u8>) -> CommandResult<()> {
+        self.inner
+            .camera_frames
+            .deliver(request_id, jpeg)
+            .map_err(|code| CommandError::new(code, None))
     }
 
     /// Follows the event uploader: a rejected session token is replaced, and a closed proctor

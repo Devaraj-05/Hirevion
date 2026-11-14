@@ -38,6 +38,10 @@ export interface ServicesDeps {
   listen(event: string, handler: (payload: unknown) => void): Promise<() => void>;
   /** Runs `run` after `ms`; returns the cancel function. */
   schedule(run: () => void, ms: number): () => void;
+  /** One frame of the camera as a JPEG (an evidence picture the server asked for). */
+  cameraFrame(camera: MediaStreamTrack): Promise<Uint8Array>;
+  /** Hands Rust the frame for its snapshot request; Rust sends it. */
+  sendSnapshot(requestId: string, jpeg: Uint8Array): Promise<unknown>;
 }
 
 export interface ServicesOptions {
@@ -48,7 +52,7 @@ export interface ServicesOptions {
   onProblem?: (part: "recording" | "vision" | "proctoring") => void;
   /** Every part started (a retry may have fixed what `onProblem` reported). */
   onReady?: () => void;
-  events: { trackRefused: string; stopMedia: string };
+  events: { trackRefused: string; stopMedia: string; snapshotRequest: string };
 }
 
 /** Browser time to the server's: `started_at` is in server time (`proctoring.md`). */
@@ -234,9 +238,29 @@ export class InterviewServices {
         await this.deps.listen(this.options.events.stopMedia, () => {
           void this.enqueueTask(() => this.stopWebview());
         }),
+        await this.deps.listen(this.options.events.snapshotRequest, (payload) => {
+          void this.answerSnapshot(payload);
+        }),
       );
     } catch {
       // Without the events the interview still works; Rust refuses late segments.
+    }
+  }
+
+  /** Rust's snapshot request (proctoring.md, `snapshot_requests`): one frame of the
+   * interview's own camera, for that request only. Rust uploads it; if no frame comes, Rust's
+   * wait ends and the interview goes on. */
+  private async answerSnapshot(payload: unknown): Promise<void> {
+    const requestId =
+      typeof payload === "object" && payload !== null
+        ? (payload as { request_id?: unknown }).request_id
+        : undefined;
+    const camera = this.tracks?.camera;
+    if (typeof requestId !== "string" || !camera || camera.readyState !== "live") return;
+    try {
+      await this.deps.sendSnapshot(requestId, await this.deps.cameraFrame(camera));
+    } catch {
+      // Rust's wait for the frame ends on its own.
     }
   }
 

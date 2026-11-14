@@ -8,6 +8,7 @@ mod proctoring;
 mod progress;
 pub mod service_commands;
 mod services;
+mod snapshots;
 pub mod state;
 mod stub;
 pub mod update;

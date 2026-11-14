@@ -96,6 +96,29 @@ pub async fn recording_store_segment(
         .await
 }
 
+/// The webview's camera frame for a snapshot request (the JPEG as the raw body, the request in
+/// `x-hv-request-id`). Rust takes it only for a request it made and sends it itself.
+#[tauri::command]
+pub async fn proctoring_snapshot(
+    state: State<'_, AppState>,
+    request: Request<'_>,
+) -> CommandResult<()> {
+    let InvokeBody::Raw(bytes) = request.body() else {
+        return Err(CommandError::new(
+            "invalid-snapshot",
+            "the picture must be sent as raw bytes".to_owned(),
+        ));
+    };
+    let lookup = header_lookup(request.headers());
+    let Some(request_id) = lookup("x-hv-request-id") else {
+        return Err(CommandError::new(
+            "invalid-snapshot",
+            "no request id".to_owned(),
+        ));
+    };
+    state.services.deliver_snapshot(&request_id, bytes.clone())
+}
+
 /// How much of the interview's recording the server has acknowledged.
 #[tauri::command]
 pub async fn upload_progress(

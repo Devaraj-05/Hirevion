@@ -5,6 +5,7 @@ import { commands, SERVICES_EVENTS } from "../native/commands";
 import { recordingCommands } from "../recording/native";
 import { startMediaRecording } from "../recording/recorder";
 import { startFaceModule, videoFrameSource, visionConfigFromPolicy } from "../vision";
+import { grabJpeg } from "./frame";
 import type {
   FaceHandle,
   FaceStartOptions,
@@ -24,6 +25,8 @@ export const nativeDeps: ServicesDeps = {
   startFace: startFaceOnTrack,
   visionConfig: (policy) => visionConfigFromPolicy(policy ?? {}),
   listen: async (event, handler) => listen(event, (message) => handler(message.payload)),
+  cameraFrame: grabJpeg,
+  sendSnapshot: (requestId, jpeg) => commands.proctoringSnapshot(requestId, jpeg),
   schedule: (run, ms) => {
     const timer = window.setTimeout(run, ms);
     return () => window.clearTimeout(timer);
@@ -31,7 +34,11 @@ export const nativeDeps: ServicesDeps = {
 };
 
 export const nativeOptions: Pick<ServicesOptions, "events"> = {
-  events: { trackRefused: SERVICES_EVENTS.trackRefused, stopMedia: SERVICES_EVENTS.stopMedia },
+  events: {
+    trackRefused: SERVICES_EVENTS.trackRefused,
+    stopMedia: SERVICES_EVENTS.stopMedia,
+    snapshotRequest: SERVICES_EVENTS.snapshotRequest,
+  },
 };
 
 /** The face module reads frames from a `<video>`; this one is invisible and plays the camera. */
