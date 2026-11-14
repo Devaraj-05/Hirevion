@@ -263,6 +263,7 @@ def test_the_evaluations_model_is_the_questions_not_the_summarys() -> None:
         [score],  # type: ignore[list-item]
         aggregate,  # type: ignore[arg-type]
         Synthesis([], [], EMPTY, EMPTY, "aa-summary-model"),
+        [],  # no coding question in this interview
     )
     service._store(SimpleNamespace(add=added.append), evaluation, scored)  # type: ignore[arg-type]
     assert evaluation.model == "zz-question-model"
