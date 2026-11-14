@@ -533,6 +533,8 @@ By product-owner decision (2026-10-23; ADR-0033) candidate code is **never execu
 | Information disclosure | Code becomes markup in the web view or PDF | Code is rendered as text (React; Jinja2 autoescape in a `pre` block) |
 | Denial of service | Huge code or event floods | 256 KB per submission; 200 events per batch; 10 submissions and 60 telemetry batches a minute per interview, plus the per-IP limit |
 | Elevation of privilege | Code runs on a server | Nothing runs it: there is no runner, interpreter call or `eval` of candidate code anywhere |
+| Information disclosure | The desktop console collects more than the contract allows | B4a: the console notes that a key went down (never which), a clipboard event's length (the pasted text is measured in the paste event and never kept), focus and blur; the webview names a fixed action and Rust adds the session token and DPoP proof (ADR-0018); the stub backend refuses any event field beyond `kind`, `at` and `chars` |
+| Denial of service | The console floods the API with drafts or events | B4a: a draft at most every 5 s (plus blur and just before the limit) under the server's 30 a minute; events in batches of at most 200 every 10 s, at most 5,000 kept while offline |
 
 **Residual risks:**
 - The review is a model's reading, not a test run: it can call wrong code correct. The UI says the code was never run and that complexity is an estimate; a person decides.

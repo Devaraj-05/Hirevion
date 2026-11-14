@@ -234,6 +234,37 @@
     "keepGoing": "Keep going",
     "servicesProblem": "Some of the checks that protect your interview didn't start. Please keep this window open; the app is trying again."
   },
+  "coding": {
+    "title": "Your code",
+    "neverRun": "Your code won't be run. It's saved as you type, and it's reviewed after the interview.",
+    "language": "Language",
+    "codeLabel": "Code",
+    "tabHint": "Tab indents. To leave the box, press Esc, then Tab.",
+    "questionTimeLeft": "Time left for this question",
+    "loading": "Opening the code box…",
+    "retry": "Try again",
+    "status": {
+      "idle": "Not saved yet",
+      "saving": "Saving…",
+      "saved": "Saved at {time}",
+      "failed": "Couldn't save. Trying again…"
+    },
+    "timeUp": "Time's up for this question. Your last saved code is kept; submit now if you can.",
+    "submit": "Submit code",
+    "submitWarning": "You can submit only once. After you submit, you can't change your code.",
+    "submitConfirm": "Submit now",
+    "keepEditing": "Keep editing",
+    "errors": {
+      "load": "The code box didn't open. Check your connection and try again.",
+      "question-not-current": "This question has closed. Your last saved code was kept.",
+      "not-a-coding-question": "This question has closed. Your last saved code was kept.",
+      "language-not-offered": "Choose one of the languages listed for this question.",
+      "code-too-large": "Your code is over 256 KB. Shorten it to submit.",
+      "interview-not-in-progress": "The interview has ended, so your code can't be submitted.",
+      "network": "Your code wasn't sent. Check your connection and try again.",
+      "unknown": "Your code wasn't sent. Try again."
+    }
+  },
   "completed": {
     "title": "Thank you",
     "body": "Your interview is finished. Please keep this window open until your recordings have finished uploading.",

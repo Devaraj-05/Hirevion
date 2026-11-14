@@ -92,6 +92,11 @@ class Element {
     return this.request("GET", "/text");
   }
 
+  /** A DOM property, such as a text box's `value` (its text isn't the element's text). */
+  property(name) {
+    return this.request("GET", `/property/${name}`);
+  }
+
   displayed() {
     return this.request("GET", "/displayed");
   }

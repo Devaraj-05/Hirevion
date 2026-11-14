@@ -173,10 +173,12 @@ A box is ticked in the PR that merges the part. Deliverables are in MASTER §14;
     - answering the server's `snapshot_requests` (SP-14): heartbeat answers carry them and the desktop ignores them today; it needs a screen/camera JPEG and the `request_id` upload → B4;
     - the ARM64 installer: the script and the manual `Desktop installers` workflow build it; it needs the Visual Studio ARM64 build tools and hasn't run on a runner yet → B5;
     - the production Authenticode certificate and updater key (owner), and a11y beyond the SP-08b screens.
-- [ ] **B4 Desktop parts of SP-16, SP-13 and SP-15b.** Depends on: B3, C6, D3. See MASTER §14 SP-16, SP-13, SP-15b. Includes, moved from B3: the workspace host for code and whiteboard; answering SP-14's `snapshot_requests` (screen/camera JPEG, `request_id` upload); the third-eye status in heartbeats.
+- [x] **B4a Desktop coding console (SP-16).** Depends on: B3, C6. Split from B4 by product-owner decision (2026-11-14: B4 starts with the coding console only). Plan: `docs/superpowers/plans/2026-11-14-b4a-coding-console.md`.
   - Coding (product-owner decision, 2026-10-23; ADR-0033): a notepad-style console to `docs/api/contracts/coding.md`: a monospace text box, the language picked from the question's languages as a label, drafts saved with `POST /workspace`, one Submit, and the text box's integrity events (typing started and stopped, paste, copy, cut with lengths only, focus, blur). No Monaco, no Run, no tests; nothing is executed.
+  - Exit met: the desktop e2e types code into the console on the stub backend, sees the draft saved, submits once and moves to the next question; the console's logic is unit-tested (drafts, events, starter code, the clock, the size limit).
+- [ ] **B4b Desktop parts of SP-16 (whiteboard), SP-13 and SP-15b.** Depends on: B3, C6, D3. See MASTER §14 SP-16, SP-13, SP-15b. Includes, moved from B3: the whiteboard's workspace host; answering SP-14's `snapshot_requests` (screen/camera JPEG, `request_id` upload; work in progress on branch `worktree-agent-a206a1da835999881`, commits 83a170b and 85e428b plus an uncommitted `interview.rs` change); the third-eye status in heartbeats.
   - Exit: as in those §14 entries, for the desktop side.
-- [ ] **B5 Windows golden path and chaos drills.** Depends on: B3, B4. See MASTER §16 (chaos drills).
+- [ ] **B5 Windows golden path and chaos drills.** Depends on: B3, B4a, B4b. See MASTER §16 (chaos drills).
   - Includes, moved from B3: building and checking the ARM64 installer on a runner.
   - Exit: kill the app, drop the network, unplug a device, fail an upload — each ends with complete recordings, the right events and the interview resumed; the installer checks pass (x64 and ARM64).
 

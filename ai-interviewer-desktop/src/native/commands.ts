@@ -137,6 +137,30 @@ export const commands = {
     }),
   complete: (interviewId: string, reason: "finished" | "candidate_ended") =>
     interviewRequest<{ status: string }>(interviewId, "complete", { reason }),
+  /** The open coding question with its starter code and last draft (contract coding.md). */
+  coding: (interviewId: string) =>
+    interviewRequest<{ question: CodingQuestion | null }>(interviewId, "coding"),
+  /** Saves the console's text as the question's draft (`POST /workspace`, kind `code`). */
+  saveCode: (interviewId: string, questionId: string, language: string, content: string) =>
+    interviewRequest<null>(interviewId, "workspace", {
+      question_id: questionId,
+      kind: "code",
+      language,
+      content,
+    }),
+  /** The question's one submission; the answer carries the interview's next state. */
+  submitCode: (interviewId: string, questionId: string, language: string, code: string) =>
+    interviewRequest<{ submission: CodeSubmission; state: InterviewState }>(
+      interviewId,
+      "coding_submit",
+      { question_id: questionId, language, code },
+    ),
+  /** The console's integrity events: kinds, times and lengths, never text or keystrokes. */
+  codingTelemetry: (interviewId: string, questionId: string, events: CodingTelemetryEvent[]) =>
+    interviewRequest<{ accepted: number }>(interviewId, "coding_telemetry", {
+      question_id: questionId,
+      events,
+    }),
   /** Starts the proctor session, the native monitor and recording; safe to call again. */
   servicesStart: (interviewId: string) =>
     invoke<ServicesStarted>("services_start", { interviewId }),
@@ -197,7 +221,10 @@ export type InterviewAction =
   | "session"
   | "answer"
   | "workspace"
-  | "complete";
+  | "complete"
+  | "coding"
+  | "coding_submit"
+  | "coding_telemetry";
 
 function interviewRequest<T>(interviewId: string, action: InterviewAction, body?: unknown) {
   return invoke<T>("interview_request", { interviewId, action, body: body ?? null });
@@ -289,4 +316,41 @@ export interface StartResult {
   participant_token?: string;
   token_expires_at?: string;
   state: InterviewState;
+}
+
+/** `GET /interviews/{id}/coding`'s question (contract coding.md). */
+export interface CodingQuestion {
+  question_id: string;
+  text: string;
+  /** Some of python, javascript, typescript, sql: a label the candidate picks. */
+  languages: string[];
+  starter_code: Record<string, string>;
+  time_limit_seconds: number | null;
+  asked_at: string;
+  draft: { language: string; content: string; saved_at: string } | null;
+}
+
+export interface CodeSubmission {
+  id: string;
+  question_id: string;
+  language: string;
+  size: number;
+  source: "submitted" | "time_limit" | "closed";
+  submitted_at: string;
+}
+
+export type CodingTelemetryKind =
+  | "typing_started"
+  | "typing_stopped"
+  | "paste"
+  | "copy"
+  | "cut"
+  | "focus"
+  | "blur";
+
+/** One integrity event. `chars` (paste, copy and cut only) is a length: never the text. */
+export interface CodingTelemetryEvent {
+  kind: CodingTelemetryKind;
+  at: string;
+  chars?: number;
 }

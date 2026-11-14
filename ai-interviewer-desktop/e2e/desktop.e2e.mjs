@@ -1,5 +1,6 @@
 // The candidate's way to "Ready", in the real app: launch → version ok → sign in → interviews →
-// briefing → system check → consent → ready. Run by `pnpm e2e` (e2e/run.mjs), which starts
+// briefing → system check → consent → ready; then the interview's coding question (ADR-0033):
+// code typed in the console is saved as a draft and submitted once, and nothing runs it. Run by `pnpm e2e` (e2e/run.mjs), which starts
 // tauri-driver and passes the debug build in HV_E2E_APP. The app runs on its stub backend
 // (HV_DESKTOP_STUB=1: any email, password "stub") with fake camera/microphone devices and
 // canned native checks, so the test needs no API, no hardware and no operator.
@@ -17,6 +18,20 @@ const button = (text) => `//button[normalize-space()="${text}"]`;
 
 /** XPath for the page heading with exactly this text. */
 const heading = (text) => `//h1[normalize-space()="${text}"]`;
+
+/** The text box under the label with exactly this text. */
+const field = (label) => `//label[normalize-space()="${label}"]/following-sibling::textarea`;
+
+async function keepScreenshot(t, error) {
+  // Keep a picture of where it stopped (uploaded by CI).
+  try {
+    mkdirSync("e2e/output", { recursive: true });
+    writeFileSync("e2e/output/failure.png", await session.screenshot());
+  } catch {
+    // The screenshot is a courtesy.
+  }
+  t.diagnostic(String(error));
+}
 
 let session;
 
@@ -65,14 +80,38 @@ test("launch → ready", async (t) => {
     await session.waitFor(heading("You're ready"));
     assert.ok(await session.find(button("Start the interview")));
   } catch (error) {
-    // Keep a picture of where it stopped (uploaded by CI).
-    try {
-      mkdirSync("e2e/output", { recursive: true });
-      writeFileSync("e2e/output/failure.png", await session.screenshot());
-    } catch {
-      // The screenshot is a courtesy.
-    }
-    t.diagnostic(String(error));
+    await keepScreenshot(t, error);
+    throw error;
+  }
+});
+
+test("the coding console saves the code and submits it once", async (t) => {
+  try {
+    // The stub's interview runs in text mode: no LiveKit, the answers go through the API.
+    await session.click(button("Start the interview"));
+    await session.waitFor(heading("Interview"), 60_000);
+
+    // Question 1 is spoken-style: answer it in the text box.
+    await (await session.waitFor(field("Your answer"))).type("I built an order service on a queue.");
+    await session.click(button("Send answer"));
+
+    // Question 2 is the coding question: the console opens on the starter code.
+    await session.waitFor(`//h2[normalize-space()="Your code"]`);
+    const code = await session.waitFor(field("Code"));
+    assert.match(await code.property("value"), /def two_sum/);
+    await code.type("    seen = {}
+");
+
+    // The draft is saved within a few seconds (the server keeps it if time runs out).
+    await session.waitFor(`//p[starts-with(normalize-space(), "Saved at")]`, 20_000);
+
+    // One Submit, confirmed; the interview moves on to question 3.
+    await session.click(button("Submit code"));
+    await session.click(button("Submit now"));
+    await session.waitFor(`//span[normalize-space()="Question 3"]`, 20_000);
+    assert.equal((await session.findAll(`//h2[normalize-space()="Your code"]`)).length, 0);
+  } catch (error) {
+    await keepScreenshot(t, error);
     throw error;
   }
 });

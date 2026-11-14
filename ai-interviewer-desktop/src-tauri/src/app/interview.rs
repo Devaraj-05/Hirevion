@@ -25,6 +25,12 @@ pub enum InterviewAction {
     Answer,
     Workspace,
     Complete,
+    /// The coding console (contract coding.md): the open coding question and its draft.
+    Coding,
+    /// The one submission of a coding question's code.
+    CodingSubmit,
+    /// The console's integrity events: kinds, times and lengths, never text or keystrokes.
+    CodingTelemetry,
 }
 
 impl InterviewAction {
@@ -39,6 +45,9 @@ impl InterviewAction {
             Self::Answer => (Method::POST, "answer"),
             Self::Workspace => (Method::POST, "workspace"),
             Self::Complete => (Method::POST, "complete"),
+            Self::Coding => (Method::GET, "coding"),
+            Self::CodingSubmit => (Method::POST, "coding/submissions"),
+            Self::CodingTelemetry => (Method::POST, "coding/telemetry"),
         }
     }
 }
@@ -171,6 +180,13 @@ mod tests {
         assert_eq!(InterviewAction::Briefing.route(), (Method::GET, "briefing"));
         assert_eq!(InterviewAction::Session.route(), (Method::GET, "session"));
         assert!(serde_json::from_str::<InterviewAction>("\"logout\"").is_err());
+        // The coding console (contract coding.md).
+        assert_eq!(InterviewAction::Coding.route(), (Method::GET, "coding"));
+        let submit: InterviewAction = serde_json::from_str("\"coding_submit\"").expect("known");
+        assert_eq!(submit.route(), (Method::POST, "coding/submissions"));
+        let telemetry: InterviewAction =
+            serde_json::from_str("\"coding_telemetry\"").expect("known");
+        assert_eq!(telemetry.route(), (Method::POST, "coding/telemetry"));
     }
 
     #[test]

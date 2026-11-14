@@ -26,6 +26,7 @@ import {
   type StartResult,
   type UploadProgress,
 } from "../native/commands";
+import { CodingConsole } from "./coding-console";
 import { type ErrorKey, errorKey } from "./errors";
 import { ErrorText } from "./shell";
 
@@ -160,6 +161,16 @@ export function InterviewScreen({
       .catch(() => undefined);
   }
 
+  // A coding question closed elsewhere (answered, or its time ran out): fetch the state.
+  const refresh = useCallback(async () => {
+    try {
+      setState((await commands.session(interviewId)).state);
+    } catch (failure) {
+      onError(failure);
+      setError(errorKey(failure));
+    }
+  }, [interviewId, onError]);
+
   async function sendAnswer() {
     if (!state.question || !answer.trim()) return;
     try {
@@ -173,6 +184,8 @@ export function InterviewScreen({
   }
 
   const textMode = state.answer_mode === "text";
+  // A coding question is answered in its console (ADR-0033), not in the text-answer box.
+  const coding = state.question?.workspace === "code";
   return (
     <section className="grid gap-5" aria-labelledby={`${id}-title`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -226,7 +239,17 @@ export function InterviewScreen({
         </article>
       ) : null}
 
-      {textMode || state.question ? (
+      {state.question && coding ? (
+        <CodingConsole
+          key={state.question.id}
+          interviewId={interviewId}
+          questionId={state.question.id}
+          onSubmitted={setState}
+          onClosed={() => void refresh()}
+        />
+      ) : null}
+
+      {!coding && (textMode || state.question) ? (
         <div className="grid gap-2">
           <Label htmlFor={`${id}-answer`}>{textMode ? t("answerLabel") : t("typeInstead")}</Label>
           <Textarea

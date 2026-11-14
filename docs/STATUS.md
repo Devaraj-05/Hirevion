@@ -28,17 +28,19 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 | C6 SP-16 | Coding answers without execution (product-owner decision, 2026-10-23): the AI asks, the candidate types in a text console and submits once (the time limit keeps the last draft), every submission stored; the console's integrity events (lengths only, no keystrokes) as signals; the AI reviews the code after the interview inside the evaluation (seven criteria, evidence verified against the code's lines, pinned prompt and rubric, a gated coding set); the coding report, Candidate 360 Coding tab and review panel; contract `coding.md` for B4 | local CI green at fe3505d (all 12 jobs) / ADR-0033 |
 | D3 SP-13 | Third eye: single-use QR pairing, the phone page (permission guidance, placement, 720p/15 fps rear camera, Wake Lock, pause on lock, reconnect), LiveKit-observed status into proctoring, the `start` gate; Egress of the conversation audio and the third-eye video into playback | #17 / ADR-0040 |
 | AI routing | Product-owner decision, 2026-11-14: in `dev`, OpenRouter screens (job descriptions, resumes, screening, embeddings, page reading) and NVIDIA Nemotron interviews (questions, interview turns, evaluation), Deepgram keeps speech; every answer's tokens capped (a cut-off answer isn't retried); embeddings carry OpenRouter's no-collection preference; the interview gate scores the interview route; `hv doctor` checks the keys the routes need; live checks green on both providers | hooks, python, contract and js green at 07d9611 (full gate deferred to the end) / ADR-0034 |
+| B4a SP-16 desktop | The coding console (product-owner decisions 2026-10-23 and 2026-11-14): a plain monospace text box with the language as a label, the question's own clock, drafts saved every 5 s, on blur and just before the limit (restored after a restart), integrity events with lengths only, and one confirmed Submit; nothing is executed | Rust and desktop unit tests, desktop e2e (the full gate is deferred to the end) / ADR-0033 |
 
 ## In progress (unmerged worktree branches)
 
 | Part | Branch | Exact next step |
 |---|---|---|
+| B4b snapshots | `worktree-agent-a206a1da835999881` (local) | Commits 83a170b and 85e428b (snapshot requests from heartbeats, WIC screen stills) plus an uncommitted `interview.rs` change: review, test, rebase on `main` |
 
 ## Remaining, in priority order (dependency in brackets)
 
-- **P1:** C7 vision agent [C5, D3] · B4 desktop coding console (notepad-style, no Run)/third-eye/advanced CV [B3, C6, D3]
+- **P1:** C7 vision agent [C5, D3] · B4b desktop whiteboard/snapshot requests/third-eye status/advanced CV [B3, C6, D3]
 - **P2:** D4 SP-19 enterprise identity [SP-02] · D5 SP-22 admin/governance [A5, C5] · A6 SP-21 analytics [A5] · D6 SP-20 ATS/public API [A5]
-- **P3:** D7 SP-23 automated hardening [all] · B5 Windows golden path and chaos drills [B3, B4]
+- **P3:** D7 SP-23 automated hardening [all] · B5 Windows golden path and chaos drills [B3, B4a, B4b]
 - **Last:** the full local gate, `bash scripts/ci-local.sh --all` (deferred to the end by the product owner, 2026-11-14; each part meanwhile runs its own tests and checks)
 
 ## Skipped by product-owner decision

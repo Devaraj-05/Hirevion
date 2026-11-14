@@ -22,16 +22,87 @@ const CHALLENGE: &str = "stub-challenge";
 pub struct Stub {
     email: Mutex<Option<String>>,
     answered: Mutex<usize>,
+    /// When the coding question was first served, and its last saved draft.
+    coding_asked_at: Mutex<Option<SystemTime>>,
+    coding_draft: Mutex<Option<Value>>,
     /// `HV_DESKTOP_STUB_NATIVE=1`: the native system checks answer "pass" without touching the
     /// machine, so the end-to-end test runs the same on any runner.
     canned_native: bool,
 }
 
-const QUESTIONS: [&str; 3] = [
-    "Tell me about a backend service you built and how you kept it reliable.",
-    "How would you find out why an API endpoint became slow in production?",
-    "Explain how you would design idempotent retries for a payment request.",
+struct StubQuestion {
+    text: &'static str,
+    /// `code` for the coding console, `none` otherwise.
+    workspace: &'static str,
+    languages: &'static [&'static str],
+}
+
+const QUESTIONS: [StubQuestion; 4] = [
+    StubQuestion {
+        text: "Tell me about a backend service you built and how you kept it reliable.",
+        workspace: "none",
+        languages: &[],
+    },
+    StubQuestion {
+        text: "Write a function two_sum(nums, target) that returns the indexes of the two numbers \
+               in nums that add up to target. Type it in the box, choose its language and submit.",
+        workspace: "code",
+        languages: &["python", "javascript"],
+    },
+    StubQuestion {
+        text: "How would you find out why an API endpoint became slow in production?",
+        workspace: "none",
+        languages: &[],
+    },
+    StubQuestion {
+        text: "Explain how you would design idempotent retries for a payment request.",
+        workspace: "none",
+        languages: &[],
+    },
 ];
+const CODING_LIMIT_SECONDS: u64 = 600;
+/// The server's limit on code and drafts (256 KB of UTF-8).
+const MAX_CODE_BYTES: usize = 256 * 1024;
+const TELEMETRY_KINDS: [&str; 7] = [
+    "typing_started",
+    "typing_stopped",
+    "paste",
+    "copy",
+    "cut",
+    "focus",
+    "blur",
+];
+
+fn starter_code(language: &str) -> &'static str {
+    match language {
+        "python" => "def two_sum(nums, target):\n    pass\n",
+        "javascript" => "function twoSum(nums, target) {\n}\n",
+        _ => "",
+    }
+}
+
+fn question_id(index: usize) -> String {
+    format!("stub-q{index}")
+}
+
+/// One integrity event as the server accepts it: a known kind, a time, and a length for the
+/// clipboard kinds only. Anything else (text above all) is refused.
+fn valid_event(event: &Value) -> bool {
+    let Some(fields) = event.as_object() else {
+        return false;
+    };
+    let kind = fields
+        .get("kind")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    let clipboard = matches!(kind, "paste" | "copy" | "cut");
+    TELEMETRY_KINDS.contains(&kind)
+        && fields.get("at").is_some_and(Value::is_string)
+        && fields
+            .keys()
+            .all(|key| key == "kind" || key == "at" || (clipboard && key == "chars"))
+        && (!clipboard || fields.get("chars").is_some_and(Value::is_u64))
+}
 const PURPOSES: [&str; 10] = [
     "camera",
     "microphone",
@@ -201,22 +272,25 @@ impl Stub {
     ) -> CommandResult<Value> {
         self.email()?;
         let answered = || self.answered.lock().map_or(0, |count| *count);
-        let state = |answered: usize| {
-            let question = QUESTIONS.get(answered).map(|text| {
-                json!({ "id": format!("stub-q{answered}"), "index": answered + 1, "text": text,
-                        "type": "technical", "time_limit_seconds": 300, "workspace": "none", "languages": [] })
+        let state =
+            |answered: usize| {
+                let question = QUESTIONS.get(answered).map(|question| {
+                let limit = if question.workspace == "code" { CODING_LIMIT_SECONDS } else { 300 };
+                json!({ "id": question_id(answered), "index": answered + 1, "text": question.text,
+                        "type": "technical", "time_limit_seconds": limit,
+                        "workspace": question.workspace, "languages": question.languages })
             });
-            json!({ "state": {
-                "status": if question.is_some() { "in_progress" } else { "completed" },
-                "remaining_seconds": 2700 - 300 * answered,
-                "third_eye": "optional", "workspace": "none", "answer_mode": "text",
-                "question": question,
-                "voice": if question.is_some() { "waiting" } else { "ended" },
-                "stage": if question.is_some() { "medium" } else { "completion" },
-                "message": question.as_ref().map(|q| q["text"].clone()),
-                "notice": null
-            }})
-        };
+                json!({ "state": {
+                    "status": if question.is_some() { "in_progress" } else { "completed" },
+                    "remaining_seconds": 2700 - 300 * answered,
+                    "third_eye": "optional", "workspace": "none", "answer_mode": "text",
+                    "question": question,
+                    "voice": if question.is_some() { "waiting" } else { "ended" },
+                    "stage": if question.is_some() { "medium" } else { "completion" },
+                    "message": question.as_ref().map(|q| q["text"].clone()),
+                    "notice": null
+                }})
+            };
         Ok(match action {
             InterviewAction::Briefing => json!({
                 "instructions": [
@@ -255,19 +329,132 @@ impl Stub {
             }
             InterviewAction::Session => state(answered()),
             InterviewAction::Answer => {
-                if let Ok(mut count) = self.answered.lock() {
-                    *count = (*count + 1).min(QUESTIONS.len());
-                }
+                self.advance();
                 state(answered())
             }
-            InterviewAction::Workspace => Value::Null,
+            InterviewAction::Workspace => {
+                let body = body.unwrap_or(&Value::Null);
+                if !self.is_coding_question(body["question_id"].as_str()) {
+                    return Err(CommandError::new("question-not-found", None));
+                }
+                let content = body["content"].as_str().unwrap_or_default();
+                if content.len() > MAX_CODE_BYTES {
+                    return Err(CommandError::new("workspace-too-large", None));
+                }
+                if let Ok(mut draft) = self.coding_draft.lock() {
+                    *draft = Some(json!({ "language": body["language"], "content": content,
+                                          "saved_at": iso(SystemTime::now()) }));
+                }
+                Value::Null
+            }
+            InterviewAction::Coding => {
+                let index = answered();
+                match QUESTIONS.get(index) {
+                    Some(question) if question.workspace == "code" => {
+                        json!({ "question": self.coding_question(index, question) })
+                    }
+                    _ => json!({ "question": null }),
+                }
+            }
+            InterviewAction::CodingSubmit => {
+                let body = body.unwrap_or(&Value::Null);
+                let index = answered();
+                let current = QUESTIONS
+                    .get(index)
+                    .filter(|question| question.workspace == "code");
+                let Some(question) = current
+                    .filter(|_| body["question_id"].as_str() == Some(question_id(index).as_str()))
+                else {
+                    return Err(CommandError::new("question-not-current", None));
+                };
+                let language = body["language"].as_str().unwrap_or_default();
+                if !question.languages.contains(&language) {
+                    return Err(CommandError::new("language-not-offered", None));
+                }
+                let code = body["code"].as_str().unwrap_or_default();
+                if code.len() > MAX_CODE_BYTES {
+                    return Err(CommandError::new("code-too-large", None));
+                }
+                self.advance();
+                json!({
+                    // The stub doesn't hash the code; the server stores its SHA-256.
+                    "submission": { "id": "stub-submission", "question_id": question_id(index),
+                                    "language": language, "size": code.len(), "sha256": null,
+                                    "source": "submitted", "submitted_at": iso(SystemTime::now()) },
+                    "state": state(answered())["state"]
+                })
+            }
+            InterviewAction::CodingTelemetry => {
+                let body = body.unwrap_or(&Value::Null);
+                if !self.is_coding_question(body["question_id"].as_str()) {
+                    return Err(CommandError::new("question-not-found", None));
+                }
+                let events = body["events"].as_array().cloned().unwrap_or_default();
+                if events.is_empty() || events.len() > 200 {
+                    return Err(CommandError::new("too-many-events", None));
+                }
+                if !events.iter().all(valid_event) {
+                    return Err(CommandError::new("unknown-event", None));
+                }
+                json!({ "accepted": events.len() })
+            }
             InterviewAction::Complete => {
                 if let Ok(mut count) = self.answered.lock() {
                     *count = 0;
                 }
+                self.reset_coding();
                 json!({ "status": "completed" })
             }
         })
+    }
+
+    /// Closes the open question (an answer or a submission) and moves to the next one.
+    fn advance(&self) {
+        if let Ok(mut count) = self.answered.lock() {
+            *count = (*count + 1).min(QUESTIONS.len());
+        }
+    }
+
+    fn reset_coding(&self) {
+        if let Ok(mut asked) = self.coding_asked_at.lock() {
+            *asked = None;
+        }
+        if let Ok(mut draft) = self.coding_draft.lock() {
+            *draft = None;
+        }
+    }
+
+    /// Whether `id` names the stub's coding question, open or closed (the server takes late
+    /// drafts and events for any question of the interview).
+    fn is_coding_question(&self, id: Option<&str>) -> bool {
+        QUESTIONS.iter().enumerate().any(|(index, question)| {
+            question.workspace == "code" && id == Some(question_id(index).as_str())
+        })
+    }
+
+    /// `GET /coding`'s question: its languages and starter code, when it was asked (the first
+    /// time it was served), and the last saved draft.
+    fn coding_question(&self, index: usize, question: &StubQuestion) -> Value {
+        let asked_at = self
+            .coding_asked_at
+            .lock()
+            .map(|mut asked| *asked.get_or_insert_with(SystemTime::now))
+            .unwrap_or_else(|_| SystemTime::now());
+        let starters: serde_json::Map<String, Value> = question
+            .languages
+            .iter()
+            .map(|language| ((*language).to_owned(), json!(starter_code(language))))
+            .collect();
+        let draft = self
+            .coding_draft
+            .lock()
+            .ok()
+            .and_then(|draft| draft.clone())
+            .unwrap_or(Value::Null);
+        json!({ "question_id": question_id(index), "text": question.text,
+                "languages": question.languages, "starter_code": starters,
+                "time_limit_seconds": CODING_LIMIT_SECONDS, "asked_at": iso(asked_at),
+                "draft": draft })
     }
 
     fn email(&self) -> CommandResult<String> {
@@ -380,6 +567,104 @@ mod tests {
         }
         assert_eq!(state["state"]["status"], "completed");
         assert!(state["state"]["question"].is_null());
+    }
+
+    #[test]
+    fn serves_a_coding_question_keeps_its_drafts_and_takes_one_submission() {
+        let stub = Stub::default();
+        stub.sign_in("asha@x.test", PASSWORD).expect("signed in");
+        let start = stub
+            .interview("iv", InterviewAction::Start, None)
+            .expect("start");
+        assert_eq!(start["state"]["question"]["workspace"], "none");
+        let none = stub
+            .interview("iv", InterviewAction::Coding, None)
+            .expect("coding");
+        assert!(
+            none["question"].is_null(),
+            "the open question isn't a coding one"
+        );
+
+        // The second question is the coding one.
+        let state = stub
+            .interview(
+                "iv",
+                InterviewAction::Answer,
+                Some(&json!({ "text": "an answer" })),
+            )
+            .expect("answer");
+        let asked = &state["state"]["question"];
+        assert_eq!(asked["workspace"], "code");
+        assert_eq!(asked["languages"], json!(["python", "javascript"]));
+        let id = asked["id"].as_str().expect("an id").to_owned();
+
+        let coding = stub
+            .interview("iv", InterviewAction::Coding, None)
+            .expect("coding");
+        let question = &coding["question"];
+        assert_eq!(question["question_id"], id.as_str());
+        assert_eq!(question["time_limit_seconds"], 600);
+        assert!(
+            question["starter_code"]["python"]
+                .as_str()
+                .is_some_and(|s| s.contains("def"))
+        );
+        assert!(
+            question["asked_at"]
+                .as_str()
+                .is_some_and(|s| s.ends_with('Z'))
+        );
+        assert!(question["draft"].is_null());
+
+        // A draft is kept and comes back after a restart.
+        let draft = json!({ "question_id": id, "kind": "code", "language": "python",
+                            "content": "print(1)" });
+        stub.interview("iv", InterviewAction::Workspace, Some(&draft))
+            .expect("saved");
+        let coding = stub
+            .interview("iv", InterviewAction::Coding, None)
+            .expect("coding");
+        assert_eq!(coding["question"]["draft"]["content"], "print(1)");
+        assert_eq!(coding["question"]["draft"]["language"], "python");
+
+        // Integrity events: kinds and lengths only.
+        let events = json!({ "question_id": id, "events": [
+            { "kind": "focus", "at": "2026-11-14T10:00:00Z" },
+            { "kind": "paste", "at": "2026-11-14T10:00:01Z", "chars": 12 } ] });
+        let accepted = stub
+            .interview("iv", InterviewAction::CodingTelemetry, Some(&events))
+            .expect("accepted");
+        assert_eq!(accepted["accepted"], 2);
+        let with_text = json!({ "question_id": id, "events": [
+            { "kind": "paste", "at": "2026-11-14T10:00:01Z", "chars": 3, "text": "abc" } ] });
+        assert_eq!(
+            stub.interview("iv", InterviewAction::CodingTelemetry, Some(&with_text))
+                .unwrap_err()
+                .code,
+            "unknown-event"
+        );
+
+        // A language the question doesn't offer is refused; then one submission moves on.
+        let sql = json!({ "question_id": id, "language": "sql", "code": "select 1" });
+        assert_eq!(
+            stub.interview("iv", InterviewAction::CodingSubmit, Some(&sql))
+                .unwrap_err()
+                .code,
+            "language-not-offered"
+        );
+        let code = json!({ "question_id": id, "language": "python", "code": "print(1)" });
+        let submitted = stub
+            .interview("iv", InterviewAction::CodingSubmit, Some(&code))
+            .expect("submitted");
+        assert_eq!(submitted["submission"]["source"], "submitted");
+        assert_eq!(submitted["submission"]["size"], 8);
+        assert_ne!(submitted["state"]["question"]["id"], id.as_str());
+        assert_eq!(
+            stub.interview("iv", InterviewAction::CodingSubmit, Some(&code))
+                .unwrap_err()
+                .code,
+            "question-not-current"
+        );
     }
 
     #[test]
