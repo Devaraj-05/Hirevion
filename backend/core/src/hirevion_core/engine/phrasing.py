@@ -198,6 +198,11 @@ CODING_INTRO = (
     "the interview."
 )
 CODING_RECEIVED = "Thanks, I have your code."
+# A design question's notes pad (ADR-0041): said once, after the question.
+DESIGN_NOTES = (
+    "You can type your design in the notes pad on your screen while you explain it; I'll read "
+    "your notes with your answer."
+)
 FINAL_QUESTIONS = (
     "That's all my questions. Do you have any questions about the role or the process?"
 )

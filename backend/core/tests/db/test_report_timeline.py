@@ -186,3 +186,32 @@ async def test_a_reader_without_proctoring_or_the_files_people_side_sees_neither
     assert {entry.source for entry in entries} <= interviewer
     assert not [entry for entry in no_proctoring if entry.kind == "proctor_review"]
     assert [entry for entry in only_recruiter if entry.kind == "note"]
+
+
+async def test_a_design_questions_notes_are_listed_as_notes_not_code(
+    app_db: Database, make_organization: MakeOrganization, make_completed_interview: Any
+) -> None:
+    """ADR-0041: the notes pad saves into the `whiteboard` workspace."""
+    from hirevion_core.models import WorkspaceSnapshot
+
+    scene = await make_completed_interview(await make_organization("Acme"))
+    notes = "API -> cache -> Postgres"
+    async with app_db.tenant(scene.organization_id) as session:
+        session.add(
+            WorkspaceSnapshot(
+                organization_id=scene.organization_id,
+                interview_id=scene.interview_id,
+                question_id=scene.questions["postgres"],
+                kind="whiteboard",
+                language=None,
+                content=notes,
+                size=len(notes),
+            )
+        )
+        await session.flush()
+        interview = await session.get_one(Interview, scene.interview_id)
+        data = await load_interview_data(session, interview, with_transcript=False)
+        entries = interview_entries(data, SOURCES)
+    saved = [entry for entry in entries if entry.title.startswith(("Code saved", "Design notes"))]
+    assert [entry.title for entry in saved] == ["Design notes saved for question 2"]
+    assert saved[0].detail == f"{len(notes)} characters"

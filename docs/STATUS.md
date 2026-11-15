@@ -33,6 +33,7 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 | B4b-1a SP-14 desktop | Snapshot answers: the server's `snapshot_requests` from heartbeats are answered once each within two minutes, the screen by WGC + WIC (≤1280×720 JPEG), the camera by one frame of the interview's track from the webview; uploads with `request_id`, retried until expiry | Rust and webview unit tests, uploader wiremock tests, desktop e2e (full gate deferred) |
 | B4b-1b SP-13 desktop | The phone step: QR code drawn in Rust (`qrcodegen`) from a pairing Rust issues with the session token, the link to type, status every 2 s, a new code only when spent, a remembered pairing across restarts, the check that waited for a required phone sent again, Ready's `third-eye-required` back to the phone | Rust and webview unit tests, desktop e2e consent → phone → ready (full gate deferred) / ADR-0040 |
 | B4b-1c SP-13 desktop | Third-eye status during the interview: the heartbeat's `third_eye` from the briefing's mode and a 5 s pairing watcher, a status badge and a lost-camera warning on the interview screen | Rust and webview unit tests, desktop e2e (full gate deferred) |
+| B4b-2 SP-16 | A design question's notes pad, instead of a whiteboard (owner, 2026-11-15; ADR-0041): plain text saved as the `whiteboard` workspace, read by the evaluation (prompt `evaluation-question-v2`), named by the AI, listed in the timeline | engine, evaluation, report and Rust/webview tests, eval gate, desktop e2e (full gate deferred) / ADR-0041 |
 
 ## In progress (unmerged worktree branches)
 
@@ -41,7 +42,7 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 
 ## Remaining, in priority order (dependency in brackets)
 
-- **P1:** C7 vision agent [C5, D3] · B4b-2 whiteboard [B4a] · B4b-3 advanced CV [B3, C7]
+- **P1:** C7 vision agent [C5, D3] · B4b-3 advanced CV [B3, C7]
 - **P2:** D4 SP-19 enterprise identity [SP-02] · D5 SP-22 admin/governance [A5, C5] · A6 SP-21 analytics [A5] · D6 SP-20 ATS/public API [A5]
 - **P3:** D7 SP-23 automated hardening [all] · B5 Windows golden path and chaos drills [B3, B4a, B4b]
 - **Last:** the full local gate, `bash scripts/ci-local.sh --all` (deferred to the end by the product owner, 2026-11-14; each part meanwhile runs its own tests and checks)
@@ -59,6 +60,7 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 - [ ] B4b-1a: snapshot answers are unit-tested (and the upload against wiremock) but not yet tried against a running API raising a CRITICAL event; do it in the next simulator or real-interview run.
 - [ ] B4b-1a review, kept for later: a screen snapshot shows the primary display only (the recording has every display), and each one opens its own capture session (a D3D device and a WGC border flash) instead of reusing the recorder's; fine at CRITICAL events' rate, worth folding into the recorder in B4b-3.
 - [ ] B4b-1b: the phone step is tested on the stub's phone; try it with a real phone against the local stack (runbook "Third eye") together with D3's real-phone check.
+- [ ] B4b-2: design notes aren't restored after an app restart (the server keeps every save; no endpoint hands them back), and the interview report has no notes section yet (the timeline lists the saves).
 - [ ] D3: not yet tried on real phones (iOS Safari 16.4+, Android Chrome; the owner's check, runbook "Third eye") or with the real Egress container (its image is about 1 GB; tests used the adapter's fake). Run both before CP3.
 - [ ] A5/D2: ffmpeg isn't installed on this PC, so recordings stay assembly-pending and the review player's sync is tested only with pure functions and jsdom. Install ffmpeg (see the runbook's "Recordings") and play a simulator interview's recordings end to end before CP3.
 - [ ] B2/SP-11: `event-queue`'s end-to-end test (a blocked process is queued within 2 s) failed once in a full local CI run on a heavily loaded PC (65 s run time; it took 14 s alone and passed). The 2 s is the product requirement, so it stays; watch whether detection really slows under load.

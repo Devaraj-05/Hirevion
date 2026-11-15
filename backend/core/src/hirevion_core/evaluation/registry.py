@@ -25,7 +25,8 @@ from hirevion_core.interviews.templates import RUBRIC_DIMENSIONS
 
 DIMENSIONS: tuple[str, ...] = RUBRIC_DIMENSIONS
 
-ACTIVE_QUESTION_PROMPT = "evaluation-question-v1"
+# v2 (2026-11-15, ADR-0041): a design question's `design_notes` are weighed with the answer.
+ACTIVE_QUESTION_PROMPT = "evaluation-question-v2"
 ACTIVE_SYNTHESIS_PROMPT = "evaluation-synthesis-v1"
 ACTIVE_RUBRIC = "dimensions-v1"
 # The coding question (SP-16, ADR-0033): the code is read, never run, and scored on its own

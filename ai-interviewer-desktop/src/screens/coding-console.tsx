@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useFormatter, useTranslations } from "use-intl";
+import { useTranslations } from "use-intl";
 import {
   CodingTelemetry,
   codeBytes,
@@ -30,6 +30,7 @@ import {
   isCommandError,
 } from "../native/commands";
 import { recordingCommands } from "../recording/native";
+import { DraftStatus } from "./draft-status";
 import { ErrorText } from "./shell";
 
 /** In the question's last seconds the draft is saved every second, and once more at zero:
@@ -75,7 +76,6 @@ export function CodingConsole({
   onClosed: () => void;
 }) {
   const t = useTranslations("coding");
-  const format = useFormatter();
   const id = useId();
   const box = useRef<HTMLTextAreaElement | null>(null);
   const [question, setQuestion] = useState<CodingQuestion | null>(null);
@@ -341,17 +341,7 @@ export function CodingConsole({
         </p>
       </div>
 
-      <p id={`${id}-status`} role="status" className="text-muted-foreground text-sm">
-        {status.kind === "saved"
-          ? t("status.saved", {
-              time: format.dateTime(new Date(status.at), {
-                hour: "numeric",
-                minute: "2-digit",
-                second: "2-digit",
-              }),
-            })
-          : t(`status.${status.kind}`)}
-      </p>
+      <DraftStatus id={`${id}-status`} status={status} />
 
       {secondsLeft === 0 ? (
         <p role="alert" className="rounded-md bg-warning-subtle p-3 text-sm text-warning">

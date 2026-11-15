@@ -286,13 +286,6 @@
     "questionTimeLeft": "Time left for this question",
     "loading": "Opening the code box…",
     "retry": "Try again",
-    "status": {
-      "idle": "Not saved yet",
-      "saving": "Saving…",
-      "saved": "Saved at {time}",
-      "failed": "Couldn't save. Trying again…",
-      "refused": "This code couldn't be saved. Your next change will be saved."
-    },
     "timeUp": "Time's up for this question. Your last saved code is kept; submit now if you can.",
     "submit": "Submit code",
     "submitWarning": "You can submit only once. After you submit, you can't change your code.",
@@ -309,6 +302,19 @@
       "unknown": "Your code wasn't sent. Try again.",
       "closed": "This question isn't open for code right now. Try again in a moment."
     }
+  },
+  "drafts": {
+    "idle": "Not saved yet",
+    "saving": "Saving…",
+    "saved": "Saved at {time}",
+    "failed": "Couldn't save. Trying again…",
+    "refused": "This code couldn't be saved. Your next change will be saved."
+  },
+  "notes": {
+    "title": "Design notes",
+    "hint": "Type your design while you explain it: the parts, how data moves between them, and the trade-offs. Your notes are read with your answer.",
+    "label": "Your design notes",
+    "tooLarge": "Your notes are over 256 KB. Shorten them so they can be saved."
   },
   "completed": {
     "title": "Thank you",

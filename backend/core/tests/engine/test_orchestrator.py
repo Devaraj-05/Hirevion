@@ -415,3 +415,16 @@ def test_the_media_settings_read_the_agents_own_name(monkeypatch: pytest.MonkeyP
 
     monkeypatch.setenv("HV_AGENT_NAME", "hirevion-interviewer-staging")
     assert MediaSettings().agent_name == "hirevion-interviewer-staging"
+
+
+def test_a_design_question_mentions_the_notes_pad() -> None:
+    """ADR-0041: the AI tells the candidate the notes pad is there, once, with the question."""
+    design = library(
+        "PostgreSQL", "medium", "Design a read-heavy order service.", type="system_design"
+    )
+    state = make_state(make_context(pinned=[design]))
+    turns, _ = run(state, by_kind(state))
+    hinted = [t for t in turns if phrasing.DESIGN_NOTES in t.say]
+    assert hinted, "the design question never mentioned the notes pad"
+    assert all(t.asked is not None and t.asked.workspace == "whiteboard" for t in hinted)
+    assert all(t.asked is not None and t.asked.kind == "main" for t in hinted)

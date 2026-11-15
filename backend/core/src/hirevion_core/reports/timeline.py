@@ -209,12 +209,19 @@ def interview_entries(
                 ref={"question_id": str(question.id)},
             )
     for snapshot in data.snapshots:
+        number = numbers.get(snapshot.question_id, "?")
+        # A design question's notes pad saves into the `whiteboard` workspace (ADR-0041).
+        notes = snapshot.kind == "whiteboard"
         add(
             snapshot.created_at,
             "coding",
             "snapshot",
-            f"Code saved for question {numbers.get(snapshot.question_id, '?')}",
-            f"{snapshot.language or 'text'}, {snapshot.size} characters",
+            f"Design notes saved for question {number}"
+            if notes
+            else f"Code saved for question {number}",
+            f"{snapshot.size} characters"
+            if notes
+            else f"{snapshot.language or 'text'}, {snapshot.size} characters",
             ref={"question_id": str(snapshot.question_id)},
         )
     for item in data.submissions:

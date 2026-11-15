@@ -416,3 +416,22 @@ def test_the_lexicon_spells_terms_for_speech_and_keyterms_prime_stt() -> None:
     state = make_state(make_context(profile=PROFILE))
     terms = phrasing.keyterms(state)
     assert {"Python", "PostgreSQL", "Backend Engineer"} <= set(terms)
+
+
+def test_a_system_design_question_opens_the_design_notes_pad() -> None:
+    """Product-owner decision, 2026-11-15: a design question's workspace is a plain-text notes
+    pad (the `whiteboard` workspace); a coding question keeps its console; others have none."""
+    design = library(
+        "PostgreSQL", "medium", "Design a read-heavy order service.", type="system_design"
+    )
+    coding = library(
+        "Python", "medium", "Write two_sum.", type="coding", coding={"languages": ["python"]}
+    )
+    talk = library("Python", "easy", "What is a decorator?")
+    state = make_state(make_context(pinned=[design, coding, talk]))
+    by_text = {q.text: q.workspace for q in state.pool if q.source == "pinned"}
+    assert by_text == {
+        "Design a read-heavy order service.": "whiteboard",
+        "Write two_sum.": "code",
+        "What is a decorator?": "none",
+    }

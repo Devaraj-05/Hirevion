@@ -13,9 +13,22 @@ from collections.abc import Sequence
 
 from hirevion_core.engine import phrasing
 from hirevion_core.engine.context import InterviewContext, LibraryQuestion
-from hirevion_core.engine.state import RUNGS, InterviewState, PoolQuestion, ResumeHook, SkillState
+from hirevion_core.engine.state import (
+    RUNGS,
+    InterviewState,
+    PoolQuestion,
+    ResumeHook,
+    SkillState,
+    Workspace,
+)
 
 RESUME_TYPES = frozenset({"resume_based", "project_based"})
+
+
+# The desktop workspace each question type opens: the coding console (ADR-0033), and for a
+# design question a plain-text notes pad (the `whiteboard` workspace; product-owner decision,
+# 2026-11-15, ADR-0041). Other questions are answered by voice or the text box alone.
+WORKSPACES: dict[str, Workspace] = {"coding": "code", "system_design": "whiteboard"}
 
 
 def _from_library(question: LibraryQuestion, skill: str, source: str) -> PoolQuestion:
@@ -33,7 +46,7 @@ def _from_library(question: LibraryQuestion, skill: str, source: str) -> PoolQue
         rubric=[dict(r) for r in question.rubric],
         time_limit_seconds=question.time_limit_seconds,
         follow_up_rules=[dict(r) for r in question.follow_up_rules],
-        workspace="code" if question.type == "coding" else "none",
+        workspace=WORKSPACES.get(question.type, "none"),
         languages=[str(lang) for lang in coding.get("languages") or []],
     )
 

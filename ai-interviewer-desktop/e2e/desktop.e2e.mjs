@@ -1,8 +1,9 @@
 // The candidate's way to "Ready", in the real app: launch → version ok → sign in → interviews →
 // briefing → system check → consent → phone (third eye) → ready; then the interview's coding
 // question (ADR-0033): code typed in the console is saved as a draft and submitted once, and
-// nothing runs it. Run by `pnpm e2e` (e2e/run.mjs), which starts
-// tauri-driver and passes the debug build in HV_E2E_APP. The app runs on its stub backend
+// nothing runs it; then a design question's notes pad (ADR-0041). Run by `pnpm e2e`
+// (e2e/run.mjs), which starts tauri-driver and passes the debug build in HV_E2E_APP. The app
+// runs on its stub backend
 // (HV_DESKTOP_STUB=1: any email, password "stub") with fake camera/microphone devices and
 // canned native checks, so the test needs no API, no hardware and no operator.
 import assert from "node:assert/strict";
@@ -96,7 +97,7 @@ test("launch → ready", async (t) => {
   }
 });
 
-test("the coding console saves the code and submits it once", async (t) => {
+test("the coding console and the design notes pad keep the candidate's work", async (t) => {
   if (!ready) {
     t.skip('needs "launch → ready" to reach the Ready screen');
     return;
@@ -129,6 +130,24 @@ test("the coding console saves the code and submits it once", async (t) => {
     await session.click(button("Submit now"));
     await session.waitFor(`//span[normalize-space()="Question 3"]`, 20_000);
     assert.equal((await session.findAll(`//h2[normalize-space()="Your code"]`)).length, 0);
+
+    // Question 3 is answered in the text box; question 4 is a design question with the notes
+    // pad (ADR-0041).
+    await (await session.waitFor(field("Your answer"))).type("I would read traces and slow logs.");
+    await session.click(button("Send answer"));
+    await session.waitFor(`//h2[normalize-space()="Design notes"]`, 20_000);
+    await (await session.waitFor(field("Your design notes"))).type(
+      "Client -> API -> idempotency keys table -> payment provider",
+    );
+    // Leaving the pad saves the notes at once.
+    const answer = await session.find(field("Your answer"));
+    await answer.click();
+    await session.waitFor(`//p[starts-with(normalize-space(), "Saved at")]`, 15_000);
+    await answer.type("Every request carries an idempotency key the server remembers.");
+    await session.click(button("Send answer"));
+
+    // That was the last question.
+    await session.waitFor(heading("Thank you"), 30_000);
   } catch (error) {
     await keepScreenshot(t, error, "coding");
     throw error;

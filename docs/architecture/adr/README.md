@@ -30,6 +30,7 @@
 | [0032](0032-proctoring-engine.md) | The proctoring engine: the server decides, what it sees itself is the ground truth, and nothing a reviewer dismisses is deleted | Accepted |
 | [0033](0033-coding-answers-without-execution.md) | Coding answers in a text console, reviewed by AI after the interview, never executed | Accepted |
 | [0034](0034-ai-routing-openrouter-nemotron.md) | Development AI routed by task: OpenRouter screens, NVIDIA Nemotron interviews | Accepted |
+| [0041](0041-design-notes-pad.md) | A plain-text notes pad for design questions, instead of a whiteboard | Accepted |
 | [0040](0040-third-eye-and-egress.md) | The third eye: a single-use pairing, LiveKit's view as its status, and Egress files beside the desktop's tracks | Accepted |
 
 New decisions copy [0000-template.md](0000-template.md) and take the next number.

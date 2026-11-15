@@ -29,6 +29,7 @@ import {
 import { type LiveThirdEye, liveView } from "../third-eye/pairing";
 import { CodingConsole } from "./coding-console";
 import { type ErrorKey, errorKey } from "./errors";
+import { NotesPad } from "./notes-pad";
 import { ErrorText } from "./shell";
 
 const CAPTION_TOPIC = "lk.transcription";
@@ -281,6 +282,14 @@ export function InterviewScreen({
           questionId={state.question.id}
           onSubmitted={setState}
           onClosed={() => void refresh()}
+        />
+      ) : null}
+
+      {state.question?.workspace === "whiteboard" ? (
+        <NotesPad
+          key={state.question.id}
+          interviewId={interviewId}
+          questionId={state.question.id}
         />
       ) : null}
 

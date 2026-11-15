@@ -437,6 +437,8 @@ class Orchestrator:
         )
         turn.asked = question
         turn.say.append(f"{prefix} {text}" if prefix else text)
+        if question.workspace == "whiteboard" and parent is None:
+            turn.say.append(phrasing.DESIGN_NOTES)
         return question
 
     def _record(

@@ -140,6 +140,7 @@ Body:
 
 - **After completion:** the desktop drains its upload queue (recordings.md) before saying it's safe to close.
 - **Coding:** the coding console (the question, one submission, integrity events) is [coding.md](coding.md). Drafts still go to `POST /workspace`. Nothing is executed.
+- **Design notes:** a `system_design` question's workspace is `whiteboard`, which the desktop shows as a plain-text notes pad (ADR-0041). It saves with `POST /workspace` (`kind: "whiteboard"`, `language: null`); the latest save is read by the evaluation with the answer.
 
 ## Changes
 
@@ -160,3 +161,4 @@ Body:
   - `POST /answer` accepts typed answers in voice mode too; the agent then speaks the next question.
   - Rate limits: 30 answers or workspace snapshots a minute per interview.
 - 2026-10-23: lane C (C6, SP-16; ADR-0033). The coding question is answered in a plain text console and never run: see [coding.md](coding.md). The AI now says "type your answer in the text box … press Submit"; a submission closes the question, and so does its time limit, when the last `POST /workspace` draft becomes the final code.
+- 2026-11-15: a `system_design` question opens the `whiteboard` workspace, a plain-text notes pad on the desktop (ADR-0041).

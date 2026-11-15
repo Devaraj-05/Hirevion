@@ -157,6 +157,15 @@ export const commands = {
       language,
       content,
     }),
+  /** Saves a design question's notes pad as its draft (`POST /workspace`, kind `whiteboard`;
+   * ADR-0041). */
+  saveNotes: (interviewId: string, questionId: string, content: string) =>
+    interviewRequest<null>(interviewId, "workspace", {
+      question_id: questionId,
+      kind: "whiteboard",
+      language: null,
+      content,
+    }),
   /** The question's one submission; the answer carries the interview's next state. */
   submitCode: (interviewId: string, questionId: string, language: string, code: string) =>
     interviewRequest<{ submission: CodeSubmission; state: InterviewState }>(

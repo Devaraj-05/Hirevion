@@ -60,6 +60,10 @@ class QuestionReply(BaseModel):
     note: str = ""
 
 
+# The most of a design question's notes the model reads.
+NOTES_MAX = 8_000
+
+
 @dataclass(frozen=True, slots=True)
 class ParentContext:
     """For a follow-up: the main question and what the candidate said to it."""
@@ -85,6 +89,9 @@ class QuestionCase:
     flags: Sequence[str] = ()
     """Integrity signals the live guardrails raised (for a reviewer, never a verdict)."""
     late: bool = False
+    design_notes: str = ""
+    """What the candidate typed in the notes pad for a design question (ADR-0041): weighed with
+    the answer, never quoted as evidence."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -141,7 +148,7 @@ def build_request(case: QuestionCase) -> dict[str, Any]:
             break
         total += len(text)
         answer_turns.append({"n": turn.seq, "at": clock(turn.start_ms), "text": text})
-    return {
+    request: dict[str, Any] = {
         "question": case.text,
         "kind": case.kind,
         "skill": case.skill,
@@ -158,6 +165,10 @@ def build_request(case: QuestionCase) -> dict[str, Any]:
         ),
         "answer_turns": answer_turns,
     }
+    # Only when notes were typed, so every other question's request (and digest) is unchanged.
+    if case.design_notes.strip():
+        request["design_notes"] = case.design_notes[:NOTES_MAX]
+    return request
 
 
 def digest(request: Mapping[str, Any]) -> str:

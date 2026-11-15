@@ -106,6 +106,17 @@ async def load_inputs(session: AsyncSession, interview: Interview) -> Evaluation
             .order_by(TranscriptSegment.seq)
         )
     ).all()
+    # Each question's design notes: the latest text the notes pad saved (ADR-0041).
+    notes: dict[Any, str] = {}
+    for snapshot in await session.scalars(
+        select(WorkspaceSnapshot)
+        .where(
+            WorkspaceSnapshot.interview_id == interview.id,
+            WorkspaceSnapshot.kind == "whiteboard",
+        )
+        .order_by(WorkspaceSnapshot.created_at, WorkspaceSnapshot.id)
+    ):
+        notes[snapshot.question_id] = snapshot.content
     row = await session.get(InterviewSession, interview.id)
     state = row.state if row is not None and row.state else None
     rubrics = _question_rubrics(state)
@@ -151,6 +162,7 @@ async def load_inputs(session: AsyncSession, interview: Interview) -> Evaluation
                 else None,
                 flags=flags,
                 late=any(a.late for a in given),
+                design_notes=notes.get(question.id, ""),
             )
         )
     return EvaluationInputs(

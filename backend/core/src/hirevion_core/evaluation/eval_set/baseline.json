@@ -1,7 +1,7 @@
 {
   "set": "interview-eval-set-v1",
   "coding_set": "coding-eval-set-v1",
-  "prompt_version": "evaluation-question-v1",
+  "prompt_version": "evaluation-question-v2",
   "rubric_version": "dimensions-v1+w36137962",
   "coding_prompt_version": "evaluation-coding-v1",
   "coding_rubric_version": "coding-v1+w12a8a33c",

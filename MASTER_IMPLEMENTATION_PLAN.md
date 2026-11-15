@@ -167,7 +167,7 @@ Each application has its own build, tests and release pipeline.
     - A proctor-event review outcome ("confirmed" vs "false positive"), which the §106 false-positive-rate KPI needs.
 13. **Workspace interpretation (§32):**
     - Coding questions use Monaco.
-    - System-design questions use a whiteboard (Excalidraw, MIT); its snapshot goes into the evaluation.
+    - System-design questions use a plain-text design notes pad (the `whiteboard` workspace; product-owner decision, 2026-11-15, ADR-0041, instead of Excalidraw); its latest save goes into the evaluation.
     - All other questions show a question card and notes.
 
 ## 4. Scope boundaries
@@ -400,7 +400,7 @@ Decided on 2026-09-28 (ADR-0002, ADR-0003): AI runs on hosted APIs through your 
   14. Exit.
 - **Workspace per question type:**
   - Coding: Monaco with a language dropdown, Run, Submit and test results.
-  - System design: whiteboard.
+  - System design: a plain-text notes pad (ADR-0041).
   - Everything else: question card and notes.
 - **Rust crates** in `src-tauri/crates/` (a superset of §93):
   - `security` — CNG/TPM device key, DPoP signer, DPAPI token vault, environment sanitisation, debugger and self-signature checks, single instance.
@@ -1364,7 +1364,7 @@ It starts with the interview simulator as its client.
   - The AI code review inside the evaluation (pinned prompt and rubric, evidence from the code, the eval gate's coding set).
   - The coding report and the Candidate 360 Coding tab.
   - The contract `docs/api/contracts/coding.md`.
-- **Deliverables (desktop, B4):** the notepad-style console (text box, language label, Submit, drafts, telemetry) and the whiteboard. The console is B4a (done, 2026-11-14); the whiteboard is B4b.
+- **Deliverables (desktop, B4):** the notepad-style console (text box, language label, Submit, drafts, telemetry) and the design notes pad. The console is B4a (done, 2026-11-14); the notes pad, instead of a whiteboard (ADR-0041), is B4b-2 (done, 2026-11-15).
 - **Exit criteria:**
   - A simulated interview submits code that is stored and reviewed with verified evidence from the code.
   - The time limit keeps the last draft as the final code.
@@ -1602,7 +1602,7 @@ Every PRD section maps to where it is delivered. An item marked "Cloud plan" is 
 | 29 | 11 system checks; policy-driven mandatory checks | SP-08 (the checks on the device), SP-09 (`interview_session.preparation.record_system_check`, mandatory checks from the policy and accommodations: `test_conductor.py`) |
 | 30 | 6 instructions (configurable); 10 consent items | SP-08, SP-09 (the briefing: `interview_session.briefing`, the organisation's instructions in Administration → Organisation, itemised consents against `NOTICE_VERSION`), SP-22 |
 | 31 | Fullscreen; 5 monitored states | SP-08, SP-11 |
-| 32 | UI layout, timer, orb, transcript, editor (language, Run, Submit), status bar, non-coding workspace | SP-08, SP-09 (`hv.state`: voice, question, time left, workspace; `POST /workspace`), SP-16 (C6 server: `docs/api/contracts/coding.md`, the language label and Submit; B4a desktop: the text console `src/screens/coding-console.tsx` with `src/interview/coding.ts`, `coding.test.ts` and the desktop e2e). Run removed by product-owner decision, 2026-10-23: no code execution |
+| 32 | UI layout, timer, orb, transcript, editor (language, Run, Submit), status bar, non-coding workspace | SP-08, SP-09 (`hv.state`: voice, question, time left, workspace; `POST /workspace`), SP-16 (C6 server: `docs/api/contracts/coding.md`, the language label and Submit; B4a desktop: the text console `src/screens/coding-console.tsx` with `src/interview/coding.ts`, `coding.test.ts` and the desktop e2e). Run removed by product-owner decision, 2026-10-23: no code execution. Non-coding workspace: a design question's notes pad (B4b-2, ADR-0041: `engine.planner.WORKSPACES`, `src/screens/notes-pad.tsx`, `design_notes` in prompt `evaluation-question-v2`) |
 | 33 | 6 voice states; streaming STT/TTS | SP-09 (ADR-0030: the agent's `hv.state` voice states incl. `error`; Deepgram streaming STT/TTS through LiveKit, `hirevion_interview_agent.agent`) |
 | 34 | No single giant prompt; 12 state fields; 9 components | SP-09 (`hirevion_core.engine`: `state.InterviewState`, the nine components, `orchestrator.py`; `tests/engine/`), SP-16 (C6: `engine.coding.CodingController` and the coding state's submissions; `test_orchestrator.py`) |
 | 35 | 10 state-machine states | SP-09 (§6.8; `engine.state.STAGES` recorded with times; `test_orchestrator.py`) |

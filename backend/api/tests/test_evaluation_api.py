@@ -58,7 +58,7 @@ async def test_the_evaluation_has_scores_evidence_and_versions(
     assert data["state"] == "ready" and data["interview_status"] == "evaluated"
     body = data["evaluation"]
     assert body["versions"]["evaluation"] == "evaluation-v1"
-    assert body["versions"]["prompt"] == "evaluation-question-v1"
+    assert body["versions"]["prompt"] == "evaluation-question-v2"
     assert body["versions"]["rubric"].startswith("dimensions-v1+w")
     assert body["versions"]["model"] == "mock-llm" and sum(body["rubric_weights"].values()) == 100
     assert body["overall_score"] is not None and body["coding"]["status"] == "not_asked"
@@ -202,7 +202,7 @@ async def test_an_admin_queues_a_pinned_rerun_and_reads_how_far_it_moved(
     [rerun] = (await client.get(url(scene, "/evaluation/reruns"))).json()
     assert rerun["status"] == "ready" and rerun["within_tolerance"] is True
     assert rerun["requested_by"] == str(admin) and rerun["diff"]["max_dimension_diff"] == 0
-    assert rerun["prompt_version"] == "evaluation-question-v1"
+    assert rerun["prompt_version"] == "evaluation-question-v2"
     # The interview's own evaluation is the one it had.
     assert (await client.get(url(scene, "/evaluation"))).json()["evaluation"]["sequence"] == 1
 

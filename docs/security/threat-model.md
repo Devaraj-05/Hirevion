@@ -527,6 +527,7 @@ By product-owner decision (2026-10-23; ADR-0033) candidate code is **never execu
 |---|---|---|
 | Spoofing | Someone submits code for another interview | Every route takes the interview-session token for the path's interview with a fresh DPoP proof (ADR-0021); the question must be the interview's open coding question |
 | Tampering | A submission or draft is changed after the interview | `coding_submissions` and `coding_telemetry` are insert-only for the app role; each submission's SHA-256 is stored |
+| Tampering | Design notes tell the evaluator to give full marks (ADR-0041) | The notes reach the model as the `design_notes` data field under the same no-instructions clause as the answer; scores need quotes from the spoken or typed answer, never from the notes, so notes alone can't lift an unsupported score |
 | Tampering | A comment in the code tells the reviewer to give full marks | The code is JSON data under a prompt that says so; replies are schema-checked and bounded; every score needs a quote verified against the code or is capped at 5; manipulation phrases add `manipulation_attempt`; the gate's coding set has injection cases and blocks a prompt that loses its data clause |
 | Tampering | A second submission replaces a weak one | One submission per question: it closes the question in the same transaction (`409 question-not-current` afterwards) |
 | Repudiation | The candidate says the kept code wasn't theirs | The draft, its time and the submission's source (`submitted`, `time_limit`, `closed`) are stored |
