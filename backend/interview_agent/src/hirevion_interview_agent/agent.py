@@ -30,6 +30,7 @@ from uuid import UUID
 
 from livekit import rtc
 from livekit.agents import (
+    NOT_GIVEN,
     Agent,
     AgentServer,
     AgentSession,
@@ -56,6 +57,7 @@ from hirevion_core.interview_session.conductor import Conductor
 from hirevion_core.interview_session.media import candidate_identity
 from hirevion_core.settings import load_core_settings
 
+from .acks import Acknowledgements
 from .bridge import (
     CONTROL_TOPIC,
     CONTROLS,
@@ -73,7 +75,6 @@ from .settings import AgentSettings
 logger = logging.getLogger("hirevion.interview_agent")
 
 TICK_SECONDS = 5.0
-ACKNOWLEDGEMENTS = ("Mm-hm.", "Okay.", "Right.", "I see.")
 VOICE_STATES = {"listening": "listening", "thinking": "thinking", "speaking": "speaking"}
 
 
@@ -156,11 +157,16 @@ class Speaker:
     """Says the engine's turns in the room and keeps the desktop's `hv.state` current."""
 
     def __init__(
-        self, ctx: JobContext, session: AgentSession[None], bridge: InterviewBridge
+        self,
+        ctx: JobContext,
+        session: AgentSession[None],
+        bridge: InterviewBridge,
+        acks: Acknowledgements,
     ) -> None:
         self._ctx = ctx
         self._session = session
         self._bridge = bridge
+        self._acks = acks
         self._speech_started: datetime | None = None
         self._speech_ended: datetime | None = None
         self._turn = 0
@@ -213,8 +219,10 @@ class Speaker:
     async def answered(self, text: str, confidence: float | None) -> None:
         # A short acknowledgement covers the analysis (master plan §6.8's latency path).
         self._turn += 1
+        phrase = self._acks.pick(self._turn)
+        audio = self._acks.audio(phrase)
         self._session.say(
-            ACKNOWLEDGEMENTS[self._turn % len(ACKNOWLEDGEMENTS)], add_to_chat_ctx=False
+            phrase, audio=NOT_GIVEN if audio is None else audio, add_to_chat_ctx=False
         )
         spoken = await self._bridge.heard(
             text,
@@ -274,6 +282,7 @@ async def entrypoint(ctx: JobContext) -> None:
 
     await ctx.connect()
     deepgram_key = settings.deepgram_api_key.get_secret_value()
+    voice = deepgram.TTS(model=settings.hv_tts_voice, api_key=deepgram_key, mip_opt_out=True)
     session: AgentSession[None] = AgentSession(
         vad=ctx.proc.userdata["vad"],
         stt=deepgram.STT(
@@ -283,7 +292,7 @@ async def entrypoint(ctx: JobContext) -> None:
             keyterm=keyterms(state),
             mip_opt_out=True,
         ),
-        tts=deepgram.TTS(model=settings.hv_tts_voice, api_key=deepgram_key, mip_opt_out=True),
+        tts=voice,
         turn_handling={
             "turn_detection": build_turn_detection(settings),
             "endpointing": {"min_delay": settings.hv_endpointing_min_delay},
@@ -291,7 +300,10 @@ async def entrypoint(ctx: JobContext) -> None:
             "interruption": {"mode": "vad"},
         },
     )
-    speaker = Speaker(ctx, session, bridge)
+    acks = Acknowledgements()
+    speaker = Speaker(ctx, session, bridge, acks)
+    # Made while the greeting plays, so the first answer's acknowledgement is ready.
+    speaker.background(acks.prepare(voice))
     collector = LatencyCollector()
     written: set[str] = set()
     metrics_file = Path(settings.hv_metrics_file) if settings.hv_metrics_file else None
