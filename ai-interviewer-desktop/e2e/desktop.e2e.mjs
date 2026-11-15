@@ -75,15 +75,22 @@ test("launch → ready", async (t) => {
     assert.ok(results.length >= 8, `expected the check results, got ${results.length}`);
     await session.click(button("Yes, I heard it"));
 
-    // Consent: accept every item.
+    // Consent: one Terms and Conditions checkbox accepts every item (owner, 2026-11-15).
     await session.waitFor(heading("Your consent"), 30_000);
-    for (const box of await session.findAll("button[role=checkbox]")) await box.click();
-    await session.click(button("I agree, continue"));
+    const boxes = await session.findAll("button[role=checkbox]");
+    assert.equal(boxes.length, 1, "one checkbox, for the Terms and Conditions");
+    await boxes[0].click();
+    await session.click(button("Continue"));
 
-    // The phone as a third eye (the stub's interview offers one): a QR code, then the stub
-    // phone scans it and its camera connects within a few status reads.
+    // The phone as a third eye (the stub's interview offers one): a QR code with where to put
+    // the phone under it, then the stub phone scans it and its camera connects within a few
+    // status reads.
     await session.waitFor(heading("Connect your phone"), 30_000);
     assert.ok(await session.find("svg[role=img] path"), "the QR code is drawn");
+    assert.ok(
+      await session.find(`//figure/following::h2[normalize-space()="Where to put your phone"]`),
+      "where to put the phone is shown under the code",
+    );
     await session.waitFor(`//p[starts-with(normalize-space(), "Phone connected")]`, 20_000);
     await session.click(button("Continue"));
 

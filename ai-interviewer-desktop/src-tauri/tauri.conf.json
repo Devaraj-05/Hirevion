@@ -19,8 +19,9 @@
         "title": "Hirevion AI Interview",
         "width": 1280,
         "height": 800,
-        "minWidth": 1024,
-        "minHeight": 700,
+        "minWidth": 800,
+        "minHeight": 600,
+        "maximized": true,
         "center": true,
         "resizable": true
       }

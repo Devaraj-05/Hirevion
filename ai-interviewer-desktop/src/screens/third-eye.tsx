@@ -53,6 +53,13 @@ export function ThirdEyeScreen({
   // Only the newest pairing request's answer counts (a new code supersedes an old one).
   const request = useRef(0);
   const started = useRef(false);
+  // On a small screen the placement card pushes the buttons down: bring Continue into view once
+  // the phone connects.
+  const actions = useRef<HTMLDivElement>(null);
+  const connected = phoneState(status) === "connected";
+  useEffect(() => {
+    if (connected) actions.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [connected]);
 
   /** Done with the phone: the check that waited for it is sent again first. */
   const finish = useCallback(async () => {
@@ -180,21 +187,33 @@ export function ThirdEyeScreen({
         </figure>
       ) : null}
 
+      {/* Next to the code, so a small screen shows it without scrolling. */}
       {pairing ? (
         <p role="status" aria-live="polite" className="font-medium">
           {t(`state.${phone}`, { device: device ?? t("yourPhone") })}
         </p>
       ) : null}
 
-      <ul className="grid list-disc gap-1 pl-5 text-sm">
-        <li>{t("placement.where")}</li>
-        <li>{t("placement.power")}</li>
-        <li>{t("placement.lock")}</li>
-      </ul>
+      {/* Right under the code, so the candidate reads it while placing the phone (owner, 2026-11-15). */}
+      <section
+        className="grid gap-2 rounded-md border border-border p-4"
+        aria-labelledby={`${id}-placement`}
+      >
+        <h2 id={`${id}-placement`} className="font-medium">
+          {t("placement.title")}
+        </h2>
+        <ul className="grid list-disc gap-1 pl-5 text-sm">
+          <li>{t("placement.side")}</li>
+          <li>{t("placement.frame")}</li>
+          <li>{t("placement.light")}</li>
+          <li>{t("placement.steady")}</li>
+          <li>{t("placement.lock")}</li>
+        </ul>
+      </section>
 
       {error ? <ErrorText>{t(`errors.${error}`)}</ErrorText> : null}
 
-      <div className="flex flex-wrap gap-2">
+      <div ref={actions} className="flex flex-wrap gap-2">
         <Button disabled={working || phone !== "connected"} onClick={() => void finish()}>
           {t("continue")}
         </Button>

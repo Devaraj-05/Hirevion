@@ -121,8 +121,11 @@
       "new-code": "This code can't be used any more. Get a new one."
     },
     "placement": {
-      "where": "Place the phone about an arm's length behind you and to one side, so it sees you, your desk and your screen.",
-      "power": "Keep it plugged in, with the screen on.",
+      "title": "Where to put your phone",
+      "side": "Put it on your left or right side, a little behind you, at about head height.",
+      "frame": "Check on the phone's screen that it shows all of you and your whole laptop, keyboard included.",
+      "light": "Pick a well-lit spot, without a bright window behind you.",
+      "steady": "Stand it up so it doesn't move, plugged in, with the screen on.",
       "lock": "Don't lock the phone or switch apps during the interview."
     },
     "newCode": "Get a new code",
@@ -206,10 +209,9 @@
   },
   "consent": {
     "title": "Your consent",
-    "intro": "Choose what you agree to. Required items are needed to take this interview; if you can't agree to one, you can ask for an accommodation instead.",
+    "intro": "Agree to the Terms and Conditions to continue.",
     "required": "required",
-    "agree": "I agree, continue",
-    "submitWithout": "Continue without the required items",
+    "agree": "Continue",
     "back": "Back to your interviews",
     "purposes": {
       "camera": "Camera",
@@ -235,7 +237,13 @@
     },
     "note": "Anything else the recruiter should know",
     "request": "Send the request",
-    "requested": "Your request was sent. You'll hear back by email."
+    "requested": "Your request was sent. You'll hear back by email.",
+    "agreeTerms": "I have read and agree to the Terms and Conditions",
+    "readTerms": "Read the Terms and Conditions",
+    "termsTitle": "Terms and Conditions",
+    "termsIntro": "To run and assess this interview, the company records the following. Agreeing accepts all of them.",
+    "close": "Close",
+    "cantAgree": "Can't agree? Ask for an accommodation"
   },
   "interview": {
     "title": "Interview",
