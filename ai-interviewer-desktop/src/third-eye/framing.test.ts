@@ -86,6 +86,15 @@ describe("whether the phone's picture shows the candidate and their whole laptop
   });
 });
 
+describe("the phone's orientation", () => {
+  it("is never green with an upright phone's tall picture, and says to turn it", () => {
+    // A 720×1280 picture: the phone stands upright, so the laptop and the candidate can't both fit.
+    const tall = framing([person(200, 100, 400, 1180), laptop(100, 700, 500, 300)], 720, 1280);
+    expect(tall).toMatchObject({ portrait: true, green: false });
+    expect(framing([], 1280, 720).portrait).toBe(false);
+  });
+});
+
 describe("drawing a box over the preview", () => {
   it("maps a box from the picture onto the letterboxed video element", () => {
     // A 1280×720 picture in an 800×600 element: scaled by 0.625, with 75 px bands above and below.

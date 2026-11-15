@@ -13,3 +13,9 @@ export function nextFacing(facing: Facing): Facing {
 export function captureOptions(facing: Facing): VideoCaptureOptions {
   return { facingMode: facing, resolution: { width: 1280, height: 720, frameRate: 15 } };
 }
+
+/** The phone films a tall picture (it stands upright): the candidate and their laptop can't both
+ * fit, so it has to be turned sideways. `0×0` is no picture yet. */
+export function needsTurning(width: number, height: number): boolean {
+  return height > width;
+}

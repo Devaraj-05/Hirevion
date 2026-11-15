@@ -2,7 +2,7 @@ import { kbps, summarizeConnection, type VideoSample, videoSample } from "@hirev
 import type { LocalVideoTrack } from "livekit-client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type JoinResponse, PairingError, redeem, rejoin, roomUrl, stillValid } from "./api";
-import { captureOptions, type Facing, nextFacing } from "./camera";
+import { captureOptions, type Facing, needsTurning, nextFacing } from "./camera";
 import { cameraHelp, detectBrowser } from "./guidance";
 import { browserDeps } from "./livekit";
 import { EyeSession, type EyeState } from "./session";
@@ -52,6 +52,8 @@ export function App() {
   const [video, setVideo] = useState<string | null>(null);
   const [facing, setFacing] = useState<Facing>("environment");
   const [switching, setSwitching] = useState(false);
+  // The picture's shape follows how the phone stands; an upright phone films a tall picture.
+  const [upright, setUpright] = useState(false);
 
   // Spend the token at once: it lives two minutes. A reload rejoins with the device secret.
   useEffect(() => {
@@ -200,6 +202,7 @@ export function App() {
         <section aria-labelledby="placement">
           <h2 id="placement">Place this phone</h2>
           <ol className="steps">
+            <li>Stand this phone sideways (landscape), not upright.</li>
             <li>
               On your left or right side, about {joined.placement.distance_m} m away and a little
               behind you, at about head height.
@@ -243,7 +246,22 @@ export function App() {
         </section>
       )}
 
-      <video ref={preview} autoPlay muted playsInline hidden={phase !== "streaming"} />
+      {phase === "streaming" && upright && (
+        <p role="alert" className="turn">
+          Turn this phone sideways (landscape). Standing upright, it can't fit you and your whole
+          laptop in the picture.
+        </p>
+      )}
+      <video
+        ref={preview}
+        autoPlay
+        muted
+        playsInline
+        hidden={phase !== "streaming"}
+        onResize={(event) =>
+          setUpright(needsTurning(event.currentTarget.videoWidth, event.currentTarget.videoHeight))
+        }
+      />
       {phase === "streaming" && (
         <button type="button" disabled={switching} onClick={() => void switchCamera()}>
           {facing === "environment" ? "Use the front camera" : "Use the back camera"}

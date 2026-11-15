@@ -24,6 +24,9 @@ export type Part = "ok" | "cut" | "missing";
 export interface Framing {
   person: Part;
   laptop: Part;
+  /** The picture is taller than wide: the phone stands upright, so the candidate and the
+   * laptop can't both fit (owner, 2026-11-15). It must be turned sideways. */
+  portrait: boolean;
   green: boolean;
   personScore: number;
   laptopScore: number;
@@ -83,10 +86,12 @@ export function framing(detections: Detection[], width: number, height: number):
     // The whole laptop, keyboard included.
     laptopPart = edges.top || edges.bottom || edges.left || edges.right ? "cut" : "ok";
   }
+  const portrait = height > width;
   return {
     person: personPart,
     laptop: laptopPart,
-    green: personPart === "ok" && laptopPart === "ok",
+    portrait,
+    green: !portrait && personPart === "ok" && laptopPart === "ok",
     personScore: person?.score ?? 0,
     laptopScore: laptop?.score ?? 0,
     personBox: person?.box ?? null,

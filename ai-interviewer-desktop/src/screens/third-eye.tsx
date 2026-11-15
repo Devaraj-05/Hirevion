@@ -270,6 +270,7 @@ export function ThirdEyeScreen({
           {t("placement.title")}
         </h2>
         <ul className="grid list-disc gap-1 pl-5 text-sm">
+          <li>{t("placement.sideways")}</li>
           <li>{t("placement.side")}</li>
           <li>{t("placement.frame")}</li>
           <li>{t("placement.light")}</li>
@@ -317,6 +318,7 @@ function checkMessage(verdict: Verdict): string {
   const seen: Framing | null = verdict.framing;
   if (verdict.green) return "green";
   if (seen === null) return "checking";
+  if (seen.portrait) return "portrait";
   if (seen.person === "missing") return "personMissing";
   if (seen.person === "cut") return "personCut";
   if (seen.laptop === "missing") return "laptopMissing";
