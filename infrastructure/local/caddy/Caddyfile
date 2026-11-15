@@ -85,14 +85,19 @@ downloads.hirevion.localhost {
 
 # Plain HTTP for Cloudflare quick tunnels (`uv run hv eye-tunnel`); the tunnel gives the phone
 # HTTPS. /rtc is LiveKit signalling, so the phone page and LiveKit share one origin; the phone's
-# two API calls (SP-13) are the only API routes the tunnel reaches.
+# two API calls (SP-13) are the only API routes the tunnel reaches. They arrive with the tunnel's
+# *.trycloudflare.com Host, which the API refuses (host-not-allowed), so Caddy sends its own.
 http://:8088 {
 	# Path blocks, so Caddy orders them before the broader /api/* one.
 	handle /api/v1/third-eye/redeem {
-		reverse_proxy host.docker.internal:8000
+		reverse_proxy host.docker.internal:8000 {
+			header_up Host {upstream_hostport}
+		}
 	}
 	handle /api/v1/third-eye/rejoin {
-		reverse_proxy host.docker.internal:8000
+		reverse_proxy host.docker.internal:8000 {
+			header_up Host {upstream_hostport}
+		}
 	}
 	handle /api/* {
 		respond 404
