@@ -25,7 +25,7 @@ BAD_PROMPT = (
 def test_the_active_prompt_passes_on_the_mock_profile_with_no_keys_or_database() -> None:
     result = runner.invoke(app, ["eval-interviews"])
     assert result.exit_code == 0, result.output
-    assert "Gate passed" in result.output and "evaluation-question-v1" in result.output
+    assert "Gate passed" in result.output and "evaluation-question-v2" in result.output
 
 
 def test_a_regressed_prompt_fails_the_gate_with_exit_code_one(tmp_path: Path) -> None:
