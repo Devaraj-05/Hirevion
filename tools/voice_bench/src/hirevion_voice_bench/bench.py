@@ -11,8 +11,10 @@ Then:
 It seeds a voice interview in the development organisation, signs in and starts it like the
 desktop app (so the API dispatches the interviewer), then each turn: waits until the agent is
 quiet, speaks a pre-rendered answer (Deepgram TTS), and measures the time from the answer's last
-audio frame to the agent's first voiced frame. Answers are cached under tools/voice_bench/.cache/
-(gitignored).
+audio frame to the agent's first voiced frame. The scripted answers don't fit the questions, so
+the engine may wrap an interview up early: when the agent leaves, the bench starts another
+interview until it has measured `--turns` turns. Answers are cached under
+tools/voice_bench/.cache/ (gitignored).
 """
 
 from __future__ import annotations
@@ -111,6 +113,8 @@ class AgentEar:
         self.heard_anything = asyncio.Event()
         self._watch_from: float | None = None
         self.first_voiced: float | None = None
+        # Set when the agent leaves the room: the interview has ended.
+        self.left = asyncio.Event()
 
     def watch_after(self, moment: float) -> None:
         self._watch_from = moment
@@ -140,7 +144,9 @@ class AgentEar:
 
     async def wait_for_reply(self, timeout: float) -> float | None:
         deadline = time.perf_counter() + timeout
-        while self.first_voiced is None and time.perf_counter() < deadline:
+        while (
+            self.first_voiced is None and not self.left.is_set() and time.perf_counter() < deadline
+        ):
             await asyncio.sleep(0.005)
         return self.first_voiced
 
@@ -168,6 +174,28 @@ async def run(turns: int, candidate_voice: str | None, timeout: float, api_url: 
             read_wav(render_answer(text, voice, deepgram_key, client))[0] for text in ANSWERS
         ]
 
+    latencies: list[float] = []
+    done = 0
+    while done < turns:
+        taken = await interview(answers, done, turns, timeout, api_url, latencies)
+        if taken == 0:
+            raise RuntimeError("the interview ended before the first answer")
+        done += taken
+        if done < turns:
+            print(f"the interview ended after {taken} turns: starting another")
+    return latencies
+
+
+async def interview(
+    answers: list[Samples],
+    first: int,
+    turns: int,
+    timeout: float,
+    api_url: str,
+    latencies: list[float],
+) -> int:
+    """Turns `first`.. of the run in one new interview, until `turns` or until it ends. Returns
+    how many turns it took; a turn the agent left during isn't one."""
     livekit_url, token = await start_interview(api_url)
     ear = AgentEar()
     listeners: set[asyncio.Task[None]] = set()
@@ -180,6 +208,15 @@ async def run(turns: int, candidate_voice: str | None, timeout: float, api_url: 
             listeners.add(task)
             task.add_done_callback(listeners.discard)
 
+    @room.on("participant_disconnected")
+    def on_left(participant: rtc.RemoteParticipant) -> None:
+        if participant.kind == rtc.ParticipantKind.PARTICIPANT_KIND_AGENT:
+            ear.left.set()
+
+    @room.on("disconnected")
+    def on_closed(*_: object) -> None:
+        ear.left.set()
+
     await room.connect(livekit_url, token)
     source = rtc.AudioSource(RATE, 1, queue_size_ms=20)
     options = rtc.TrackPublishOptions(source=rtc.TrackSource.SOURCE_MICROPHONE)
@@ -188,24 +225,29 @@ async def run(turns: int, candidate_voice: str | None, timeout: float, api_url: 
     microphone = Microphone(source)
     mic_task = asyncio.create_task(microphone.run())
 
-    latencies: list[float] = []
+    taken = 0
     try:
-        for turn in range(turns):
+        for turn in range(first, turns):
             await ear.wait_until_quiet()
+            if ear.left.is_set():
+                break
             microphone.say(answers[turn % len(answers)])
             await microphone.speech_done.wait()
             ear.watch_after(microphone.speech_ended_at)
-            first = await ear.wait_for_reply(timeout)
-            if first is None:
+            heard = await ear.wait_for_reply(timeout)
+            if heard is None and ear.left.is_set():
+                break
+            taken += 1
+            if heard is None:
                 print(f"turn {turn + 1}: no reply within {timeout:.0f} s")
                 continue
-            latency = first - microphone.speech_ended_at
+            latency = heard - microphone.speech_ended_at
             latencies.append(latency)
             print(f"turn {turn + 1}: {latency * 1000:.0f} ms")
     finally:
         mic_task.cancel()
         await room.disconnect()
-    return latencies
+    return taken
 
 
 def report(latencies: list[float], metrics_file: Path | None) -> None:
