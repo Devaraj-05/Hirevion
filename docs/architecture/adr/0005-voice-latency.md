@@ -65,6 +65,11 @@ The remaining ~1 s is the silence Silero voice detection waits for before it dec
   2. **Deepgram Flux.** Its turn-aware speech-to-text reports end of turn about 0.3 s after speech. It replaces the VAD silence wait and nova-3's finalisation (about 0.5–0.8 s together).
   3. **Voice-detection tuning.** Silero's `min_silence_duration` goes from 0.55 s down to 0.3–0.4 s, with the semantic turn detector guarding against cutting off pauses.
   4. **Regional endpoints.** Re-measure `production` (OpenAI, Azure OpenAI in India) in the Cloud Migration Plan. The LLM is the largest single stage, and the cloud path to India matters.
+- **Live run on real AI (C8, 2026-11-15):** `hv-voice-bench --turns 20` on Nemotron and Deepgram, on the development PC.
+  - The acknowledgement was synthesised on every turn, which took 0.8–1.8 s. Each phrase is now synthesised once, while the greeting plays, and replayed (`acks.py`). A phrase that failed or isn't ready is synthesised live.
+  - Result: p50 1.5 s (3.0 s before); 18 of 20 turns took 2.2 s or less. p95 is 5.9 s: in the first interview Deepgram's final transcripts arrived 4–8 s after the speech, once splitting an answer into two turns. The other two interviews' 12 turns took 1.4–2.2 s.
+  - From the end of speech: Deepgram's final transcript took about 0.6 s, and the end-of-turn model about 1.1 s more on this PC (CPU 55–95% busy during runs, other workloads included).
+  - Open: a final transcript that arrives after the turn was committed becomes a separate turn, which the engine takes as the answer to its next question. Watch for it in the product owner's spoken interview.
 - **`gemini-3.5-flash-lite` stays unused** until the silent unanswered turns are understood. SP-09 adds a watchdog that notices a committed turn with no reply and re-prompts.
 - **SP-09 production readiness:**
   - Dispatch the interview agent explicitly by name (`CreateDispatch`) rather than automatically.

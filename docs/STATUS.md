@@ -34,6 +34,7 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 | B4b-1b SP-13 desktop | The phone step: QR code drawn in Rust (`qrcodegen`) from a pairing Rust issues with the session token, the link to type, status every 2 s, a new code only when spent, a remembered pairing across restarts, the check that waited for a required phone sent again, Ready's `third-eye-required` back to the phone | Rust and webview unit tests, desktop e2e consent → phone → ready (full gate deferred) / ADR-0040 |
 | B4b-1c SP-13 desktop | Third-eye status during the interview: the heartbeat's `third_eye` from the briefing's mode and a 5 s pairing watcher, a status badge and a lost-camera warning on the interview screen | Rust and webview unit tests, desktop e2e (full gate deferred) |
 | B4b-2 SP-16 | A design question's notes pad, instead of a whiteboard (owner, 2026-11-15; ADR-0041): plain text saved as the `whiteboard` workspace, read by the evaluation (prompt `evaluation-question-v2`), named by the AI, restored after a restart, saved before the interview ends, shown in the interview report | engine, evaluation, report and Rust/webview tests, eval gate, desktop e2e (full gate deferred) / ADR-0041 |
+| C8-1 | Live voice run on real AI (owner, 2026-11-15): `hv-voice-bench --turns 20` on Nemotron and Deepgram. Fixed: Nemotron's reasoning is off for live turns (analysis in about 1 s, not 15–27 s), strong-tier, image and page calls get `HV_LLM_TIMEOUT_SECONDS` (180 s, retries included) so evaluations finish, the acknowledgement plays from audio made at the start, and the bench starts a new interview when one ends. p50 1.5 s, p95 5.9 s (Deepgram's final transcripts 4–8 s late in one interview) | AI, agent and bench tests, three live runs / ADR-0005, ADR-0034 |
 
 ## In progress (unmerged worktree branches)
 
@@ -42,6 +43,7 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 
 ## Remaining, in priority order (dependency in brackets)
 
+- **P0:** C8-2 the product owner's spoken interview on the desktop app, then a review of its transcript, questions and evaluation [C8-1]
 - **P1:** C7 vision agent [C5, D3] · B4b-3 advanced CV [B3, C7]
 - **P2:** D4 SP-19 enterprise identity [SP-02] · D5 SP-22 admin/governance [A5, C5] · A6 SP-21 analytics [A5] · D6 SP-20 ATS/public API [A5]
 - **P3:** D7 SP-23 automated hardening [all] · B5 Windows golden path and chaos drills [B3, B4a, B4b]
@@ -68,7 +70,10 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 - [ ] Desktop: RUSTSEC-2026-0387 (crypto-bigint 0.5 timing, via p256 0.13 in `hv-security`) is accepted until 2027-02-28: The Windows app signs DPoP proofs only through the Windows key store (NCrypt: the TPM or the Microsoft software KSP); it never falls back to a software key. p256 only verifies public signatures there, and signs only in non-Windows builds (not shipped) and tests. Upgrade `hv-security` to p256 0.14 before the expiry.
 - [ ] AI routing: stored vectors don't record their embedding model (MASTER §5.3 assumed they would). After a provider switch, `semantic_similarity` (shown on a screening result, and the tie-break between equal scores) compares vectors from different models until the documents are re-processed; jobs keep their first vector (`pipeline.py` fills it only when empty). Fix: a model column beside each vector, a match check before the cosine, and a re-embed when the model changes.
 - [ ] AI routing: NVIDIA's hosted Nemotron has no published per-token price, so interview and evaluation calls record no cost and the monthly budget doesn't count them.
-- [ ] AI routing: prompts and rubrics were tuned only on the mocks. Run the resume, screening and interview evaluation sets (and the voice benchmark, p95 ≤ 2.5 s) on OpenRouter and Nemotron.
+- [ ] AI routing: prompts and rubrics were tuned only on the mocks. Run the resume, screening and interview evaluation sets on OpenRouter and Nemotron.
+- [ ] C8: a final transcript that arrives after LiveKit has committed the turn becomes a separate turn, and the engine takes it as the answer to its next question. Seen when Deepgram's finals came 2–8 s late (twice in 2026-11-15's runs). A fix needs the engine to accept a late tail of the last answer, or the agent to hold the turn until the transcript settles.
+- [ ] C8: NVIDIA's free hosted endpoint answers the fast model in 0.7–7.7 s, so live analysis still falls back to the heuristic after its 4 s budget on some turns (8 of 20 in the last run). Recheck on the production provider.
+- [ ] C8 review: question generation (`POST .../generate`) waits for the strong tier in the request and holds a database session, so with reasoning models it can now take up to `HV_LLM_TIMEOUT_SECONDS` (180 s). Move it to a background job if recruiters see it.
 
 ## Known blockers
 

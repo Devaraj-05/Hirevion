@@ -208,6 +208,16 @@ A box is ticked in the PR that merges the part. Deliverables are in MASTER §14;
   - Exit met: the live checks pass on both providers (structured answers on both tiers, embeddings, page reading) and `hv doctor` validates both keys.
   - Follow-up (open, see STATUS): record each stored vector's embedding model, compare only matching vectors, and re-embed when the model changes.
   - Fallback (product-owner decision, 2026-11-14: "if OpenRouter is not working then use Nemotron"): screening answers, vision and page reading go to Nemotron when OpenRouter can't serve (402, 429, 5xx, unreachable); every vector comes from Nemotron's `nemotron-3.5-embed-1b` (1,536-d). Done, with wire and live tests.
+- [ ] **C8 Live voice interview run** (product owner, 2026-11-15: the AI interviewer, with real voice and real AI, before anything else). Depends on: C1–C3, the AI routing (Nemotron + Deepgram keys valid since 2026-11-14).
+  - [x] 1. `hv-voice-bench --turns 20` against the local stack, the API and the interview agent on `HV_AI_PROFILE=dev`: a synthetic candidate speaks every answer; the agent asks, waits for the end of the answer, and moves on. Measure p95 from the end of an answer to the AI's first audio (target ≤ 2.5 s) and fix what breaks.
+    - Done 2026-11-15. Fixed:
+      - Nemotron reasoned on every live turn (15–27 s), so live analysis always fell back to the heuristic. The fast tier now turns its reasoning off, and answers in about 1 s.
+      - The evaluation's synthesis ran past the 30 s timeout on every retry, so no interview finished evaluating. Strong-tier, image and page calls now take `HV_LLM_TIMEOUT_SECONDS` (180 s, retries included).
+      - The acknowledgement was synthesised on each turn. It now plays from audio made at the start of the interview.
+      - The bench reported "no reply" after the interview had ended. It now starts another interview.
+    - Result: p50 1.5 s (3.0 s before), 18 of 20 turns at 2.2 s or less, p95 5.9 s. The gap: Deepgram's final transcripts arrived 4–8 s late in the first interview (ADR-0005).
+  - [ ] 2. A real interview on the desktop app with the product owner's own voice; review the transcript, the questions asked and the evaluation. Watch for an answer split in two when a final transcript is late (STATUS "Found in testing").
+  - Exit: the benchmark completes on real AI with p95 ≤ 2.5 s (or the gap is recorded with its cause), and one real spoken interview is completed and evaluated.
 - [ ] **C7 Vision agent (SP-15a and SP-15b server).** Depends on: C5, D3. See MASTER §14 SP-15a, SP-15b.
   - Exit: each detector's precision and recall is reported on the labelled set; no signal is shown as proof.
 
