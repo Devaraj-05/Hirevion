@@ -10,6 +10,7 @@ Untrusted text (resumes, answers, JDs) goes in user messages wrapped by
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import copy
 import math
@@ -170,6 +171,10 @@ class Endpoint:
     structured: Literal["response_format", "guided_json"] = "response_format"
     # Sent with every chat request (OpenRouter's provider preferences).
     extra_body: dict[str, Any] | None = None
+    # Sent with the fast tier's chat requests, the live interview turns that have a few
+    # seconds: NVIDIA's `chat_template_kwargs` turns Nemotron's reasoning off (it took 15 to 27 s
+    # with reasoning, under 2.5 s without, on 2026-11-15).
+    fast_body: dict[str, Any] | None = None
     # Sent with every embeddings request: OpenRouter's provider preferences (resume text goes
     # there), NVIDIA's `input_type` (its retrieval models embed documents as passages).
     embedding_body: dict[str, Any] | None = None
@@ -205,6 +210,7 @@ def endpoint(settings: AiSettings, provider: Provider) -> Endpoint:
             settings.nemotron_embedding_model,
             settings.nemotron_vision_model,
             structured="guided_json",
+            fast_body={"chat_template_kwargs": {"enable_thinking": False}},
             embedding_body={"input_type": "passage"},
         )
     if provider == "gemini":
@@ -273,6 +279,8 @@ class OpenAICompatible:
             return await call()
         except openai.APIConnectionError as error:  # includes timeouts
             raise AiUnavailable(f"{self.provider} could not be reached") from error
+        except TimeoutError as error:  # the call's own deadline, retries included
+            raise AiUnavailable(f"{self.provider} didn't answer in time") from error
         except openai.APIStatusError as error:
             if error.status_code == 402:
                 # Out of credit (OpenRouter): unavailable to us until topped up, so a fallback
@@ -293,9 +301,13 @@ class OpenAICompatible:
         schema: type[T],
         timeout: float,
         output: Callable[[T], Any],
+        *,
+        fast: bool = False,
     ) -> _Reply[T]:
         shape: dict[str, Any] = {self.endpoint.cap: self.settings.max_output_tokens}
         body: dict[str, Any] = dict(self.endpoint.extra_body or {})
+        if fast:
+            body.update(self.endpoint.fast_body or {})
         if self.endpoint.structured == "guided_json":
             body["guided_json"] = strict_schema(schema)
         else:
@@ -312,12 +324,17 @@ class OpenAICompatible:
         conversation = [{"role": "system", "content": GUARD}, *messages]
 
         async def attempt(extra: list[dict[str, Any]]) -> _Reply[T]:
+            # `timeout` bounds the whole call: the SDK retries a timed-out request, which would
+            # otherwise triple the wait.
             response = await self._vendor(
-                lambda: self.client.chat.completions.create(
-                    model=model,
-                    messages=cast(Any, [*conversation, *extra]),
-                    timeout=timeout,
-                    **shape,
+                lambda: asyncio.wait_for(
+                    self.client.chat.completions.create(
+                        model=model,
+                        messages=cast(Any, [*conversation, *extra]),
+                        timeout=timeout,
+                        **shape,
+                    ),
+                    timeout,
                 )
             )
             content = (response.choices[0].message.content or "") if response.choices else ""
@@ -376,8 +393,9 @@ class OpenAICompatible:
             model,
             [dict(message) for message in messages],
             schema,
-            FAST_TIMEOUT if fast else DEFAULT_TIMEOUT,
+            FAST_TIMEOUT if fast else self.settings.llm_timeout_seconds,
             lambda value: value.model_dump(mode="json"),
+            fast=fast,
         )
         return LlmResult(reply.value, model, reply.usage.input_tokens, reply.usage.output_tokens)
 
@@ -451,7 +469,7 @@ class OpenAICompatible:
             model,
             [{"role": "user", "content": content}],
             schema,
-            DEFAULT_TIMEOUT,
+            self.settings.llm_timeout_seconds,
             lambda value: value.model_dump(mode="json"),
         )
         return VisionResult(reply.value, model, reply.usage.input_tokens, reply.usage.output_tokens)
@@ -468,7 +486,7 @@ class OpenAICompatible:
             model,
             [{"role": "user", "content": content}],
             _OcrReading,
-            DEFAULT_TIMEOUT,
+            self.settings.llm_timeout_seconds,
             # A page image may show raw identity numbers: keep how much was read, not the text.
             lambda value: {"characters": len(value.text), "confidence": _clamp(value.confidence)},
         )

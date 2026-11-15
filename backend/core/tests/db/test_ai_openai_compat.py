@@ -4,8 +4,10 @@ The vendor is replaced at the HTTP level with respx, so these check the exact re
 and how responses and failures are handled, without network or cost.
 """
 
+import asyncio
 import base64
 import json
+import time
 from collections.abc import Awaitable, Callable
 from typing import Any
 from uuid import UUID
@@ -222,6 +224,29 @@ async def test_vendor_failures_become_ai_errors(
         )
     [row] = await rows(admin_engine, org)
     assert row["status"] == "error"
+
+
+@respx.mock
+async def test_a_call_gives_up_at_its_timeout_retries_included(
+    app_db: Database, make_organization: MakeOrganization
+) -> None:
+    """`HV_LLM_TIMEOUT_SECONDS` bounds the whole call: the SDK's retries of a timed-out request
+    would otherwise triple it (three minutes became nine)."""
+    org = await make_organization("CompatDeadline")
+
+    async def hang(request: httpx.Request) -> httpx.Response:
+        await asyncio.sleep(5)
+        return completion('{"headline": "late", "score": 1}')
+
+    respx.post(f"{BASE}/chat/completions").mock(side_effect=hang)
+    settings = SETTINGS.model_copy(update={"llm_timeout_seconds": 0.2})
+    compat = OpenAICompatible(settings, Recorder(app_db, MOCK_PRICES, settings), "gemini")
+    started = time.perf_counter()
+    with pytest.raises(AiUnavailable):
+        await compat.complete(
+            AiContext(org, "evaluation.synthesis"), [{"role": "user", "content": "x"}], Summary
+        )
+    assert time.perf_counter() - started < 2
 
 
 def test_production_clients_retry_twice(app_db: Database) -> None:

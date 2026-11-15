@@ -138,6 +138,13 @@ class AiSettings(BaseSettings):
     max_output_tokens: int = Field(
         16384, gt=0, validation_alias=_env("max_output_tokens", "HV_LLM_MAX_OUTPUT_TOKENS")
     )
+    # How long one strong-tier chat call (screening, evaluation, question generation), and one
+    # image or page reading, may take, the SDK's retries included.
+    # Reasoning models think before they answer: Nemotron's evaluation took 13 to 65 s per
+    # question on 2026-11-15, and its synthesis ran past 30 s on every try.
+    llm_timeout_seconds: float = Field(
+        180.0, gt=0, validation_alias=_env("llm_timeout_seconds", "HV_LLM_TIMEOUT_SECONDS")
+    )
     stt_model: str = Field("nova-3", validation_alias=_env("stt_model", "HV_STT_MODEL"))
     stt_language: str = Field("en", validation_alias=_env("stt_language", "HV_STT_LANGUAGE"))
     tts_voice: str = Field("aura-2-thalia-en", validation_alias=_env("tts_voice", "HV_TTS_VOICE"))

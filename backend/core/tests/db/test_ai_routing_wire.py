@@ -139,6 +139,41 @@ async def test_screening_goes_to_openrouter_and_interviews_to_nemotron(
 
 
 @respx.mock
+async def test_nemotron_answers_live_turns_without_reasoning_and_evaluates_with_time(
+    app_db: Database, make_organization: MakeOrganization
+) -> None:
+    """Live answer analysis and follow-ups (the fast tier) have a few seconds, and Nemotron's
+    reasoning took 15 to 27 s on 2026-11-15, so the fast tier turns it off. The strong tier
+    (the evaluation) keeps it, with a timeout long enough for it; page reading on Nemotron's
+    vision model gets the same timeout."""
+    org = await make_organization("RoutingLiveTurn")
+    nvidia = respx.post(f"{NEMOTRON}/chat/completions").mock(
+        side_effect=[
+            completion('{"summary": "on topic", "score": 3}', "nvidia/fast"),
+            completion('{"summary": "hire", "score": 4}', "nvidia/strong"),
+            completion('{"text": "HIREVION", "confidence": 0.9}', "nvidia/vision"),
+        ]
+    )
+    settings = SETTINGS.model_copy(
+        update={"llm_timeout_seconds": 240.0, "screening_provider": "nemotron"}
+    )
+    ai = build_ai(settings, app_db, MOCK_PRICES)
+    try:
+        messages = [{"role": "user", "content": "<answer>x</answer>"}]
+        await ai.llm.complete(AiContext(org, "interview.analyze"), messages, Verdict, tier="fast")
+        await ai.llm.complete(AiContext(org, "evaluation.synthesis"), messages, Verdict)
+        await ai.ocr.read_page(AiContext(org, "resume.ocr"), b"\x89PNG", "image/png")
+    finally:
+        await ai.aclose()
+
+    live, evaluation, _ = (json.loads(call.request.content) for call in nvidia.calls)
+    assert live["chat_template_kwargs"] == {"enable_thinking": False}
+    assert "chat_template_kwargs" not in evaluation
+    timeouts = [call.request.extensions["timeout"]["read"] for call in nvidia.calls]
+    assert timeouts == [openai_compat.FAST_TIMEOUT, 240.0, 240.0]
+
+
+@respx.mock
 async def test_embeddings_come_from_nemotron_and_page_reading_from_openrouter(
     app_db: Database, make_organization: MakeOrganization
 ) -> None:

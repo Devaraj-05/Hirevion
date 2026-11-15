@@ -125,6 +125,9 @@ The design is in [ADR-0011](../architecture/adr/0011-storage-ai-metering.md).
   - `HV_LLM_MAX_OUTPUT_TOKENS` (16,384) caps every answer. Without a cap OpenRouter reserves
     credit for the model's whole output and answers 402 when the balance is lower; a 402 means
     the OpenRouter account needs credit.
+  - `HV_LLM_TIMEOUT_SECONDS` (180) is how long one strong-tier call (screening, the
+    evaluation) may take; reasoning models think first. The live interview turns use the
+    fast tier: 10 s, and Nemotron's reasoning is off for them.
   - NVIDIA's hosted Nemotron has no published per-token price, so its calls record no cost and
     the monthly budget doesn't count them.
 - **Live checks** (a few cents): `uv run pytest --live backend/core/tests/live` checks OpenRouter,

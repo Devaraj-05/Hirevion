@@ -39,6 +39,9 @@
   - OpenRouter requests also send `provider: {require_parameters: true, data_collection: "deny"}`.
   - Pydantic validation and its one repair retry are unchanged.
 - **Output cap.** Every chat call sends `HV_LLM_MAX_OUTPUT_TOKENS` (default 16,384, reasoning included). OpenAI takes it as `max_completion_tokens`; the other providers take it as `max_tokens`. An answer cut off at the cap (`finish_reason: length`) fails at once with a message naming the setting; a repair under the same cap would be cut off again.
+- **Reasoning and timeouts** (live voice run, 2026-11-15):
+  - The fast tier serves only the live interview turns (answer analysis, 4 s; follow-ups, 3 s). Nemotron reasons by default, and its fast model took 15 to 27 s, so every live analysis fell back to the heuristic. Its fast-tier requests now send `chat_template_kwargs: {enable_thinking: false}`, and answer in under 2.5 s.
+  - The strong tier keeps reasoning. Its calls, and image and page reading, may take `HV_LLM_TIMEOUT_SECONDS` (default 180 s, the SDK's retries included; the fast tier keeps 10 s). Nemotron's evaluation took 13 to 65 s per question, and the 30 s timeout failed its synthesis on every retry.
 - **Keys.**
   - Required locally: the keys of the providers the routes, the fallback and the embeddings use (by default `OPENROUTER_API_KEY` and `NEMOTRON_API_KEY`), and `DEEPGRAM_API_KEY`. Names may be in any case, e.g. `nemotron_API_KEY`.
   - Optional locally: the Gemini and OpenAI keys.
