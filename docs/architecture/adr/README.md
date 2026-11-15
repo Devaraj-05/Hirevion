@@ -32,5 +32,6 @@
 | [0034](0034-ai-routing-openrouter-nemotron.md) | Development AI routed by task: OpenRouter screens, NVIDIA Nemotron interviews | Accepted |
 | [0041](0041-design-notes-pad.md) | A plain-text notes pad for design questions, instead of a whiteboard | Accepted |
 | [0040](0040-third-eye-and-egress.md) | The third eye: a single-use pairing, LiveKit's view as its status, and Egress files beside the desktop's tracks | Accepted |
+| [0042](0042-third-eye-placement-check.md) | The third eye's placement check: the desktop shows the phone's picture and turns green only with the candidate and the whole laptop in view | Accepted |
 
 New decisions copy [0000-template.md](0000-template.md) and take the next number.

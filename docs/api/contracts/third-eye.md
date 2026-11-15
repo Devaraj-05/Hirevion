@@ -48,6 +48,12 @@
 
 `POST /third-eye/pairings/{pairing_id}/revoke` returns `204`.
 
+## Desktop: check the phone's picture (C8-3, ADR-0042)
+
+`POST /third-eye/pairings/{pairing_id}/preview` returns `200` with `{ "livekit_url", "token", "phone_identity": "third-eye-{pairing_id}", "expires_at" }`. The token is hidden and subscribe-only, for the interview's room, and lives ten minutes at most. It answers `409 third-eye-not-connected` unless the pairing is the interview's current, connected one, and `409 interview-not-open` once the interview runs or has ended.
+
+`POST /third-eye/pairings/{pairing_id}/placement` with `{ "person": 0.91, "laptop": 0.77, "confirmed": true }` (the desktop detector's scores, 0 to 1) returns `204` and records the interview event `third_eye_placement_confirmed`. A pairing that isn't connected is `409`; `confirmed` other than `true` is `422`.
+
 ## Phone: redeem — `POST /third-eye/redeem`
 
 - **Auth:** none; the token is the credential, and it is spent here.
