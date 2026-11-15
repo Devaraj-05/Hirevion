@@ -2,6 +2,7 @@ import { kbps, summarizeConnection, type VideoSample, videoSample } from "@hirev
 import type { LocalVideoTrack } from "livekit-client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type JoinResponse, PairingError, redeem, rejoin, roomUrl, stillValid } from "./api";
+import { captureOptions, type Facing, nextFacing } from "./camera";
 import { cameraHelp, detectBrowser } from "./guidance";
 import { browserDeps } from "./livekit";
 import { EyeSession, type EyeState } from "./session";
@@ -49,6 +50,8 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [pairedIn, setPairedIn] = useState<number | null>(null);
   const [video, setVideo] = useState<string | null>(null);
+  const [facing, setFacing] = useState<Facing>("environment");
+  const [switching, setSwitching] = useState(false);
 
   // Spend the token at once: it lives two minutes. A reload rejoins with the device secret.
   useEffect(() => {
@@ -161,6 +164,22 @@ export function App() {
     return () => window.clearInterval(timer);
   }, [phase]);
 
+  // Rear or front camera (owner, 2026-11-15): the published track stays, only its camera changes.
+  async function switchCamera() {
+    const track = camera.current;
+    if (!track || switching) return;
+    const next = nextFacing(facing);
+    setSwitching(true);
+    try {
+      await track.restartTrack(captureOptions(next));
+      setFacing(next);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setSwitching(false);
+    }
+  }
+
   return (
     <main className="eye">
       <h1>Third Eye</h1>
@@ -182,13 +201,15 @@ export function App() {
           <h2 id="placement">Place this phone</h2>
           <ol className="steps">
             <li>
-              About {joined.placement.distance_m} m behind you and to one side, a little above the
-              desk.
+              On your left or right side, about {joined.placement.distance_m} m away and a little
+              behind you, at about head height.
             </li>
             <li>
-              Point the back camera so it sees your face, your hands, the desk and the screen.
+              Point the camera so it sees all of you and your whole laptop, keyboard included. The
+              interview computer shows you what it sees.
             </li>
-            <li>Plug in the charger and lean the phone on something steady.</li>
+            <li>Pick a well-lit spot, without a bright window behind you.</li>
+            <li>Plug in the charger and stand the phone so it doesn't move.</li>
             <li>Keep this page open and the screen on until the interview ends.</li>
           </ol>
           <figure className="placement" aria-hidden="true">
@@ -223,6 +244,12 @@ export function App() {
       )}
 
       <video ref={preview} autoPlay muted playsInline hidden={phase !== "streaming"} />
+      {phase === "streaming" && (
+        <button type="button" disabled={switching} onClick={() => void switchCamera()}>
+          {facing === "environment" ? "Use the front camera" : "Use the back camera"}
+        </button>
+      )}
+      {phase === "streaming" && error && <p role="alert">{error}</p>}
       {phase === "streaming" && (
         <dl>
           <dt>Status</dt>
