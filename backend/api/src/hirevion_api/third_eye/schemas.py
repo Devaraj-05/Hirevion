@@ -79,3 +79,20 @@ class JoinResponse(BaseModel):
     device_token: str | None
     interview: InterviewNames
     placement: Placement
+
+
+class PreviewResponse(BaseModel):
+    """C8-3: watch the phone's camera (`phone_identity`) in the interview's room, hidden."""
+
+    livekit_url: str
+    token: str
+    phone_identity: str
+    expires_at: datetime
+
+
+class PlacementBody(BaseModel):
+    """The desktop's check saw the candidate and their laptop, and the candidate confirmed it."""
+
+    person: float = Field(ge=0, le=1)
+    laptop: float = Field(ge=0, le=1)
+    confirmed: Literal[True]

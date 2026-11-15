@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 from uuid import UUID
 
@@ -58,6 +58,9 @@ from hirevion_core.third_eye.settings import ThirdEyeSettings
 log = logging.getLogger(__name__)
 
 OPEN_STATUSES = ("invited", "in_progress", "interrupted")
+# The preview is for placing the phone, before the interview (or while it is paused).
+PREVIEW_STATUSES = ("invited", "interrupted")
+PREVIEW_TTL = timedelta(minutes=10)
 PLACEMENT: dict[str, Any] = {
     "distance_m": 1.5,
     "angle": "side-rear",
@@ -107,6 +110,16 @@ def view(row: ThirdEyePairing, now: datetime) -> PairingView:
 class Issued:
     pairing: PairingView
     qr_url: str
+
+
+@dataclass(frozen=True, slots=True)
+class Preview:
+    """The desktop's watch-only view of the phone (C8-3)."""
+
+    livekit_url: str
+    token: str
+    phone_identity: str
+    expires_at: datetime
 
 
 @dataclass(frozen=True, slots=True)
@@ -227,6 +240,58 @@ class ThirdEye:
         for pairing_id, was_connected in kick:
             await self._after_revoke(organization_id, interview_id, pairing_id, was_connected, now)
         return issued
+
+    async def _connected(
+        self,
+        session: AsyncSession,
+        interview_id: UUID,
+        pairing_id: UUID,
+        statuses: tuple[str, ...],
+    ) -> Interview:
+        """The interview, when it is in `statuses` and `pairing_id` is its connected phone."""
+        interview = await session.get(Interview, interview_id)
+        if interview is None:
+            raise NotFound("interview-not-found", "No such interview")
+        if interview.status not in statuses:
+            raise Conflict("interview-not-open", f"The interview is {interview.status}")
+        row = await current(session, interview_id)
+        if row is None or row.id != pairing_id or row.status != "connected":
+            raise Conflict("third-eye-not-connected", "The phone isn't connected")
+        return interview
+
+    async def preview(
+        self, organization_id: UUID, interview_id: UUID, pairing_id: UUID, *, account_id: UUID
+    ) -> Preview:
+        """A hidden, watch-only token for the phone's picture, before the start (C8-3): the
+        candidate checks the phone shows them and their whole laptop."""
+        media = self._require_media()
+        async with self._db.tenant(organization_id) as session:
+            await self._connected(session, interview_id, pairing_id, PREVIEW_STATUSES)
+        token = media.preview_token(interview_id, account_id, self._clock() + PREVIEW_TTL)
+        return Preview(token.url, token.token, third_eye_identity(pairing_id), token.expires_at)
+
+    async def placement(
+        self,
+        organization_id: UUID,
+        interview_id: UUID,
+        pairing_id: UUID,
+        *,
+        person: float,
+        laptop: float,
+        by: By,
+    ) -> None:
+        """The candidate confirmed the picture shows them and their laptop (and the desktop's
+        check saw both): recorded for the recruiter, with the detector's scores."""
+        async with self._db.tenant(organization_id) as session:
+            interview = await self._connected(session, interview_id, pairing_id, OPEN_STATUSES)
+            await record_event(
+                session,
+                interview,
+                "third_eye_placement_confirmed",
+                by,
+                from_status=interview.status,
+                details={"pairing_id": str(pairing_id), "person": person, "laptop": laptop},
+            )
 
     async def status(
         self, organization_id: UUID, interview_id: UUID, pairing_id: UUID

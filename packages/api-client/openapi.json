@@ -9953,6 +9953,35 @@
         "title": "Placement",
         "type": "object"
       },
+      "PlacementBody": {
+        "description": "The desktop's check saw the candidate and their laptop, and the candidate confirmed it.",
+        "properties": {
+          "confirmed": {
+            "const": true,
+            "title": "Confirmed",
+            "type": "boolean"
+          },
+          "laptop": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Laptop",
+            "type": "number"
+          },
+          "person": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Person",
+            "type": "number"
+          }
+        },
+        "required": [
+          "person",
+          "laptop",
+          "confirmed"
+        ],
+        "title": "PlacementBody",
+        "type": "object"
+      },
       "PlaybackFile": {
         "properties": {
           "bytes": {
@@ -10532,6 +10561,36 @@
           "organization"
         ],
         "title": "PortalSessionResponse",
+        "type": "object"
+      },
+      "PreviewResponse": {
+        "description": "C8-3: watch the phone's camera (`phone_identity`) in the interview's room, hidden.",
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "livekit_url": {
+            "title": "Livekit Url",
+            "type": "string"
+          },
+          "phone_identity": {
+            "title": "Phone Identity",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "livekit_url",
+          "token",
+          "phone_identity",
+          "expires_at"
+        ],
+        "title": "PreviewResponse",
         "type": "object"
       },
       "Problem": {
@@ -29408,6 +29467,117 @@
           }
         },
         "summary": "Pairing Status",
+        "tags": [
+          "third-eye"
+        ]
+      }
+    },
+    "/api/v1/third-eye/pairings/{pairing_id}/placement": {
+      "post": {
+        "description": "The phone's picture shows the candidate and their laptop: recorded for the recruiter.",
+        "operationId": "confirm_placement",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pairing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pairing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlacementBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Confirm Placement",
+        "tags": [
+          "third-eye"
+        ]
+      }
+    },
+    "/api/v1/third-eye/pairings/{pairing_id}/preview": {
+      "post": {
+        "description": "A hidden, watch-only LiveKit token for the phone's picture before the start (C8-3), so\nthe candidate can check it shows them and their whole laptop.",
+        "operationId": "preview_pairing",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pairing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pairing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Preview Pairing",
         "tags": [
           "third-eye"
         ]

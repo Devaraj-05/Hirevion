@@ -309,6 +309,65 @@ async def test_the_phone_leaving_a_closing_room_is_still_read(desk: Desk, media:
     assert (await desk.status(pairing))["status"] == "disconnected"
 
 
+async def connected_phone(desk: Desk) -> str:
+    issued = await desk.pair()
+    pairing: str = issued["pairing_id"]
+    assert (await desk.redeem(token_of(issued["qr_url"]))).status_code == 200
+    await desk.webhook(
+        "third_eye_published", identity=f"third-eye-{pairing}", track_sid="TR_1", width=1280
+    )
+    return pairing
+
+
+async def test_the_desktop_watches_its_phone_before_the_start(desk: Desk, media: FakeMedia) -> None:
+    """C8-3 (owner, 2026-11-15): the desktop shows the phone's picture, so the candidate can
+    check it shows them and their whole laptop. The token only watches, and only the phone of a
+    connected pairing."""
+    issued = await desk.pair()
+    early = await desk.call("POST", f"/third-eye/pairings/{issued['pairing_id']}/preview")
+    assert early.status_code == 409 and early.json()["code"] == "third-eye-not-connected"
+
+    pairing = await connected_phone(desk)
+    answer = await desk.call("POST", f"/third-eye/pairings/{pairing}/preview")
+    assert answer.status_code == 200, answer.text
+    body = answer.json()
+    assert body["phone_identity"] == f"third-eye-{pairing}"
+    assert body["livekit_url"] == media.url
+    assert body["token"] == f"fake-preview-{desk.interview}"
+    lifetime = datetime.fromisoformat(body["expires_at"]) - datetime.now(UTC)
+    assert timedelta(minutes=9) < lifetime <= timedelta(minutes=10)
+
+
+async def test_the_confirmed_placement_is_recorded_for_the_recruiter(
+    desk: Desk, admin_engine: AsyncEngine
+) -> None:
+    issued = await desk.pair()
+    unconnected = await desk.call(
+        "POST",
+        f"/third-eye/pairings/{issued['pairing_id']}/placement",
+        {"person": 0.9, "laptop": 0.8, "confirmed": True},
+    )
+    assert unconnected.status_code == 409
+
+    pairing = await connected_phone(desk)
+    path = f"/third-eye/pairings/{pairing}/placement"
+    refused = await desk.call("POST", path, {"person": 0.9, "laptop": 0.8, "confirmed": False})
+    assert refused.status_code == 422
+    sent = await desk.call("POST", path, {"person": 0.91, "laptop": 0.77, "confirmed": True})
+    assert sent.status_code == 204, sent.text
+    async with admin_engine.connect() as conn:
+        details = (
+            await conn.execute(
+                text(
+                    "SELECT details FROM interview_events WHERE interview_id = :id "
+                    "AND action = 'third_eye_placement_confirmed'"
+                ),
+                {"id": desk.interview},
+            )
+        ).scalar_one()
+    assert details == {"pairing_id": pairing, "person": 0.91, "laptop": 0.77}
+
+
 async def test_a_token_is_spent_once_and_expires(desk: Desk, admin_engine: AsyncEngine) -> None:
     issued = await desk.pair()
     token = token_of(issued["qr_url"])

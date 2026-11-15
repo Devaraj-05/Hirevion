@@ -71,6 +71,7 @@ UNGUARDED: dict[str, str] = {
     "GET /api/v1/interviews/{interview_id}/session": "interview",
     "POST /api/v1/interviews/{interview_id}/answer": "interview",
     "POST /api/v1/interviews/{interview_id}/workspace": "interview",
+    "GET /api/v1/interviews/{interview_id}/workspace/{question_id}": "interview",
     "POST /api/v1/interviews/{interview_id}/complete": "interview",
     "GET /api/v1/interviews/{interview_id}/coding": "interview",
     "POST /api/v1/interviews/{interview_id}/coding/submissions": "interview",
@@ -101,6 +102,8 @@ UNGUARDED: dict[str, str] = {
     "POST /api/v1/third-eye/pairings": "interview",
     "GET /api/v1/third-eye/pairings/{pairing_id}": "interview",
     "POST /api/v1/third-eye/pairings/{pairing_id}/revoke": "interview",
+    "POST /api/v1/third-eye/pairings/{pairing_id}/preview": "interview",
+    "POST /api/v1/third-eye/pairings/{pairing_id}/placement": "interview",
     "POST /api/v1/third-eye/redeem": "public",
     "POST /api/v1/third-eye/rejoin": "public",
 }

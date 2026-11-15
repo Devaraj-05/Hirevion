@@ -132,6 +132,15 @@ TRACK_NAMES = {1: "camera", 2: "microphone", 3: "screen_share"}
 CAMERA_SOURCE = 1
 
 
+PREVIEW_PREFIX = "preview-"
+# The candidate's watch-only view of their phone before the start (C8-3) lives this long at most.
+PREVIEW_TTL = timedelta(minutes=10)
+
+
+def preview_identity(account_id: UUID) -> str:
+    return f"{PREVIEW_PREFIX}{account_id}"
+
+
 def third_eye_identity(pairing_id: UUID) -> str:
     return f"{THIRD_EYE_PREFIX}{pairing_id}"
 
@@ -223,6 +232,12 @@ class MediaControl(Protocol):
     def third_eye_token(
         self, interview_id: UUID, pairing_id: UUID, expires_at: datetime
     ) -> ParticipantToken: ...
+
+    def preview_token(
+        self, interview_id: UUID, account_id: UUID, expires_at: datetime
+    ) -> ParticipantToken:
+        """The candidate's desktop watching its phone's picture before the start (C8-3)."""
+        ...
 
     async def remove_participant(self, interview_id: UUID, identity: str) -> None: ...
 
@@ -378,6 +393,40 @@ class LiveKitMedia:
             .to_jwt()
         )
         return ParticipantToken(self.url, room, identity, token, expires_at)
+
+    def preview_token(
+        self, interview_id: UUID, account_id: UUID, expires_at: datetime
+    ) -> ParticipantToken:
+        """Hidden and subscribe-only, like an observer's, for at most `PREVIEW_TTL`: the desktop
+        shows the candidate what their phone films, before the start."""
+        from livekit import api
+
+        room = room_name(interview_id)
+        identity = preview_identity(account_id)
+        now = datetime.now(UTC)
+        ends = min(expires_at, now + PREVIEW_TTL)
+        grants = api.VideoGrants(
+            room_join=True,
+            room=room,
+            room_create=False,
+            room_list=False,
+            room_record=False,
+            room_admin=False,
+            can_publish=False,
+            can_subscribe=True,
+            can_publish_data=False,
+            can_update_own_metadata=False,
+            hidden=True,
+        )
+        token = (
+            api.AccessToken(self._settings.livekit_api_key, self._secret())
+            .with_identity(identity)
+            .with_name("Phone preview")
+            .with_ttl(max(timedelta(seconds=30), ends - now))
+            .with_grants(grants)
+            .to_jwt()
+        )
+        return ParticipantToken(self.url, room, identity, token, ends)
 
     async def ensure_room(self, interview_id: UUID, organization_id: UUID) -> str:
         from livekit import api
@@ -650,6 +699,19 @@ class FakeMedia:
             third_eye_identity(pairing_id),
             f"fake-third-eye-{pairing_id}",
             expires_at,
+        )
+        self.tokens.append(token)
+        return token
+
+    def preview_token(
+        self, interview_id: UUID, account_id: UUID, expires_at: datetime
+    ) -> ParticipantToken:
+        token = ParticipantToken(
+            self.url,
+            room_name(interview_id),
+            preview_identity(account_id),
+            f"fake-preview-{interview_id}",
+            min(expires_at, datetime.now(UTC) + PREVIEW_TTL),
         )
         self.tokens.append(token)
         return token

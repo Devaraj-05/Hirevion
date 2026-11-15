@@ -99,6 +99,20 @@ def test_an_observer_token_is_hidden_and_cannot_publish(media: LiveKitMedia) -> 
     assert video["canSubscribe"] is True and not video.get("roomAdmin")
 
 
+def test_the_candidates_preview_of_their_phone_only_watches(media: LiveKitMedia) -> None:
+    """C8-3: the desktop's token for the phone's picture before the start: hidden, can't
+    publish, this room only, ten minutes at most."""
+    account = UUID(int=77)
+    issued = media.preview_token(INTERVIEW, account, datetime.now(UTC) + timedelta(hours=1))
+    assert issued.identity == f"preview-{account}" and issued.room == f"iv-{INTERVIEW}"
+    claims = jwt.decode(issued.token, SECRET, algorithms=["HS256"])
+    video = claims["video"]
+    assert video["hidden"] is True and video["room"] == f"iv-{INTERVIEW}"
+    assert video["canSubscribe"] is True and not video.get("canPublish")
+    assert not video.get("canPublishData") and not video.get("roomAdmin")
+    assert claims["exp"] - claims["nbf"] <= 600
+
+
 # SP-13: the third eye's camera, its token, and Egress.
 
 

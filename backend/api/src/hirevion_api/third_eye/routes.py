@@ -27,6 +27,8 @@ from hirevion_api.third_eye.schemas import (
     PairingIssued,
     PairingState,
     Placement,
+    PlacementBody,
+    PreviewResponse,
     RedeemBody,
     RejoinBody,
     VideoInfo,
@@ -167,6 +169,51 @@ async def revoke_pairing(
         principal.organization_id,
         _token_interview(principal),
         pairing_id,
+        by=_by(request, principal),
+    )
+
+
+@router.post(
+    "/third-eye/pairings/{pairing_id}/preview",
+    dependencies=[Depends(rate_limited(DESKTOP_BY_IP))],
+)
+async def preview_pairing(
+    pairing_id: UUID, request: Request, principal: AnyInterviewSession
+) -> PreviewResponse:
+    """A hidden, watch-only LiveKit token for the phone's picture before the start (C8-3), so
+    the candidate can check it shows them and their whole laptop."""
+    try:
+        found = await third_eye(request).preview(
+            principal.organization_id,
+            _token_interview(principal),
+            pairing_id,
+            account_id=principal.account_id,
+        )
+    except MediaUnavailable as error:
+        raise _unavailable(error) from error
+    return PreviewResponse(
+        livekit_url=found.livekit_url,
+        token=found.token,
+        phone_identity=found.phone_identity,
+        expires_at=found.expires_at,
+    )
+
+
+@router.post(
+    "/third-eye/pairings/{pairing_id}/placement",
+    status_code=204,
+    dependencies=[Depends(rate_limited(DESKTOP_BY_IP))],
+)
+async def confirm_placement(
+    pairing_id: UUID, body: PlacementBody, request: Request, principal: AnyInterviewSession
+) -> None:
+    """The phone's picture shows the candidate and their laptop: recorded for the recruiter."""
+    await third_eye(request).placement(
+        principal.organization_id,
+        _token_interview(principal),
+        pairing_id,
+        person=body.person,
+        laptop=body.laptop,
         by=_by(request, principal),
     )
 

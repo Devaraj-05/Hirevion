@@ -3431,6 +3431,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/third-eye/pairings/{pairing_id}/placement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm Placement
+         * @description The phone's picture shows the candidate and their laptop: recorded for the recruiter.
+         */
+        post: operations["confirm_placement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/third-eye/pairings/{pairing_id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview Pairing
+         * @description A hidden, watch-only LiveKit token for the phone's picture before the start (C8-3), so
+         *     the candidate can check it shows them and their whole laptop.
+         */
+        post: operations["preview_pairing"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/third-eye/pairings/{pairing_id}/revoke": {
         parameters: {
             query?: never;
@@ -7086,6 +7127,21 @@ export interface components {
             /** Show */
             show: string[];
         };
+        /**
+         * PlacementBody
+         * @description The desktop's check saw the candidate and their laptop, and the candidate confirmed it.
+         */
+        PlacementBody: {
+            /**
+             * Confirmed
+             * @constant
+             */
+            confirmed: true;
+            /** Laptop */
+            laptop: number;
+            /** Person */
+            person: number;
+        };
         /** PlaybackFile */
         PlaybackFile: {
             /** Bytes */
@@ -7345,6 +7401,23 @@ export interface components {
         PortalSessionResponse: {
             account: components["schemas"]["PortalAccount"];
             organization: components["schemas"]["PortalOrganization"];
+        };
+        /**
+         * PreviewResponse
+         * @description C8-3: watch the phone's camera (`phone_identity`) in the interview's room, hidden.
+         */
+        PreviewResponse: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Livekit Url */
+            livekit_url: string;
+            /** Phone Identity */
+            phone_identity: string;
+            /** Token */
+            token: string;
         };
         /**
          * Problem
@@ -17882,6 +17955,88 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PairingState"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    confirm_placement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pairing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlacementBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    preview_pairing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pairing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviewResponse"];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */
