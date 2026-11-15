@@ -216,6 +216,10 @@ class MediaControl(Protocol):
 
     def parse_webhook(self, body: str, authorization: str) -> MediaEvent: ...
 
+    async def room_organization(self, interview_id: UUID) -> UUID | None:
+        """The organisation in the interview's room metadata, for a webhook that carried none."""
+        ...
+
     def third_eye_token(
         self, interview_id: UUID, pairing_id: UUID, expires_at: datetime
     ) -> ParticipantToken: ...
@@ -395,6 +399,24 @@ class LiveKitMedia:
             raise MediaError(f"couldn't create room {room}") from error
         return room
 
+    async def room_organization(self, interview_id: UUID) -> UUID | None:
+        from livekit import api
+
+        room = room_name(interview_id)
+        try:
+            async with api.LiveKitAPI(
+                self._settings.http_url, self._settings.livekit_api_key, self._secret()
+            ) as client:
+                found = await client.room.list_rooms(api.ListRoomsRequest(names=[room]))
+        except Exception:
+            log.warning("Couldn't read the metadata of %s", room, exc_info=True)
+            return None
+        for info in found.rooms:
+            named, organization_id = _ids(info.metadata)
+            if named == interview_id:
+                return organization_id
+        return None
+
     async def dispatch_agent(self, interview_id: UUID, organization_id: UUID) -> str:
         from livekit import api
 
@@ -448,8 +470,12 @@ class LiveKitMedia:
         if event.event == "egress_ended":
             # Egress events carry no room metadata: the output path names the organisation.
             return _egress_event(event.egress_info, at)
-        interview_id, organization_id = _ids(event.room.metadata)
-        if interview_id is None or interview_of(event.room.name) != interview_id:
+        # The room's name always names the interview. Its metadata (with the organisation) comes
+        # with room and participant events but not with track events (LiveKit 1.13, seen live on
+        # 2026-11-15); the webhook route then looks the organisation up (`room_organization`).
+        interview_id = interview_of(event.room.name)
+        named, organization_id = _ids(event.room.metadata)
+        if interview_id is None or (named is not None and named != interview_id):
             return MediaEvent("other", None, None)
         identity = event.participant.identity or None
         is_agent = event.participant.kind == ParticipantInfo.Kind.AGENT
@@ -612,6 +638,8 @@ class FakeMedia:
     """Identities `remove_participant` disconnected."""
     egresses: list[tuple[str, str, EgressTarget]] = field(default_factory=list)
     """(egress id, what it records: `audio` or a track sid, where it writes)."""
+    organizations: dict[UUID, UUID] = field(default_factory=dict)
+    """Each room's organisation, as its metadata would hold it."""
 
     def third_eye_token(
         self, interview_id: UUID, pairing_id: UUID, expires_at: datetime
@@ -682,7 +710,13 @@ class FakeMedia:
         room = room_name(interview_id)
         if room not in self.rooms:
             self.rooms.append(room)
+        self.organizations[interview_id] = organization_id
         return room
+
+    async def room_organization(self, interview_id: UUID) -> UUID | None:
+        if self.fail:
+            return None  # as LiveKit's lookup does when the server can't be reached
+        return self.organizations.get(interview_id)
 
     async def dispatch_agent(self, interview_id: UUID, organization_id: UUID) -> str:
         if self.fail:
@@ -715,7 +749,7 @@ class FakeMedia:
         return MediaEvent(
             data["kind"],
             UUID(data["interview_id"]),
-            UUID(data["organization_id"]),
+            UUID(data["organization_id"]) if data.get("organization_id") else None,
             data.get("identity"),
             datetime.fromisoformat(data["at"]) if data.get("at") else datetime.now(UTC),
             data.get("track"),

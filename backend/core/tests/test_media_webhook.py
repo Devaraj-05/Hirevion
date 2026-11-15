@@ -29,16 +29,15 @@ def media() -> LiveKitMedia:
     )
 
 
-def signed(event: str, identity: str, **extra: Any) -> tuple[str, str]:
+def signed(event: str, identity: str, metadata: str | None = None, **extra: Any) -> tuple[str, str]:
+    if metadata is None:
+        metadata = json.dumps(
+            {"interview_id": str(INTERVIEW), "organization_id": str(ORGANIZATION)}
+        )
     body = json.dumps(
         {
             "event": event,
-            "room": {
-                "name": f"iv-{INTERVIEW}",
-                "metadata": json.dumps(
-                    {"interview_id": str(INTERVIEW), "organization_id": str(ORGANIZATION)}
-                ),
-            },
+            "room": {"name": f"iv-{INTERVIEW}", "metadata": metadata},
             "participant": {"identity": identity},
             "createdAt": "1790000000",
             **extra,
@@ -112,6 +111,32 @@ def test_the_third_eyes_camera_coming_and_going_is_read(media: LiveKitMedia) -> 
     assert (published.width, published.height) == (1280, 720)
     # A third eye can only publish a camera; anything else is ignored.
     body, token = signed("track_published", "third-eye-abc", track={"source": "MICROPHONE"})
+    assert media.parse_webhook(body, token).kind == "other"
+
+
+def test_track_events_without_the_rooms_metadata_still_name_their_interview(
+    media: LiveKitMedia,
+) -> None:
+    """LiveKit sends track_published and track_unpublished with the room's name but no metadata
+    (seen live on 2026-11-15: the phone's camera never counted as connected). The room's name
+    gives the interview; the organisation is looked up afterwards (`room_organization`)."""
+    track = {"sid": "TR_abc", "source": "CAMERA", "width": 1280, "height": 720}
+    phone = media.parse_webhook(*signed("track_published", "third-eye-abc", "", track=track))
+    assert phone.kind == "third_eye_published"
+    assert (phone.interview_id, phone.organization_id) == (INTERVIEW, None)
+    camera = media.parse_webhook(
+        *signed("track_unpublished", "candidate-x", "", track={"source": "CAMERA"})
+    )
+    assert (camera.kind, camera.track, camera.interview_id) == (
+        "track_unpublished",
+        "camera",
+        INTERVIEW,
+    )
+
+
+def test_metadata_naming_another_interview_than_the_room_is_ignored(media: LiveKitMedia) -> None:
+    other = json.dumps({"interview_id": str(UUID(int=99)), "organization_id": str(ORGANIZATION)})
+    body, token = signed("track_published", "third-eye-abc", other, track={"source": "CAMERA"})
     assert media.parse_webhook(body, token).kind == "other"
 
 

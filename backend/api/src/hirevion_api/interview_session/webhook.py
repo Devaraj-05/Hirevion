@@ -7,9 +7,12 @@ accepted only with LiveKit's signature over the body."""
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from typing import Literal
+from uuid import UUID
 
 from fastapi import Request
+from redis.asyncio import Redis
 
 from hirevion_api.deps import get_db, get_redis
 from hirevion_api.interview_session.routes import conductor, media
@@ -17,13 +20,16 @@ from hirevion_api.problems import ProblemError
 from hirevion_api.routing import api_router
 from hirevion_api.third_eye.routes import third_eye
 from hirevion_core.access.errors import AccessError
-from hirevion_core.interview_session.media import MediaError, MediaEvent
+from hirevion_core.interview_session.media import MediaControl, MediaError, MediaEvent
 from hirevion_core.interviews.lifecycle import By
 from hirevion_core.proctoring.service import ProctorEngine
 
 log = logging.getLogger(__name__)
 router = api_router(tags=["interview-session"])
 BODY_MAX = 64 * 1024
+# Each room's organisation, from the deliveries that carry the room's metadata.
+ROOM_ORG_KEY = "hv:media:room-org:{interview}"
+ROOM_ORG_TTL_SECONDS = 2 * 24 * 3600
 
 
 @router.post("/livekit/webhook", status_code=204)
@@ -41,6 +47,17 @@ async def livekit_webhook(request: Request) -> None:
         )
     except MediaError as error:
         raise ProblemError(401, "webhook-invalid", "Request refused") from error
+    redis = get_redis(request)
+    if event.interview_id is not None and event.organization_id is not None:
+        await redis.set(
+            ROOM_ORG_KEY.format(interview=event.interview_id),
+            str(event.organization_id),
+            ex=ROOM_ORG_TTL_SECONDS,
+        )
+    elif event.interview_id is not None and event.kind != "other":
+        # LiveKit's track events carry the room's name but not its metadata.
+        organization_id = await _room_organization(redis, control, event.interview_id)
+        event = replace(event, organization_id=organization_id)
     if event.interview_id is None or event.organization_id is None:
         return
     runner = conductor(request)
@@ -68,6 +85,16 @@ async def livekit_webhook(request: Request) -> None:
         # An interview that isn't there or can't change now: nothing to do, and LiveKit needn't
         # retry.
         log.info("LiveKit's %s for interview %s ignored: %s", event.kind, event.interview_id, error)
+
+
+async def _room_organization(
+    redis: Redis, control: MediaControl, interview_id: UUID
+) -> UUID | None:
+    """Remembered from an earlier delivery (the room may be closing), else LiveKit's metadata."""
+    remembered = await redis.get(ROOM_ORG_KEY.format(interview=interview_id))
+    if remembered is not None:
+        return UUID(remembered.decode() if isinstance(remembered, bytes) else str(remembered))
+    return await control.room_organization(interview_id)
 
 
 TRACK_CHANNELS = {"camera": "camera", "microphone": "mic", "screen_share": "screen"}

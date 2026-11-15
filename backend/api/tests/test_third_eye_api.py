@@ -117,11 +117,15 @@ class Desk:
         assert answer.status_code == 200, answer.text
         return answer.json()  # type: ignore[no-any-return]
 
-    async def webhook(self, kind: str, at: datetime | None = None, **fields: Any) -> None:
+    async def webhook(
+        self, kind: str, at: datetime | None = None, *, metadata: bool = True, **fields: Any
+    ) -> None:
+        """`metadata=False`: a delivery without the room's metadata, as LiveKit sends track
+        events (no organisation in it)."""
         body = {
             "kind": kind,
             "interview_id": self.interview,
-            "organization_id": str(self.org),
+            **({"organization_id": str(self.org)} if metadata else {}),
             "at": (at or datetime.now(UTC)).isoformat(),
             **fields,
         }
@@ -269,6 +273,40 @@ async def test_the_desktop_pairs_and_the_phone_streams(
         "disconnected",
         "reconnected",
     ]
+
+
+async def test_the_phones_camera_connects_from_a_delivery_without_the_rooms_metadata(
+    desk: Desk,
+) -> None:
+    """LiveKit's track events name the room but carry no metadata (live, 2026-11-15): the
+    organisation comes from the room the API created, and the phone counts as connected."""
+    issued = await desk.pair()
+    pairing = issued["pairing_id"]
+    assert (await desk.redeem(token_of(issued["qr_url"]))).status_code == 200
+    await desk.webhook(
+        "third_eye_published",
+        metadata=False,
+        identity=f"third-eye-{pairing}",
+        track_sid="TR_1",
+        width=1280,
+        height=720,
+    )
+    assert (await desk.status(pairing))["status"] == "connected"
+
+
+async def test_the_phone_leaving_a_closing_room_is_still_read(desk: Desk, media: FakeMedia) -> None:
+    """The room's organisation is remembered from the deliveries that carry it (the phone
+    joining), so a camera that goes away while the room closes, when LiveKit can't list the
+    room any more, still counts."""
+    issued = await desk.pair()
+    pairing = issued["pairing_id"]
+    assert (await desk.redeem(token_of(issued["qr_url"]))).status_code == 200
+    await desk.webhook("third_eye_joined", identity=f"third-eye-{pairing}")
+    await desk.webhook("third_eye_published", metadata=False, identity=f"third-eye-{pairing}")
+    assert (await desk.status(pairing))["status"] == "connected"
+    media.organizations.clear()  # the room is gone from LiveKit
+    await desk.webhook("third_eye_unpublished", metadata=False, identity=f"third-eye-{pairing}")
+    assert (await desk.status(pairing))["status"] == "disconnected"
 
 
 async def test_a_token_is_spent_once_and_expires(desk: Desk, admin_engine: AsyncEngine) -> None:
