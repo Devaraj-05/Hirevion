@@ -216,6 +216,7 @@ A box is ticked in the PR that merges the part. Deliverables are in MASTER §14;
       - The acknowledgement was synthesised on each turn. It now plays from audio made at the start of the interview.
       - The bench reported "no reply" after the interview had ended. It now starts another interview.
     - Result: p50 1.5 s (3.0 s before), 18 of 20 turns at 2.2 s or less, p95 5.9 s. The gap: Deepgram's final transcripts arrived 4–8 s late in the first interview (ADR-0005).
+  - First try (2026-11-15) stopped at the phone step: the QR code pointed at `eye.hirevion.localhost`, which a phone can't reach. Fixed for local runs with the Cloudflare tunnel (runbook "Testing the third-eye camera from a phone"). The owner also asked for, and got: where to put the phone under the QR code; one Terms and Conditions checkbox instead of a tick per item; a window that opens maximised and fits a 1280×720 screen.
   - [ ] 2. A real interview on the desktop app with the product owner's own voice; review the transcript, the questions asked and the evaluation. Watch for an answer split in two when a final transcript is late (STATUS "Found in testing").
   - Exit: the benchmark completes on real AI with p95 ≤ 2.5 s (or the gap is recorded with its cause), and one real spoken interview is completed and evaluated.
 - [ ] **C7 Vision agent (SP-15a and SP-15b server).** Depends on: C5, D3. See MASTER §14 SP-15a, SP-15b.

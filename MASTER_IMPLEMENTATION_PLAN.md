@@ -391,7 +391,7 @@ Decided on 2026-09-28 (ADR-0002, ADR-0003): AI runs on hosted APIs through your 
      - plus Media Foundation H.264 support and the WebView2 version
      - results are stored for the §68 "Device Checks" section.
   7. **Instructions:** the six §30 items, configured per template or organisation.
-  8. **Itemised consent** (all 10 §30 items), recorded per purpose, with an accommodation request.
+  8. **Itemised consent** (all 10 §30 items), recorded per purpose, with an accommodation request. The desktop asks with one Terms and Conditions checkbox that lists the items and accepts them all (product owner, 2026-11-15).
   9. **Third-eye setup:** QR pairing, live preview and placement guide.
   10. **Environment check:** blocked apps, overlays, remote-session and VM checks, the display rule.
   11. **Ready**, with a practice question.

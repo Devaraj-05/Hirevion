@@ -58,6 +58,7 @@ Body:
 - **Purposes:** §83's ten: `camera`, `microphone`, `screen`, `audio`, `video`, `third_eye`, `transcript`, `coding_activity`, `system_telemetry`, `proctoring_events`.
 - **`201`:** `{ "id": "uuid", "complete": true, "missing": [] }`.
 - **Declining:** `accepted: false` on a purpose the policy needs makes `complete` false. The desktop then offers the accommodation request.
+- **The desktop's form** (product owner, 2026-11-15): one "I have read and agree to the Terms and Conditions" checkbox. The terms open in a dialog listing every item of the notice; agreeing sends every item as `accepted: true`. "Can't agree?" opens the accommodation request. The server still records each purpose.
 
 ### Accommodation request — `POST /interviews/{id}/accommodations`
 

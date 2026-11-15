@@ -57,7 +57,7 @@
   - Segments are partitioned by month, like the other high-volume tables.
   - A consumer of `interview.completed` writes the JSON, VTT and TXT artifacts to `{org}/interviews/{id}/transcript/` with their SHA-256.
   - Recruiters read `GET /interviews/{id}/transcript` and follow `/ws/interviews/{id}`. The websocket needs an allowed Origin, a live session, `interviews.view` and the interview's scope; it replays from `?after=`. Events carry no scores.
-- **Before the interview:** the itemised notice (§83, `NOTICE_VERSION`), system checks and consents are insert-only records. Accommodations approved by a recruiter change the policy before the start:
+- **Before the interview:** the itemised notice (§83, `NOTICE_VERSION`), system checks and consents are insert-only records. Since 2026-11-15 the desktop asks for them with one Terms and Conditions checkbox that accepts every item (product owner: a tick per item was stressful); the items are listed in the terms, and each is still recorded. Accommodations approved by a recruiter change the policy before the start:
   - `text_answers` switches to text mode and makes the microphone check optional;
   - `third_eye_waiver` waives the phone camera requirement;
   - `extended_time` makes the interview 1.5 times as long;
