@@ -152,6 +152,19 @@ class WorkspaceBody(BaseModel):
     content: str = Field(max_length=300_000)
 
 
+class WorkspaceDraft(BaseModel):
+    kind: Literal["code", "whiteboard"]
+    language: str | None
+    content: str
+    saved_at: datetime
+
+
+class WorkspaceDraftResponse(BaseModel):
+    """The question's latest saved workspace, or `null` (ADR-0041)."""
+
+    draft: WorkspaceDraft | None
+
+
 class CompleteBody(BaseModel):
     reason: Literal["finished", "candidate_ended"]
 

@@ -215,3 +215,5 @@ async def test_a_design_questions_notes_are_listed_as_notes_not_code(
     saved = [entry for entry in entries if entry.title.startswith(("Code saved", "Design notes"))]
     assert [entry.title for entry in saved] == ["Design notes saved for question 2"]
     assert saved[0].detail == f"{len(notes)} characters"
+    # Notes belong with the answer, not among coding events.
+    assert saved[0].source == "transcript"

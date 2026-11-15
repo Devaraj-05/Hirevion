@@ -8,7 +8,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi import FastAPI
@@ -284,3 +284,31 @@ async def test_every_persona_with_coding_finishes_and_the_code_is_reviewed(
     assert sections["assessment"]["status"] == "populated"
     assert sections["integrity"]["status"] == "populated"
     assert all(s["status"] != "pending" for s in document["sections"])
+
+
+async def test_the_last_saved_workspace_comes_back_for_a_restart(
+    client: AsyncClient,
+    app_db: Database,
+    valkey: Redis,
+    admin_engine: AsyncEngine,
+    make_organization: MakeOrganization,
+    make_user: Any,
+) -> None:
+    """`GET /interviews/{id}/workspace/{question_id}` (ADR-0041): the notes pad restores its
+    notes after a restart; the coding console has its own draft in `GET /coding`."""
+    seed, _ = await seeded(admin_engine, app_db, make_organization, make_user)
+    desktop = await desktop_for(client, seed)
+    iv = str(seed.interview_id)
+    state = await to_coding(desktop, iv)
+    question = state["question"]["id"]
+    empty = await desktop.interview("GET", iv, f"workspace/{question}")
+    assert empty.status_code == 200 and empty.json() == {"draft": None}
+
+    body = {"question_id": question, "kind": "whiteboard", "language": None, "content": "A -> B"}
+    assert (await desktop.interview("POST", iv, "workspace", body)).status_code == 202
+    draft = (await desktop.interview("GET", iv, f"workspace/{question}")).json()["draft"]
+    assert draft["kind"] == "whiteboard" and draft["content"] == "A -> B"
+    assert draft["language"] is None and draft["saved_at"]
+
+    unknown = await desktop.interview("GET", iv, f"workspace/{uuid4()}")
+    assert unknown.status_code == 404 and unknown.json()["code"] == "question-not-found"

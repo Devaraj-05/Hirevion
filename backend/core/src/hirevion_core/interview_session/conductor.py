@@ -1048,6 +1048,31 @@ class Conductor:
             await session.flush()
             return snapshot
 
+    async def workspace_draft(
+        self, organization_id: UUID, interview_id: UUID, question_id: UUID
+    ) -> WorkspaceSnapshot | None:
+        """The question's latest saved workspace (the desktop restores it after a restart). A
+        follow-up with nothing saved yet starts from the question it follows (ADR-0041)."""
+        async with self._db.tenant(organization_id) as session:
+            question = await session.get(InterviewQuestion, question_id)
+            if question is None or question.interview_id != interview_id:
+                raise NotFound("question-not-found", "No such question in this interview")
+            for candidate in (question.id, question.parent_id):
+                if candidate is None:
+                    continue
+                latest = await session.scalar(
+                    select(WorkspaceSnapshot)
+                    .where(
+                        WorkspaceSnapshot.interview_id == interview_id,
+                        WorkspaceSnapshot.question_id == candidate,
+                    )
+                    .order_by(WorkspaceSnapshot.created_at.desc(), WorkspaceSnapshot.id.desc())
+                    .limit(1)
+                )
+                if latest is not None:
+                    return latest
+            return None
+
     async def submit_code(
         self,
         organization_id: UUID,

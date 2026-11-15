@@ -66,6 +66,19 @@ pub fn check_interview_id(interview_id: &str) -> CommandResult<()> {
     }
 }
 
+/// `GET /interviews/{id}/workspace/{question_id}` (ADR-0041): both ids are UUIDs.
+pub fn workspace_draft_path(interview_id: &str, question_id: &str) -> CommandResult<String> {
+    let valid = !question_id.is_empty()
+        && question_id.len() <= 64
+        && question_id
+            .chars()
+            .all(|c| c.is_ascii_hexdigit() || c == '-');
+    if !valid {
+        return Err(CommandError::new("invalid-question", None));
+    }
+    interview_path(interview_id, &format!("workspace/{question_id}"))
+}
+
 pub fn interview_path(interview_id: &str, rest: &str) -> CommandResult<String> {
     check_interview_id(interview_id)?;
     Ok(format!("interviews/{interview_id}/{rest}"))
@@ -178,6 +191,32 @@ pub async fn interview_request(
     Ok(answer)
 }
 
+/// A question's last saved workspace (`{ "draft": … | null }`), for the notes pad to restore
+/// after a restart; a follow-up starts from the question it follows (ADR-0041).
+#[tauri::command]
+pub async fn workspace_draft(
+    state: State<'_, AppState>,
+    interview_id: String,
+    question_id: String,
+) -> CommandResult<serde_json::Value> {
+    match &state.backend {
+        Backend::Stub(stub) => stub.workspace_draft(&question_id),
+        Backend::Live(session) => {
+            // Only ids that are UUIDs reach the URL.
+            let path = workspace_draft_path(&interview_id, &question_id)?;
+            send_path(
+                session,
+                &state.session_tokens,
+                &interview_id,
+                Method::GET,
+                &path,
+                None,
+            )
+            .await
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -210,6 +249,26 @@ mod tests {
         let telemetry: InterviewAction =
             serde_json::from_str("\"coding_telemetry\"").expect("known");
         assert_eq!(telemetry.route(), (Method::POST, "coding/telemetry"));
+    }
+
+    #[test]
+    fn a_workspace_draft_path_takes_only_uuid_like_ids() {
+        let interview = "0190f1a2-0000-7000-8000-000000000000";
+        let question = "0190f1a2-0000-7000-8000-00000000000b";
+        assert_eq!(
+            workspace_draft_path(interview, question).expect("valid"),
+            format!("interviews/{interview}/workspace/{question}")
+        );
+        assert_eq!(
+            workspace_draft_path(interview, "../coding")
+                .unwrap_err()
+                .code,
+            "invalid-question"
+        );
+        assert_eq!(
+            workspace_draft_path("x/y", question).unwrap_err().code,
+            "invalid-interview"
+        );
     }
 
     #[test]

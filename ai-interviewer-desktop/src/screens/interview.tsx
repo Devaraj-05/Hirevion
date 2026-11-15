@@ -66,11 +66,21 @@ export function InterviewScreen({
   const room = useRef<Room | null>(null);
   const services = useRef<InterviewServices | null>(null);
   const ended = useRef(false);
+  // The workspaces' unsaved text, saved before the interview ends (a save after `complete` is
+  // refused).
+  const flushers = useRef(new Set<() => Promise<void>>());
+  const registerFlush = useCallback((flush: () => Promise<void>) => {
+    flushers.current.add(flush);
+    return () => {
+      flushers.current.delete(flush);
+    };
+  }, []);
 
   const finish = useCallback(
     async (reason: "finished" | "candidate_ended") => {
       if (ended.current) return;
       ended.current = true;
+      await Promise.all([...flushers.current].map((flush) => flush().catch(() => undefined)));
       // Monitoring, the face module and the recording stop first, so their last events and
       // segments are saved while the interview is still open; the upload carries on after.
       await services.current?.stop();
@@ -281,6 +291,7 @@ export function InterviewScreen({
           interviewId={interviewId}
           questionId={state.question.id}
           onSubmitted={setState}
+          registerFlush={registerFlush}
           onClosed={() => void refresh()}
         />
       ) : null}
@@ -290,6 +301,7 @@ export function InterviewScreen({
           key={state.question.id}
           interviewId={interviewId}
           questionId={state.question.id}
+          registerFlush={registerFlush}
         />
       ) : null}
 

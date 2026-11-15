@@ -308,13 +308,16 @@
     "saving": "Saving…",
     "saved": "Saved at {time}",
     "failed": "Couldn't save. Trying again…",
-    "refused": "This code couldn't be saved. Your next change will be saved."
+    "refused": "This couldn't be saved. Your next change will be saved."
   },
   "notes": {
     "title": "Design notes",
     "hint": "Type your design while you explain it: the parts, how data moves between them, and the trade-offs. Your notes are read with your answer.",
     "label": "Your design notes",
-    "tooLarge": "Your notes are over 256 KB. Shorten them so they can be saved."
+    "tooLarge": "Your notes are over 256 KB. Shorten them so they can be saved.",
+    "loading": "Opening your notes…",
+    "loadFailed": "Your saved notes didn't load.",
+    "retry": "Try again"
   },
   "completed": {
     "title": "Thank you",

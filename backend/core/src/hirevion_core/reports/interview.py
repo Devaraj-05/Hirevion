@@ -235,10 +235,27 @@ def answers_section(data: InterviewData) -> Section:
             rows.append(
                 [str(q.position), q.text, answer.text, answer.mode, ", ".join(notes) or None]
             )
+    content: list[Block] = [
+        b.table("The candidate's answers", ["#", "Question", "Answer", "Mode", "Notes"], rows)
+    ]
+    # A design question's notes pad (ADR-0041): the latest save, as the evaluation read it.
+    latest: dict[Any, str] = {}
+    for snapshot in data.snapshots:
+        if snapshot.kind == "whiteboard":
+            latest[snapshot.question_id] = snapshot.content
+    for q in data.questions:
+        if q.workspace == "whiteboard" and latest.get(q.id, "").strip():
+            content.append(
+                b.code(
+                    latest[q.id],
+                    caption=f"Design notes for question {q.position}, typed while answering "
+                    "(the evaluation weighed them; scores quote only the answer)",
+                )
+            )
     return b.section(
         "answers",
         "Answers",
-        [b.table("The candidate's answers", ["#", "Question", "Answer", "Mode", "Notes"], rows)],
+        content,
         note=None if rows else "No answers were recorded.",
     )
 

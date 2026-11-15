@@ -1868,6 +1868,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/interviews/{interview_id}/workspace/{question_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Workspace Draft
+         * @description The question's latest saved workspace, for the desktop to restore after a restart; a
+         *     follow-up with nothing saved starts from the question it follows (ADR-0041).
+         */
+        get: operations["workspace_draft"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs": {
         parameters: {
             query?: never;
@@ -9761,6 +9782,30 @@ export interface components {
              */
             question_id: string;
         };
+        /** WorkspaceDraft */
+        WorkspaceDraft: {
+            /** Content */
+            content: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "code" | "whiteboard";
+            /** Language */
+            language: string | null;
+            /**
+             * Saved At
+             * Format: date-time
+             */
+            saved_at: string;
+        };
+        /**
+         * WorkspaceDraftResponse
+         * @description The question's latest saved workspace, or `null` (ADR-0041).
+         */
+        WorkspaceDraftResponse: {
+            draft: components["schemas"]["WorkspaceDraft"] | null;
+        };
     };
     responses: never;
     parameters: never;
@@ -13875,6 +13920,47 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    workspace_draft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceDraftResponse"];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */

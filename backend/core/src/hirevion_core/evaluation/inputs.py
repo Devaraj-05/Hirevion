@@ -162,7 +162,10 @@ async def load_inputs(session: AsyncSession, interview: Interview) -> Evaluation
                 else None,
                 flags=flags,
                 late=any(a.late for a in given),
-                design_notes=notes.get(question.id, ""),
+                # Only a design question's notes count, whatever a desktop saved elsewhere.
+                design_notes=notes.get(question.id, "")
+                if question.workspace == "whiteboard"
+                else "",
             )
         )
     return EvaluationInputs(

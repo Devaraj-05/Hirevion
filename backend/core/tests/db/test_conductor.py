@@ -17,11 +17,12 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from hirevion_core.access.actor import Actor
-from hirevion_core.access.errors import Conflict, Gone, Invalid, TooLarge
+from hirevion_core.access.errors import Conflict, Gone, Invalid, NotFound, TooLarge
 from hirevion_core.access.scope import ResourceScope
 from hirevion_core.db.session import Database
 from hirevion_core.identity.permissions import permissions_for
 from hirevion_core.identity.settings import IdentitySettings
+from hirevion_core.ids import uuid7
 from hirevion_core.interview_session import preparation, realtime
 from hirevion_core.interview_session.briefing import NOTICE_VERSION, briefing, notice_items
 from hirevion_core.interview_session.conductor import Conductor, Speech
@@ -689,3 +690,51 @@ async def test_new_events_only_start_from_the_newest_one(valkey: Redis) -> None:
     second = await realtime.publish(valkey, interview, "QUESTION_STARTED", {"question_id": "q"})
     events = await realtime.read(valkey, interview, first)
     assert [e.id for e in events] == [second]
+
+
+async def test_the_latest_draft_comes_back_and_a_follow_up_starts_from_its_parents(
+    app_db: Database, valkey: Redis, make_organization: MakeOrganization, make_hiring: Any
+) -> None:
+    """ADR-0041: the notes pad restores its notes after a restart, and a follow-up of a design
+    question starts from the notes typed for the question it follows."""
+    scene = await invited(app_db, make_hiring, await make_organization("Acme"))
+    check, consent = await prepare(app_db, scene, accommodations=["text_answers"])
+    cond = conductor(app_db, valkey)
+    view = (await start(cond, scene, check, consent)).view
+    question = UUID(view.question.id)
+    assert await cond.workspace_draft(scene.organization_id, scene.interview_id, question) is None
+    for content in ("API -> cache", "API -> cache -> Postgres"):
+        await cond.workspace(
+            scene.organization_id,
+            scene.interview_id,
+            question,
+            kind="whiteboard",
+            language=None,
+            content=content,
+        )
+    draft = await cond.workspace_draft(scene.organization_id, scene.interview_id, question)
+    assert draft is not None and draft.content == "API -> cache -> Postgres"
+    assert draft.kind == "whiteboard"
+
+    follow_up = uuid7()
+    async with app_db.tenant(scene.organization_id) as session:
+        parent = await session.get_one(InterviewQuestion, question)
+        session.add(
+            InterviewQuestion(
+                id=follow_up,
+                organization_id=scene.organization_id,
+                interview_id=scene.interview_id,
+                parent_id=question,
+                position=parent.position + 1,
+                kind="follow_up",
+                stage="follow_up",
+                source="follow_up",
+                text="And how would you keep the cache fresh?",
+                asked_at=datetime.now(UTC),
+                workspace="whiteboard",
+            )
+        )
+    inherited = await cond.workspace_draft(scene.organization_id, scene.interview_id, follow_up)
+    assert inherited is not None and inherited.content == "API -> cache -> Postgres"
+    with pytest.raises(NotFound, match="question-not-found"):
+        await cond.workspace_draft(scene.organization_id, scene.interview_id, uuid7())

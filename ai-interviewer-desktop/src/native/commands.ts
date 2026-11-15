@@ -157,6 +157,9 @@ export const commands = {
       language,
       content,
     }),
+  /** A question's last saved workspace, for the notes pad to restore (ADR-0041). */
+  workspaceDraft: (interviewId: string, questionId: string) =>
+    invoke<{ draft: WorkspaceDraft | null }>("workspace_draft", { interviewId, questionId }),
   /** Saves a design question's notes pad as its draft (`POST /workspace`, kind `whiteboard`;
    * ADR-0041). */
   saveNotes: (interviewId: string, questionId: string, content: string) =>
@@ -389,4 +392,12 @@ export interface PairingView {
   link: string | null;
   expires_at: string | null;
   device: string | null;
+}
+
+/** `GET /interviews/{id}/workspace/{question_id}`'s draft. */
+export interface WorkspaceDraft {
+  kind: "code" | "whiteboard";
+  language: string | null;
+  content: string;
+  saved_at: string;
 }

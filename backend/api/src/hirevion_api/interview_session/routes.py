@@ -32,6 +32,8 @@ from hirevion_api.interview_session.schemas import (
     SystemCheckBody,
     SystemCheckResponse,
     WorkspaceBody,
+    WorkspaceDraft,
+    WorkspaceDraftResponse,
 )
 from hirevion_api.problems import ProblemError
 from hirevion_api.ratelimit import enforce, rate_limited
@@ -290,6 +292,30 @@ async def save_workspace(
         kind=body.kind,
         language=body.language,
         content=body.content,
+    )
+
+
+@router.get(
+    "/interviews/{interview_id}/workspace/{question_id}",
+    dependencies=[Depends(rate_limited(ANSWERS_BY_IP))],
+)
+async def workspace_draft(
+    interview_id: UUID, question_id: UUID, request: Request, principal: InterviewSession
+) -> WorkspaceDraftResponse:
+    """The question's latest saved workspace, for the desktop to restore after a restart; a
+    follow-up with nothing saved starts from the question it follows (ADR-0041)."""
+    snapshot = await conductor(request).workspace_draft(
+        principal.organization_id, interview_id, question_id
+    )
+    if snapshot is None:
+        return WorkspaceDraftResponse(draft=None)
+    return WorkspaceDraftResponse(
+        draft=WorkspaceDraft(
+            kind=snapshot.kind,  # type: ignore[arg-type]
+            language=snapshot.language,
+            content=snapshot.content,
+            saved_at=snapshot.created_at,
+        )
     )
 
 

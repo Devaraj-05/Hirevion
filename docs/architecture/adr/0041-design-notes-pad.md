@@ -17,11 +17,14 @@
 - **The desktop pad** (`src/screens/notes-pad.tsx`):
   - plain monospace text, for the parts, the data flow, simple text diagrams and trade-offs;
   - saved with `POST /interviews/{id}/workspace` (`kind: "whiteboard"`, `language: null`) at most every 30 s while typing, on blur, and once more when the question closes;
-  - the same draft saver and "Saved at" status as the coding console.
+  - the same draft saver and "Saved at" status as the coding console;
+  - unsaved text from the pad and the coding console is saved before the interview ends;
+  - it opens on the last saved notes (`GET /interviews/{id}/workspace/{question_id}`). A follow-up of a design question starts from its parent's notes, and the pad stays read-only until they load, so a new save never hides earlier notes.
 - **The answer is unchanged:** it is still spoken, or typed in the answer box, and the question closes the usual way. There is no Submit and no integrity telemetry for the pad.
 - **What the AI says:** when it asks a design question, it says once that the notes pad is there and is read with the answer (`phrasing.DESIGN_NOTES`).
 - **Evaluation:**
-  - The latest notes snapshot reaches the question's request as `design_notes`, capped at 8,000 characters. The field appears only when notes exist, so every other question's request and input digest stay the same.
+  - The latest notes snapshot of a question whose workspace is `whiteboard` reaches its request as `design_notes`, capped at 8,000 characters. Notes saved against any other question are ignored. The field appears only when notes exist, so every other question's request and input digest stay the same.
+  - Manipulation phrases in the notes flag the question `manipulation_attempt`, as in an answer.
   - Prompt `evaluation-question-v2` adds one sentence: weigh the notes with the answer, but take quotes only from `answer_turns`.
   - v1 stays for pinned re-runs. The eval gate passes on v2, and its baseline records v2.
 
@@ -29,6 +32,5 @@
 
 - **Small and reviewable:** no new library and no drawing format to judge. The notes are text the model reads as data, under the same no-instructions clause as the answer.
 - **Not quoted:** a score supported only by the notes, with nothing in the spoken answer, is still capped as unsupported. This is deliberate, because the evidence links to the recording.
-- **Not restored after a restart:** the server keeps every save, but there is no endpoint that hands the last notes back to the desktop.
-- **Partly shown in the reports:** the timeline lists each save as "Design notes saved for question N", but the interview report has no section showing the notes' text yet.
+- **Visible to reviewers:** the interview report's Answers section shows each design question's notes, captioned as weighed but never quoted. The timeline lists each save under the transcript source as "Design notes saved for question N".
 - **PRD traceability:** Appendix A row 32 points here. An Excalidraw whiteboard would need a new decision.

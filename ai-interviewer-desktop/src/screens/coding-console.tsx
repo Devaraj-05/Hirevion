@@ -31,6 +31,7 @@ import {
 } from "../native/commands";
 import { recordingCommands } from "../recording/native";
 import { DraftStatus } from "./draft-status";
+import type { RegisterFlush } from "./notes-pad";
 import { ErrorText } from "./shell";
 
 /** In the question's last seconds the draft is saved every second, and once more at zero:
@@ -67,6 +68,7 @@ export function CodingConsole({
   questionId,
   onSubmitted,
   onClosed,
+  registerFlush,
 }: {
   interviewId: string;
   questionId: string;
@@ -74,6 +76,8 @@ export function CodingConsole({
   onSubmitted: (next: InterviewState) => void;
   /** The question closed elsewhere (its time ran out, or it was answered): refresh the state. */
   onClosed: () => void;
+  /** Lets the interview screen save the unsaved draft before it ends the interview. */
+  registerFlush: RegisterFlush;
 }) {
   const t = useTranslations("coding");
   const id = useId();
@@ -154,14 +158,16 @@ export function CodingConsole({
     events.start();
     drafts.current = saver;
     telemetry.current = events;
+    const unregister = registerFlush(() => saver.flush());
     return () => {
+      unregister();
       void saver.flush().finally(() => saver.dispose());
       // Closing mid-typing still records that typing stopped.
       void events.end();
       if (drafts.current === saver) drafts.current = null;
       if (telemetry.current === events) telemetry.current = null;
     };
-  }, [interviewId, question]);
+  }, [interviewId, question, registerFlush]);
 
   // The question's own clock, by the server's time.
   useEffect(() => {

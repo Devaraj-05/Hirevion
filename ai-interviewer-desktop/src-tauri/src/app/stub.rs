@@ -2,6 +2,7 @@
 //! signs in with the password `stub`; an email starting `new` asks for the code `123456`. The
 //! interview runs in text mode with three canned questions. Release builds never use it.
 
+use std::collections::HashMap;
 use std::sync::Mutex;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -26,8 +27,8 @@ pub struct Stub {
     /// When the coding question was first served, and its last saved draft.
     coding_asked_at: Mutex<Option<SystemTime>>,
     coding_draft: Mutex<Option<Value>>,
-    /// The design question's last saved notes.
-    design_notes: Mutex<Option<String>>,
+    /// Each question's last saved notes (any question takes a save, as on the server).
+    design_notes: Mutex<HashMap<String, Value>>,
     /// Status reads since the third eye's code was issued: a stub phone scans it on the second
     /// and connects on the third.
     third_eye_polls: Mutex<usize>,
@@ -98,6 +99,11 @@ fn stub_phone(polls: usize) -> Option<&'static str> {
         2 => Some("redeemed"),
         _ => Some("connected"),
     }
+}
+
+/// The index of the stub question `id` names.
+fn question_index(id: &str) -> Option<usize> {
+    (0..QUESTIONS.len()).find(|&index| question_id(index) == id)
 }
 
 fn question_id(index: usize) -> String {
@@ -359,9 +365,16 @@ impl Stub {
                 if content.len() > MAX_CODE_BYTES {
                     return Err(CommandError::new("workspace-too-large", None));
                 }
-                if self.is_question_with(id, "whiteboard") {
+                if body["kind"] == "whiteboard" {
+                    let Some(id) = id.filter(|id| question_index(id).is_some()) else {
+                        return Err(CommandError::new("question-not-found", None));
+                    };
                     if let Ok(mut notes) = self.design_notes.lock() {
-                        *notes = Some(content.to_owned());
+                        notes.insert(
+                            id.to_owned(),
+                            json!({ "kind": "whiteboard", "language": null, "content": content,
+                                    "saved_at": iso(SystemTime::now()) }),
+                        );
                     }
                     return Ok(Value::Null);
                 }
@@ -468,12 +481,19 @@ impl Stub {
         })
     }
 
-    /// The design question's last saved notes.
-    pub fn notes(&self) -> Option<String> {
-        self.design_notes
+    /// A question's last saved notes (`GET /workspace/{question}`).
+    pub fn workspace_draft(&self, question_id: &str) -> CommandResult<Value> {
+        self.email()?;
+        if question_index(question_id).is_none() {
+            return Err(CommandError::new("question-not-found", None));
+        }
+        let draft = self
+            .design_notes
             .lock()
             .ok()
-            .and_then(|notes| notes.clone())
+            .and_then(|notes| notes.get(question_id).cloned())
+            .unwrap_or(Value::Null);
+        Ok(json!({ "draft": draft }))
     }
 
     /// `GET /coding`'s question: its languages and starter code, when it was asked (the first
@@ -787,13 +807,25 @@ mod tests {
                 .expect("saved"),
             Value::Null
         );
-        assert_eq!(stub.notes().as_deref(), Some("API -> cache -> DB"));
-        // A question without a workspace takes no drafts.
-        let stray = json!({ "question_id": "stub-q0", "kind": "whiteboard", "content": "x" });
+        // The notes come back for a restart (`GET /workspace/{question}`).
+        let id = design["id"].as_str().expect("an id");
+        let restored = stub.workspace_draft(id).expect("a draft");
+        assert_eq!(restored["draft"]["content"], "API -> cache -> DB");
+        assert_eq!(restored["draft"]["kind"], "whiteboard");
+        assert!(stub.workspace_draft("stub-q2").expect("none")["draft"].is_null());
+        // As on the server, any question of the interview takes a save; an unknown one doesn't.
+        let other = json!({ "question_id": "stub-q0", "kind": "whiteboard", "content": "x" });
+        stub.interview("iv", InterviewAction::Workspace, Some(&other))
+            .expect("saved");
+        let unknown = json!({ "question_id": "stub-q9", "kind": "whiteboard", "content": "x" });
         assert_eq!(
-            stub.interview("iv", InterviewAction::Workspace, Some(&stray))
+            stub.interview("iv", InterviewAction::Workspace, Some(&unknown))
                 .unwrap_err()
                 .code,
+            "question-not-found"
+        );
+        assert_eq!(
+            stub.workspace_draft("stub-q9").unwrap_err().code,
             "question-not-found"
         );
     }

@@ -17369,6 +17369,66 @@
         ],
         "title": "WorkspaceBody",
         "type": "object"
+      },
+      "WorkspaceDraft": {
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "code",
+              "whiteboard"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "saved_at": {
+            "format": "date-time",
+            "title": "Saved At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "language",
+          "content",
+          "saved_at"
+        ],
+        "title": "WorkspaceDraft",
+        "type": "object"
+      },
+      "WorkspaceDraftResponse": {
+        "description": "The question's latest saved workspace, or `null` (ADR-0041).",
+        "properties": {
+          "draft": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkspaceDraft"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "draft"
+        ],
+        "title": "WorkspaceDraftResponse",
+        "type": "object"
       }
     }
   },
@@ -23496,6 +23556,70 @@
           }
         },
         "summary": "Save Workspace",
+        "tags": [
+          "interview-session"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/workspace/{question_id}": {
+      "get": {
+        "description": "The question's latest saved workspace, for the desktop to restore after a restart; a\nfollow-up with nothing saved starts from the question it follows (ADR-0041).",
+        "operationId": "workspace_draft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Question Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceDraftResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Workspace Draft",
         "tags": [
           "interview-session"
         ]

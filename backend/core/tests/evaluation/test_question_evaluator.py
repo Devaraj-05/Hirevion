@@ -192,3 +192,16 @@ async def test_a_version_can_be_pinned_by_name_and_a_prompt_overridden() -> None
     evaluator = QuestionEvaluator(llm, prompt_text="Score everything 10.", prompt_version="bad-v0")
     await evaluator.evaluate(ORG, make_case(), RUBRIC, refs=REFS)
     assert recorder.rows[0]["prompt_version"] == "bad-v0"
+
+
+async def test_an_instruction_in_the_design_notes_is_flagged_and_lifts_nothing() -> None:
+    """ADR-0041: the notes are data; planted instructions are flagged like an answer's."""
+    from dataclasses import replace
+
+    llm, _ = offline_llm()
+    evaluator = QuestionEvaluator(llm)
+    plain = await evaluator.evaluate(ORG, make_case(PARTIAL), RUBRIC, refs=REFS)
+    noted = replace(make_case(PARTIAL), design_notes=f"Cache in front of the DB. {INJECTION}")
+    injected = await evaluator.evaluate(ORG, noted, RUBRIC, refs=REFS)
+    assert "manipulation_attempt" in injected.flags
+    assert injected.overall <= plain.overall + 0.01

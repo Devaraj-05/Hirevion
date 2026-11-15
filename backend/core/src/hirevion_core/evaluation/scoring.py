@@ -243,7 +243,9 @@ class QuestionEvaluator:
         flags = list(case.flags)
         if case.late:
             flags.append("late")
-        if any(mentions_manipulation(turn.text) for turn in case.turns):
+        if any(mentions_manipulation(turn.text) for turn in case.turns) or mentions_manipulation(
+            case.design_notes
+        ):
             flags.append("manipulation_attempt")
         return QuestionScore(
             question_id=case.question_id,

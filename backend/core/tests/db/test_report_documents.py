@@ -523,3 +523,33 @@ async def test_the_organisation_chooses_which_items_may_be_shown(
     async with app_db.tenant(org) as session:
         assert (await visible.allowed_items(session, org))["general_feedback"] is True
     del scene
+
+
+async def test_the_interview_report_shows_a_design_questions_notes(
+    app_db: Database, make_organization: MakeOrganization, make_completed_interview: Any
+) -> None:
+    """ADR-0041: the notes the evaluation weighed are in front of the reviewer."""
+    from hirevion_core.models import InterviewQuestion
+    from hirevion_core.reports.interview import answers_section
+
+    scene = await make_completed_interview(await make_organization("Acme"))
+    question = scene.questions["postgres"]
+    notes = "API -> Redis cache -> Postgres primary"
+    async with app_db.tenant(scene.organization_id) as session:
+        (await session.get_one(InterviewQuestion, question)).workspace = "whiteboard"
+        session.add(
+            WorkspaceSnapshot(
+                organization_id=scene.organization_id,
+                interview_id=scene.interview_id,
+                question_id=question,
+                kind="whiteboard",
+                language=None,
+                content=notes,
+                size=len(notes),
+            )
+        )
+    data = await load(app_db, scene)
+    blocks = answers_section(data)["blocks"]
+    code = [block for block in blocks if block.get("type") == "code"]
+    assert [block["text"] for block in code] == [notes]
+    assert "Design notes for question 2" in code[0]["caption"]

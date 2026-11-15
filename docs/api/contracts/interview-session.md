@@ -140,7 +140,7 @@ Body:
 
 - **After completion:** the desktop drains its upload queue (recordings.md) before saying it's safe to close.
 - **Coding:** the coding console (the question, one submission, integrity events) is [coding.md](coding.md). Drafts still go to `POST /workspace`. Nothing is executed.
-- **Design notes:** a `system_design` question's workspace is `whiteboard`, which the desktop shows as a plain-text notes pad (ADR-0041). It saves with `POST /workspace` (`kind: "whiteboard"`, `language: null`); the latest save is read by the evaluation with the answer.
+- **Design notes:** a `system_design` question's workspace is `whiteboard`, which the desktop shows as a plain-text notes pad (ADR-0041). It saves with `POST /workspace` (`kind: "whiteboard"`, `language: null`); the latest save is read by the evaluation with the answer. `GET /interviews/{id}/workspace/{question_id}` answers `{ "draft": { "kind", "language", "content", "saved_at" } | null }`, the question's latest save; for a follow-up with nothing saved, its parent's. An unknown question is `404 question-not-found`.
 
 ## Changes
 

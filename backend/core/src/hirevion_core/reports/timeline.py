@@ -214,7 +214,8 @@ def interview_entries(
         notes = snapshot.kind == "whiteboard"
         add(
             snapshot.created_at,
-            "coding",
+            # The notes belong with the answer they were typed beside.
+            "transcript" if notes else "coding",
             "snapshot",
             f"Design notes saved for question {number}"
             if notes
