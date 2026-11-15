@@ -146,6 +146,12 @@ export const commands = {
   thirdEyeLive: () => invoke<LiveThirdEye | null>("third_eye_live"),
   /** The pairing's status (read every 2 s while the phone step is open). */
   thirdEyeStatus: (interviewId: string) => invoke<PairingView>("third_eye_status", { interviewId }),
+  /** C8-3: a hidden, watch-only token for the phone's picture; `null` in stub mode. */
+  thirdEyePreview: (interviewId: string) =>
+    invoke<PhonePreviewAccess | null>("third_eye_preview", { interviewId }),
+  /** C8-3: the confirmed placement, with the desktop check's scores. */
+  thirdEyePlacement: (interviewId: string, person: number, laptop: number) =>
+    invoke<null>("third_eye_placement", { interviewId, person, laptop }),
   /** The open coding question with its starter code and last draft (contract coding.md). */
   coding: (interviewId: string) =>
     interviewRequest<{ question: CodingQuestion | null }>(interviewId, "coding"),
@@ -400,4 +406,11 @@ export interface WorkspaceDraft {
   language: string | null;
   content: string;
   saved_at: string;
+}
+
+/** `POST /third-eye/pairings/{id}/preview`: watch `phone_identity`'s camera in the room. */
+export interface PhonePreviewAccess {
+  livekit_url: string;
+  token: string;
+  phone_identity: string;
 }

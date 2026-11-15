@@ -92,6 +92,13 @@ test("launch → ready", async (t) => {
       "where to put the phone is shown under the code",
     );
     await session.waitFor(`//p[starts-with(normalize-space(), "Phone connected")]`, 20_000);
+    // C8-3: the phone's picture must show the candidate and the whole laptop (the stub's phone
+    // "films" both), and the candidate confirms it; Continue stays off until then.
+    const proceed = await session.find(button("Continue"));
+    assert.equal(await proceed.property("disabled"), true, "Continue waits for the green zone");
+    await session.waitFor(`//p[starts-with(normalize-space(), "In the green zone")]`, 20_000);
+    const [confirm] = await session.findAll("button[role=checkbox]");
+    await confirm.click();
     await session.click(button("Continue"));
 
     // Ready.

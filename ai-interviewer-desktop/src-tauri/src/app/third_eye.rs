@@ -362,9 +362,141 @@ pub async fn third_eye_status(
     status(session, &state.session_tokens, &interview_id, &pairing_id).await
 }
 
+/// C8-3: what the webview needs to watch the phone's picture (a hidden, watch-only token).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct PreviewView {
+    pub livekit_url: String,
+    pub token: String,
+    pub phone_identity: String,
+}
+
+/// `POST /third-eye/pairings/{id}/preview`'s answer.
+pub fn preview_view(answer: &Value) -> CommandResult<PreviewView> {
+    let field = |name: &str| {
+        answer[name]
+            .as_str()
+            .map(str::to_owned)
+            .ok_or_else(|| CommandError::new("unexpected-response", format!("preview: no {name}")))
+    };
+    Ok(PreviewView {
+        livekit_url: field("livekit_url")?,
+        token: field("token")?,
+        phone_identity: field("phone_identity")?,
+    })
+}
+
+/// The confirmed placement, with the desktop's detector scores (0 to 1).
+pub fn placement_body(person: f64, laptop: f64) -> CommandResult<Value> {
+    let score = |value: f64| (0.0..=1.0).contains(&value);
+    if !score(person) || !score(laptop) {
+        return Err(CommandError::new("invalid-placement", None));
+    }
+    Ok(json!({ "person": person, "laptop": laptop, "confirmed": true }))
+}
+
+fn paired(state: &AppState, interview_id: &str) -> CommandResult<String> {
+    let pairing_id = state
+        .third_eye
+        .get(interview_id)
+        .ok_or_else(|| CommandError::new("not-paired", None))?;
+    check_pairing_id(&pairing_id)?;
+    Ok(pairing_id)
+}
+
+/// The phone's picture for the desktop (C8-3); `None` in stub mode, where the webview shows a
+/// stand-in.
+#[tauri::command]
+pub async fn third_eye_preview(
+    state: State<'_, AppState>,
+    interview_id: String,
+) -> CommandResult<Option<PreviewView>> {
+    check_interview_id(&interview_id)?;
+    let session = match &state.backend {
+        Backend::Stub(_) => return Ok(None),
+        Backend::Live(session) => session,
+    };
+    let pairing_id = paired(&state, &interview_id)?;
+    let path = format!("third-eye/pairings/{pairing_id}/preview");
+    let answer = send_path(
+        session,
+        &state.session_tokens,
+        &interview_id,
+        Method::POST,
+        &path,
+        Some(&json!({})),
+    )
+    .await?;
+    preview_view(&answer).map(Some)
+}
+
+/// The candidate confirmed the phone's picture shows them and their laptop, which the
+/// desktop's check saw (C8-3).
+#[tauri::command]
+pub async fn third_eye_placement(
+    state: State<'_, AppState>,
+    interview_id: String,
+    person: f64,
+    laptop: f64,
+) -> CommandResult<()> {
+    check_interview_id(&interview_id)?;
+    let body = placement_body(person, laptop)?;
+    let session = match &state.backend {
+        Backend::Stub(_) => return Ok(()),
+        Backend::Live(session) => session,
+    };
+    let pairing_id = paired(&state, &interview_id)?;
+    let path = format!("third-eye/pairings/{pairing_id}/placement");
+    send_path(
+        session,
+        &state.session_tokens,
+        &interview_id,
+        Method::POST,
+        &path,
+        Some(&body),
+    )
+    .await?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reads_the_phones_preview_and_refuses_an_answer_without_its_token() {
+        let answer = json!({
+            "livekit_url": "ws://127.0.0.1:7880",
+            "token": "jwt",
+            "phone_identity": "third-eye-01a1df63-581a-78ea-a9e3-20b0f7fa88a9",
+            "expires_at": "2026-11-15T14:00:00Z",
+        });
+        let view = preview_view(&answer).expect("a preview");
+        assert_eq!(view.livekit_url, "ws://127.0.0.1:7880");
+        assert_eq!(view.token, "jwt");
+        assert_eq!(
+            view.phone_identity,
+            "third-eye-01a1df63-581a-78ea-a9e3-20b0f7fa88a9"
+        );
+        let missing = json!({ "livekit_url": "ws://x", "phone_identity": "third-eye-x" });
+        assert_eq!(
+            preview_view(&missing).unwrap_err().code,
+            "unexpected-response"
+        );
+    }
+
+    #[test]
+    fn sends_a_placement_only_with_scores_between_zero_and_one() {
+        assert_eq!(
+            placement_body(0.91, 0.77).expect("scores"),
+            json!({ "person": 0.91, "laptop": 0.77, "confirmed": true })
+        );
+        for (person, laptop) in [(1.2, 0.5), (0.5, -0.1), (f64::NAN, 0.5)] {
+            assert_eq!(
+                placement_body(person, laptop).unwrap_err().code,
+                "invalid-placement"
+            );
+        }
+    }
 
     #[test]
     fn draws_the_link_as_a_qr_code_with_its_quiet_zone() {

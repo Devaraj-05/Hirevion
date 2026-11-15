@@ -1,14 +1,24 @@
-import { Button } from "@hirevion/ui";
+import { Button, Checkbox, Label } from "@hirevion/ui";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslations } from "use-intl";
 import type { SystemCheckPayload } from "../checks/payload";
 import { commands, isCommandError, type PairingView } from "../native/commands";
+import type { Framing } from "../third-eye/framing";
 import { phoneState, type ThirdEyeMode } from "../third-eye/pairing";
+import { PhonePreview, type Verdict } from "../third-eye/preview";
 import { ErrorText } from "./shell";
 
 /** How often the step reads the pairing's status (contract third-eye.md: every 2 s). */
 const POLL_MS = 2_000;
-const KNOWN_ERRORS = ["media-unavailable", "check-failed", "network", "interview-not-open"];
+const KNOWN_ERRORS = [
+  "media-unavailable",
+  "check-failed",
+  "network",
+  "interview-not-open",
+  "third-eye-not-connected",
+  "not-paired",
+  "invalid-placement",
+];
 
 function errorCode(failure: unknown): string {
   const code = isCommandError(failure) ? failure.code : "unknown";
@@ -57,9 +67,17 @@ export function ThirdEyeScreen({
   // the phone connects.
   const actions = useRef<HTMLDivElement>(null);
   const connected = phoneState(status) === "connected";
+  // C8-3 (owner, 2026-11-15): the phone's picture must show the candidate and their whole
+  // laptop (green), and the candidate confirms it, before they can continue.
+  const [verdict, setVerdict] = useState<Verdict>({ green: false, framing: null, evidence: null });
+  const [confirmed, setConfirmed] = useState(false);
+  const green = connected && verdict.green;
   useEffect(() => {
-    if (connected) actions.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [connected]);
+    if (!green) setConfirmed(false);
+  }, [green]);
+  useEffect(() => {
+    if (green) actions.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [green]);
 
   /** Done with the phone: the check that waited for it is sent again first. */
   const finish = useCallback(async () => {
@@ -138,6 +156,25 @@ export function ThirdEyeScreen({
     };
   }, [interviewId, pairing]);
 
+  /** Records the confirmed placement, then moves on. */
+  async function placed() {
+    // The green frames' scores, not whichever frame came last.
+    const seen = verdict.evidence;
+    if (!green || !confirmed || !seen) return;
+    setWorking(true);
+    setError(null);
+    try {
+      await commands.thirdEyePlacement(interviewId, seen.personScore, seen.laptopScore);
+    } catch (failure) {
+      latest.current.onError(failure);
+      setError(errorCode(failure));
+      setWorking(false);
+      return;
+    }
+    setWorking(false);
+    await finish();
+  }
+
   async function copyLink(link: string) {
     try {
       await navigator.clipboard.writeText(link);
@@ -194,6 +231,36 @@ export function ThirdEyeScreen({
         </p>
       ) : null}
 
+      {connected ? (
+        <section
+          className="grid gap-3 rounded-md border border-border p-4"
+          aria-labelledby={`${id}-check`}
+        >
+          <h2 id={`${id}-check`} className="font-medium">
+            {t("check.title")}
+          </h2>
+          <PhonePreview interviewId={interviewId} onVerdict={setVerdict} />
+          <p
+            role="status"
+            aria-live="polite"
+            className={green ? "font-medium text-success" : "font-medium text-warning"}
+          >
+            {t(`check.${checkMessage(verdict)}`)}
+          </p>
+          <div className="flex items-start gap-3">
+            <Checkbox
+              id={`${id}-confirm`}
+              checked={confirmed}
+              disabled={!green}
+              onCheckedChange={(checked) => setConfirmed(checked === true)}
+            />
+            <Label htmlFor={`${id}-confirm`} className="font-normal">
+              {t("check.confirm")}
+            </Label>
+          </div>
+        </section>
+      ) : null}
+
       {/* Right under the code, so the candidate reads it while placing the phone (owner, 2026-11-15). */}
       <section
         className="grid gap-2 rounded-md border border-border p-4"
@@ -214,7 +281,7 @@ export function ThirdEyeScreen({
       {error ? <ErrorText>{t(`errors.${error}`)}</ErrorText> : null}
 
       <div ref={actions} className="flex flex-wrap gap-2">
-        <Button disabled={working || phone !== "connected"} onClick={() => void finish()}>
+        <Button disabled={working || !green || !confirmed} onClick={() => void placed()}>
           {t("continue")}
         </Button>
         {pairing === null && error ? (
@@ -231,7 +298,8 @@ export function ThirdEyeScreen({
             {t("newCode")}
           </Button>
         ) : null}
-        {mode === "optional" && phone !== "connected" ? (
+        {/* An optional phone never blocks the candidate, connected or not. */}
+        {mode === "optional" ? (
           <Button variant="secondary" disabled={working} onClick={() => void finish()}>
             {t("skip")}
           </Button>
@@ -242,4 +310,16 @@ export function ThirdEyeScreen({
       </div>
     </section>
   );
+}
+
+/** What the status line under the phone's picture says. */
+function checkMessage(verdict: Verdict): string {
+  const seen: Framing | null = verdict.framing;
+  if (verdict.green) return "green";
+  if (seen === null) return "checking";
+  if (seen.person === "missing") return "personMissing";
+  if (seen.person === "cut") return "personCut";
+  if (seen.laptop === "missing") return "laptopMissing";
+  if (seen.laptop === "cut") return "laptopCut";
+  return "hold";
 }

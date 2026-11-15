@@ -131,6 +131,8 @@ pub fn run() {
             app::third_eye::third_eye_pair,
             app::third_eye::third_eye_status,
             app::third_eye::third_eye_live,
+            app::third_eye::third_eye_preview,
+            app::third_eye::third_eye_placement,
             app::service_commands::upload_progress,
             spike::spike_config,
             spike::spike_report,
@@ -162,6 +164,8 @@ pub fn run() {
         app::third_eye::third_eye_pair,
         app::third_eye::third_eye_status,
         app::third_eye::third_eye_live,
+        app::third_eye::third_eye_preview,
+        app::third_eye::third_eye_placement,
         app::service_commands::upload_progress
     ]);
 

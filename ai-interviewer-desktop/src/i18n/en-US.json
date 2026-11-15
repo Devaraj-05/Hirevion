@@ -137,9 +137,29 @@
       "check-failed": "Your phone is connected, but the check still didn't pass. Go back and run the check again.",
       "interview-not-open": "This interview isn't open now.",
       "network": "We couldn't reach the server. Check your connection and try again.",
-      "unknown": "Something went wrong. Try again."
+      "unknown": "Something went wrong. Try again.",
+      "third-eye-not-connected": "Your phone isn't connected any more. Unlock it and keep its page open.",
+      "not-paired": "Pair your phone first: scan the code.",
+      "invalid-placement": "The picture check didn't finish. Try again."
     },
-    "retry": "Try again"
+    "retry": "Try again",
+    "check": {
+      "title": "Check your phone's picture",
+      "videoLabel": "What your phone's camera sees",
+      "stub": "Your phone's picture (test mode)",
+      "loading": "Loading your phone's picture…",
+      "failed": "Your phone's picture didn't load. Check the phone is unlocked, with its page open.",
+      "retry": "Try again",
+      "checking": "Checking the picture…",
+      "green": "In the green zone: we can see you and your whole laptop.",
+      "hold": "Almost there. Keep the phone still…",
+      "personMissing": "We can't see you. Turn the phone towards you.",
+      "personCut": "Part of you is out of the picture. Move the phone back or turn it towards you.",
+      "laptopMissing": "We can't see your laptop. Point the phone so the whole laptop is in the picture.",
+      "laptopCut": "Part of your laptop is out of the picture. Move the phone back so the whole keyboard shows.",
+      "confirm": "My phone shows me and my whole laptop, keyboard included",
+      "checkFailed": "The picture check couldn't start on this computer."
+    }
   },
   "ready": {
     "title": "You're ready",
