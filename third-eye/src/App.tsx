@@ -5,6 +5,7 @@ import { type JoinResponse, PairingError, redeem, rejoin, roomUrl, stillValid } 
 import { captureOptions, type Facing, needsTurning, nextFacing } from "./camera";
 import { cameraHelp, detectBrowser } from "./guidance";
 import { browserDeps } from "./livekit";
+import { type LockResult, lockLandscape } from "./orientation";
 import { EyeSession, type EyeState } from "./session";
 import { readToken, recallDevice, rememberDevice, wantsAutoStart } from "./token";
 
@@ -54,6 +55,8 @@ export function App() {
   const [switching, setSwitching] = useState(false);
   // The picture's shape follows how the phone stands; an upright phone films a tall picture.
   const [upright, setUpright] = useState(false);
+  // Whether the page could lock itself to landscape (it can only after a tap).
+  const [lock, setLock] = useState<LockResult | null>(null);
 
   // Spend the token at once: it lives two minutes. A reload rejoins with the device secret.
   useEffect(() => {
@@ -87,6 +90,9 @@ export function App() {
     if (!joined) return;
     setPhase("camera");
     setError(null);
+    // Before the camera opens, so it films landscape from the start, even with rotation locked.
+    // Only on a tap: the browser refuses full screen otherwise.
+    if (!autoStart) setLock(await lockLandscape());
     const credentials = async () => {
       const device = recallDevice(storage());
       if (!device) {
@@ -248,10 +254,23 @@ export function App() {
       )}
 
       {phase === "streaming" && upright && (
-        <p role="alert" className="turn">
-          Turn this phone sideways (landscape). Standing upright, it can't fit you and your whole
-          laptop in the picture.
-        </p>
+        <section role="alert" className="turn">
+          <p>
+            Turn this phone sideways (landscape). Standing upright, it can't fit you and your whole
+            laptop in the picture.
+          </p>
+          {lock !== "unsupported" && (
+            <button type="button" onClick={async () => setLock(await lockLandscape())}>
+              Turn to landscape
+            </button>
+          )}
+          {(lock === "unsupported" || lock === "refused") && (
+            <p>
+              If the picture stays upright with the phone sideways, switch rotation lock off
+              (auto-rotate on) in the phone's quick settings.
+            </p>
+          )}
+        </section>
       )}
       <video
         ref={preview}

@@ -254,9 +254,14 @@ export function ThirdEyeScreen({
               disabled={!green}
               onCheckedChange={(checked) => setConfirmed(checked === true)}
             />
-            <Label htmlFor={`${id}-confirm`} className="font-normal">
-              {t("check.confirm")}
-            </Label>
+            <div className="grid gap-1">
+              <Label htmlFor={`${id}-confirm`} className="font-normal">
+                {t("check.confirm")}
+              </Label>
+              {green ? null : (
+                <p className="text-muted-foreground text-sm">{t("check.confirmHint")}</p>
+              )}
+            </div>
           </div>
         </section>
       ) : null}
