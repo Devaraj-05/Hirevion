@@ -1,6 +1,7 @@
 // MediaPipe object detection off the UI thread, for the phone's picture (C8-3). Frames come in
 // as ImageBitmaps and leave as labelled boxes; pixels never leave the device. The model is the
-// bundled EfficientDet-Lite0 (COCO labels; only person, laptop and keyboard are kept).
+// bundled EfficientDet-Lite2 (COCO labels; only person, laptop and keyboard are kept): Lite0 gave
+// a laptop seen from the side 0.13, Lite2 0.6-0.7 (owner's preview, 2026-11-16).
 import { FilesetResolver, ObjectDetector } from "@mediapipe/tasks-vision";
 import type { Detection } from "../third-eye/framing";
 
@@ -9,7 +10,7 @@ import type { Detection } from "../third-eye/framing";
 const WASM_PATH = import.meta.env.DEV
   ? "/node_modules/@mediapipe/tasks-vision/wasm"
   : "/mediapipe/wasm";
-const MODEL_PATH = "/models/efficientdet_lite0.tflite";
+const MODEL_PATH = "/models/efficientdet_lite2.tflite";
 
 export type ToObjectWorker = { type: "frame"; bitmap: ImageBitmap; at: number };
 export type FromObjectWorker =
@@ -33,13 +34,10 @@ async function create(delegate: "GPU" | "CPU"): Promise<ObjectDetector> {
   });
 }
 
-async function load(): Promise<ObjectDetector> {
-  try {
-    return await create("GPU");
-  } catch {
-    // WebGL unavailable or the GPU delegate failed: the CPU delegate is fine at 2 frames a second.
-    return create("CPU");
-  }
+// The CPU only: on the owner's laptop (and in headless Chromium) the GPU delegate loaded but
+// returned no detections at all, so the check never saw anyone. About 0.3 s a frame on an i5.
+function load(): Promise<ObjectDetector> {
+  return create("CPU");
 }
 
 let detector: Promise<ObjectDetector> | null = null;

@@ -31,7 +31,6 @@ export function checkMessage(verdict: Verdict): string {
   if (seen === null) return "checking";
   if (seen.portrait) return "portrait";
   if (seen.person === "missing") return "personMissing";
-  if (seen.person === "cut") return "personCut";
   if (seen.laptop === "missing") return "laptopMissing";
   if (seen.laptop === "cut") return "laptopCut";
   return "hold";

@@ -155,7 +155,6 @@
       "green": "In the green zone: we can see you and your whole laptop.",
       "hold": "Almost there. Keep the phone still…",
       "personMissing": "We can't see you. Turn the phone towards you.",
-      "personCut": "Part of you is out of the picture. Move the phone back or turn it towards you.",
       "laptopMissing": "We can't see your laptop. Point the phone so the whole laptop is in the picture.",
       "laptopCut": "Part of your laptop is out of the picture. Move the phone back so the whole keyboard shows.",
       "confirm": "My phone shows me and my whole laptop, keyboard included",

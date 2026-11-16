@@ -37,8 +37,8 @@ export interface Framing {
 
 export const PERSON_MIN_SCORE = 0.5;
 export const LAPTOP_MIN_SCORE = 0.4;
-/** How close to an edge a box may come, as a share of the picture's side. */
-export const EDGE_MARGIN = 0.02;
+/** How close to an edge the laptop's box may come, as a share of the picture's side. */
+export const EDGE_MARGIN = 0.01;
 
 function best(detections: Detection[], labels: Set<string>, min: number): Detection | null {
   let found: Detection | null = null;
@@ -74,12 +74,9 @@ export function framing(detections: Detection[], width: number, height: number):
   const laptop =
     best(detections, new Set(["laptop"]), LAPTOP_MIN_SCORE) ??
     best(detections, new Set(["keyboard"]), LAPTOP_MIN_SCORE);
-  let personPart: Part = "missing";
-  if (person) {
-    const edges = touches(person.box, width, height);
-    // Their head and both sides must be in the picture; sitting at a desk, the legs needn't.
-    personPart = edges.top || edges.left || edges.right ? "cut" : "ok";
-  }
+  // Seen is enough: a candidate near the phone fills the picture, so their box reaches its
+  // edges (owner's preview, 2026-11-16).
+  const personPart: Part = person ? "ok" : "missing";
   let laptopPart: Part = "missing";
   if (laptop) {
     const edges = touches(laptop.box, width, height);

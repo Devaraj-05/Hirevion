@@ -63,17 +63,29 @@ describe("whether the phone's picture shows the candidate and their whole laptop
     expect(left.laptop).toBe("cut");
   });
 
-  it("isn't green when the candidate's head or side is cut off, but their legs may be", () => {
-    expect(framing([person(500, 0, 400, 700), laptop(150, 380, 380, 220)], W, H).person).toBe(
-      "cut",
-    );
+  it("counts the candidate when seen, even sitting close enough to reach the picture's edges", () => {
+    // A candidate near the phone fills the picture: their box touches the top and a side.
+    expect(framing([person(500, 0, 780, 720), laptop(150, 380, 380, 220)], W, H).person).toBe("ok");
     expect(framing([person(1000, 60, 280, 660), laptop(150, 380, 380, 220)], W, H).person).toBe(
-      "cut",
-    );
-    // Sitting at a desk, the bottom of the person's box reaches the bottom of the picture.
-    expect(framing([person(500, 60, 400, 660), laptop(150, 380, 380, 220)], W, H).person).toBe(
       "ok",
     );
+  });
+
+  it("reads the owner's real picture as it is: them clearly, the laptop cut at the left edge", () => {
+    // EfficientDet-Lite2 on the product owner's first landscape preview (2026-11-16, 693×390).
+    const seen = framing(
+      [person(86, 3, 618, 382, 0.93), laptop(0, 239, 345, 146, 0.609)],
+      693,
+      390,
+    );
+    expect(seen).toMatchObject({ person: "ok", laptop: "cut", green: false });
+    // The phone moved back so the whole laptop fits: green.
+    const moved = framing(
+      [person(260, 20, 380, 360, 0.9), laptop(30, 200, 280, 150, 0.7)],
+      693,
+      390,
+    );
+    expect(moved).toMatchObject({ person: "ok", laptop: "ok", green: true });
   });
 
   it("takes the best of each when the detector sees several", () => {
