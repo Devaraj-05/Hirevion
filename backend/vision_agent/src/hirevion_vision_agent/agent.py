@@ -10,6 +10,7 @@ Run it locally beside the interview agent: `uv run python -m hirevion_vision_age
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import os
@@ -18,22 +19,24 @@ from typing import Any
 from uuid import UUID
 
 from livekit import rtc
-from livekit.agents import AgentServer, AutoSubscribe, JobContext, JobProcess, cli
+from livekit.agents import AgentServer, AutoSubscribe, JobContext, JobProcess, JobRequest, cli
 from redis.asyncio import Redis
 
 from hirevion_core.db.session import Database, create_database
+from hirevion_core.interview_session.agent_load import session_load
 from hirevion_core.interview_session.conductor import vision_key
 from hirevion_core.interview_session.held_key import HeldKey
 from hirevion_core.interview_session.media import (
     ROLE_ATTRIBUTE,
     THIRD_EYE_PREFIX,
+    VISION_IDENTITY_PREFIX,
     VISION_ROLE,
 )
 from hirevion_core.models import Interview
 from hirevion_core.proctoring.service import ProctorEngine
 from hirevion_core.settings import load_core_settings
 from hirevion_core.storage.service import StorageService, load_storage_settings
-from hirevion_vision_agent.detector import Detector, MediaPipeDetector, Pixels, rgb_from_frame
+from hirevion_vision_agent.detector import Detector, MediaPipeDetector, rgb_from_frame
 from hirevion_vision_agent.settings import load_settings
 from hirevion_vision_agent.watcher import ThirdEyeWatcher
 
@@ -69,14 +72,35 @@ async def interview_status(db: Database, organization_id: UUID, interview_id: UU
         return interview.status if interview is not None else None
 
 
-async def frames(track: rtc.Track) -> AsyncIterator[Pixels]:
-    """The newest frame each time it is asked for one (older ones are dropped)."""
+async def frames(track: rtc.Track) -> AsyncIterator[rtc.VideoFrame]:
+    """The newest frame each time it is asked for one (older ones are dropped); the watcher
+    converts only those it looks at."""
     stream = rtc.VideoStream(track, capacity=1, format=rtc.VideoBufferType.RGBA)
     try:
         async for event in stream:
-            yield rgb_from_frame(event.frame)
+            yield event.frame
     finally:
         await stream.aclose()
+
+
+async def accept(request: JobRequest) -> None:
+    """Joins as `vision-agent-…`, marked `hv.role=vision` in its token: from its first moment
+    nothing takes it for the interviewer (whose leaving sends another)."""
+    await request.accept(
+        name="Vision",
+        identity=f"{VISION_IDENTITY_PREFIX}{request.job.id}",
+        attributes={ROLE_ATTRIBUTE: VISION_ROLE},
+    )
+
+
+async def stop(task: asyncio.Task[None] | None) -> None:
+    """Cancels a watch and waits for it, so its open episodes are closed before the agent's
+    connections are."""
+    if task is None:
+        return
+    task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await task
 
 
 def prewarm(process: JobProcess) -> None:
@@ -106,10 +130,9 @@ async def entrypoint(ctx: JobContext) -> None:
     watcher = ThirdEyeWatcher(
         organization_id, interview_id, detector, ProctorEngine(db, redis), storage
     )
-    watching: set[asyncio.Task[None]] = set()
+    current: list[asyncio.Task[None]] = []
 
     await ctx.connect(auto_subscribe=AutoSubscribe.SUBSCRIBE_NONE)
-    await ctx.room.local_participant.set_attributes({ROLE_ATTRIBUTE: VISION_ROLE})
 
     def subscribe(publication: rtc.RemoteTrackPublication, who: rtc.RemoteParticipant) -> None:
         if is_phone_camera(publication, who):
@@ -121,9 +144,14 @@ async def entrypoint(ctx: JobContext) -> None:
         if not is_phone_camera(publication, who):
             return
         log.info("Watching the third eye of interview %s", interview_id)
-        task = asyncio.create_task(watcher.watch(frames(track)))
-        watching.add(task)
-        task.add_done_callback(watching.discard)
+        previous = current.pop() if current else None
+
+        async def follow() -> None:
+            # One watch at a time: a phone that republished replaces the old stream's watch.
+            await stop(previous)
+            await watcher.watch(frames(track), convert=rgb_from_frame)
+
+        current.append(asyncio.create_task(follow()))
 
     ctx.room.on("track_published", subscribe)
     ctx.room.on("track_subscribed", on_subscribed)
@@ -139,8 +167,7 @@ async def entrypoint(ctx: JobContext) -> None:
                 break
         except Exception:
             log.warning("Couldn't read interview %s's status; retrying", interview_id)
-    for task in watching:
-        task.cancel()
+    await stop(current.pop() if current else None)
     ctx.shutdown(reason="interview over" if not lock.lost.is_set() else "lock lost")
 
 
@@ -148,20 +175,15 @@ def main() -> None:
     settings = load_settings()
     # Explicit dispatch only: the API sends this agent to an interview's room by name.
     os.environ.setdefault("LIVEKIT_AGENT_NAME", settings.hv_vision_agent_name)
-    max_sessions = settings.hv_vision_max_sessions
-
-    def load(server: Any) -> float:
-        return min(1.0, len(server.active_jobs) / max_sessions)
-
     server = AgentServer(
         ws_url=settings.livekit_url,
         api_key=settings.livekit_api_key,
         api_secret=settings.livekit_api_secret.get_secret_value(),
         setup_fnc=prewarm,
-        load_fnc=load,
+        load_fnc=session_load(settings.hv_vision_max_sessions),
         load_threshold=1.0,
     )
-    server.rtc_session(entrypoint)
+    server.rtc_session(entrypoint, on_request=accept)
     cli.run_app(server)
 
 

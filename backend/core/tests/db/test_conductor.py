@@ -782,3 +782,33 @@ async def test_an_interview_with_a_third_eye_also_gets_the_vision_agent(
     check, consent = await prepare(app_db, plain)
     await start(cond, plain, check, consent)
     assert media.vision_dispatches == [f"iv-{watched.interview_id}"]
+
+
+async def test_a_vision_agent_that_left_a_running_interview_is_sent_again(
+    app_db: Database,
+    admin_engine: AsyncEngine,
+    valkey: Redis,
+    make_organization: MakeOrganization,
+    make_hiring: Any,
+) -> None:
+    """C7-1: the vision agent crashed mid-interview; another one picks up the watch."""
+    scene = await invited(app_db, make_hiring, await make_organization("Acme"))
+    async with admin_engine.begin() as conn:
+        await conn.execute(
+            text(
+                'UPDATE interviews SET policy = policy || \'{"third_eye": "optional"}\'::jsonb '
+                "WHERE id = :a"
+            ),
+            {"a": scene.interview_id},
+        )
+    media = FakeMedia()
+    cond = conductor(app_db, valkey, media)
+    check, consent = await prepare(app_db, scene)
+    await start(cond, scene, check, consent)
+    assert len(media.vision_dispatches) == 1
+    assert await cond.redispatch_vision(scene.organization_id, scene.interview_id)
+    assert len(media.vision_dispatches) == 2
+    # One is running: nothing to do.
+    await valkey.set(f"hv:iv:{scene.interview_id}:vision", "job", ex=8)
+    assert not await cond.redispatch_vision(scene.organization_id, scene.interview_id)
+    assert len(media.vision_dispatches) == 2

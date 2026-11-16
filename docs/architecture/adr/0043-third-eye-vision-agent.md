@@ -20,7 +20,8 @@
 - **A worker of its own, `hirevion-vision`** (package `backend/vision_agent`), on LiveKit Agents like the interviewer:
   - The API dispatches it by name, beside the interviewer, when the interview has a third eye (`third_eye` not `off`) and proctoring isn't `off`.
   - It holds `hv:iv:{id}:vision` (core's `HeldKey`, now shared with the interviewer's lock), so a reconnect never sends a second one, and it stops when the interview ends.
-  - It sets the participant attribute `hv.role=vision`, so the webhook doesn't take its leaving for the interviewer's.
+  - It accepts each job as `vision-agent-{job}`, with `hv.role=vision` in its token, so from its first moment the webhook never takes its leaving for the interviewer's. Its own leaving mid-interview (`vision_left`) sends another one, unless one still holds the key.
+  - When the phone's stream ends or the interview does, open episodes are closed with their length before the agent's connections are; a phone that republishes replaces the old stream's watch.
 - **What it watches:** only the phone's camera (`third-eye-*`, source camera), through `rtc.VideoStream` keeping the newest frame. Twice a second at most, one frame at a time, it runs MediaPipe's EfficientDet-Lite2 on the CPU in a thread (about 0.2 s a frame).
   - It is the desktop's placement model (ADR-0042), the same file checked by hash, keeping `person` and `cell phone`.
 - **Rules** (`watch.py`, pure):
@@ -35,6 +36,7 @@
   - the third eye's recording window as usual.
   - The rules give both kinds CRITICAL (a phone at once, a second person after 3 s). The existing follow-ups then do the rest: the candidate's on-screen nudge, the AI interviewer's reminder at its next turn ("Please put any phones or other devices away" / "It looks like someone else may be with you…"), the recruiter's live alert, and snapshot requests to the desktop.
   - `detection_ended` closes the event with its length.
+  - A snapshot nothing recorded (proctoring off or paused) is deleted again at once, so no unlinked frame of the room stays in storage.
 - **Dependency:** `mediapipe` (Apache-2.0), with its transitive OpenCV (contrib), matplotlib, sounddevice and others: about 150 MB, only in this worker's environment. They pass the licence gate.
 
 ## Consequences

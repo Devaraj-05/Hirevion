@@ -21,14 +21,12 @@ from hirevion_core.storage.paths import BlobPath, interview_blob
 from hirevion_vision_agent.detector import Detector, Pixels, jpeg
 from hirevion_vision_agent.watch import (
     EVENTS,
-    PERSON_MIN_AREA,
-    PERSON_MIN_SCORE,
-    PHONE_MIN_SCORE,
     Detection,
     Ended,
     Kind,
     Started,
     Watch,
+    people_and_phones,
     seen,
 )
 
@@ -60,21 +58,18 @@ class Recorder(Protocol):
 class Uploads(Protocol):
     async def put(self, path: BlobPath, data: bytes, content_type: str) -> None: ...
 
+    async def delete(self, path: BlobPath) -> None: ...
+
 
 def summary(found: list[Detection], width: int, height: int) -> dict[str, Any]:
-    """What the event records about the frame: counts and the best scores, no pixels."""
-    least = PERSON_MIN_AREA * width * height
-    people = [
-        d.score
-        for d in found
-        if d.label == "person" and d.score >= PERSON_MIN_SCORE and d.width * d.height >= least
-    ]
-    phones = [d.score for d in found if d.label == "cell phone" and d.score >= PHONE_MIN_SCORE]
+    """What the event records about the frame: counts and the best scores, no pixels. Counted by
+    the same rule that decides the episode (`people_and_phones`)."""
+    people, phones = people_and_phones(found, width, height)
     details: dict[str, Any] = {"people": len(people), "phones": len(phones)}
     if people:
-        details["best_person"] = round(max(people), 2)
+        details["best_person"] = round(max(d.score for d in people), 2)
     if phones:
-        details["best_phone"] = round(max(phones), 2)
+        details["best_phone"] = round(max(d.score for d in phones), 2)
     return details
 
 
@@ -100,19 +95,34 @@ class ThirdEyeWatcher:
         self._watch = Watch()
         self._open: dict[Kind, UUID] = {}
 
-    async def watch(self, frames: AsyncIterator[Pixels]) -> None:
-        """Checks the frames, at most one every `interval` seconds."""
+    async def watch(
+        self, frames: AsyncIterator[Any], convert: Callable[[Any], Pixels] = lambda raw: raw
+    ) -> None:
+        """Checks the frames, at most one every `interval` seconds; only those are converted to
+        pixels. When the frames stop (the phone left, the watch is cancelled), the open
+        episodes are closed."""
         last: datetime | None = None
-        async for pixels in frames:
-            now = self._now()
-            if last is not None and (now - last).total_seconds() < self._interval:
-                continue
-            last = now
+        try:
+            async for raw in frames:
+                now = self._now()
+                if last is not None and (now - last).total_seconds() < self._interval:
+                    continue
+                last = now
+                try:
+                    await self.frame(convert(raw))
+                except Exception:
+                    # One bad frame (a storage hiccup, a detector error) mustn't stop the watch.
+                    log.exception("The third eye's frame couldn't be checked")
+        finally:
+            await self.close()
+
+    async def close(self) -> None:
+        """Ends the open episodes where they were last seen."""
+        for ended in self._watch.close_all():
             try:
-                await self.frame(pixels)
+                await self._ended(ended)
             except Exception:
-                # One bad frame (a storage hiccup, a detector error) mustn't stop the watch.
-                log.exception("The third eye's frame couldn't be checked")
+                log.exception("The third eye's %s episode couldn't be closed", ended.kind)
 
     async def frame(self, pixels: Pixels) -> None:
         now = self._now()
@@ -128,6 +138,7 @@ class ThirdEyeWatcher:
         self, change: Started, now: datetime, pixels: Pixels, details: dict[str, Any]
     ) -> None:
         started_at = datetime.fromtimestamp(change.at, UTC)
+        log.info("Third eye of interview %s: %s seen", self._interview, EVENTS[change.kind])
         data = jpeg(pixels)
         name = f"third-eye-{change.kind}-{int(now.timestamp() * 1000)}.jpg"
         path = interview_blob(self._org, self._interview, "evidence", name)
@@ -141,11 +152,16 @@ class ThirdEyeWatcher:
             details=details,
             snapshot=Snapshot(str(path), len(data), hashlib.sha256(data).hexdigest()),
         )
-        if event_id is not None:
-            self._open[change.kind] = event_id
+        if event_id is None:
+            # Nothing recorded it (proctoring off or paused): no event links the frame, so it
+            # mustn't stay in storage.
+            await self._uploads.delete(path)
+            return
+        self._open[change.kind] = event_id
 
     async def _ended(self, change: Ended) -> None:
         event_id = self._open.pop(change.kind, None)
+        log.info("Third eye of interview %s: %s over", self._interview, EVENTS[change.kind])
         if event_id is None:
             return
         await self._recorder.detection_ended(

@@ -37,7 +37,7 @@ def rgb_from_frame(frame: rtc.VideoFrame) -> Pixels:
     rgba = (
         frame if frame.type == rtc.VideoBufferType.RGBA else frame.convert(rtc.VideoBufferType.RGBA)
     )
-    data = np.frombuffer(bytes(rgba.data), dtype=np.uint8)
+    data = np.frombuffer(rgba.data, dtype=np.uint8)
     return np.ascontiguousarray(data.reshape(rgba.height, rgba.width, 4)[:, :, :3])
 
 

@@ -79,6 +79,9 @@ async def livekit_webhook(request: Request) -> None:
             )
         elif event.kind == "agent_left":
             await runner.redispatch(event.organization_id, event.interview_id)
+        elif event.kind == "vision_left":
+            # The third eye's vision agent crashed mid-interview (C7-1): send another.
+            await runner.redispatch_vision(event.organization_id, event.interview_id)
         await _proctoring(request, event)
         await third_eye(request).on_media(event)
     except AccessError as error:

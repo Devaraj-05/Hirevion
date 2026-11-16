@@ -56,18 +56,26 @@ class Ended:
     started_at: float
 
 
-def seen(detections: Iterable[Detection], width: int, height: int) -> dict[Kind, bool]:
-    """What one frame shows: a second person, a phone."""
+def people_and_phones(
+    detections: Iterable[Detection], width: int, height: int
+) -> tuple[list[Detection], list[Detection]]:
+    """The people (sure enough, and big enough to be in the room) and the phones a frame shows."""
     least = PERSON_MIN_AREA * width * height
-    people = 0
-    phone = False
+    people: list[Detection] = []
+    phones: list[Detection] = []
     for found in detections:
         if found.label == "person" and found.score >= PERSON_MIN_SCORE:
             if found.width * found.height >= least:
-                people += 1
+                people.append(found)
         elif found.label == "cell phone" and found.score >= PHONE_MIN_SCORE:
-            phone = True
-    return {"unexpected_person": people >= 2, "phone": phone}
+            phones.append(found)
+    return people, phones
+
+
+def seen(detections: Iterable[Detection], width: int, height: int) -> dict[Kind, bool]:
+    """What one frame shows: a second person, a phone."""
+    people, phones = people_and_phones(detections, width, height)
+    return {"unexpected_person": len(people) >= 2, "phone": bool(phones)}
 
 
 @dataclass(slots=True)
@@ -93,6 +101,9 @@ class Watch:
                     track.since = now
                 track.last_seen = now
                 cooled = track.last_started is None or now - track.last_started >= COOLDOWN_SECONDS
+                if not cooled and track.open_since is None:
+                    # Still the minute after the last episode: a new one, if any, starts after it.
+                    track.since = now
                 if track.open_since is None and now - track.since >= HOLD_SECONDS[kind] and cooled:
                     track.open_since = track.since
                     track.last_started = now
@@ -107,3 +118,14 @@ class Watch:
             elif last is None or now - last >= GAP_SECONDS:
                 track.since = None
         return happened
+
+    def close_all(self) -> list[Ended]:
+        """The open episodes, ended where they were last seen (the watch is stopping)."""
+        ended: list[Ended] = []
+        for kind in KINDS:
+            track = self._tracks[kind]
+            if track.open_since is not None and track.last_seen is not None:
+                ended.append(Ended(kind, track.last_seen, track.open_since))
+            track.open_since = None
+            track.since = None
+        return ended

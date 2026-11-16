@@ -155,7 +155,11 @@ def test_only_the_interviewer_leaving_counts_as_the_agent_leaving(media: LiveKit
     body, token = signed("participant_left", "agent-AJ_1", participant=interviewer)
     assert media.parse_webhook(body, token).kind == "agent_left"
     body, token = signed("participant_left", "agent-AJ_2", participant=vision)
-    assert media.parse_webhook(body, token).kind == "other"
+    assert media.parse_webhook(body, token).kind == "vision_left"
+    # Its identity says so too, from the moment it joins (before any attribute is set).
+    named = {"identity": "vision-agent-AJ_3", "kind": "AGENT"}
+    body, token = signed("participant_left", "vision-agent-AJ_3", participant=named)
+    assert media.parse_webhook(body, token).kind == "vision_left"
 
 
 def test_metadata_naming_another_interview_than_the_room_is_ignored(media: LiveKitMedia) -> None:

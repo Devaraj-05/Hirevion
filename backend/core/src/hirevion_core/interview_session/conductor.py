@@ -989,6 +989,27 @@ class Conductor:
             await self.set_voice(interview_id, "paused")
         return True
 
+    async def redispatch_vision(self, organization_id: UUID, interview_id: UUID) -> bool:
+        """Sends another vision agent when the last one left an interview that's still running
+        with a third eye (C7-1). The new one waits for the old one's key to lapse. False when
+        there was nothing to do."""
+        if self._media is None:
+            return False
+        async with self._db.tenant(organization_id) as session:
+            interview = await session.get(Interview, interview_id)
+            if interview is None or interview.status not in ("in_progress", "interrupted"):
+                return False
+            if not watches_third_eye(interview.policy or {}):
+                return False
+        if await self.vision_alive(interview_id):
+            return False
+        try:
+            await self._media.dispatch_vision(interview_id, organization_id)
+        except MediaError:
+            log.exception("Couldn't send another vision agent to interview %s", interview_id)
+            return False
+        return True
+
     async def redispatch(self, organization_id: UUID, interview_id: UUID) -> bool:
         """Sends another agent when the last one left an interview that's still running in voice
         mode (it crashed); the new one waits for the agent lock and resumes from the

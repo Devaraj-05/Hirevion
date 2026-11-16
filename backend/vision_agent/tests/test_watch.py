@@ -84,3 +84,24 @@ class TestEpisodes:
     def test_a_person_and_a_phone_are_watched_apart(self) -> None:
         happened = run(Watch(), every(10, 13, both(person=True, phone=True)))
         assert happened == [Started("phone", 10.0), Started("unexpected_person", 10.0)]
+
+
+class TestCooldownAndEnding:
+    def test_an_episode_after_the_cooldown_starts_when_it_was_seen_then_not_a_minute_before(
+        self,
+    ) -> None:
+        watch = Watch()
+        run(watch, every(10, 12, both(phone=True)))  # first episode, started at 12
+        run(watch, every(12.5, 20, both()))
+        happened = run(watch, every(30, 80, both(phone=True)))  # in view all along
+        (started,) = happened
+        assert started.kind == "phone" and started.at >= 71.0
+
+    def test_open_episodes_close_when_the_watch_ends(self) -> None:
+        watch = Watch()
+        run(watch, every(10, 13, both(phone=True, person=True)))
+        assert watch.close_all() == [
+            Ended("phone", 13.0, 10.0),
+            Ended("unexpected_person", 13.0, 10.0),
+        ]
+        assert watch.close_all() == []

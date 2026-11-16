@@ -69,6 +69,9 @@ class Uploads:
     async def put(self, path: BlobPath, data: bytes, content_type: str) -> None:
         self.put_calls.append((str(path), data, content_type))
 
+    async def delete(self, path: BlobPath) -> None:
+        return None
+
 
 def watcher(script: list[list[Detection]], recorder: Recorder | None = None):
     clock = Clock()
@@ -119,3 +122,44 @@ async def test_it_looks_at_most_twice_a_second() -> None:
     watch, clock, (detector, _, _) = watcher([[]])
     await watch.watch(frames_every(clock, 0.1, 30))  # 30 frames over 3 s
     assert 5 <= detector.calls <= 7
+
+
+class DeletingUploads(Uploads):
+    def __init__(self) -> None:
+        super().__init__()
+        self.deleted: list[str] = []
+
+    async def delete(self, path: BlobPath) -> None:
+        self.deleted.append(str(path))
+
+
+async def test_a_snapshot_nothing_recorded_is_deleted_again() -> None:
+    """Proctoring off or paused: no event links the frame, so it mustn't stay in storage."""
+    clock = Clock()
+    recorder, uploads = Recorder(), DeletingUploads()
+    recorder.answer = None  # type: ignore[assignment]
+    watch = ThirdEyeWatcher(ORG, INTERVIEW, Detector([[PHONE]]), recorder, uploads, now=clock)
+    for _ in range(6):
+        await watch.frame(FRAME)
+        clock.now += timedelta(seconds=0.5)
+    ((path, _, _),) = uploads.put_calls
+    assert uploads.deleted == [path]
+
+
+async def test_an_open_episode_is_closed_when_the_phones_stream_ends() -> None:
+    event_id = uuid4()
+    watch, clock, (_, recorder, _) = watcher([[PHONE]], Recorder(event_id))
+    await watch.watch(frames_every(clock, 0.5, 6))  # 3 s of a phone, then the stream ends
+    assert recorder.ended_calls == [(event_id, 2_500)]
+
+
+async def test_only_the_frames_it_looks_at_are_converted() -> None:
+    watch, clock, _ = watcher([[]])
+    converted: list[Any] = []
+
+    def convert(raw: Any) -> Any:
+        converted.append(raw)
+        return FRAME
+
+    await watch.watch(frames_every(clock, 0.1, 30), convert=convert)
+    assert 5 <= len(converted) <= 7

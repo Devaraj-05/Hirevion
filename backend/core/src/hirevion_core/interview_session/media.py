@@ -32,6 +32,9 @@ AGENT_NAME = "hirevion-interviewer"
 VISION_AGENT_NAME = "hirevion-vision"
 ROLE_ATTRIBUTE = "hv.role"
 VISION_ROLE = "vision"
+# The identity the vision agent joins with (it accepts its jobs so), so it is known from its
+# first moment, before any attribute.
+VISION_IDENTITY_PREFIX = "vision-agent-"
 CANDIDATE_SOURCES = ("microphone", "camera", "screen_share")
 ROOM_PREFIX = "iv-"
 MAX_PARTICIPANTS = 6
@@ -121,6 +124,7 @@ MediaKind = Literal[
     "candidate_left",
     "candidate_joined",
     "agent_left",
+    "vision_left",
     "room_finished",
     "track_published",
     "track_unpublished",
@@ -545,10 +549,11 @@ class LiveKitMedia:
             return MediaEvent("other", None, None)
         identity = event.participant.identity or None
         # The interviewer: the vision agent is an agent too, but its leaving needs no new voice.
-        is_agent = (
-            event.participant.kind == ParticipantInfo.Kind.AGENT
-            and event.participant.attributes.get(ROLE_ATTRIBUTE) != VISION_ROLE
+        is_vision = event.participant.kind == ParticipantInfo.Kind.AGENT and (
+            event.participant.attributes.get(ROLE_ATTRIBUTE) == VISION_ROLE
+            or (identity or "").startswith(VISION_IDENTITY_PREFIX)
         )
+        is_agent = event.participant.kind == ParticipantInfo.Kind.AGENT and not is_vision
         kind: MediaKind
         track: str | None = None
         if event.event == "room_finished":
@@ -586,6 +591,8 @@ class LiveKitMedia:
             kind = "third_eye_joined" if event.event == "participant_joined" else "third_eye_left"
         elif event.event == "participant_left" and is_agent:
             kind = "agent_left"
+        elif event.event == "participant_left" and is_vision:
+            kind = "vision_left"
         elif event.event == "participant_left" and identity and identity.startswith("candidate-"):
             kind = "candidate_left"
         elif event.event == "participant_joined" and identity and identity.startswith("candidate-"):
