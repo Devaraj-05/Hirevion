@@ -26,6 +26,7 @@
 - **The check (on the device):**
   - A worker runs MediaPipe's EfficientDet-Lite0 (int8, Apache-2.0, bundled in `public/models`) twice a second on the phone's picture, keeping only `person`, `laptop` and `keyboard`. Pixels never leave the desktop.
   - The picture is green with a person (score ≥ 0.5) whose head and sides are inside the picture (legs may be cut by the desk), and a laptop or keyboard (score ≥ 0.4) wholly inside it, each at least 2% of the side from the edges.
+  - A picture taller than wide is never green. An upright phone can't fit the candidate and the laptop together, and a web page can't make it film landscape. The desktop and the phone page both say to turn the phone sideways (owner's first preview, 2026-11-15).
   - Green must hold for 3 s; it drops after 1 s without.
   - The preview draws both boxes: green when inside the picture, amber when cut off. A status line says what to fix.
 - **Strict gate:**

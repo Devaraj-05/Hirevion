@@ -112,6 +112,7 @@ export function App() {
           }
         : await credentials();
       await session.current?.stop();
+      setUpright(false); // a new stream reports its own shape
       const next = new EyeSession(deps, first, setState);
       session.current = next;
       await next.start();
@@ -258,6 +259,10 @@ export function App() {
         muted
         playsInline
         hidden={phase !== "streaming"}
+        // The first size may come with the metadata and no `resize` (some WebKit versions).
+        onLoadedMetadata={(event) =>
+          setUpright(needsTurning(event.currentTarget.videoWidth, event.currentTarget.videoHeight))
+        }
         onResize={(event) =>
           setUpright(needsTurning(event.currentTarget.videoWidth, event.currentTarget.videoHeight))
         }

@@ -23,6 +23,7 @@ import {
   Steady,
   toScreen,
 } from "./framing";
+import { NOTHING, sameVerdict, type Verdict } from "./verdict";
 
 /** How often a frame of the phone's picture is checked. */
 const TICK_MS = 500;
@@ -42,28 +43,6 @@ const STUB_PICTURE: Seen = {
     { label: "laptop", score: 0.8, box: { x: 160, y: 380, width: 380, height: 220 } },
   ] satisfies Detection[],
 };
-
-export interface Verdict {
-  /** Held green: the candidate and their whole laptop are in the picture. */
-  green: boolean;
-  /** The latest frame's verdict, or `null` before the first one. */
-  framing: Framing | null;
-  /** While green, the latest green frame's verdict: what the placement record carries. */
-  evidence: Framing | null;
-}
-
-const NOTHING: Verdict = { green: false, framing: null, evidence: null };
-
-/** Whether the screen would show anything different (it re-renders only then). */
-function same(a: Verdict, b: Verdict): boolean {
-  return (
-    a.green === b.green &&
-    a.framing?.person === b.framing?.person &&
-    a.framing?.laptop === b.framing?.laptop &&
-    (a.framing === null) === (b.framing === null) &&
-    a.evidence === b.evidence
-  );
-}
 
 type Mode = "loading" | "live" | "stub" | "failed" | "check-failed";
 
@@ -179,7 +158,7 @@ export function PhonePreview({
       const green = steady.update(verdict.green, performance.now());
       draw(overlay.current, verdict, seen);
       const next: Verdict = { green, framing: verdict, evidence: green ? lastGreen : null };
-      if (!same(shown, next)) {
+      if (!sameVerdict(shown, next)) {
         shown = next;
         latest.current(next);
       }
@@ -245,7 +224,8 @@ function draw(canvas: HTMLCanvasElement | null, verdict: Framing, seen: Seen) {
   const outline = (box: Box | null, part: Part) => {
     if (!box) return;
     const placed = toScreen(box, seen, { width, height });
-    context.strokeStyle = COLORS[part];
+    // An upright phone's picture can't pass, so nothing in it is drawn as passing.
+    context.strokeStyle = verdict.portrait ? COLORS.cut : COLORS[part];
     context.lineWidth = 3;
     context.strokeRect(placed.x, placed.y, placed.width, placed.height);
   };

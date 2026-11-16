@@ -3,9 +3,9 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslations } from "use-intl";
 import type { SystemCheckPayload } from "../checks/payload";
 import { commands, isCommandError, type PairingView } from "../native/commands";
-import type { Framing } from "../third-eye/framing";
 import { phoneState, type ThirdEyeMode } from "../third-eye/pairing";
-import { PhonePreview, type Verdict } from "../third-eye/preview";
+import { PhonePreview } from "../third-eye/preview";
+import { checkMessage, type Verdict } from "../third-eye/verdict";
 import { ErrorText } from "./shell";
 
 /** How often the step reads the pairing's status (contract third-eye.md: every 2 s). */
@@ -311,17 +311,4 @@ export function ThirdEyeScreen({
       </div>
     </section>
   );
-}
-
-/** What the status line under the phone's picture says. */
-function checkMessage(verdict: Verdict): string {
-  const seen: Framing | null = verdict.framing;
-  if (verdict.green) return "green";
-  if (seen === null) return "checking";
-  if (seen.portrait) return "portrait";
-  if (seen.person === "missing") return "personMissing";
-  if (seen.person === "cut") return "personCut";
-  if (seen.laptop === "missing") return "laptopMissing";
-  if (seen.laptop === "cut") return "laptopCut";
-  return "hold";
 }
