@@ -221,6 +221,8 @@ A box is ticked in the PR that merges the part. Deliverables are in MASTER §14;
   - [ ] 2. A real interview on the desktop app with the product owner's own voice; review the transcript, the questions asked and the evaluation. Watch for an answer split in two when a final transcript is late (STATUS "Found in testing").
   - Exit: the benchmark completes on real AI with p95 ≤ 2.5 s (or the gap is recorded with its cause), and one real spoken interview is completed and evaluated.
 - [ ] **C7 Vision agent (SP-15a and SP-15b server).** Depends on: C5, D3. See MASTER §14 SP-15a, SP-15b.
+  - [x] C7-1 (owner, 2026-11-16; ADR-0043, plan `docs/superpowers/plans/2026-11-16-c7-third-eye-vision-agent.md`): a server vision agent watches the third eye for a second person (held 3 s) and any phone (2 s); each is a CRITICAL third-eye event with a snapshot, a nudge and the AI's reminder. Checked live with a scripted phone; the owner's spoken check is next.
+  - [ ] C7-2: precision and recall on a labelled set, false positives per 45-minute session; the other §53 signals (posture, hands, secondary screen, unusual movement), speech analytics and cross-camera correlation.
   - Exit: each detector's precision and recall is reported on the labelled set; no signal is shown as proof.
 
 ### Lane D — quality, media services, identity and governance
