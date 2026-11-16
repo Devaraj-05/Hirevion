@@ -258,9 +258,9 @@ export function ThirdEyeScreen({
               <Label htmlFor={`${id}-confirm`} className="font-normal">
                 {t("check.confirm")}
               </Label>
-              {green ? null : (
+              {!green && verdict.framing !== null ? (
                 <p className="text-muted-foreground text-sm">{t("check.confirmHint")}</p>
-              )}
+              ) : null}
             </div>
           </div>
         </section>

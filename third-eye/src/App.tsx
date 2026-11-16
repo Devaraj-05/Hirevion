@@ -5,7 +5,7 @@ import { type JoinResponse, PairingError, redeem, rejoin, roomUrl, stillValid } 
 import { captureOptions, type Facing, needsTurning, nextFacing } from "./camera";
 import { cameraHelp, detectBrowser } from "./guidance";
 import { browserDeps } from "./livekit";
-import { type LockResult, lockLandscape } from "./orientation";
+import { type LockResult, lockLandscape, turnAdvice } from "./orientation";
 import { EyeSession, type EyeState } from "./session";
 import { readToken, recallDevice, rememberDevice, wantsAutoStart } from "./token";
 
@@ -189,6 +189,19 @@ export function App() {
     }
   }
 
+  // Locks the page to landscape, then restarts the camera so it films the new orientation.
+  async function turnToLandscape() {
+    const result = await lockLandscape();
+    setLock(result);
+    if (result !== "locked") return;
+    try {
+      await camera.current?.restartTrack(captureOptions(facing));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    }
+  }
+
+  const advice = turnAdvice(lock);
   return (
     <main className="eye">
       <h1>Third Eye</h1>
@@ -254,17 +267,17 @@ export function App() {
       )}
 
       {phase === "streaming" && upright && (
-        <section role="alert" className="turn">
-          <p>
+        <section className="turn">
+          <p role="alert">
             Turn this phone sideways (landscape). Standing upright, it can't fit you and your whole
             laptop in the picture.
           </p>
-          {lock !== "unsupported" && (
-            <button type="button" onClick={async () => setLock(await lockLandscape())}>
+          {advice.button && (
+            <button type="button" onClick={() => void turnToLandscape()}>
               Turn to landscape
             </button>
           )}
-          {(lock === "unsupported" || lock === "refused") && (
+          {advice.rotationHint && (
             <p>
               If the picture stays upright with the phone sideways, switch rotation lock off
               (auto-rotate on) in the phone's quick settings.

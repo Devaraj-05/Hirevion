@@ -160,7 +160,7 @@
       "laptopCut": "Part of your laptop is out of the picture. Move the phone back so the whole keyboard shows.",
       "confirm": "My phone shows me and my whole laptop, keyboard included",
       "checkFailed": "The picture check couldn't start on this computer.",
-      "portrait": "Your phone sends an upright picture. Turn it sideways (landscape); if it already is, tap “Turn to landscape” on the phone.",
+      "portrait": "Your phone sends an upright picture. Turn it sideways (landscape); if it already is, follow the steps on the phone's screen.",
       "confirmHint": "You can tick this once the picture is green."
     }
   },
