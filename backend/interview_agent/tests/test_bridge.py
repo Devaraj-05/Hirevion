@@ -61,9 +61,10 @@ async def test_one_agent_holds_an_interview_until_it_dies(valkey: Redis) -> None
 async def test_a_lock_another_agent_took_is_reported_lost(
     valkey: Redis, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from hirevion_interview_agent import lock as lock_module
+    from hirevion_core.interview_session import held_key
 
-    monkeypatch.setattr(lock_module, "REFRESH_SECONDS", 0.05)
+    # The lock is core's HeldKey (shared with the vision agent, C7-1): speed its refresh up.
+    monkeypatch.setattr(held_key, "REFRESH_SECONDS", 0.05)
     interview = UUID(int=8)
     mine = AgentLock(valkey, interview, "job-a", ttl=5)
     assert await mine.acquire(wait=0)

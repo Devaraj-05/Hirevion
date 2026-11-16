@@ -148,6 +148,16 @@ def test_track_events_without_the_rooms_metadata_still_name_their_interview(
     )
 
 
+def test_only_the_interviewer_leaving_counts_as_the_agent_leaving(media: LiveKitMedia) -> None:
+    """C7-1: the vision agent is an agent too; its leaving mustn't send another interviewer."""
+    interviewer = {"identity": "agent-AJ_1", "kind": "AGENT"}
+    vision = {"identity": "agent-AJ_2", "kind": "AGENT", "attributes": {"hv.role": "vision"}}
+    body, token = signed("participant_left", "agent-AJ_1", participant=interviewer)
+    assert media.parse_webhook(body, token).kind == "agent_left"
+    body, token = signed("participant_left", "agent-AJ_2", participant=vision)
+    assert media.parse_webhook(body, token).kind == "other"
+
+
 def test_metadata_naming_another_interview_than_the_room_is_ignored(media: LiveKitMedia) -> None:
     other = json.dumps({"interview_id": str(UUID(int=99)), "organization_id": str(ORGANIZATION)})
     body, token = signed("track_published", "third-eye-abc", other, track={"source": "CAMERA"})

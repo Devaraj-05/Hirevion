@@ -27,6 +27,11 @@ from hirevion_core.settings import repo_env_file
 log = logging.getLogger(__name__)
 
 AGENT_NAME = "hirevion-interviewer"
+# The third eye's vision agent (C7-1): its own worker, marked by this participant attribute so its
+# leaving isn't taken for the interviewer's.
+VISION_AGENT_NAME = "hirevion-vision"
+ROLE_ATTRIBUTE = "hv.role"
+VISION_ROLE = "vision"
 CANDIDATE_SOURCES = ("microphone", "camera", "screen_share")
 ROOM_PREFIX = "iv-"
 MAX_PARTICIPANTS = 6
@@ -53,6 +58,8 @@ class MediaSettings(BaseSettings):
     )
     agent_name: str = AGENT_NAME
     """`HV_AGENT_NAME`: the name the interview agent registers under (the agent's own setting)."""
+    vision_agent_name: str = VISION_AGENT_NAME
+    """`HV_VISION_AGENT_NAME`: the name the third eye's vision agent registers under (C7-1)."""
     media_backend: Literal["livekit", "fake"] = "livekit"
     """`fake` (CI, the simulator, end-to-end tests) signs no real tokens and dispatches nothing;
     production refuses it."""
@@ -220,6 +227,10 @@ class MediaControl(Protocol):
     async def ensure_room(self, interview_id: UUID, organization_id: UUID) -> str: ...
 
     async def dispatch_agent(self, interview_id: UUID, organization_id: UUID) -> str: ...
+
+    async def dispatch_vision(self, interview_id: UUID, organization_id: UUID) -> str:
+        """Sends the third eye's vision agent to the interview's room (C7-1)."""
+        ...
 
     async def candidate_present(self, interview_id: UUID, identity: str) -> bool: ...
 
@@ -467,6 +478,12 @@ class LiveKitMedia:
         return None
 
     async def dispatch_agent(self, interview_id: UUID, organization_id: UUID) -> str:
+        return await self._dispatch(interview_id, organization_id, self._settings.agent_name)
+
+    async def dispatch_vision(self, interview_id: UUID, organization_id: UUID) -> str:
+        return await self._dispatch(interview_id, organization_id, self._settings.vision_agent_name)
+
+    async def _dispatch(self, interview_id: UUID, organization_id: UUID, agent_name: str) -> str:
         from livekit import api
 
         room = room_name(interview_id)
@@ -476,13 +493,13 @@ class LiveKitMedia:
             ) as client:
                 dispatch = await client.agent_dispatch.create_dispatch(
                     api.CreateAgentDispatchRequest(
-                        agent_name=self._settings.agent_name,
+                        agent_name=agent_name,
                         room=room,
                         metadata=_metadata(interview_id, organization_id),
                     )
                 )
         except Exception as error:
-            raise MediaError(f"couldn't dispatch the agent to {room}") from error
+            raise MediaError(f"couldn't dispatch {agent_name} to {room}") from error
         return str(dispatch.id)
 
     async def candidate_present(self, interview_id: UUID, identity: str) -> bool:
@@ -527,7 +544,11 @@ class LiveKitMedia:
         if interview_id is None or (named is not None and named != interview_id):
             return MediaEvent("other", None, None)
         identity = event.participant.identity or None
-        is_agent = event.participant.kind == ParticipantInfo.Kind.AGENT
+        # The interviewer: the vision agent is an agent too, but its leaving needs no new voice.
+        is_agent = (
+            event.participant.kind == ParticipantInfo.Kind.AGENT
+            and event.participant.attributes.get(ROLE_ATTRIBUTE) != VISION_ROLE
+        )
         kind: MediaKind
         track: str | None = None
         if event.event == "room_finished":
@@ -678,6 +699,7 @@ class FakeMedia:
     url: str = "wss://livekit.example.test"
     rooms: list[str] = field(default_factory=list)
     dispatches: list[str] = field(default_factory=list)
+    vision_dispatches: list[str] = field(default_factory=list)
     tokens: list[ParticipantToken] = field(default_factory=list)
     events: list[MediaEvent] = field(default_factory=list)
     present: set[str] = field(default_factory=set)
@@ -785,6 +807,12 @@ class FakeMedia:
             raise MediaError("the fake media server is down")
         self.dispatches.append(room_name(interview_id))
         return f"AD_{len(self.dispatches)}"
+
+    async def dispatch_vision(self, interview_id: UUID, organization_id: UUID) -> str:
+        if self.fail:
+            raise MediaError("the fake media server is down")
+        self.vision_dispatches.append(room_name(interview_id))
+        return f"AD_vision_{len(self.vision_dispatches)}"
 
     async def candidate_present(self, interview_id: UUID, identity: str) -> bool:
         return identity in self.present

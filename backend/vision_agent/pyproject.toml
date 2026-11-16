@@ -1,0 +1,23 @@
+[project]
+name = "hirevion-vision-agent"
+version = "0.1.0"
+description = "LiveKit Agents worker that watches the third eye's picture for a second person and phones (C7)."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "hirevion-core",
+  "livekit-agents>=1.2",
+  "mediapipe>=1.2.3",
+  "numpy>=2.0",
+  "pillow>=11.0",
+  "pydantic-settings>=2.4",
+]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hirevion_vision_agent"]
+
+[tool.uv.sources]
+hirevion-core = { workspace = true }

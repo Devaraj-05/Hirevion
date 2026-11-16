@@ -176,7 +176,7 @@ jobs:
         run: uv run hv trace --check
       - run: >-
           uv run mypy tools/devcli/src backend/core/src backend/api/src
-          backend/interview_agent/src tools/voice_bench/src tools/interview-simulator/src
+          backend/interview_agent/src backend/vision_agent/src tools/voice_bench/src tools/interview-simulator/src
       - name: Bandit (medium severity and up fails; pyproject.toml has the settings)
         run: bash scripts/gates.sh bandit
       - name: Interview evaluation gate (a regressed prompt or rubric fails here; mock profile)

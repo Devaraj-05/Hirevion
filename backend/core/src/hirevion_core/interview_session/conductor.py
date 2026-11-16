@@ -51,6 +51,7 @@ from hirevion_core.interview_session.briefing import (
     duration_minutes,
     resume_policy,
     third_eye_mode,
+    watches_third_eye,
 )
 from hirevion_core.interview_session.media import MediaControl, MediaError, ParticipantToken
 from hirevion_core.interview_session.transcripts import segment
@@ -97,6 +98,11 @@ def lock_key(interview_id: UUID) -> str:
 
 def agent_key(interview_id: UUID) -> str:
     return f"hv:iv:{interview_id}:agent"
+
+
+def vision_key(interview_id: UUID) -> str:
+    """Held by the third eye's vision agent while it runs (C7-1)."""
+    return f"hv:iv:{interview_id}:vision"
 
 
 def hot_key(interview_id: UUID) -> str:
@@ -241,6 +247,9 @@ class Conductor:
 
     async def agent_alive(self, interview_id: UUID) -> bool:
         return bool(await self._redis.exists(agent_key(interview_id)))
+
+    async def vision_alive(self, interview_id: UUID) -> bool:
+        return bool(await self._redis.exists(vision_key(interview_id)))
 
     async def set_voice(self, interview_id: UUID, voice: str) -> None:
         if voice in VOICE_STATES:
@@ -717,6 +726,12 @@ class Conductor:
                     )
         except MediaError as error:
             raise MediaUnavailable() from error
+        if watches_third_eye(interview.policy or {}) and not await self.vision_alive(interview.id):
+            # The phone's picture is watched by the server (C7-1); the interview goes on without it.
+            try:
+                await self._media.dispatch_vision(interview.id, interview.organization_id)
+            except MediaError:
+                log.exception("Couldn't send the vision agent to interview %s", interview.id)
         return token
 
     async def load_state(self, organization_id: UUID, interview_id: UUID) -> InterviewState | None:

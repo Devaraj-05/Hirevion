@@ -184,8 +184,10 @@ async def add_server_event(
     details: dict[str, Any] | None = None,
     rows: Sequence[tuple[str, str, datetime, str]] = (),
     now: datetime,
+    source: str | None = None,
 ) -> ProctorEvent:
-    """Raises an event the server saw itself (no sequence number)."""
+    """Raises an event the server saw itself (no sequence number). `source` overrides the
+    catalogue's, e.g. the third eye for what the vision agent saw (C7-1)."""
     policy = proctor.policy
     verdict = evaluate(
         policy,
@@ -199,7 +201,7 @@ async def add_server_event(
         interview_id=proctor.interview_id,
         origin="server",
         event=event,
-        source=EVENTS[event].source,
+        source=source or EVENTS[event].source,
         started_at=started_at,
         duration_ms=duration_ms,
         ongoing=ongoing,

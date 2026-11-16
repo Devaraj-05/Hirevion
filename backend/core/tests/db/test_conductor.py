@@ -738,3 +738,47 @@ async def test_the_latest_draft_comes_back_and_a_follow_up_starts_from_its_paren
     assert inherited is not None and inherited.content == "API -> cache -> Postgres"
     with pytest.raises(NotFound, match="question-not-found"):
         await cond.workspace_draft(scene.organization_id, scene.interview_id, uuid7())
+
+
+async def test_an_interview_with_a_third_eye_also_gets_the_vision_agent(
+    app_db: Database,
+    admin_engine: AsyncEngine,
+    valkey: Redis,
+    make_organization: MakeOrganization,
+    make_hiring: Any,
+) -> None:
+    """C7-1: the server watches the phone's picture during the interview, once per interview."""
+    org = await make_organization("Acme")
+    watched, plain = (
+        await invited(app_db, make_hiring, org),
+        await invited(app_db, make_hiring, org),
+    )
+    async with admin_engine.begin() as conn:
+        await conn.execute(
+            text(
+                'UPDATE interviews SET policy = policy || \'{"third_eye": "optional"}\'::jsonb '
+                "WHERE id = :a"
+            ),
+            {"a": watched.interview_id},
+        )
+        await conn.execute(
+            text(
+                'UPDATE interviews SET policy = policy || \'{"third_eye": "off"}\'::jsonb '
+                "WHERE id = :b"
+            ),
+            {"b": plain.interview_id},
+        )
+    media = FakeMedia()
+    cond = conductor(app_db, valkey, media)
+    check, consent = await prepare(app_db, watched)
+    await start(cond, watched, check, consent)
+    assert media.vision_dispatches == [f"iv-{watched.interview_id}"]
+    # The app restarted while both agents run: no second vision agent.
+    await valkey.set(f"hv:iv:{watched.interview_id}:agent", "job", ex=8)
+    await valkey.set(f"hv:iv:{watched.interview_id}:vision", "job", ex=8)
+    await start(cond, watched, check, consent)
+    assert media.vision_dispatches == [f"iv-{watched.interview_id}"]
+    # No third eye, nothing to watch.
+    check, consent = await prepare(app_db, plain)
+    await start(cond, plain, check, consent)
+    assert media.vision_dispatches == [f"iv-{watched.interview_id}"]

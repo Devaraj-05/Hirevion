@@ -9,6 +9,7 @@ dependencies = [
   "hirevion-devcli",
   "hirevion-interview-agent",
   "hirevion-interview-simulator",
+  "hirevion-vision-agent",
   "hirevion-voice-bench",
 ]
 
@@ -23,6 +24,7 @@ members = [
   "backend/core",
   "backend/api",
   "backend/interview_agent",
+  "backend/vision_agent",
   "tools/interview-simulator",
   "tools/voice_bench",
 ]
@@ -33,6 +35,7 @@ hirevion-core = { workspace = true }
 hirevion-devcli = { workspace = true }
 hirevion-interview-agent = { workspace = true }
 hirevion-interview-simulator = { workspace = true }
+hirevion-vision-agent = { workspace = true }
 hirevion-voice-bench = { workspace = true }
 
 [dependency-groups]
@@ -64,6 +67,7 @@ known-first-party = [
   "hirevion_devcli",
   "hirevion_interview_agent",
   "hirevion_interview_simulator",
+  "hirevion_vision_agent",
   "hirevion_voice_bench",
 ]
 
@@ -76,6 +80,7 @@ testpaths = [
   "backend/core/tests",
   "backend/api/tests",
   "backend/interview_agent/tests",
+  "backend/vision_agent/tests",
   "tools/interview-simulator/tests",
   "tools/voice_bench/tests",
 ]
@@ -93,8 +98,8 @@ python_version = "3.12"
 strict = true
 
 [[tool.mypy.overrides]]
-# pypdfium2 and reportlab ship no type information.
-module = ["pypdfium2", "pypdfium2.*", "reportlab", "reportlab.*"]
+# pypdfium2, reportlab and mediapipe ship no type information.
+module = ["pypdfium2", "pypdfium2.*", "reportlab", "reportlab.*", "mediapipe", "mediapipe.*"]
 ignore_missing_imports = true
 
 [tool.coverage.run]

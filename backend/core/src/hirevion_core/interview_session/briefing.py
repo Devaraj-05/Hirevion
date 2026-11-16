@@ -127,6 +127,13 @@ def third_eye_mode(policy: dict[str, Any]) -> str:
     return mode
 
 
+def watches_third_eye(policy: dict[str, Any]) -> bool:
+    """Whether the server's vision agent watches the phone's picture (C7-1): a third eye is in
+    use and proctoring isn't off."""
+    level = str(policy.get("proctoring_level") or "standard")
+    return third_eye_mode(policy) != "off" and level != "off"
+
+
 def mandatory_checks(policy: dict[str, Any]) -> list[str]:
     granted = accommodations(policy)
     checks = [str(c) for c in policy.get("mandatory_checks") or []]

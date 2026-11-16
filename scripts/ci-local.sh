@@ -59,7 +59,7 @@ job_python() {
     "$UV" run ruff format --check . &&
     "$UV" run hv trace --check &&
     "$UV" run mypy tools/devcli/src backend/core/src backend/api/src \
-      backend/interview_agent/src tools/voice_bench/src tools/interview-simulator/src &&
+      backend/interview_agent/src backend/vision_agent/src tools/voice_bench/src tools/interview-simulator/src &&
     bash scripts/gates.sh bandit &&
     # Tests, with line coverage of the domain code (hirevion_core): the run fails below 85%.
     "$UV" run pytest -q -p no:cacheprovider --cov --cov-report=term:skip-covered 2>&1 | tail -40

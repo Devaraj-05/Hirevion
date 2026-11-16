@@ -27,7 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from hirevion_core.access.errors import Conflict, Invalid, NotFound
 from hirevion_core.db.session import Database
-from hirevion_core.models import Interview, ProctorEvent, ProctorSession
+from hirevion_core.models import Interview, ProctorEvent, ProctorEvidence, ProctorSession
 from hirevion_core.proctoring import evidence, observed
 from hirevion_core.proctoring.aggregator import SeqTracker, merge_episode, subtract_windows
 from hirevion_core.proctoring.catalogue import RANK
@@ -133,6 +133,19 @@ def heartbeat_vote(channel: str, reported: str | None) -> observed.State:
     if value == _UP[channel]:
         return "up"
     return "down" if value in _DOWN[channel] else "unknown"
+
+
+@dataclass(frozen=True, slots=True)
+class Snapshot:
+    """A frame the server saved as evidence (already in blob storage)."""
+
+    blob_path: str
+    size: int
+    sha256: str
+
+
+# What the third eye's vision agent may report (C7-1).
+VISION_EVENTS = ("PHONE_DETECTED", "UNEXPECTED_PERSON_DETECTED")
 
 
 class ProctorEngine:
@@ -575,6 +588,94 @@ class ProctorEngine:
                 return False
         await finish(self._redis, organization_id, interview_id, pending, None)
         return True
+
+    async def detected(
+        self,
+        organization_id: UUID,
+        interview_id: UUID,
+        *,
+        event: str,
+        started_at: datetime,
+        duration_ms: int,
+        details: dict[str, Any],
+        snapshot: Snapshot | None,
+    ) -> UUID | None:
+        """An episode the third eye's vision agent saw (C7-1; PRD §53): a server event from the
+        third eye, still ongoing, with the frame that started it as a screenshot. It goes through
+        the rules like any other, so severity, the candidate's nudge, the AI's reminder and the
+        live alert follow the policy. None when proctoring is off or the session isn't open."""
+        if event not in VISION_EVENTS:
+            raise ValueError(f"the vision agent doesn't report {event!r}")
+        now = self._clock()
+        pending = Pending()
+        async with self._db.tenant(organization_id) as session:
+            proctor = await session.scalar(
+                select(ProctorSession)
+                .where(ProctorSession.interview_id == interview_id)
+                .with_for_update()
+            )
+            if proctor is None or proctor.status != "open" or proctor.observed.get("paused"):
+                return None
+            if proctor.policy.get("level") == "off":
+                return None
+            rows = await history(session, proctor, started_at - HISTORY)
+            row = await add_server_event(
+                session,
+                proctor,
+                pending,
+                event=event,
+                started_at=started_at,
+                duration_ms=max(0, duration_ms),
+                ongoing=True,
+                details={"reason": "third_eye_vision", "third_eye": details},
+                rows=rows,
+                now=now,
+                source="third_eye",
+            )
+            if snapshot is not None:
+                session.add(
+                    ProctorEvidence(
+                        organization_id=proctor.organization_id,
+                        proctor_session_id=proctor.id,
+                        interview_id=proctor.interview_id,
+                        proctor_event_id=row.id,
+                        kind="screenshot",
+                        origin="server",
+                        blob_path=snapshot.blob_path,
+                        content_type="image/jpeg",
+                        bytes=snapshot.size,
+                        sha256=snapshot.sha256,
+                        window_start=started_at,
+                        window_end=started_at,
+                    )
+                )
+            event_id = row.id
+        await finish(self._redis, organization_id, interview_id, pending, None)
+        return event_id
+
+    async def detection_ended(
+        self, organization_id: UUID, interview_id: UUID, event_id: UUID, *, duration_ms: int
+    ) -> None:
+        """The vision agent's episode is over: the event closes with its length (a longer one
+        may also become more severe)."""
+        now = self._clock()
+        pending = Pending()
+        async with self._db.tenant(organization_id) as session:
+            row = await session.get(ProctorEvent, event_id, with_for_update=True)
+            if row is None or row.interview_id != interview_id or not row.ongoing:
+                return
+            proctor = await session.get_one(ProctorSession, row.proctor_session_id)
+            before = row.severity
+            length = max(row.duration_ms or 0, duration_ms)
+            verdict = evaluate(proctor.policy, row.event, duration_ms=length)
+            row.duration_ms, row.ongoing = length, False
+            change = Change(row, "updated", severity_before=before)
+            if RANK[verdict.severity] > RANK[before]:
+                row.severity = verdict.severity
+                row.details = {**row.details, "server": server_note(verdict)}
+                await plan_followups(session, proctor, change, now)
+            pending.changes.append(change)
+        await finish(self._redis, organization_id, interview_id, pending, None)
 
     @staticmethod
     async def _same_hole(

@@ -22,7 +22,7 @@ from hirevion_core.interview_session.conductor import hot_key
 from hirevion_core.models import ProctorEvent, ProctorEvidence, ProctorSession
 from hirevion_core.proctoring import nudges
 from hirevion_core.proctoring.normaliser import Incoming
-from hirevion_core.proctoring.service import ProctorEngine
+from hirevion_core.proctoring.service import ProctorEngine, Snapshot
 
 from .test_interviews_schema import insert_interview
 
@@ -607,3 +607,94 @@ async def test_livekit_sightings_are_votes_the_watcher_acts_on(
     await world.tick()
     (event,) = await rows(app_db, world)
     assert not event.ongoing
+
+
+# C7-1: what the third eye's vision agent sees.
+
+
+async def evidence_of(db: Database, world: World, event_id: UUID) -> list[ProctorEvidence]:
+    async with db.tenant(world.org) as session:
+        found = await session.scalars(
+            select(ProctorEvidence)
+            .where(ProctorEvidence.proctor_event_id == event_id)
+            .order_by(ProctorEvidence.kind)
+        )
+        return list(found.all())
+
+
+def snapshot(name: str) -> Snapshot:
+    return Snapshot(f"org/interviews/x/evidence/{name}.jpg", 48_213, "a" * 64)
+
+
+async def test_a_phone_the_vision_agent_sees_is_a_third_eye_event_with_its_snapshot(
+    world: World, app_db: Database, valkey: Redis
+) -> None:
+    await world.open()
+    event_id = await world.engine.detected(
+        world.org,
+        world.interview,
+        event="PHONE_DETECTED",
+        started_at=T0 + timedelta(seconds=10),
+        duration_ms=2_000,
+        details={"phones": 1, "score": 0.71},
+        snapshot=snapshot("phone"),
+    )
+    assert event_id is not None
+    (event,) = await rows(app_db, world)
+    assert (event.origin, event.source, event.severity) == ("server", "third_eye", "CRITICAL")
+    assert event.ongoing and event.duration_ms == 2_000
+    assert event.details["third_eye"] == {"phones": 1, "score": 0.71}
+    kinds = {e.kind: e for e in await evidence_of(app_db, world, event_id)}
+    shot = kinds["screenshot"]
+    assert (shot.origin, shot.blob_path, shot.content_type) == (
+        "server",
+        "org/interviews/x/evidence/phone.jpg",
+        "image/jpeg",
+    )
+    assert (shot.bytes, shot.sha256) == (48_213, "a" * 64)
+    assert "third_eye_segment" in kinds  # the phone's recording around it
+    # The candidate is told, and the recruiter sees it live.
+    notices = await nudges.read(valkey, world.interview, "0")
+    assert [n[1]["kind"] for n in notices] == ["phone_detected"]
+    alerts = [
+        e for e in await realtime.read(valkey, world.interview, "0") if e.type == "PROCTOR_EVENT"
+    ]
+    assert alerts[-1].data["event"] == "PHONE_DETECTED"
+
+
+async def test_a_second_person_episode_warns_and_closes_with_its_length(
+    world: World, app_db: Database, valkey: Redis
+) -> None:
+    await world.open()
+    event_id = await world.engine.detected(
+        world.org,
+        world.interview,
+        event="UNEXPECTED_PERSON_DETECTED",
+        started_at=T0 + timedelta(seconds=20),
+        duration_ms=3_000,
+        details={"people": 2},
+        snapshot=snapshot("person"),
+    )
+    assert event_id is not None
+    notices = await nudges.read(valkey, world.interview, "0")
+    assert [n[1]["kind"] for n in notices] == ["multiple_faces"]
+    await world.engine.detection_ended(world.org, world.interview, event_id, duration_ms=9_000)
+    (event,) = await rows(app_db, world)
+    assert event.severity == "CRITICAL" and not event.ongoing and event.duration_ms == 9_000
+
+
+async def test_nothing_is_recorded_when_proctoring_is_off(
+    world: World, admin_engine: AsyncEngine, app_db: Database
+) -> None:
+    await set_interview(admin_engine, world, policy=json.dumps({"proctoring_level": "off"}))
+    await world.open()
+    found = await world.engine.detected(
+        world.org,
+        world.interview,
+        event="PHONE_DETECTED",
+        started_at=T0,
+        duration_ms=2_000,
+        details={},
+        snapshot=snapshot("off"),
+    )
+    assert found is None and await rows(app_db, world) == []
