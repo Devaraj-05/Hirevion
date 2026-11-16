@@ -197,6 +197,12 @@ of each session.
    to the agent's first audio (p50/p95; SP-09's target is p95 ≤ 2.5 s), with the agent's own
    stage breakdown.
 
+**The third eye's vision agent (C7-1, ADR-0043):** `uv run python -m hirevion_vision_agent.agent dev`
+beside the interview agent. The API dispatches it when an interview with a third eye starts;
+it watches the phone's picture for a second person or a phone, and records each as a
+proctoring event with a snapshot in the interview's `evidence` folder. Without it running,
+interviews go on unwatched (the dispatch waits for a worker).
+
 `hv env-sync` only adds missing settings; it never changes values you already have. When an
 ADR changes a default, update the `HV_*` line in `.env` yourself. For example, ADR-0005 replaced
 `HV_LLM_MODEL_FAST=gemini-2.5-flash`, which Google no longer serves to new accounts.

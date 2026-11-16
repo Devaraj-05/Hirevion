@@ -37,6 +37,7 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 | C8-1 | Live voice run on real AI (owner, 2026-11-15): `hv-voice-bench --turns 20` on Nemotron and Deepgram. Fixed: Nemotron's reasoning is off for live turns (analysis in about 1 s, not 15–27 s), strong-tier, image and page calls get `HV_LLM_TIMEOUT_SECONDS` (180 s, retries included) so evaluations finish, the acknowledgement plays from audio made at the start, and the bench starts a new interview when one ends. p50 1.5 s, p95 5.9 s (Deepgram's final transcripts 4–8 s late in one interview) | AI, agent and bench tests, three live runs / ADR-0005, ADR-0034 |
 | C8 desktop fixes | From the owner's first try (2026-11-15): where to put the phone (left or right side, well lit, the candidate and the whole laptop in view) right under the QR code, with the phone's status beside it; consent as one Terms and Conditions checkbox (the terms list every item; the server still records each); the window opens maximised and can shrink to 800×600 | desktop unit tests, desktop e2e / ADR-0030, contract interview-session.md |
 | C8-3 | Third-eye placement check (owner, 2026-11-15): the desktop shows the phone's live picture through a hidden, watch-only token; EfficientDet-Lite0 on the device turns it green only with the candidate and the whole laptop in view, held 3 s; the candidate confirms and the placement is recorded (`third_eye_placement_confirmed`); strict, no fallback; the phone switches between its rear and front cameras | API, desktop and phone unit tests, desktop and phone e2e / ADR-0042 |
+| C7-1 | Third-eye vision agent (owner, 2026-11-16): a LiveKit worker the API dispatches beside the interviewer when the third eye is on; EfficientDet-Lite2 on the server watches the phone's camera twice a second for a second person (3 s) or any phone (2 s); each is a CRITICAL third-eye event with a JPEG snapshot as server evidence, the candidate's nudge and the AI's reminder; one agent per interview (`HeldKey`), its leaving no longer re-dispatches the interviewer. Also: the placement check runs Lite2 on the CPU (the GPU delegate returned nothing) and counts a close candidate | rules, adapter, engine, dispatch and watcher tests, a live run with a scripted phone / ADR-0043 |
 
 ## In progress (unmerged worktree branches)
 
@@ -46,7 +47,7 @@ Git is the source of truth; update this file in the PR that merges a part. Part 
 ## Remaining, in priority order (dependency in brackets)
 
 - **P0:** C8-2 the product owner's spoken interview on the desktop app, then a review of its transcript, questions and evaluation [C8-1]
-- **P1:** C7 vision agent [C5, D3] · B4b-3 advanced CV [B3, C7]
+- **P1:** C7-2 detector quality and the other §53 signals [C7-1] · B4b-3 advanced CV [B3, C7]
 - **P2:** D4 SP-19 enterprise identity [SP-02] · D5 SP-22 admin/governance [A5, C5] · A6 SP-21 analytics [A5] · D6 SP-20 ATS/public API [A5]
 - **P3:** D7 SP-23 automated hardening [all] · B5 Windows golden path and chaos drills [B3, B4a, B4b]
 - **Last:** the full local gate, `bash scripts/ci-local.sh --all` (deferred to the end by the product owner, 2026-11-14; each part meanwhile runs its own tests and checks)
