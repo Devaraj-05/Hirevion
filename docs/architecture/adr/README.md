@@ -32,6 +32,7 @@
 | [0034](0034-ai-routing-openrouter-nemotron.md) | Development AI routed by task: OpenRouter screens, NVIDIA Nemotron interviews | Accepted |
 | [0041](0041-design-notes-pad.md) | A plain-text notes pad for design questions, instead of a whiteboard | Accepted |
 | [0040](0040-third-eye-and-egress.md) | The third eye: a single-use pairing, LiveKit's view as its status, and Egress files beside the desktop's tracks | Accepted |
+| [0045](0045-owner-run-fixes-no-repeats-neutral-voice-no-upload-wait.md) | No repeated questions, neutral acknowledgements and a spoken and written warning, an interviewer runner ready before the interview, and no wait after submitting | Accepted |
 | [0044](0044-one-page-preparation-and-voice-only-interview.md) | One page before the interview, a voice-only interview screen that plays the interviewer and shows its words, and interviews that last their set time | Accepted |
 | [0043](0043-third-eye-vision-agent.md) | A server vision agent watches the third eye for a second person and phones, with a snapshot and a warning | Accepted |
 | [0042](0042-third-eye-placement-check.md) | The third eye's placement check: the desktop shows the phone's picture and turns green only with the candidate and the whole laptop in view | Accepted |

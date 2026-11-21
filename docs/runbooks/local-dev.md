@@ -721,6 +721,14 @@ The desktop asks the API for a pairing and shows its QR code; the phone redeems 
    Pairing again shows `revoked` for the old pairing and the old phone's page stops.
 5. On this PC only (no tunnel), `https://eye.hirevion.localhost/#t=<token>` works too.
 
+**Recordings in a full desktop run.** The desktop uploads its recording parts and evidence
+pictures to the signed URLs the API hands out, which point at `https://storage.hirevion.localhost`
+through Caddy on 443. When Caddy can't publish 443 on this PC (`.ci-local/compose.ports.yaml`
+keeps only 8088), start the API with `STORAGE_PUBLIC_ENDPOINT=http://127.0.0.1:10000/<account>`
+(the `AZURE_STORAGE_ACCOUNT` from `.env`) in its environment: a debug desktop build accepts plain
+HTTP to this PC only. Without it nothing uploads during the interview, the server reads the gap
+as `SCREEN_CAPTURE_STOPPED`, and every part waits on disk (the owner's run of 2026-11-21).
+
 **Measuring pairing without a phone:** from `third-eye`, `pnpm e2e` runs headless Chromium with a
 fake 720p camera against the local LiveKit and prints "Paired in N s" (about 1.6 s on this PC;
 the budget is 60 s). Real phones (iOS Safari 16.4+, Android Chrome) remain a hands-on check.
