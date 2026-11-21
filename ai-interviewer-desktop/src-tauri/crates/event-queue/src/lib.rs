@@ -12,6 +12,7 @@
 //!
 //! No event ever carries what a key typed: nothing here reads input (a test enforces that).
 
+mod close;
 mod event;
 mod policy;
 mod queue;
@@ -19,6 +20,7 @@ mod rules;
 mod snapshot;
 mod uploader;
 
+pub use close::{AppToClose, AppsToClose, apps_to_close};
 pub use event::{
     EventDraft, EventName, Evidence, ProctorEvent, Source, parse_rfc3339_ms, rfc3339_ms,
 };
@@ -27,7 +29,7 @@ pub use policy::{
     SeverityHint, Threshold,
 };
 pub use queue::EventQueue;
-pub use rules::{DeviceRules, Thresholds};
+pub use rules::{DeviceRules, INVENTORY_BUDGET_BYTES, Thresholds};
 pub use snapshot::{SNAPSHOT_TTL_MS, SnapshotKind, SnapshotRequest, SnapshotTracker};
 pub use uploader::{
     ApiSource, DeviceStatus, SESSION_CLOSED, UploadState, Uploader, UploaderConfig, UploaderHandle,

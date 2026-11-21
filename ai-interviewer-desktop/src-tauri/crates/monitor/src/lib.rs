@@ -21,7 +21,10 @@ mod observation;
 pub mod track;
 mod virtual_devices;
 
-pub use monitor::{Clock, Monitor, MonitorConfig, MonitorHandle, Watch, system_clock};
+pub use monitor::{
+    Clock, Monitor, MonitorConfig, MonitorHandle, Watch, in_protected_windows_folder,
+    running_processes, system_clock,
+};
 pub use observation::{
     AppRef, CaptureDevice, DeviceChange, DeviceChangeKind, DeviceKind, DisplayChange,
     DisplayChangeKind, DisplayInfo, FocusChange, IntegrityFinding, MinimizeChange, Observation,

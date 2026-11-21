@@ -382,7 +382,17 @@
       "speakerQuestion": "Play the test sound. Did you hear it?",
       "speakerNo": "I didn't hear it",
       "saving": "Saving the results…",
-      "mustFix": "These need attention: {items}. Fix them, then check again."
+      "mustFix": "These need attention: {items}. Fix them, then check again.",
+      "appsChecking": "Checking the apps running on your computer…",
+      "appsCloseTitle": "Close these apps to continue",
+      "appsCloseLead": "They aren't allowed during the interview. Close them completely, not just minimised, then check again.",
+      "appsAlso": "Close these too:",
+      "appsAdviseTitle": "Close your other apps",
+      "appsAdviseLead": "Only this app should be open during the interview. Anything left open is recorded and can be reported to the hiring team.",
+      "appsAgain": "Check again",
+      "appsContinue": "Continue",
+      "appsBackground": "Running in the background (quit them from the system tray if you can; if they still run, they're reported):",
+      "appsFailed": "We couldn't check the apps on your computer. Close every other app before you start: anything left open is recorded and can be reported to the hiring team."
     },
     "terms": {
       "title": "Terms and Conditions",

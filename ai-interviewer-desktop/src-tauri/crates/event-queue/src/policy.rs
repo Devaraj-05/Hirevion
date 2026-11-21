@@ -79,6 +79,16 @@ pub struct AppRules {
     pub allowed: Vec<AppRule>,
 }
 
+impl AppRules {
+    /// Whether any rule, blocked or allowed, compares a file's hash: hashing every executable is
+    /// the slow part of looking at the running apps (ADR-0046).
+    pub fn uses_hash(&self) -> bool {
+        self.blocked.iter().chain(&self.allowed).any(|rule| {
+            rule.kind == MatchKind::Hash || rule.with.iter().any(|c| c.kind == MatchKind::Hash)
+        })
+    }
+}
+
 /// One rule: a primary condition, optional further conditions that must all hold too, and a
 /// category (blocked rules).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -235,6 +245,24 @@ impl PolicyMatcher {
         }
     }
 
+    /// Whether some rule's name, path and window-title conditions already hold for `process`
+    /// and only its file (publisher, signature or hash) can decide: the check before Start
+    /// reads Windows' own files only for these (ADR-0046). A rule with no such condition (a
+    /// publisher alone) doesn't count: it would mean reading every file.
+    pub fn needs_file_facts(&self, process: &ProcessInfo) -> bool {
+        self.blocked.iter().chain(&self.allowed).any(|rule| {
+            let (file, cheap): (Vec<_>, Vec<_>) = rule
+                .conditions
+                .iter()
+                .partition(|(kind, _)| kind.needs_file());
+            !file.is_empty()
+                && !cheap.is_empty()
+                && cheap
+                    .iter()
+                    .all(|(kind, value)| condition_matches(*kind, value, process))
+        })
+    }
+
     /// Blocked rules ignored because they match on the name alone.
     pub fn ignored_name_only_rules(&self) -> usize {
         self.ignored_name_only
@@ -269,6 +297,13 @@ impl PolicyMatcher {
                 SeverityHint::Warning
             },
         })
+    }
+}
+
+impl MatchKind {
+    /// Compares something only the executable file tells: its signature or its hash.
+    fn needs_file(self) -> bool {
+        matches!(self, Self::Publisher | Self::Signature | Self::Hash)
     }
 }
 

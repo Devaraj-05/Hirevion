@@ -19,6 +19,12 @@ pub enum Observation {
     },
     /// A process ended.
     ProcessExited { at_ms: i64, pid: u32, name: String },
+    /// Every process running when monitoring started, the interview app's own left out: sent
+    /// once, after the first poll's `ProcessStarted` observations (ADR-0046).
+    ProcessInventory {
+        at_ms: i64,
+        processes: Vec<ProcessInfo>,
+    },
     /// The visible top-level window titles of a running process changed.
     ProcessWindowsChanged {
         at_ms: i64,
@@ -66,6 +72,7 @@ impl Observation {
             Self::ClientIntegrity(_) => Some("CLIENT_INTEGRITY_WARNING"),
             Self::ProcessStarted { .. }
             | Self::ProcessExited { .. }
+            | Self::ProcessInventory { .. }
             | Self::ProcessWindowsChanged { .. }
             | Self::DeviceChanged(_)
             | Self::OverlayWindow(_) => None,
@@ -77,6 +84,7 @@ impl Observation {
         match self {
             Self::ProcessStarted { at_ms, .. }
             | Self::ProcessExited { at_ms, .. }
+            | Self::ProcessInventory { at_ms, .. }
             | Self::ProcessWindowsChanged { at_ms, .. } => *at_ms,
             Self::FocusChanged(c) => c.at_ms,
             Self::Minimize(c) => c.at_ms,

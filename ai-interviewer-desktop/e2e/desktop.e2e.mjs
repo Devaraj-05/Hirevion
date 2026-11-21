@@ -87,6 +87,14 @@ test("launch → ready", async (t) => {
     assert.ok(!shown.some((row) => row.trim().startsWith("Processor")), "a passing check shows");
     await session.click(button("Yes, I heard it"));
 
+    // Then the running apps (ADR-0046; the stub finds ChatGPT on the first look): a blocked app
+    // keeps the step open until it is closed; other open apps are advice.
+    await session.waitFor(`//p[normalize-space()="Close these apps to continue"]`, 30_000);
+    await session.find(`//li[contains(normalize-space(), "ChatGPT")]`);
+    await session.click(button("Check again"));
+    await session.waitFor(`//p[normalize-space()="Close your other apps"]`, 30_000);
+    await session.click(button("Continue"));
+
     // 3. One Terms and Conditions checkbox accepts every item (owner, 2026-11-15).
     await session.waitFor(
       `//label[starts-with(normalize-space(), "I have read and agree")]`,

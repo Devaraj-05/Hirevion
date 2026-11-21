@@ -2,6 +2,7 @@
 //! returns only what the screens show; tokens stay in Rust. Failures are `CommandError`s.
 
 use hv_api_client::auth::{self, AppInfo, DeviceInfo, LoginRequest, OtpVerify};
+use hv_event_queue::{AppRules, AppsToClose, PolicyMatcher};
 use hv_system_check::CheckResult;
 use tauri::State;
 
@@ -125,6 +126,30 @@ pub async fn native_checks(state: State<'_, AppState>) -> CommandResult<Vec<Chec
     tauri::async_runtime::spawn_blocking(hv_system_check::native_checks)
         .await
         .map_err(|error| CommandError::new("check-failed", error.to_string()))
+}
+
+/// The running apps to close before Start (ADR-0046): those `rules` block, matched as the
+/// interview's monitor would match them, and the other apps with a window.
+#[tauri::command]
+pub async fn apps_to_close(
+    state: State<'_, AppState>,
+    rules: AppRules,
+) -> CommandResult<AppsToClose> {
+    if let Backend::Stub(stub) = &state.backend
+        && let Some(canned) = stub.apps_to_close()
+    {
+        return Ok(canned);
+    }
+    let matcher = PolicyMatcher::new(&rules);
+    // Hashing every executable is the slow part: only when a rule compares hashes.
+    let with_hash = rules.uses_hash();
+    tauri::async_runtime::spawn_blocking(move || {
+        let read_file = |process: &hv_monitor::ProcessInfo| matcher.needs_file_facts(process);
+        let running = hv_monitor::running_processes(std::process::id(), with_hash, &read_file);
+        hv_event_queue::apps_to_close(&running, &matcher)
+    })
+    .await
+    .map_err(|error| CommandError::new("check-failed", error.to_string()))
 }
 
 #[tauri::command]

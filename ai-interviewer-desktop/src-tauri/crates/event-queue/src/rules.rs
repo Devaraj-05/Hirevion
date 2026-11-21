@@ -150,6 +150,9 @@ impl DeviceRules {
                 }
                 self.check_process(*pid, *at_ms).into_iter().collect()
             }
+            Observation::ProcessInventory { at_ms, processes } => {
+                vec![native(EventName::ProcessInventory, *at_ms).details(inventory(processes))]
+            }
             Observation::ProcessExited { pid, .. } => {
                 self.processes.remove(pid);
                 self.blocked_reported.remove(pid);
@@ -368,6 +371,50 @@ impl DeviceRules {
             })),
         )
     }
+}
+
+/// The most a `PROCESS_INVENTORY`'s details take: with 99 other events at their 8 KB most, a
+/// batch stays under the API's 1 MiB (ADR-0046; the server's own bounds are the same per item).
+pub const INVENTORY_BUDGET_BYTES: usize = 192 * 1024;
+const INVENTORY_MAX: usize = 2_000;
+const INVENTORY_TITLES: usize = 5;
+const INVENTORY_STRING: usize = 300;
+
+/// The process list as the server keeps it: name, path, a publisher only from a valid
+/// signature, and the first window titles, cut to fit the budget (`truncated` says so).
+fn inventory(processes: &[ProcessInfo]) -> serde_json::Value {
+    let cut = |text: &str| text.chars().take(INVENTORY_STRING).collect::<String>();
+    let mut listed = Vec::new();
+    let mut size = 256; // the envelope: count, truncated, brackets
+    let mut truncated = false;
+    for process in processes {
+        let entry = json!({
+            "name": cut(&process.name),
+            "path": process.path.as_deref().map(cut),
+            "publisher": process
+                .signature
+                .is_valid()
+                .then(|| process.signature.signer.as_deref().map(cut))
+                .flatten(),
+            "window_titles": process
+                .window_titles
+                .iter()
+                .take(INVENTORY_TITLES)
+                .map(|title| cut(title))
+                .collect::<Vec<_>>(),
+        });
+        size += entry.to_string().len() + 1;
+        if listed.len() == INVENTORY_MAX || size > INVENTORY_BUDGET_BYTES {
+            truncated = true;
+            break;
+        }
+        listed.push(entry);
+    }
+    let mut details = json!({ "count": processes.len(), "processes": listed });
+    if truncated {
+        details["truncated"] = json!(true);
+    }
+    details
 }
 
 /// Whether a period that ends at `at_ms` lasted longer than `threshold_ms` in all.

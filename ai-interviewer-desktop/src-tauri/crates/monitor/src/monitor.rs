@@ -5,7 +5,7 @@ use std::sync::{Arc, Condvar, Mutex, PoisonError};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
-use crate::observation::Observation;
+use crate::observation::{Observation, ProcessInfo, SignatureInfo};
 use crate::virtual_devices::VirtualDeviceCatalogue;
 
 /// The time source for every observation, in milliseconds since the Unix epoch. The app passes
@@ -212,6 +212,41 @@ impl Monitor {
     }
 }
 
+/// Every process running now, for the check before Start (ADR-0046): name, path, window titles,
+/// signature, and the file's hash only `with_hash` (reading large executables is the slow
+/// part); `interview_app` for `interview_pid`'s tree. A program in Windows' protected folders
+/// keeps its name, path and windows only, unless `read_file` says its file decides a rule.
+/// Empty off Windows.
+pub fn running_processes(
+    interview_pid: u32,
+    with_hash: bool,
+    read_file: &(dyn Fn(&ProcessInfo) -> bool + Sync),
+) -> Vec<ProcessInfo> {
+    imp::running_processes(interview_pid, with_hash, read_file)
+}
+
+/// Folders of Windows that only administrators can write to, whose catalog-signed programs are
+/// slow to verify. Not `Temp` or other folders under it that a user can write to.
+const PROTECTED_WINDOWS_FOLDERS: &[&str] = &[
+    "system32",
+    "syswow64",
+    "winsxs",
+    "systemapps",
+    "immersivecontrolpanel",
+    "servicing",
+];
+
+/// Whether `path` is in one of Windows' protected folders (`%SystemRoot%\System32\…`).
+pub fn in_protected_windows_folder(path: &str) -> bool {
+    let root = std::env::var("SystemRoot").unwrap_or_else(|_| r"C:\Windows".to_owned());
+    let root = root.trim_end_matches('\\').to_lowercase();
+    let path = path.to_lowercase().replace('/', r"\");
+    path.strip_prefix(&root)
+        .and_then(|rest| rest.strip_prefix('\\'))
+        .and_then(|rest| rest.split('\\').next())
+        .is_some_and(|folder| PROTECTED_WINDOWS_FOLDERS.contains(&folder))
+}
+
 /// The running monitor. Stopping (or dropping) it ends every watcher.
 pub struct MonitorHandle {
     stop: Arc<StopSignal>,
@@ -263,6 +298,14 @@ impl Drop for MonitorHandle {
 mod imp {
     use super::*;
 
+    pub(super) fn running_processes(
+        _interview_pid: u32,
+        _with_hash: bool,
+        _read_file: &(dyn Fn(&ProcessInfo) -> bool + Sync),
+    ) -> Vec<ProcessInfo> {
+        Vec::new()
+    }
+
     pub(super) fn start(
         _config: MonitorConfig,
     ) -> std::io::Result<(MonitorHandle, Receiver<Observation>)> {
@@ -287,6 +330,96 @@ mod imp {
     };
 
     const DEBUGGER_ATTACHED: &str = "debugger_attached";
+
+    pub(super) fn running_processes(
+        interview_pid: u32,
+        with_hash: bool,
+        read_file: &(dyn Fn(&ProcessInfo) -> bool + Sync),
+    ) -> Vec<ProcessInfo> {
+        use std::collections::BTreeSet;
+        use std::path::{Path, PathBuf};
+
+        use crate::file_cache::{FileFacts, sha256_file};
+
+        let entries = native::processes::snapshot();
+        let mut titles = native::windows::titles_by_pid();
+        let tree = interview_tree(&entries, interview_pid);
+        // Name, path and windows first: they are quick.
+        let mut processes: Vec<ProcessInfo> = entries
+            .iter()
+            .map(|entry| {
+                let (path, started) = native::processes::open_details(entry.pid);
+                ProcessInfo {
+                    pid: entry.pid,
+                    parent_pid: entry.parent_pid,
+                    name: entry.name.clone(),
+                    path,
+                    start_time_ms: started,
+                    window_titles: titles.remove(&entry.pid).unwrap_or_default(),
+                    sha256: None,
+                    signature: SignatureInfo::default(),
+                    interview_app: tree.contains(&entry.pid),
+                }
+            })
+            .collect();
+        // Windows' own programs keep only those (their catalog signatures are slow to verify)
+        // unless a rule's other conditions already hold and only the file can decide; a file
+        // is hashed only when a rule needs it. 283 processes took 31 s on the owner's PC when
+        // every file was read twice.
+        let paths: Vec<PathBuf> = processes
+            .iter()
+            .filter(|p| {
+                p.path
+                    .as_deref()
+                    .is_some_and(|path| !in_protected_windows_folder(path))
+                    || read_file(p)
+            })
+            .filter_map(|p| p.path.as_deref())
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .map(PathBuf::from)
+            .collect();
+        // The rest are hashed and verified in parallel, each file once.
+        let threads = std::thread::available_parallelism().map_or(4, |n| n.get().min(8));
+        let chunk = paths.len().div_ceil(threads).max(1);
+        let facts: HashMap<PathBuf, FileFacts> = std::thread::scope(|scope| {
+            let workers: Vec<_> = paths
+                .chunks(chunk)
+                .map(|part| {
+                    scope.spawn(move || {
+                        part.iter()
+                            .map(|path| {
+                                let facts = FileFacts {
+                                    sha256: if with_hash {
+                                        sha256_file(path).ok()
+                                    } else {
+                                        None
+                                    },
+                                    signature: native::signature::verify(path),
+                                };
+                                (path.clone(), facts)
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                })
+                .collect();
+            workers
+                .into_iter()
+                .flat_map(|worker| worker.join().unwrap_or_default())
+                .collect()
+        });
+        for process in &mut processes {
+            if let Some(known) = process
+                .path
+                .as_deref()
+                .and_then(|p| facts.get(Path::new(p)))
+            {
+                process.sha256.clone_from(&known.sha256);
+                process.signature = known.signature.clone();
+            }
+        }
+        processes
+    }
 
     pub(super) fn start(
         config: MonitorConfig,

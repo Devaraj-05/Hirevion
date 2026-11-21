@@ -7,6 +7,7 @@ use std::sync::Mutex;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use hv_api_client::auth::{Candidate, Interview, Organization};
+use hv_event_queue::{AppToClose, AppsToClose};
 use hv_system_check::{CheckResult, NATIVE_CHECKS, Status, names};
 
 use serde_json::{Value, json};
@@ -32,6 +33,8 @@ pub struct Stub {
     /// Status reads since the third eye's code was issued: a stub phone scans it on the second
     /// and connects on the third.
     third_eye_polls: Mutex<usize>,
+    /// App checks before Start: the first finds a blocked app, the next find it closed.
+    app_checks: Mutex<usize>,
     /// `HV_DESKTOP_STUB_NATIVE=1`: the native system checks answer "pass" without touching the
     /// machine, so the end-to-end test runs the same on any runner.
     canned_native: bool,
@@ -230,6 +233,37 @@ impl Stub {
         })
     }
 
+    /// The apps to close before Start, or `None` to look at the machine's: a blocked app on the
+    /// first check, closed on the next ones (the end-to-end test closes it).
+    pub fn apps_to_close(&self) -> Option<AppsToClose> {
+        if !self.canned_native {
+            return None;
+        }
+        let checks = self.app_checks.lock().map_or(0, |mut count| {
+            *count += 1;
+            *count
+        });
+        let app = |name: &str, title: &str, category: Option<&str>| AppToClose {
+            name: name.to_owned(),
+            window_title: Some(title.to_owned()),
+            category: category.map(str::to_owned),
+        };
+        Some(AppsToClose {
+            blocked: if checks == 1 {
+                vec![app("ChatGPT.exe", "ChatGPT", Some("ai_assistant"))]
+            } else {
+                Vec::new()
+            },
+            // A blocked service: reported, never a gate (the candidate may not stop it).
+            background: vec![AppToClose {
+                name: "AnyDesk.exe".to_owned(),
+                window_title: None,
+                category: Some("remote_access".to_owned()),
+            }],
+            open: vec![app("chrome.exe", "Inbox - Mail", None)],
+        })
+    }
+
     /// The screen-capture probe as a pass, or `None` to run the real one.
     pub fn screen_capture(&self) -> Option<CheckResult> {
         self.canned_native
@@ -335,7 +369,14 @@ impl Stub {
                 })).collect::<Vec<_>>() },
                 "accommodations": { "requested": [], "approved": [] },
                 "answer_mode": "text",
-                "third_eye": "optional"
+                "third_eye": "optional",
+                "app_rules": {
+                    "blocked": [
+                        { "match": "name", "value": "chatgpt", "category": "ai_assistant",
+                          "with": [{ "match": "publisher", "value": "OpenAI" }] }
+                    ],
+                    "allowed": []
+                }
             }),
             InterviewAction::SystemChecks => {
                 serde_json::to_value(self.submit(body.unwrap_or(&Value::Null)))
@@ -599,6 +640,35 @@ mod tests {
         ));
         stub.sign_out();
         assert_eq!(stub.profile().unwrap_err().code, "signed-out");
+    }
+
+    #[test]
+    fn the_canned_app_check_finds_a_blocked_app_then_finds_it_closed() {
+        assert!(Stub::default().apps_to_close().is_none());
+        let stub = Stub {
+            canned_native: true,
+            ..Stub::default()
+        };
+        let first = stub.apps_to_close().expect("canned");
+        assert_eq!(first.blocked.len(), 1);
+        assert_eq!(first.blocked[0].name, "ChatGPT.exe");
+        assert_eq!(first.open.len(), 1);
+        let second = stub.apps_to_close().expect("canned");
+        assert!(second.blocked.is_empty() && second.open.len() == 1);
+        assert_eq!(
+            second.background.len(),
+            1,
+            "a service is reported every time"
+        );
+        stub.sign_in("asha@x.test", PASSWORD).expect("signed in");
+        let briefing = stub
+            .interview("iv", InterviewAction::Briefing, None)
+            .expect("briefing");
+        assert!(
+            briefing["app_rules"]["blocked"]
+                .as_array()
+                .is_some_and(|r| !r.is_empty())
+        );
     }
 
     #[test]

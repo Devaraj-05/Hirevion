@@ -237,12 +237,13 @@ fn processes_start_exit_and_change_titles() {
         200,
         enrich,
     );
-    assert_eq!(first.len(), 2);
+    assert_eq!(first.len(), 3);
     assert!(
-        first
+        first[..2]
             .iter()
             .all(|o| matches!(o, Observation::ProcessStarted { at_start: true, .. }))
     );
+    assert!(matches!(first[2], Observation::ProcessInventory { .. }));
 
     titles.insert(10, vec!["Inbox".to_owned(), "Compose".to_owned()]);
     let second = tracker.update(
@@ -302,10 +303,16 @@ fn processes_in_the_interview_tree_are_marked() {
         200,
         enrich,
     );
-    assert!(seen.iter().all(|o| matches!(
+    let (inventory, started) = seen.split_last().expect("observations");
+    assert!(started.iter().all(|o| matches!(
         o,
         Observation::ProcessStarted { process, .. } if process.interview_app
     )));
+    // The interview app's own processes are never in the list it starts with.
+    assert!(matches!(
+        inventory,
+        Observation::ProcessInventory { processes, .. } if processes.is_empty()
+    ));
 }
 
 fn window(hwnd: isize, pid: u32, affinity: u32) -> WindowFacts {
@@ -391,4 +398,52 @@ fn a_remote_session_is_reported_when_it_starts() {
     assert!(tracker.update(3, true, false).is_empty());
     assert_eq!(tracker.update(4, true, true).len(), 1);
     assert!(tracker.update(5, false, false).is_empty());
+}
+
+#[test]
+fn the_first_poll_also_lists_every_process_once_without_the_interview_app() {
+    // The owner, 2026-11-21: "background process list should be saved" (ADR-0046).
+    let mut tracker = ProcessTracker::default();
+    let mut titles: HashMap<u32, Vec<String>> = HashMap::new();
+    titles.insert(10, vec!["Inbox".to_owned()]);
+    let entries = [
+        entry(10, 1, "mail.exe"),
+        entry(11, 1, "svc.exe"),
+        entry(200, 1, "AI-Interview.exe"),
+        entry(300, 200, "msedgewebview2.exe"),
+    ];
+    let first = tracker.update(5, &entries, &titles, 200, enrich);
+    let Some(Observation::ProcessInventory { at_ms, processes }) = first.last() else {
+        panic!("no inventory: {first:?}");
+    };
+    assert_eq!(*at_ms, 5);
+    let names: Vec<_> = processes.iter().map(|p| p.name.as_str()).collect();
+    assert_eq!(names, ["mail.exe", "svc.exe"]);
+    assert_eq!(processes[0].window_titles, ["Inbox"]);
+
+    let second = tracker.update(6, &entries, &titles, 200, enrich);
+    assert!(
+        !second
+            .iter()
+            .any(|o| matches!(o, Observation::ProcessInventory { .. })),
+        "only at the start"
+    );
+}
+
+#[test]
+fn windows_own_protected_folders_are_recognised_and_its_temp_folder_is_not() {
+    use hv_monitor::in_protected_windows_folder;
+    let root = std::env::var("SystemRoot").unwrap_or_else(|_| r"C:\Windows".to_owned());
+    assert!(in_protected_windows_folder(&format!(
+        r"{root}\System32\svchost.exe"
+    )));
+    assert!(in_protected_windows_folder(
+        &format!(r"{root}\SysWOW64\cmd.exe").to_uppercase()
+    ));
+    assert!(!in_protected_windows_folder(&format!(
+        r"{root}\Temp\anydesk.exe"
+    )));
+    assert!(!in_protected_windows_folder(
+        r"C:\Program Files\App\app.exe"
+    ));
 }

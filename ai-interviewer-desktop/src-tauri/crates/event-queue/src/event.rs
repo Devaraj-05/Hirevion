@@ -25,6 +25,8 @@ pub enum EventName {
     ApplicationFocusChange,
     WindowMinimized,
     BlockedProcessDetected,
+    /// Every process running when the interview started (ADR-0046).
+    ProcessInventory,
     ExternalDisplayChange,
     // environment
     CaptureExcludedWindow,
@@ -62,6 +64,7 @@ impl EventName {
             Self::ApplicationFocusChange => "APPLICATION_FOCUS_CHANGE",
             Self::WindowMinimized => "WINDOW_MINIMIZED",
             Self::BlockedProcessDetected => "BLOCKED_PROCESS_DETECTED",
+            Self::ProcessInventory => "PROCESS_INVENTORY",
             Self::ExternalDisplayChange => "EXTERNAL_DISPLAY_CHANGE",
             Self::CaptureExcludedWindow => "CAPTURE_EXCLUDED_WINDOW",
             Self::RemoteSessionDetected => "REMOTE_SESSION_DETECTED",

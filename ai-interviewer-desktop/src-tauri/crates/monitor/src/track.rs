@@ -243,7 +243,26 @@ impl ProcessTracker {
             }
         }
         self.known = Some(after);
-        exited.into_iter().chain(started).chain(retitled).collect()
+        // The first poll also lists every process once, the interview app's own left out: the
+        // list the interview started with (owner, 2026-11-21; ADR-0046).
+        let inventory = at_start.then(|| Observation::ProcessInventory {
+            at_ms,
+            processes: started
+                .iter()
+                .filter_map(|o| match o {
+                    Observation::ProcessStarted { process, .. } if !process.interview_app => {
+                        Some(process.clone())
+                    }
+                    _ => None,
+                })
+                .collect(),
+        });
+        exited
+            .into_iter()
+            .chain(started)
+            .chain(retitled)
+            .chain(inventory)
+            .collect()
     }
 }
 

@@ -150,6 +150,7 @@ export function PrepareScreen({
                 <ChecksStep
                   interviewId={interviewId}
                   thirdEye={phoneMode}
+                  appRules={briefing.app_rules ?? null}
                   onPassed={(id, payload, waitingForPhone) => {
                     setCheckId(id);
                     setRecheck(waitingForPhone ? payload : null);

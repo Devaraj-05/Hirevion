@@ -406,3 +406,66 @@ fn environment_observations_map_to_their_events() {
         "exclude_from_capture"
     );
 }
+
+#[test]
+fn the_process_list_at_the_start_is_one_info_event() {
+    let mut rules = rules();
+    let mut mail = process(10, "mail.exe", "aa");
+    mail.window_titles = vec!["Inbox".to_owned()];
+    mail.signature.signer = Some("Example Ltd".to_owned());
+    mail.signature.status = hv_monitor::SignatureStatus::Valid;
+    let drafts = rules.observe(&Observation::ProcessInventory {
+        at_ms: 70,
+        processes: vec![mail, process(11, "svc.exe", "bb")],
+    });
+    assert_eq!(names(&drafts), [EventName::ProcessInventory]);
+    let details = &drafts[0].details;
+    assert_eq!(details["count"], 2);
+    assert_eq!(
+        details["processes"][0],
+        json!({
+            "name": "mail.exe",
+            "path": r"C:\Tools\mail.exe",
+            "publisher": "Example Ltd",
+            "window_titles": ["Inbox"],
+        })
+    );
+    assert_eq!(
+        details["processes"][1]["publisher"],
+        serde_json::Value::Null
+    );
+    assert_eq!(drafts[0].started_at_ms, 70);
+}
+
+#[test]
+fn the_process_list_is_bounded_on_the_device_and_names_only_verified_publishers() {
+    // A huge list must never push a batch past the API's 1 MiB (review, 2026-11-21).
+    let mut rules = rules();
+    let long = "x".repeat(900);
+    let processes: Vec<_> = (0..5_000)
+        .map(|n| {
+            let mut p = process(n, &format!("p{n}.exe"), "aa");
+            p.path = Some(format!(r"C:\{long}\p{n}.exe"));
+            p.window_titles = vec![long.clone(); 9];
+            p.signature.signer = Some("Claims Corp".to_owned());
+            p
+        })
+        .collect();
+    let drafts = rules.observe(&Observation::ProcessInventory {
+        at_ms: 1,
+        processes,
+    });
+    let details = &drafts[0].details;
+    assert_eq!(details["count"], 5_000);
+    assert_eq!(details["truncated"], true);
+    let size = serde_json::to_string(details).expect("json").len();
+    assert!(
+        size <= hv_event_queue::INVENTORY_BUDGET_BYTES,
+        "{size} bytes"
+    );
+    let first = &details["processes"][0];
+    assert_eq!(first["path"].as_str().map(str::len), Some(300));
+    assert_eq!(first["window_titles"].as_array().map(Vec::len), Some(5));
+    // Its signature isn't valid: no publisher.
+    assert_eq!(first["publisher"], serde_json::Value::Null);
+}

@@ -113,6 +113,8 @@ export const commands = {
   profile: () => invoke<Profile>("profile"),
   nativeChecks: () => invoke<CheckResult[]>("native_checks"),
   screenCaptureProbe: () => invoke<CheckResult>("screen_capture_probe"),
+  /** The running apps to close before Start, matched with the interview's own rules. */
+  appsToClose: (rules: AppRules) => invoke<AppsToClose>("apps_to_close", { rules }),
   apiRoundTrip: () => invoke<{ rtt_ms: number }>("api_round_trip"),
   submitChecks: (interviewId: string, payload: SystemCheckPayload) =>
     interviewRequest<ChecksSubmitted>(interviewId, "system_checks", payload),
@@ -278,6 +280,31 @@ export interface Briefing {
   accommodations: { requested: string[]; approved: string[] };
   answer_mode: "voice" | "text";
   third_eye: "off" | "optional" | "required";
+  /** The blocked and allowed app rules (proctoring.md), or null when apps aren't checked. */
+  app_rules?: AppRules | null;
+}
+
+/** proctoring.md's `app_rules`, passed back to Rust as they came. */
+export interface AppRules {
+  blocked: unknown[];
+  allowed: unknown[];
+}
+
+/** One running app, once however many processes it runs (ADR-0046). */
+export interface AppToClose {
+  name: string;
+  window_title: string | null;
+  /** The blocked rule's category, for a blocked app. */
+  category: string | null;
+}
+
+export interface AppsToClose {
+  /** Blocked by the interview's policy and showing a window: Start waits until they are closed. */
+  blocked: AppToClose[];
+  /** Blocked but without a window (a service, a tray app): reported, never a gate. */
+  background: AppToClose[];
+  /** Other apps with a window: closing them is advised. */
+  open: AppToClose[];
 }
 
 export interface ConsentBody {
