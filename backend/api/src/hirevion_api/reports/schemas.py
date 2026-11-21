@@ -177,3 +177,104 @@ class PortalReportList(BaseModel):
 
 def document_of(raw: dict[str, Any]) -> ReportDocument:
     return ReportDocument.model_validate(raw)
+
+
+# One interview's analytics for the recruiter's dashboard (C8-7, ADR-0047).
+
+
+class AnalyticsQuestion(BaseModel):
+    id: UUID
+    position: int
+    kind: str
+    skill: str | None
+    difficulty: str | None
+    text: str
+    status: str
+    asked_ms: int | None
+    """When the interviewer began it, from the interview's start."""
+    thinking_ms: int | None
+    """From the end of the question to the start of the answer; null without an answer."""
+    speaking_ms: int
+    words: int
+    quality: str | None
+    """The live analysis's verdict (strong, partial, weak, no_answer)."""
+    score: float | None
+    """The evaluation's score out of 10 (a reviewer's change included); null until evaluated."""
+
+
+class AnalyticsSkill(BaseModel):
+    skill: str
+    required: bool
+    covered: bool
+    asked: int
+    answered: int
+    planned: int
+    dropped: bool
+    score: float | None
+
+
+class AnalyticsSpeech(BaseModel):
+    """PRD §59's measures: signals for a reviewer, never proof (§57)."""
+
+    candidate_ms: int
+    ai_ms: int
+    words: int
+    words_per_minute: int | None
+    median_response_ms: int | None
+    long_pauses: int
+    """Answers that began more than 10 seconds after the question."""
+    fillers: dict[str, int]
+    fillers_per_100_words: float | None
+    candidate_share: float | None
+    pace_unreliable: bool
+    """The stored speech times give an impossible pace (over 300 words a minute), so
+    `words_per_minute` is null: answers stored before 2026-11-21's agent fix kept only their last
+    stretch of speech."""
+
+
+class AnalyticsEvent(BaseModel):
+    id: UUID
+    event: str
+    severity: Literal["INFO", "WARNING", "CRITICAL"]
+    source: str
+    offset_ms: int | None
+    duration_ms: int | None
+    review: str | None
+    """A reviewer's outcome: confirmed, false_positive or not_relevant."""
+
+
+class AnalyticsProcess(BaseModel):
+    name: str
+    path: str | None = None
+    publisher: str | None = None
+    window_titles: list[str] = Field(default_factory=list)
+
+
+class AnalyticsInventory(BaseModel):
+    offset_ms: int | None
+    count: int | None
+    windows: list[str]
+    processes: list[AnalyticsProcess]
+
+
+class AnalyticsIntegrity(BaseModel):
+    counts: dict[str, int]
+    """Events by severity, leaving out those a reviewer dismissed."""
+    events: list[AnalyticsEvent]
+    inventory: AnalyticsInventory | None
+
+
+class InterviewAnalytics(BaseModel):
+    interview_id: UUID
+    status: str
+    planned_minutes: int
+    started_at: datetime | None
+    ended_at: datetime | None
+    duration_ms: int | None
+    overall: float | None
+    communication: float | None
+    questions: list[AnalyticsQuestion]
+    skills: list[AnalyticsSkill]
+    speech: AnalyticsSpeech
+    integrity: AnalyticsIntegrity | None
+    """Null for a viewer who may not see proctoring."""

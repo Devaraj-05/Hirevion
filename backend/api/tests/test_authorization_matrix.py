@@ -211,6 +211,8 @@ EXPECTED: dict[str, tuple[tuple[str, ...], bool]] = {
         ("reports.interview.view",),
         False,
     ),
+    # C8-7: the dashboard's analytics; its integrity part also needs reports.proctoring.view.
+    "GET /api/v1/interviews/{interview_id}/analytics": (("reports.interview.view",), False),
     "GET /api/v1/interviews/{interview_id}/reports/proctoring": (
         ("reports.proctoring.view",),
         False,

@@ -151,6 +151,21 @@ async def test_a_simulated_interview_populates_every_report_section(
     coding = {s["key"]: s["status"] for s in coding_report["sections"]}
     assert set(coding.values()) == {"populated"}, coding
 
+    # The dashboard's analytics (C8-7, ADR-0047): scores, timing, speech and integrity.
+    analytics = (await client.get(f"/api/v1/interviews/{interview}/analytics")).json()
+    assert analytics["overall"] is not None and analytics["planned_minutes"] == 45
+    asked = analytics["questions"]
+    assert asked[0]["kind"] == "introduction" and asked[-1]["kind"] == "final"
+    assert any(q["score"] is not None for q in asked if q["kind"] == "main")
+    assert {s["skill"] for s in analytics["skills"] if s["required"]} == {"Python", "PostgreSQL"}
+    assert all(s["covered"] for s in analytics["skills"] if s["required"])
+    assert analytics["speech"]["words"] > 0
+    integrity = analytics["integrity"]
+    assert integrity["counts"]["CRITICAL"] >= 1
+    assert any(
+        e["event"] == "PHONE_DETECTED" and e["review"] == "confirmed" for e in integrity["events"]
+    )
+
     async with admin_engine.begin() as conn:
         stored = await conn.scalar(
             text("SELECT count(*) FROM recording_segments WHERE interview_id = :i"),

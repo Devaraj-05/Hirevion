@@ -1178,6 +1178,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/interviews/{interview_id}/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Interview Analytics
+         * @description One interview's analytics for the dashboard (C8-7, ADR-0047): scores per skill and
+         *     question, the timing of each answer, PRD §59's speech measures and, for a viewer who may see
+         *     proctoring, its events and the process list at the start. Viewing it is audited.
+         */
+        get: operations["get_interview_analytics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/interviews/{interview_id}/answer": {
         parameters: {
             query?: never;
@@ -3787,6 +3809,140 @@ export interface components {
             /** Applications */
             applications: components["schemas"]["ApplicationState"][];
         };
+        /** AnalyticsEvent */
+        AnalyticsEvent: {
+            /** Duration Ms */
+            duration_ms: number | null;
+            /** Event */
+            event: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Offset Ms */
+            offset_ms: number | null;
+            /** Review */
+            review: string | null;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "INFO" | "WARNING" | "CRITICAL";
+            /** Source */
+            source: string;
+        };
+        /** AnalyticsIntegrity */
+        AnalyticsIntegrity: {
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /** Events */
+            events: components["schemas"]["AnalyticsEvent"][];
+            inventory: components["schemas"]["AnalyticsInventory"] | null;
+        };
+        /** AnalyticsInventory */
+        AnalyticsInventory: {
+            /** Count */
+            count: number | null;
+            /** Offset Ms */
+            offset_ms: number | null;
+            /** Processes */
+            processes: components["schemas"]["AnalyticsProcess"][];
+            /** Windows */
+            windows: string[];
+        };
+        /** AnalyticsProcess */
+        AnalyticsProcess: {
+            /** Name */
+            name: string;
+            /** Path */
+            path?: string | null;
+            /** Publisher */
+            publisher?: string | null;
+            /** Window Titles */
+            window_titles?: string[];
+        };
+        /** AnalyticsQuestion */
+        AnalyticsQuestion: {
+            /** Asked Ms */
+            asked_ms: number | null;
+            /** Difficulty */
+            difficulty: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Position */
+            position: number;
+            /** Quality */
+            quality: string | null;
+            /** Score */
+            score: number | null;
+            /** Skill */
+            skill: string | null;
+            /** Speaking Ms */
+            speaking_ms: number;
+            /** Status */
+            status: string;
+            /** Text */
+            text: string;
+            /** Thinking Ms */
+            thinking_ms: number | null;
+            /** Words */
+            words: number;
+        };
+        /** AnalyticsSkill */
+        AnalyticsSkill: {
+            /** Answered */
+            answered: number;
+            /** Asked */
+            asked: number;
+            /** Covered */
+            covered: boolean;
+            /** Dropped */
+            dropped: boolean;
+            /** Planned */
+            planned: number;
+            /** Required */
+            required: boolean;
+            /** Score */
+            score: number | null;
+            /** Skill */
+            skill: string;
+        };
+        /**
+         * AnalyticsSpeech
+         * @description PRD §59's measures: signals for a reviewer, never proof (§57).
+         */
+        AnalyticsSpeech: {
+            /** Ai Ms */
+            ai_ms: number;
+            /** Candidate Ms */
+            candidate_ms: number;
+            /** Candidate Share */
+            candidate_share: number | null;
+            /** Fillers */
+            fillers: {
+                [key: string]: number;
+            };
+            /** Fillers Per 100 Words */
+            fillers_per_100_words: number | null;
+            /** Long Pauses */
+            long_pauses: number;
+            /** Median Response Ms */
+            median_response_ms: number | null;
+            /** Pace Unreliable */
+            pace_unreliable: boolean;
+            /** Words */
+            words: number;
+            /** Words Per Minute */
+            words_per_minute: number | null;
+        };
         /** AnswerBody */
         AnswerBody: {
             /**
@@ -5627,6 +5783,34 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /** InterviewAnalytics */
+        InterviewAnalytics: {
+            /** Communication */
+            communication: number | null;
+            /** Duration Ms */
+            duration_ms: number | null;
+            /** Ended At */
+            ended_at: string | null;
+            integrity: components["schemas"]["AnalyticsIntegrity"] | null;
+            /**
+             * Interview Id
+             * Format: uuid
+             */
+            interview_id: string;
+            /** Overall */
+            overall: number | null;
+            /** Planned Minutes */
+            planned_minutes: number;
+            /** Questions */
+            questions: components["schemas"]["AnalyticsQuestion"][];
+            /** Skills */
+            skills: components["schemas"]["AnalyticsSkill"][];
+            speech: components["schemas"]["AnalyticsSpeech"];
+            /** Started At */
+            started_at: string | null;
+            /** Status */
+            status: string;
         };
         /** InterviewBriefingSettings */
         InterviewBriefingSettings: {
@@ -12531,6 +12715,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AccommodationResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_interview_analytics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterviewAnalytics"];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */

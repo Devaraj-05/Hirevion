@@ -39,8 +39,8 @@ from hirevion_core.hiring import workflow
 from hirevion_core.interviews import assignment
 from hirevion_core.interviews.lifecycle import reference
 from hirevion_core.models import ReportExport, User
+from hirevion_core.reports import analytics, coding, exports, visible
 from hirevion_core.reports import candidate as candidate_report
-from hirevion_core.reports import coding, exports, visible
 from hirevion_core.reports import interview as interview_report
 from hirevion_core.reports import proctoring as proctoring_report
 from hirevion_core.reports.blocks import Document
@@ -139,6 +139,23 @@ async def get_interview_report(
         doc = interview_report.interview_report(data, principal.permissions)
         await _viewed(request, session, principal, "interview", "interview", interview.id)
     return schemas.document_of(doc)
+
+
+@router.get("/interviews/{interview_id}/analytics")
+async def get_interview_analytics(
+    interview_id: UUID, request: Request, principal: ViewsInterviewReport
+) -> schemas.InterviewAnalytics:
+    """One interview's analytics for the dashboard (C8-7, ADR-0047): scores per skill and
+    question, the timing of each answer, PRD §59's speech measures and, for a viewer who may see
+    proctoring, its events and the process list at the start. Viewing it is audited."""
+    async with own_tenant(request, principal) as session:
+        interview = await scoped_interview(session, principal, interview_id)
+        data = await load_interview_data(session, interview)
+        result = analytics.interview_analytics(
+            data, proctoring="reports.proctoring.view" in principal.permissions
+        )
+        await _viewed(request, session, principal, "analytics", "interview", interview.id)
+    return schemas.InterviewAnalytics.model_validate(result)
 
 
 @router.get("/interviews/{interview_id}/reports/proctoring")

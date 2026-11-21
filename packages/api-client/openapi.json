@@ -300,6 +300,462 @@
         "title": "ActionResult",
         "type": "object"
       },
+      "AnalyticsEvent": {
+        "properties": {
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "event": {
+            "title": "Event",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "offset_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Offset Ms"
+          },
+          "review": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review"
+          },
+          "severity": {
+            "enum": [
+              "INFO",
+              "WARNING",
+              "CRITICAL"
+            ],
+            "title": "Severity",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "event",
+          "severity",
+          "source",
+          "offset_ms",
+          "duration_ms",
+          "review"
+        ],
+        "title": "AnalyticsEvent",
+        "type": "object"
+      },
+      "AnalyticsIntegrity": {
+        "properties": {
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsEvent"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "inventory": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnalyticsInventory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "counts",
+          "events",
+          "inventory"
+        ],
+        "title": "AnalyticsIntegrity",
+        "type": "object"
+      },
+      "AnalyticsInventory": {
+        "properties": {
+          "count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Count"
+          },
+          "offset_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Offset Ms"
+          },
+          "processes": {
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsProcess"
+            },
+            "title": "Processes",
+            "type": "array"
+          },
+          "windows": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Windows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "offset_ms",
+          "count",
+          "windows",
+          "processes"
+        ],
+        "title": "AnalyticsInventory",
+        "type": "object"
+      },
+      "AnalyticsProcess": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          },
+          "publisher": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publisher"
+          },
+          "window_titles": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Window Titles",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "AnalyticsProcess",
+        "type": "object"
+      },
+      "AnalyticsQuestion": {
+        "properties": {
+          "asked_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asked Ms"
+          },
+          "difficulty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Difficulty"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "quality": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quality"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "skill": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skill"
+          },
+          "speaking_ms": {
+            "title": "Speaking Ms",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "thinking_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thinking Ms"
+          },
+          "words": {
+            "title": "Words",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "kind",
+          "skill",
+          "difficulty",
+          "text",
+          "status",
+          "asked_ms",
+          "thinking_ms",
+          "speaking_ms",
+          "words",
+          "quality",
+          "score"
+        ],
+        "title": "AnalyticsQuestion",
+        "type": "object"
+      },
+      "AnalyticsSkill": {
+        "properties": {
+          "answered": {
+            "title": "Answered",
+            "type": "integer"
+          },
+          "asked": {
+            "title": "Asked",
+            "type": "integer"
+          },
+          "covered": {
+            "title": "Covered",
+            "type": "boolean"
+          },
+          "dropped": {
+            "title": "Dropped",
+            "type": "boolean"
+          },
+          "planned": {
+            "title": "Planned",
+            "type": "integer"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "skill": {
+            "title": "Skill",
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill",
+          "required",
+          "covered",
+          "asked",
+          "answered",
+          "planned",
+          "dropped",
+          "score"
+        ],
+        "title": "AnalyticsSkill",
+        "type": "object"
+      },
+      "AnalyticsSpeech": {
+        "description": "PRD §59's measures: signals for a reviewer, never proof (§57).",
+        "properties": {
+          "ai_ms": {
+            "title": "Ai Ms",
+            "type": "integer"
+          },
+          "candidate_ms": {
+            "title": "Candidate Ms",
+            "type": "integer"
+          },
+          "candidate_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidate Share"
+          },
+          "fillers": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Fillers",
+            "type": "object"
+          },
+          "fillers_per_100_words": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fillers Per 100 Words"
+          },
+          "long_pauses": {
+            "title": "Long Pauses",
+            "type": "integer"
+          },
+          "median_response_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Response Ms"
+          },
+          "pace_unreliable": {
+            "title": "Pace Unreliable",
+            "type": "boolean"
+          },
+          "words": {
+            "title": "Words",
+            "type": "integer"
+          },
+          "words_per_minute": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Words Per Minute"
+          }
+        },
+        "required": [
+          "candidate_ms",
+          "ai_ms",
+          "words",
+          "words_per_minute",
+          "median_response_ms",
+          "long_pauses",
+          "fillers",
+          "fillers_per_100_words",
+          "candidate_share",
+          "pace_unreliable"
+        ],
+        "title": "AnalyticsSpeech",
+        "type": "object"
+      },
       "AnswerBody": {
         "properties": {
           "question_id": {
@@ -5395,6 +5851,123 @@
           "updated_at"
         ],
         "title": "HumanScoreResponse",
+        "type": "object"
+      },
+      "InterviewAnalytics": {
+        "properties": {
+          "communication": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Communication"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "integrity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnalyticsIntegrity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "interview_id": {
+            "format": "uuid",
+            "title": "Interview Id",
+            "type": "string"
+          },
+          "overall": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overall"
+          },
+          "planned_minutes": {
+            "title": "Planned Minutes",
+            "type": "integer"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsQuestion"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "skills": {
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsSkill"
+            },
+            "title": "Skills",
+            "type": "array"
+          },
+          "speech": {
+            "$ref": "#/components/schemas/AnalyticsSpeech"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "interview_id",
+          "status",
+          "planned_minutes",
+          "started_at",
+          "ended_at",
+          "duration_ms",
+          "overall",
+          "communication",
+          "questions",
+          "skills",
+          "speech",
+          "integrity"
+        ],
+        "title": "InterviewAnalytics",
         "type": "object"
       },
       "InterviewBriefingSettings": {
@@ -21557,6 +22130,60 @@
         "summary": "Decide Accommodation",
         "tags": [
           "interviews"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/analytics": {
+      "get": {
+        "description": "One interview's analytics for the dashboard (C8-7, ADR-0047): scores per skill and\nquestion, the timing of each answer, PRD §59's speech measures and, for a viewer who may see\nproctoring, its events and the process list at the start. Viewing it is audited.",
+        "operationId": "get_interview_analytics",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewAnalytics"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Get Interview Analytics",
+        "tags": [
+          "reports"
         ]
       }
     },
