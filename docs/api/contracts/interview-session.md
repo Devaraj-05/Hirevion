@@ -18,9 +18,12 @@ What the desktop shows before the system check: §30's instructions and the item
   },
   "accommodations": { "requested": [], "approved": [] },
   "answer_mode": "voice",
-  "third_eye": "optional"
+  "third_eye": "optional",
+  "app_rules": { "blocked": [ { "match": "publisher", "value": "…", "category": "remote_access" } ], "allowed": [] }
 }
 ```
+
+- `app_rules` has the shape of the proctor session's (proctoring.md): the rules the interview will report `BLOCKED_PROCESS_DETECTED` with. The desktop asks the candidate to close the running apps they block before Start. It is `null` when the interview's policy doesn't check processes.
 
 ### System checks — `POST /interviews/{id}/system-checks`
 
@@ -163,3 +166,4 @@ Body:
   - Rate limits: 30 answers or workspace snapshots a minute per interview.
 - 2026-10-23: lane C (C6, SP-16; ADR-0033). The coding question is answered in a plain text console and never run: see [coding.md](coding.md). The AI now says "type your answer in the text box … press Submit"; a submission closes the question, and so does its time limit, when the last `POST /workspace` draft becomes the final code.
 - 2026-11-15: a `system_design` question opens the `whiteboard` workspace, a plain-text notes pad on the desktop (ADR-0041).
+- 2026-11-21: the briefing carries `app_rules` for the apps-to-close check before Start (C8-6, ADR-0046).

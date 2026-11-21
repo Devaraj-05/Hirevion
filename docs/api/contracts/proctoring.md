@@ -63,7 +63,7 @@ Body:
 - **Event names:**
   - camera: `FACE_ABSENT`, `MULTIPLE_FACES`, `FACE_TOO_FAR`, `FACE_TOO_CLOSE`, `GAZE_DEVIATION`, `CAMERA_OBSTRUCTED`, `PHONE_DETECTED`, `UNEXPECTED_PERSON_DETECTED`;
   - devices: `CAMERA_DISCONNECTED`, `MIC_DISCONNECTED`, `SCREEN_CAPTURE_STOPPED`;
-  - focus and processes: `APPLICATION_FOCUS_CHANGE`, `WINDOW_MINIMIZED`, `BLOCKED_PROCESS_DETECTED`, `EXTERNAL_DISPLAY_CHANGE`;
+  - focus and processes: `APPLICATION_FOCUS_CHANGE`, `WINDOW_MINIMIZED`, `BLOCKED_PROCESS_DETECTED`, `PROCESS_INVENTORY`, `EXTERNAL_DISPLAY_CHANGE`;
   - environment: `CAPTURE_EXCLUDED_WINDOW`, `REMOTE_SESSION_DETECTED`, `VIRTUAL_DEVICE_DETECTED`, `VM_DETECTED`, `CLIENT_INTEGRITY_WARNING`;
   - audio: `ADDITIONAL_SPEAKER_DETECTED`;
   - lifecycle: `CAMERA_RECONNECTED`, `MIC_RECONNECTED`, `SESSION_INTERRUPTED`, `SESSION_RESUMED`;
@@ -105,3 +105,4 @@ Body:
   - **After the interview ends**, events are still accepted for 10 minutes so the desktop can drain its queue; heartbeats and evidence slots for a closed session are `409 proctor-session-closed` at once, and so is everything after the 10 minutes.
   - **Level `off`:** the session opens with no checks; events are acknowledged and not stored.
   - **Snapshots on request.** When a CRITICAL event is raised the server asks for a screen picture (and a camera one where the camera matters). The heartbeat answer gains `snapshot_requests: [{request_id, event_id, kind: "screen | camera", requested_at}]`; a request expires after two minutes. The desktop answers with `POST /proctoring/evidence-uploads` carrying `request_id` (the `kind` must match and `seq` is not needed), takes the same write-only URL as for any snapshot, and PUTs the picture; the blob is already linked to the event. Asking again with the same hash gives the same blob; a different hash is `409 evidence-locked`; an unknown or foreign `request_id` is `404 snapshot-request-not-found`. A snapshot the device takes by itself still needs `seq` and is named in the event's `evidence`.
+- 2026-11-21, C8-6 (ADR-0046): `PROCESS_INVENTORY` (INFO, check `processes`) is sent once when monitoring starts. Its `details` are `{ "count": n, "processes": [ { "name", "path", "publisher", "window_titles" } ] }`. The server keeps up to 2,000 processes whole as the event's `process_metadata` evidence (each with those four fields only, strings at most 300 characters, at most 5 window titles). The event's details keep `count` and `windows`, the names of the processes with a window.
