@@ -813,6 +813,18 @@
             "title": "Answer Mode",
             "type": "string"
           },
+          "app_rules": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "App Rules"
+          },
           "duration_minutes": {
             "title": "Duration Minutes",
             "type": "integer"

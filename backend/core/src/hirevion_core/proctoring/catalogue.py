@@ -66,6 +66,8 @@ EVENTS: dict[str, EventKind] = _kinds(
     EventKind("WINDOW_MINIMIZED", "native", "focus"),
     EventKind("UNEXPECTED_WINDOW", "native", "focus"),
     EventKind("BLOCKED_PROCESS_DETECTED", "native", "processes"),
+    # Every process running when the interview starts (owner, 2026-11-21; ADR-0046).
+    EventKind("PROCESS_INVENTORY", "native", "processes"),
     EventKind("EXTERNAL_DISPLAY_CHANGE", "native", "displays"),
     # The environment.
     EventKind("CAPTURE_EXCLUDED_WINDOW", "native"),
@@ -134,6 +136,38 @@ def _clean(value: Any, depth: int) -> Any:
     if isinstance(value, list | tuple):
         return [_clean(item, depth + 1) for item in value[:MAX_ITEMS]]
     return None
+
+
+# A PROCESS_INVENTORY's list leaves its details (bounded to MAX_ITEMS) for the event's
+# `process_metadata` evidence, kept whole: each process with these fields only.
+INVENTORY_FIELDS = ("name", "path", "publisher", "window_titles")
+MAX_INVENTORY = 2000
+MAX_WINDOW_TITLES = 5
+
+
+def split_inventory(raw: Mapping[str, Any] | None) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """A PROCESS_INVENTORY's details without its process list, plus the names of the processes
+    with a window (`windows`), and the list: each process with INVENTORY_FIELDS only, strings
+    bounded, forbidden keys never kept."""
+    details = dict(raw or {})
+    listed = details.pop("processes", None)
+    processes: list[dict[str, Any]] = []
+    for entry in listed if isinstance(listed, list) else []:
+        if not isinstance(entry, Mapping) or not isinstance(entry.get("name"), str):
+            continue
+        kept: dict[str, Any] = {}
+        for field in INVENTORY_FIELDS:
+            value = entry.get(field)
+            if field == "window_titles":
+                titles = value if isinstance(value, list) else []
+                kept[field] = [str(t)[:MAX_STRING] for t in titles[:MAX_WINDOW_TITLES]]
+            elif isinstance(value, str):
+                kept[field] = value[:MAX_STRING]
+        processes.append(kept)
+        if len(processes) == MAX_INVENTORY:
+            break
+    details["windows"] = [p["name"] for p in processes if p.get("window_titles")]
+    return details, processes
 
 
 def clean_details(raw: Mapping[str, Any] | None) -> dict[str, Any]:

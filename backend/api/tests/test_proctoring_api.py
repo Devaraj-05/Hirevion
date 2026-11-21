@@ -32,7 +32,7 @@ from hirevion_core.db.session import Database
 from hirevion_core.identity.sessions import create_session
 from hirevion_core.identity.settings import IdentitySettings
 from hirevion_core.interview_session.media import FakeMedia
-from hirevion_core.models import AuditLog, ProctorEvent
+from hirevion_core.models import AuditLog, ProctorEvent, ProctorEvidence
 from hirevion_core.proctoring.service import ProctorEngine
 from hirevion_core.storage.service import StorageService, StorageSettings
 from hirevion_interview_simulator.client import DesktopClient
@@ -739,3 +739,27 @@ async def test_events_reach_the_dashboard_in_under_a_second_at_the_95th_percenti
         f"max {ordered[-1] * 1000:.0f} ms"
     )
     assert p95 < 1.0
+
+
+async def test_the_process_list_at_the_start_arrives_whole(desk: Desk, app_db: Database) -> None:
+    # About 280 processes on the owner's PC (ADR-0046): one event, well inside the body limit.
+    processes = [
+        {
+            "name": f"process-{n}.exe",
+            "path": f"C:\Program Files\Vendor {n}\Application\process-{n}.exe",
+            "publisher": "Vendor Software Ltd",
+            "window_titles": ["Main window"] if n % 20 == 0 else [],
+        }
+        for n in range(300)
+    ]
+    sent = await desk.events(
+        event(1, "PROCESS_INVENTORY", details={"count": 300, "processes": processes})
+    )
+    assert sent.status_code == 200 and sent.json() == {"acked_through": 1, "missing": []}
+    async with app_db.tenant(desk.seed.organization_id) as session:
+        kept = (
+            await session.scalars(
+                select(ProctorEvidence).where(ProctorEvidence.kind == "process_metadata")
+            )
+        ).all()
+    assert len(kept) == 1 and len(kept[0].ref["processes"]) == 300

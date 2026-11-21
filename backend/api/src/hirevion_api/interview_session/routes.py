@@ -4,6 +4,8 @@ DPoP proof (ADR-0021); none takes a recruiter's cookie."""
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import cast
 from uuid import UUID
 
@@ -61,6 +63,13 @@ def media(request: Request) -> MediaControl | None:
     return cast(MediaControl | None, getattr(request.app.state, "media", None))
 
 
+def interview_clock(request: Request) -> Callable[[], datetime]:
+    """The clock an interview's times are kept by: the real one, except in tests that simulate a
+    whole interview, which pace it by the answers (an interview asks until its time is used,
+    and simulated answers are instant). Production never sets `app.state.interview_clock`."""
+    return getattr(request.app.state, "interview_clock", None) or (lambda: datetime.now(UTC))
+
+
 def conductor(request: Request) -> Conductor:
     ai = getattr(request.app.state, "ai", None)
     return Conductor(
@@ -69,6 +78,7 @@ def conductor(request: Request) -> Conductor:
         llm=ai.llm if ai is not None else None,
         media=media(request),
         origin="api",
+        clock=interview_clock(request),
     )
 
 
@@ -135,6 +145,7 @@ async def interview_briefing(
         third_eye=result.third_eye,  # type: ignore[arg-type]
         duration_minutes=result.duration_minutes,
         support_email=result.support_email,
+        app_rules=result.app_rules,
     )
 
 

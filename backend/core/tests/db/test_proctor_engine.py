@@ -698,3 +698,62 @@ async def test_nothing_is_recorded_when_proctoring_is_off(
         snapshot=snapshot("off"),
     )
     assert found is None and await rows(app_db, world) == []
+
+
+# The running processes when the interview starts (owner, 2026-11-21: "background process list
+# should be saved"; ADR-0046).
+
+
+async def test_the_process_list_at_the_start_is_saved_whole_as_evidence(
+    world: World, app_db: Database
+) -> None:
+    await world.open()
+    processes = [
+        {
+            "name": f"app{n}.exe",
+            "path": f"C:\Program Files\App{n}\app{n}.exe",
+            "publisher": "Example Ltd",
+            "window_titles": [f"Window {n}"] if n % 10 == 0 else [],
+            "keystrokes": "never stored",
+        }
+        for n in range(150)
+    ]
+    await world.send(item(1, "PROCESS_INVENTORY", details={"count": 150, "processes": processes}))
+    async with app_db.tenant(world.org) as session:
+        (event,) = (await session.scalars(select(ProctorEvent))).all()
+        (kept,) = (await session.scalars(select(ProctorEvidence))).all()
+    assert event.severity == "INFO" and event.details["count"] == 150
+    # The list leaves the event's details (bounded at 40 items) for its evidence, whole.
+    assert "processes" not in event.details
+    assert event.details["windows"] == [f"app{n}.exe" for n in range(0, 150, 10)]
+    assert kept.kind == "process_metadata" and kept.proctor_event_id == event.id
+    assert kept.origin == "client" and len(kept.ref["processes"]) == 150
+    assert kept.ref["processes"][10] == {
+        "name": "app10.exe",
+        "path": "C:\Program Files\App10\app10.exe",
+        "publisher": "Example Ltd",
+        "window_titles": ["Window 10"],
+    }
+
+
+async def test_once_the_session_is_pinned_the_briefing_shows_its_app_rules(
+    world: World, app_db: Database, admin_engine: AsyncEngine
+) -> None:
+    # What the desktop asks to close must be what the interview reports (ADR-0046 review).
+    from hirevion_core.interview_session.briefing import briefing
+    from hirevion_core.models import Interview
+
+    session_id = await world.open()
+    rule = {"match": "name", "value": "pinned-app", "category": "ai_assistant"}
+    pinned = {"blocked": [rule], "allowed": []}
+    async with admin_engine.begin() as conn:
+        await conn.execute(
+            text(
+                "UPDATE proctor_sessions SET policy = jsonb_set(policy, '{app_rules}', "
+                "CAST(:rules AS jsonb)) WHERE id = :id"
+            ),
+            {"rules": json.dumps(pinned), "id": session_id},
+        )
+    async with app_db.tenant(world.org) as session:
+        interview = await session.get_one(Interview, world.interview)
+        assert (await briefing(session, interview)).app_rules == pinned

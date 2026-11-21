@@ -6,7 +6,7 @@ coding report and Candidate 360 show it."""
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -115,6 +115,7 @@ async def to_coding(desktop: DesktopClient, interview_id: str) -> dict[str, Any]
 
 
 async def test_the_console_gets_the_question_saves_submits_and_moves_on(
+    paced: Any,
     client: AsyncClient,
     app_db: Database,
     valkey: Redis,
@@ -141,7 +142,7 @@ async def test_the_console_gets_the_question_saves_submits_and_moves_on(
     draft = view["draft"]
     assert draft["content"].startswith("def solve") and draft["language"] == "python"
 
-    now = datetime.now(UTC).isoformat()
+    now = paced.now().isoformat()  # the interview's own clock
     events = [
         {"kind": "focus", "at": now},
         {"kind": "typing_started", "at": now},
@@ -159,7 +160,7 @@ async def test_the_console_gets_the_question_saves_submits_and_moves_on(
         ({"kind": "paste", "at": now, "chars": 3, "text": "secret"}, 422, None),
         ({"kind": "focus", "at": "2026-10-25T10:00:00"}, 422, None),  # no time zone
         (
-            {"kind": "focus", "at": (datetime.now(UTC) + timedelta(hours=1)).isoformat()},
+            {"kind": "focus", "at": (paced.now() + timedelta(hours=1)).isoformat()},
             422,
             "event-out-of-time",
         ),
@@ -221,6 +222,7 @@ async def test_the_console_gets_the_question_saves_submits_and_moves_on(
 
 
 async def test_the_time_limit_keeps_the_last_saved_text_as_the_final_code(
+    paced: Any,
     client: AsyncClient,
     api: FastAPI,
     app_db: Database,
@@ -238,7 +240,7 @@ async def test_the_time_limit_keeps_the_last_saved_text_as_the_final_code(
     from hirevion_core.interview_session.conductor import Conductor
     from hirevion_core.interviews.lifecycle import By
 
-    later = datetime.now(UTC) + timedelta(seconds=question["time_limit_seconds"] + 120)
+    later = paced.now() + timedelta(seconds=question["time_limit_seconds"] + 120)
     conductor = Conductor(app_db, valkey, llm=None, media=FakeMedia(), clock=lambda: later)
     turn = await conductor.tick(seed.organization_id, seed.interview_id, by=By.system())
     assert turn is not None and turn.view.question is not None
@@ -249,6 +251,7 @@ async def test_the_time_limit_keeps_the_last_saved_text_as_the_final_code(
 
 
 async def test_every_persona_with_coding_finishes_and_the_code_is_reviewed(
+    paced: Any,
     client: AsyncClient,
     app_db: Database,
     admin_engine: AsyncEngine,
@@ -287,6 +290,7 @@ async def test_every_persona_with_coding_finishes_and_the_code_is_reviewed(
 
 
 async def test_the_last_saved_workspace_comes_back_for_a_restart(
+    paced: Any,
     client: AsyncClient,
     app_db: Database,
     valkey: Redis,

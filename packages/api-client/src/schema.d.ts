@@ -3994,6 +3994,10 @@ export interface components {
              * @enum {string}
              */
             answer_mode: "voice" | "text";
+            /** App Rules */
+            app_rules?: {
+                [key: string]: unknown;
+            } | null;
             /** Duration Minutes */
             duration_minutes: number;
             /** Instructions */

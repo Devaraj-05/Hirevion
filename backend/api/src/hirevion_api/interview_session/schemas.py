@@ -43,6 +43,9 @@ class BriefingResponse(BaseModel):
     third_eye: Literal["off", "optional", "required"]
     duration_minutes: int
     support_email: str | None = None
+    # The blocked and allowed app rules (proctoring.md's `app_rules`), or null when the
+    # interview doesn't check running apps.
+    app_rules: dict[str, Any] | None = None
 
 
 class CheckItem(BaseModel):

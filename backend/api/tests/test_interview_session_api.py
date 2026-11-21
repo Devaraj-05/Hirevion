@@ -112,6 +112,10 @@ async def test_the_contract_before_and_at_the_start_of_a_voice_interview(
     assert briefing["answer_mode"] == "voice" and briefing["third_eye"] == "optional"
     assert briefing["notice"]["version"] and briefing["instructions"]
     assert "microphone" in briefing["mandatory_checks"]
+    # The apps to close before Start: the same rules the proctor session will hold (C8-6).
+    blocked = briefing["app_rules"]["blocked"]
+    assert any(rule["value"] == "TeamViewer Germany GmbH" for rule in blocked)
+    assert isinstance(briefing["app_rules"]["allowed"], list)
     unknown = await desktop.interview(
         "POST",
         interview,
@@ -162,6 +166,7 @@ async def test_the_contract_before_and_at_the_start_of_a_voice_interview(
 
 @pytest.mark.parametrize("name", PERSONAS)
 async def test_every_persona_finishes_a_full_interview(
+    paced: Any,
     name: str,
     client: AsyncClient,
     app_db: Database,
@@ -366,6 +371,7 @@ async def _websocket(
 
 
 async def test_the_live_events_need_an_allowed_origin_and_a_session_that_can_see_it(
+    paced: Any,
     api: FastAPI,
     client: AsyncClient,
     app_db: Database,

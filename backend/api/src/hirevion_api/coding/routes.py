@@ -9,7 +9,6 @@ DPoP proof (ADR-0021).
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import Depends, Request, Response
@@ -26,7 +25,13 @@ from hirevion_api.coding.schemas import (
     TelemetryResponse,
 )
 from hirevion_api.deps import get_db
-from hirevion_api.interview_session.routes import ANSWERS_BY_IP, _by, conductor, state_body
+from hirevion_api.interview_session.routes import (
+    ANSWERS_BY_IP,
+    _by,
+    conductor,
+    interview_clock,
+    state_body,
+)
 from hirevion_api.ratelimit import enforce, rate_limited
 from hirevion_api.routing import api_router
 from hirevion_core.access.errors import NotFound
@@ -134,6 +139,6 @@ async def coding_telemetry(
             interview,
             body.question_id,
             [console.TelemetryEvent(e.kind, e.at, e.chars) for e in body.events],
-            now=datetime.now(UTC),
+            now=interview_clock(request)(),
         )
     return TelemetryResponse(accepted=accepted)

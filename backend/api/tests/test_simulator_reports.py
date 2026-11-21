@@ -63,6 +63,7 @@ def api(app_db: Database, valkey: Redis, storage: StorageService) -> FastAPI:
 
 
 async def test_a_simulated_interview_populates_every_report_section(
+    paced: Any,
     api: FastAPI,
     signed_in: Any,
     app_db: Database,

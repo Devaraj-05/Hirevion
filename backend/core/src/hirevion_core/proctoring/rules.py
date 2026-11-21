@@ -59,6 +59,7 @@ DEFAULT_FIXED: dict[str, str] = {
     "SESSION_INTERRUPTED": "INFO",
     "SESSION_RESUMED": "INFO",
     "EDITOR_PASTE": "INFO",
+    "PROCESS_INVENTORY": "INFO",
 }
 # Warnings of these kinds that keep recurring become critical (the policy can change the list,
 # the count and the window). Gaze is deliberately absent.

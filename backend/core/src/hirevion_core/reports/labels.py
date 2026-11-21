@@ -34,6 +34,7 @@ EVENT_LABELS: dict[str, str] = {
     "SESSION_RESUMED": "Session resumed",
     "EDITOR_PASTE": "Pasted into the code editor",
     "EDITOR_FOCUS_CHANGE": "Left the code editor",
+    "PROCESS_INVENTORY": "Apps running when monitoring started",
     "THIRD_EYE_DISCONNECTED": "Third-eye camera disconnected",
     "THIRD_EYE_RECONNECTED": "Third-eye camera reconnected",
     "TELEMETRY_GAP": "Monitoring data missing",
@@ -54,6 +55,7 @@ EVENT_SECTIONS: dict[str, tuple[str, ...]] = {
     ),
     "process_events": (
         "BLOCKED_PROCESS_DETECTED",
+        "PROCESS_INVENTORY",
         "REMOTE_SESSION_DETECTED",
         "VM_DETECTED",
         "VIRTUAL_DEVICE_DETECTED",

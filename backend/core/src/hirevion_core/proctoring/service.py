@@ -334,6 +334,19 @@ class ProctorEngine:
             session.add(row)
             await session.flush()
             change = Change(row, "created")
+            if n.inventory is not None:
+                # The process list at the start, whole (§67's process metadata).
+                session.add(
+                    ProctorEvidence(
+                        organization_id=proctor.organization_id,
+                        proctor_session_id=proctor.id,
+                        interview_id=proctor.interview_id,
+                        proctor_event_id=row.id,
+                        kind="process_metadata",
+                        origin="client",
+                        ref={"processes": n.inventory},
+                    )
+                )
         else:
             row = target
             merged = merge_episode(

@@ -1615,7 +1615,8 @@
         "SESSION_RESUMED": "Candidate came back",
         "TELEMETRY_GAP": "Gap in the app's reports",
         "EDITOR_PASTE": "Pasted into the editor",
-        "EDITOR_FOCUS_CHANGE": "Left the editor"
+        "EDITOR_FOCUS_CHANGE": "Left the editor",
+        "PROCESS_INVENTORY": "Apps running when monitoring started"
       }
     },
     "settings": {

@@ -16,6 +16,7 @@ from hirevion_core.proctoring.catalogue import (
     RANK,
     SOURCES,
     clean_details,
+    split_inventory,
 )
 
 MAX_DURATION_MS = 6 * 3600 * 1000
@@ -55,6 +56,8 @@ class Normalised:
     evidence: list[dict[str, str]]
     category: str | None
     hint: str | None
+    inventory: list[dict[str, Any]] | None = None
+    """PROCESS_INVENTORY's process list, stored whole as the event's evidence."""
 
 
 def check_names(items: list[Incoming]) -> None:
@@ -83,7 +86,11 @@ def _category(event: str, details: Mapping[str, Any], policy: Mapping[str, Any])
 
 def normalise(item: Incoming, policy: Mapping[str, Any], *, now: datetime) -> Normalised:
     started = item.started_at if item.started_at.tzinfo else item.started_at.replace(tzinfo=UTC)
-    details = clean_details(item.details)
+    inventory = None
+    raw = item.details
+    if item.event == "PROCESS_INVENTORY":
+        raw, inventory = split_inventory(raw)
+    details = clean_details(raw)
     if started > now + FUTURE_SLACK:
         details["clock_skew_ms"] = int((started - now).total_seconds() * 1000)
         started = now
@@ -111,4 +118,5 @@ def normalise(item: Incoming, policy: Mapping[str, Any], *, now: datetime) -> No
         evidence=evidence,
         category=_category(item.event, details, policy),
         hint=hint,
+        inventory=inventory,
     )

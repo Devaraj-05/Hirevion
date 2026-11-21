@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import UTC, datetime, timedelta
-from typing import Protocol
+from typing import Any, Protocol
 from uuid import UUID
 
 import pytest
@@ -60,6 +60,50 @@ def api(app_db: Database, valkey: Redis) -> FastAPI:
         redis=valkey,
         identity=IDENTITY,
     )
+
+
+class Pace:
+    """The interview's clock for a simulated candidate: two minutes pass per answer. Answers
+    arrive at once, and an interview asks questions until its time is used (C8-4), so without it
+    a simulated interview would never end, and its answers would pass the 30-a-minute limit."""
+
+    def __init__(self) -> None:
+        self.offset = timedelta()
+
+    def now(self) -> datetime:
+        return datetime.now(UTC) + self.offset
+
+    def answered(self) -> None:
+        self.offset += timedelta(minutes=2)
+
+
+@pytest.fixture
+def paced(api: FastAPI, monkeypatch: pytest.MonkeyPatch) -> Pace:
+    """Runs the API's interviews on a `Pace`, moved on by every answer the simulator sends."""
+    from hirevion_interview_simulator import coding, telemetry
+    from hirevion_interview_simulator.client import DesktopClient
+
+    pace = Pace()
+    api.state.interview_clock = pace.now
+
+    class ServerTime(datetime):
+        """The desktop stamps its events in the server's time: here, the paced clock."""
+
+        @classmethod
+        def now(cls, tz: Any = None) -> datetime:  # type: ignore[override]
+            return pace.now() if tz is not None else pace.now().replace(tzinfo=None)
+
+    for module in (coding, telemetry):
+        monkeypatch.setattr(module, "datetime", ServerTime)
+    for name in ("answer", "submit_code"):
+        original = getattr(DesktopClient, name)
+
+        def paced_call(*args: Any, _original: Any = original, **kwargs: Any) -> Any:
+            pace.answered()
+            return _original(*args, **kwargs)
+
+        monkeypatch.setattr(DesktopClient, name, paced_call)
+    return pace
 
 
 class SignedIn(Protocol):

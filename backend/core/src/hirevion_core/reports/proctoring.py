@@ -383,6 +383,8 @@ def timeline(data: InterviewData) -> Section:
 def _evidence_detail(item: Any) -> str | None:
     ref = item.ref or {}
     if item.kind == "process_metadata":
+        if isinstance(ref.get("processes"), list):  # the list at the start (PROCESS_INVENTORY)
+            return f"{len(ref['processes'])} running processes"
         return str(ref.get("name") or ref.get("process") or "Process details") or None
     if item.kind == "transcript_segment":
         return "Transcript turns around the event"

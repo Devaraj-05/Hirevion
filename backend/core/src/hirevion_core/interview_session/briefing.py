@@ -17,7 +17,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from hirevion_core.access.actor import Actor
 from hirevion_core.access.audit import record
 from hirevion_core.access.errors import Invalid
-from hirevion_core.models import Accommodation, Interview, Organization, OrganizationSettings
+from hirevion_core.models import (
+    Accommodation,
+    Interview,
+    Organization,
+    OrganizationSettings,
+    ProctorSession,
+)
+from hirevion_core.proctoring.policy import build_policy
 
 NOTICE_VERSION = "2026-10-09"
 # PRD §29's eleven checks, plus the desktop contract's two.
@@ -108,6 +115,31 @@ class Briefing:
     support_email: str | None = None
     duration_minutes: int = 0
     extra: dict[str, Any] = field(default_factory=dict)
+    app_rules: dict[str, Any] | None = None
+    """The apps to close before Start (C8-6), or None when the interview doesn't check them."""
+
+
+def app_rules_to_close(policy: dict[str, Any]) -> dict[str, Any] | None:
+    """The blocked and allowed app rules of a proctoring policy that checks processes: the same
+    rules the proctor session holds once the interview starts, so what the desktop asks the
+    candidate to close is what the interview would report (PRD §61)."""
+    if "processes" not in (policy.get("checks") or []):
+        return None
+    rules = policy.get("app_rules") or {}
+    return {
+        "blocked": [dict(rule) for rule in rules.get("blocked") or []],
+        "allowed": [dict(rule) for rule in rules.get("allowed") or []],
+    }
+
+
+async def _proctoring_policy(session: AsyncSession, interview: Interview) -> dict[str, Any]:
+    """The policy the interview is (or will be) judged by: the proctor session's pinned one once
+    it exists, so a rule changed since never makes the check before Start differ from what the
+    interview reports; until then, the policy as it would be pinned now."""
+    pinned = await session.scalar(
+        select(ProctorSession.policy).where(ProctorSession.interview_id == interview.id)
+    )
+    return dict(pinned) if pinned else await build_policy(session, interview)
 
 
 def accommodations(policy: dict[str, Any]) -> set[str]:
@@ -209,6 +241,7 @@ async def briefing(session: AsyncSession, interview: Interview) -> Briefing:
         third_eye=third_eye_mode(policy),
         support_email=support,
         duration_minutes=round(duration_minutes(interview)),
+        app_rules=app_rules_to_close(await _proctoring_policy(session, interview)),
     )
 
 
