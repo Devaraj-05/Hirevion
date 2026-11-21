@@ -1,12 +1,14 @@
-import { Button, Checkbox, Label } from "@hirevion/ui";
+import { Checkbox, cn, Label } from "@hirevion/ui";
+import { BatteryCharging, Lightbulb, MonitorSmartphone, RotateCw, ScanEye } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslations } from "use-intl";
-import type { SystemCheckPayload } from "../checks/payload";
-import { commands, isCommandError, type PairingView } from "../native/commands";
-import { phoneState, type ThirdEyeMode } from "../third-eye/pairing";
-import { PhonePreview } from "../third-eye/preview";
-import { checkMessage, type Verdict } from "../third-eye/verdict";
-import { ErrorText } from "./shell";
+import type { SystemCheckPayload } from "../../checks/payload";
+import { commands, isCommandError, type PairingView } from "../../native/commands";
+import { phoneState } from "../../third-eye/pairing";
+import { PhonePreview } from "../../third-eye/preview";
+import { checkMessage, type Verdict } from "../../third-eye/verdict";
+import { Notice, PillButton } from "../../ui/kit";
+import { showAboveBar } from "./step";
 
 /** How often the step reads the pairing's status (contract third-eye.md: every 2 s). */
 const POLL_MS = 2_000;
@@ -25,29 +27,38 @@ function errorCode(failure: unknown): string {
   return KNOWN_ERRORS.includes(code) ? code : "unknown";
 }
 
+/** Where the phone goes, in the order the candidate does it (owner, 2026-11-15). */
+const PLACEMENT = [
+  { key: "side", icon: MonitorSmartphone },
+  { key: "sideways", icon: RotateCw },
+  { key: "frame", icon: ScanEye },
+  { key: "light", icon: Lightbulb },
+  { key: "steady", icon: BatteryCharging },
+] as const;
+
 /**
- * §6.4's phone step: the candidate scans a code with their phone, which becomes the interview's
- * second camera. Rust issues the code and reads the pairing (the webview never holds a session
- * token); the server judges the camera from its own view. A check that failed only on the
- * third eye (`recheck`) is sent again once the phone is connected.
+ * Step 4, §6.4: the candidate scans a code with their phone, which becomes the interview's
+ * second camera, places it, and confirms the picture once it is green (C8-3): them and their
+ * whole laptop, nobody and no other laptop. Rust issues the code and reads the pairing (the
+ * webview never holds a session token). A check that failed only on the third eye (`recheck`)
+ * is sent again once the phone is in place.
  */
-export function ThirdEyeScreen({
+export function PhoneStep({
   interviewId,
   mode,
   recheck,
   onDone,
-  onBack,
   onError,
 }: {
   interviewId: string;
-  mode: Exclude<ThirdEyeMode, "off">;
+  mode: "optional" | "required";
   recheck: SystemCheckPayload | null;
-  /** The phone step is done; a new passing system check's id when one was sent again. */
+  /** The phone is in place (or skipped); a new passing system check's id when one was sent. */
   onDone: (systemCheckId: string | null) => void;
-  onBack: () => void;
   onError: (error: unknown) => void;
 }) {
   const t = useTranslations("thirdEye");
+  const p = useTranslations("prepare.phone");
   const id = useId();
   const [pairing, setPairing] = useState<PairingView | null>(null);
   const [status, setStatus] = useState("issued");
@@ -63,20 +74,15 @@ export function ThirdEyeScreen({
   // Only the newest pairing request's answer counts (a new code supersedes an old one).
   const request = useRef(0);
   const started = useRef(false);
-  // On a small screen the placement card pushes the buttons down: bring Continue into view once
-  // the phone connects.
-  const actions = useRef<HTMLDivElement>(null);
   const connected = phoneState(status) === "connected";
-  // C8-3 (owner, 2026-11-15): the phone's picture must show the candidate and their whole
-  // laptop (green), and the candidate confirms it, before they can continue.
   const [verdict, setVerdict] = useState<Verdict>({ green: false, framing: null, evidence: null });
   const [confirmed, setConfirmed] = useState(false);
   const green = connected && verdict.green;
+  const confirm = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!green) setConfirmed(false);
-  }, [green]);
-  useEffect(() => {
-    if (green) actions.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    // Green: bring the confirmation into view, above the Start bar.
+    else showAboveBar(confirm.current);
   }, [green]);
 
   /** Done with the phone: the check that waited for it is sent again first. */
@@ -89,7 +95,6 @@ export function ThirdEyeScreen({
     setWorking(true);
     setError(null);
     try {
-      // The server now sees the phone's camera (or no longer needs one).
       const submitted = await commands.submitChecks(interviewId, waiting);
       if (submitted.passed) latest.current.onDone(submitted.id);
       else setError("check-failed");
@@ -144,7 +149,6 @@ export function ThirdEyeScreen({
         setStatus(seen.status);
         setDevice(seen.device);
       } catch (failure) {
-        // A lost session goes back to sign-in; anything else waits for the next read.
         if (!cancelled) latest.current.onError(failure);
       }
       if (!cancelled) timer = window.setTimeout(() => void read(), POLL_MS);
@@ -158,7 +162,6 @@ export function ThirdEyeScreen({
 
   /** Records the confirmed placement, then moves on. */
   async function placed() {
-    // The green frames' scores, not whichever frame came last.
     const seen = verdict.evidence;
     if (!green || !confirmed || !seen) return;
     setWorking(true);
@@ -187,133 +190,137 @@ export function ThirdEyeScreen({
   const phone = phoneState(status);
   const qr = pairing?.qr ?? null;
   const link = pairing?.link ?? null;
+  const message = checkMessage(verdict);
   return (
-    <section className="grid gap-5" aria-labelledby={`${id}-title`}>
-      <div className="grid gap-1">
-        <h1 id={`${id}-title`} className="font-semibold text-2xl">
-          {t("title")}
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          {mode === "required" ? t("introRequired") : t("introOptional")}
-        </p>
-      </div>
-
-      {phone === "waiting" && qr ? (
-        <figure className="grid w-fit gap-3">
-          <svg
-            viewBox={`0 0 ${qr.size} ${qr.size}`}
-            role="img"
-            aria-label={t("qrLabel")}
-            className="size-56 rounded-md bg-white"
-            shapeRendering="crispEdges"
-          >
-            <path d={qr.path} fill="#000" />
-          </svg>
-          <figcaption className="grid gap-2 text-sm">
-            <span>{t("scan")}</span>
-            {link ? (
-              <span className="flex flex-wrap items-center gap-2">
-                <span className="text-muted-foreground">{t("orType")}</span>
-                <code className="break-all rounded bg-surface-sunken px-1">{link}</code>
-                <Button variant="ghost" size="sm" onClick={() => void copyLink(link)}>
-                  {copied ? t("copied") : t("copy")}
-                </Button>
-              </span>
-            ) : null}
-          </figcaption>
-        </figure>
-      ) : null}
-
-      {/* Next to the code, so a small screen shows it without scrolling. */}
-      {pairing ? (
-        <p role="status" aria-live="polite" className="font-medium">
-          {t(`state.${phone}`, { device: device ?? t("yourPhone") })}
-        </p>
-      ) : null}
-
+    <div className="grid gap-5">
       {connected ? (
-        <section
-          className="grid gap-3 rounded-md border border-border p-4"
-          aria-labelledby={`${id}-check`}
-        >
-          <h2 id={`${id}-check`} className="font-medium">
-            {t("check.title")}
-          </h2>
+        <div className="grid gap-4">
           <PhonePreview interviewId={interviewId} onVerdict={setVerdict} />
           <p
             role="status"
             aria-live="polite"
-            className={green ? "font-medium text-success" : "font-medium text-warning"}
+            className={cn(
+              "flex items-center gap-2 font-medium",
+              green ? "text-success" : "text-warning",
+            )}
           >
-            {t(`check.${checkMessage(verdict)}`)}
+            <span
+              aria-hidden
+              className={cn("size-2 rounded-full", green ? "bg-success" : "bg-warning")}
+            />
+            {t(`check.${message}`)}
           </p>
-          <div className="flex items-start gap-3">
+          <div
+            ref={confirm}
+            className="flex scroll-mb-28 items-start gap-3 rounded-2xl bg-surface-muted p-4"
+          >
             <Checkbox
               id={`${id}-confirm`}
+              className="mt-0.5 size-5 rounded-md"
               checked={confirmed}
               disabled={!green}
               onCheckedChange={(checked) => setConfirmed(checked === true)}
             />
             <div className="grid gap-1">
-              <Label htmlFor={`${id}-confirm`} className="font-normal">
+              <Label htmlFor={`${id}-confirm`} className="font-medium text-[0.95rem]">
                 {t("check.confirm")}
               </Label>
-              {!green && verdict.framing !== null ? (
-                <p className="text-muted-foreground text-sm">{t("check.confirmHint")}</p>
+              {!green ? (
+                <p className="text-[0.85rem] text-muted-foreground">{t("check.confirmHint")}</p>
               ) : null}
             </div>
           </div>
-        </section>
+        </div>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-[auto_minmax(0,1fr)]">
+          <figure className="grid h-fit justify-items-center gap-3 rounded-2xl border border-border/70 bg-white p-5 text-center text-[#1d1d1f]">
+            {qr && phone === "waiting" ? (
+              <svg
+                viewBox={`0 0 ${qr.size} ${qr.size}`}
+                role="img"
+                aria-label={t("qrLabel")}
+                className="size-48"
+                shapeRendering="crispEdges"
+              >
+                <path d={qr.path} fill="#1d1d1f" />
+              </svg>
+            ) : (
+              <div className="grid size-48 place-items-center text-[0.9rem] text-[#63636a]">
+                {pairing ? t(`state.${phone}`, { device: device ?? t("yourPhone") }) : p("making")}
+              </div>
+            )}
+            <figcaption className="max-w-48 text-[0.85rem] text-[#63636a]">{p("scan")}</figcaption>
+          </figure>
+          <div className="grid h-fit gap-4">
+            <h3 className="font-semibold">{t("placement.title")}</h3>
+            <ol className="grid gap-3">
+              {PLACEMENT.map(({ key, icon: Icon }) => (
+                <li key={key} className="flex items-start gap-3">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-accent-subtle text-accent-subtle-foreground">
+                    <Icon className="size-4" aria-hidden />
+                  </span>
+                  <span className="pt-1 text-[0.92rem] leading-snug">{p(`placement.${key}`)}</span>
+                </li>
+              ))}
+            </ol>
+            {link && phone === "waiting" ? (
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.85rem] text-muted-foreground">
+                {p("link")}
+                <code className="max-w-full truncate rounded-md bg-surface-sunken px-1.5 py-0.5 text-foreground">
+                  {link}
+                </code>
+                <button
+                  type="button"
+                  className="text-accent hover:underline"
+                  onClick={() => void copyLink(link)}
+                >
+                  {copied ? t("copied") : t("copy")}
+                </button>
+              </p>
+            ) : null}
+          </div>
+        </div>
+      )}
+
+      {pairing && phone !== "waiting" && !connected ? (
+        <p role="status" aria-live="polite" className="font-medium">
+          {t(`state.${phone}`, { device: device ?? t("yourPhone") })}
+        </p>
       ) : null}
 
-      {/* Right under the code, so the candidate reads it while placing the phone (owner, 2026-11-15). */}
-      <section
-        className="grid gap-2 rounded-md border border-border p-4"
-        aria-labelledby={`${id}-placement`}
-      >
-        <h2 id={`${id}-placement`} className="font-medium">
-          {t("placement.title")}
-        </h2>
-        <ul className="grid list-disc gap-1 pl-5 text-sm">
-          <li>{t("placement.sideways")}</li>
-          <li>{t("placement.side")}</li>
-          <li>{t("placement.frame")}</li>
-          <li>{t("placement.light")}</li>
-          <li>{t("placement.steady")}</li>
-          <li>{t("placement.lock")}</li>
-        </ul>
-      </section>
+      {error ? (
+        <Notice role="alert" tone="danger">
+          {t(`errors.${error}`)}
+        </Notice>
+      ) : null}
 
-      {error ? <ErrorText>{t(`errors.${error}`)}</ErrorText> : null}
-
-      <div ref={actions} className="flex flex-wrap gap-2">
-        <Button disabled={working || !green || !confirmed} onClick={() => void placed()}>
-          {t("continue")}
-        </Button>
-        {pairing === null && error ? (
-          <Button variant="secondary" onClick={() => void pair(false)}>
-            {t("retry")}
-          </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        {connected ? (
+          <PillButton disabled={working || !green || !confirmed} onClick={() => void placed()}>
+            {p("done")}
+          </PillButton>
         ) : null}
-        {pairing !== null && phone !== "connected" ? (
+        {pairing === null && error ? (
+          <PillButton variant="secondary" onClick={() => void pair(false)}>
+            {t("retry")}
+          </PillButton>
+        ) : null}
+        {pairing !== null && !connected ? (
           // Also for a phone that scanned but never sent its camera: a new code replaces it.
-          <Button
-            variant={phone === "new-code" ? "secondary" : "ghost"}
+          <PillButton
+            variant={phone === "new-code" ? "primary" : "quiet"}
             onClick={() => void pair(true)}
           >
             {t("newCode")}
-          </Button>
+          </PillButton>
         ) : null}
         {/* An optional phone never blocks the candidate, connected or not. */}
         {mode === "optional" ? (
-          <Button variant="secondary" disabled={working} onClick={() => void finish()}>
+          <PillButton variant="quiet" disabled={working} onClick={() => void finish()}>
             {t("skip")}
-          </Button>
+          </PillButton>
         ) : null}
-        <Button variant="ghost" onClick={onBack}>
-          {t("back")}
-        </Button>
       </div>
-    </section>
+    </div>
   );
 }

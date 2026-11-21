@@ -1,36 +1,39 @@
 import { Toaster } from "@hirevion/ui";
 import { lazy, Suspense, useCallback, useEffect, useReducer, useState } from "react";
-import type { SystemCheckPayload } from "./checks/payload";
 import { type FlowEvent, initialState, transition } from "./flow/flow";
 import { I18nProvider, type Locale, pickLocale } from "./i18n/i18n";
 import {
-  type Briefing,
   commands,
   type ReleaseState,
   type SignInResult,
   type StartResult,
 } from "./native/commands";
-import { BriefingScreen, ConsentScreen } from "./screens/briefing";
 import { isSessionLost } from "./screens/errors";
 import { CompletedScreen, InterviewScreen } from "./screens/interview";
 import { InterviewsScreen } from "./screens/interviews";
-import { LaunchScreen, ReadyScreen, UpdateRequiredScreen } from "./screens/launch";
+import { LaunchScreen, UpdateRequiredScreen } from "./screens/launch";
+import { PrepareScreen } from "./screens/prepare";
 import { Shell } from "./screens/shell";
 import { CodeScreen, SignInScreen } from "./screens/sign-in";
-import { SystemCheckScreen } from "./screens/system-check";
-import { ThirdEyeScreen } from "./screens/third-eye";
 
 // The SP-00d spike pages are compiled into debug builds only.
 const SpikeApp = import.meta.env.DEV
   ? lazy(() => import("./spikes/SpikeApp").then((module) => ({ default: module.SpikeApp })))
   : null;
 const SPIKE_HASHES = ["#/media", "#/livekit"];
+// The interview's looks, state by state, for checking them by eye and in Playwright.
+const Gallery = import.meta.env.DEV
+  ? lazy(() => import("./spikes/gallery").then((module) => ({ default: module.Gallery })))
+  : null;
 
 function useDarkTheme() {
   useEffect(() => {
-    // Follow Windows' light or dark setting (the design system's `.dark` class).
+    // Follow Windows' light or dark setting: the design system switches every token on
+    // `data-theme` (a `.dark` class, used until 2026-11-16, switched nothing).
     const query = window.matchMedia("(prefers-color-scheme: dark)");
-    const apply = () => document.documentElement.classList.toggle("dark", query.matches);
+    const apply = () => {
+      document.documentElement.dataset.theme = query.matches ? "dark" : "light";
+    };
     apply();
     query.addEventListener("change", apply);
     return () => query.removeEventListener("change", apply);
@@ -47,10 +50,19 @@ export function App() {
       </Suspense>
     );
   }
+  if (Gallery && window.location.hash.startsWith("#/gallery")) {
+    return (
+      <Suspense fallback={null}>
+        <I18nProvider locale="en-US">
+          <Gallery />
+        </I18nProvider>
+      </Suspense>
+    );
+  }
   return <CandidateApp />;
 }
 
-/** PRD §26: version check, sign-in, interviews, briefing, system check, consent, ready, interview. */
+/** PRD §26: version check, sign-in, interviews, the page before the interview, the interview. */
 function CandidateApp() {
   const [state, dispatch] = useReducer(transition, initialState);
   const [locale, setLocale] = useState<Locale>(() => pickLocale(navigator.languages));
@@ -79,20 +91,17 @@ function CandidateApp() {
   const lost = useCallback((error: unknown) => {
     if (isSessionLost(error)) dispatch({ type: "session-expired" });
   }, []);
-  // What one interview's steps hand to the next: the briefing, the check and consent ids,
-  // and the start answer (the LiveKit join for the interview screen).
-  const [briefing, setBriefing] = useState<Briefing | null>(null);
-  const [checkId, setCheckId] = useState("");
-  const [consentId, setConsentId] = useState("");
+  // The start answer (the LiveKit join) for the interview screen.
   const [started, setStarted] = useState<StartResult | null>(null);
-  // A check that failed only on a required third eye waits for the phone step.
-  const [checkPayload, setCheckPayload] = useState<SystemCheckPayload | null>(null);
-  const [waitingForPhone, setWaitingForPhone] = useState(false);
 
   const profile = "profile" in state ? state.profile : undefined;
   return (
     <I18nProvider locale={locale}>
-      <Shell profile={profile} onSignOut={profile ? () => void signOut() : undefined}>
+      <Shell
+        profile={profile}
+        onSignOut={profile ? () => void signOut() : undefined}
+        immersive={state.screen === "interview"}
+      >
         {state.screen === "launch" ? <LaunchScreen onChecked={onRelease} /> : null}
         {state.screen === "update-required" ? (
           <UpdateRequiredScreen
@@ -121,70 +130,14 @@ function CandidateApp() {
             onStart={(interviewId) => send({ type: "interview-chosen", interviewId })}
           />
         ) : null}
-        {state.screen === "briefing" ? (
-          <BriefingScreen
+        {state.screen === "prepare" ? (
+          <PrepareScreen
             interviewId={state.interviewId}
-            onRead={(read) => {
-              setBriefing(read);
-              send({ type: "briefing-read" });
-            }}
-            onBack={() => send({ type: "back" })}
-            onError={lost}
-          />
-        ) : null}
-        {state.screen === "system-check" ? (
-          <SystemCheckScreen
-            interviewId={state.interviewId}
-            thirdEye={briefing?.third_eye ?? "off"}
-            onPassed={(id, payload, waiting) => {
-              setCheckId(id);
-              setCheckPayload(payload);
-              setWaitingForPhone(waiting);
-              send({ type: "check-passed" });
-            }}
-            onBack={() => send({ type: "back" })}
-            onError={lost}
-          />
-        ) : null}
-        {state.screen === "consent" && briefing ? (
-          <ConsentScreen
-            interviewId={state.interviewId}
-            briefing={briefing}
-            onConsented={(id) => {
-              setConsentId(id);
-              send({ type: "consented", thirdEye: briefing.third_eye });
-            }}
-            onBack={() => send({ type: "back" })}
-            onError={lost}
-          />
-        ) : null}
-        {state.screen === "third-eye" ? (
-          <ThirdEyeScreen
-            interviewId={state.interviewId}
-            // Ready can send here when the server wants a phone the briefing didn't ask for.
-            mode={briefing && briefing.third_eye !== "off" ? briefing.third_eye : "required"}
-            recheck={waitingForPhone ? checkPayload : null}
-            onDone={(id) => {
-              if (id) {
-                setCheckId(id);
-                setWaitingForPhone(false);
-              }
-              send({ type: "third-eye-done" });
-            }}
-            onBack={() => send({ type: "back" })}
-            onError={lost}
-          />
-        ) : null}
-        {state.screen === "ready" ? (
-          <ReadyScreen
-            interviewId={state.interviewId}
-            systemCheckId={checkId}
-            consentId={consentId}
+            summary={state.profile.interviews.find((one) => one.id === state.interviewId)}
             onStarted={(start) => {
               setStarted(start);
               send({ type: "started" });
             }}
-            onThirdEye={() => send({ type: "third-eye-needed" })}
             onBack={() => send({ type: "back" })}
             onError={lost}
           />

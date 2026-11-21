@@ -1,8 +1,12 @@
-import { Badge, Button, Label, Textarea } from "@hirevion/ui";
+import { Dialog, DialogContent, Label, Textarea } from "@hirevion/ui";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Room, RoomEvent } from "livekit-client";
+import { CircleCheck } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslations } from "use-intl";
+import { type AudioRoom, playInterviewerAudio } from "../interview/audio";
+import { captionWindow, isInterviewerCaption } from "../interview/captions";
+import { indicators, type ServicePart } from "../interview/health";
 import {
   livekitTracks,
   nativeDeps,
@@ -10,15 +14,7 @@ import {
   openLocalTracks,
 } from "../interview/native-services";
 import { InterviewServices } from "../interview/services";
-import {
-  CONTROL_TOPIC,
-  type ControlAction,
-  controlMessage,
-  formatClock,
-  mergeState,
-  parseStateMessage,
-  STATE_TOPIC,
-} from "../interview/session";
+import { mergeState, parseStateMessage, STATE_TOPIC } from "../interview/session";
 import { UPLOAD_POLL_MS, uploadView } from "../interview/upload";
 import {
   commands,
@@ -27,17 +23,27 @@ import {
   type UploadProgress,
 } from "../native/commands";
 import { type LiveThirdEye, liveView } from "../third-eye/pairing";
+import { Notice, Panel, PillButton, ScreenTitle } from "../ui/kit";
 import { CodingConsole } from "./coding-console";
 import { type ErrorKey, errorKey } from "./errors";
+import { type Connection, InterviewStage } from "./interview-stage";
 import { NotesPad } from "./notes-pad";
-import { ErrorText } from "./shell";
 
 const CAPTION_TOPIC = "lk.transcription";
 /** How often the screen reads the third eye's status from Rust (its watcher reads every 5 s). */
 const PHONE_POLL_MS = 5_000;
+/** A reminder from the proctoring engine stays this long. */
+const NOTICE_MS = 12_000;
+/** How long after the clock reaches zero the app submits an interview the server hasn't. */
+const TIME_UP_GRACE_MS = 30_000;
 
-/** PRD §32–33: the interview itself, fullscreen. Voice runs over LiveKit (the agent speaks and
- * listens; captions come from its transcription stream); text mode answers through the API. */
+/**
+ * PRD §32–33: the interview itself, in the whole window (product owner, 2026-11-16). The
+ * interviewer is heard, and what it is saying shows as a caption while it speaks (at most 250
+ * characters). There is nothing to press but Exit: the candidate just talks. A coding or
+ * design question opens its workspace beside the interviewer. Typed answers appear only where
+ * speech can't be used: an approved text-answers accommodation, or no voice connection.
+ */
 export function InterviewScreen({
   interviewId,
   start,
@@ -56,14 +62,18 @@ export function InterviewScreen({
   const [remaining, setRemaining] = useState(start.state.remaining_seconds);
   const [caption, setCaption] = useState("");
   const [answer, setAnswer] = useState("");
-  const [connection, setConnection] = useState<"connecting" | "connected" | "reconnecting" | "off">(
+  const [connection, setConnection] = useState<Connection>(
     start.livekit_url ? "connecting" : "off",
   );
   const [error, setError] = useState<ErrorKey | null>(null);
   const [confirmEnd, setConfirmEnd] = useState(false);
-  const [servicesProblem, setServicesProblem] = useState(false);
+  // Which parts of the monitoring and recording reported a problem; `null` until they first
+  // all started.
+  const [problems, setProblems] = useState<Set<ServicePart> | null>(null);
+  const [soundBlocked, setSoundBlocked] = useState(false);
   const [phone, setPhone] = useState<LiveThirdEye | null>(null);
   const room = useRef<Room | null>(null);
+  const speaker = useRef<HTMLDivElement>(null);
   const services = useRef<InterviewServices | null>(null);
   const ended = useRef(false);
   // The workspaces' unsaved text, saved before the interview ends (a save after `complete` is
@@ -116,13 +126,30 @@ export function InterviewScreen({
     if (state.status === "completed" || state.voice === "ended") void finish("finished");
   }, [state.status, state.voice, finish]);
 
+  // The interview lasts its set time, then is submitted (product owner, 2026-11-16). The
+  // server closes it when its clock runs out; should that not arrive (no voice room, a lost
+  // agent), the app submits it itself, after the interviewer's closing words.
+  // Not while the room reconnects: the server may pause the clock and give the time back.
+  useEffect(() => {
+    if (remaining > 0 || connection === "connecting" || connection === "reconnecting") return;
+    const timer = window.setTimeout(async () => {
+      const now = await commands.session(interviewId).catch(() => null);
+      if (now && now.state.status === "in_progress" && now.state.remaining_seconds > 0) {
+        setState(now.state);
+        return;
+      }
+      void finish("finished");
+    }, TIME_UP_GRACE_MS);
+    return () => window.clearTimeout(timer);
+  }, [remaining, connection, interviewId, finish]);
+
   // The interview services (SP-08b): Rust's monitor, proctoring queue and recording, and the
   // webview's face module and camera/microphone recording that feed them.
   useEffect(() => {
     const created = new InterviewServices(interviewId, nativeDeps, {
       ...nativeOptions,
-      onProblem: () => setServicesProblem(true),
-      onReady: () => setServicesProblem(false),
+      onProblem: (part) => setProblems((now) => new Set(now ?? []).add(part)),
+      onReady: () => setProblems(new Set()),
     });
     services.current = created;
     // Text mode has no room to wait for: the services start now, on a camera and microphone
@@ -134,11 +161,14 @@ export function InterviewScreen({
     };
   }, [interviewId, start.livekit_url, start.participant_token]);
 
-  // Voice: join the room, publish the microphone and camera, listen to the agent.
+  // Voice: join the room, publish the microphone and camera, hear the interviewer.
   useEffect(() => {
     if (!start.livekit_url || !start.participant_token) return;
     const next = new Room({ adaptiveStream: true, dynacast: true });
     room.current = next;
+    const stopAudio = speaker.current
+      ? playInterviewerAudio(next as unknown as AudioRoom, speaker.current)
+      : () => undefined;
     next.on(RoomEvent.DataReceived, (payload, _participant, _kind, topic) => {
       if (topic !== STATE_TOPIC) return;
       const patch = parseStateMessage(payload);
@@ -146,11 +176,23 @@ export function InterviewScreen({
     });
     next.on(RoomEvent.Reconnecting, () => setConnection("reconnecting"));
     next.on(RoomEvent.Reconnected, () => setConnection("connected"));
-    next.registerTextStreamHandler(CAPTION_TOPIC, async (reader) => {
-      setCaption(await reader.readAll());
+    next.on(RoomEvent.AudioPlaybackStatusChanged, () => setSoundBlocked(!next.canPlaybackAudio));
+    // The newest utterance owns the caption: its words appear as they are spoken.
+    let utterance = 0;
+    next.registerTextStreamHandler(CAPTION_TOPIC, async (reader, speaking) => {
+      if (!isInterviewerCaption(speaking.identity, next.localParticipant.identity)) return;
+      utterance += 1;
+      const mine = utterance;
+      let spoken = "";
+      for await (const chunk of reader) {
+        if (mine !== utterance) return;
+        spoken += chunk;
+        setCaption(captionWindow(spoken));
+      }
     });
     next
-      .connect(start.livekit_url, start.participant_token)
+      // Audio only (`playInterviewerAudio`): the phone's video stays out of the laptop's download.
+      .connect(start.livekit_url, start.participant_token, { autoSubscribe: false })
       .then(async () => {
         setConnection("connected");
         await next.localParticipant.setMicrophoneEnabled(true);
@@ -159,12 +201,14 @@ export function InterviewScreen({
         if (room.current === next) void services.current?.start(async () => livekitTracks(next));
       })
       .catch((failure: unknown) => {
+        console.warn("interview: the voice room failed", failure);
         setConnection("off");
         setError(errorKey(failure));
-        // The interview goes on in text mode, and so does the monitoring.
+        // The interview goes on with typed answers, and so does the monitoring.
         if (room.current === next) void services.current?.start(openLocalTracks);
       });
     return () => {
+      stopAudio();
       next.unregisterTextStreamHandler(CAPTION_TOPIC);
       void next.disconnect();
     };
@@ -192,11 +236,17 @@ export function InterviewScreen({
     };
   }, [usesPhone]);
 
-  function control(action: ControlAction) {
-    void room.current?.localParticipant
-      .publishData(controlMessage(action), { reliable: true, topic: CONTROL_TOPIC })
-      .catch(() => undefined);
-  }
+  // A reminder shows for a while, then leaves; the next one shows again.
+  // Every state message repeats the open notice: it shows once per nudge (its id).
+  const notice = state.notice;
+  const noticeKey = notice ? (notice.id ?? notice.kind) : null;
+  const [noticeShown, setNoticeShown] = useState(false);
+  useEffect(() => {
+    if (!noticeKey) return;
+    setNoticeShown(true);
+    const timer = window.setTimeout(() => setNoticeShown(false), NOTICE_MS);
+    return () => window.clearTimeout(timer);
+  }, [noticeKey]);
 
   // A coding question closed elsewhere (answered, or its time ran out): fetch the state.
   const refresh = useCallback(async () => {
@@ -220,142 +270,118 @@ export function InterviewScreen({
     }
   }
 
-  const textMode = state.answer_mode === "text";
-  // A coding question is answered in its console (ADR-0033), not in the text-answer box.
-  const coding = state.question?.workspace === "code";
-  return (
-    <section className="grid gap-5" aria-labelledby={`${id}-title`}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 id={`${id}-title`} className="font-semibold text-xl">
-          {t("title")}
-        </h1>
-        <div className="flex items-center gap-2 text-sm">
-          <Badge
-            tone={
-              connection === "connected" ? "success" : connection === "off" ? "neutral" : "warning"
-            }
-          >
-            {t(`connection.${connection}`)}
-          </Badge>
-          {phone && phone !== "not_required" ? (
-            <Badge tone={liveView(phone).tone}>{t(`phone.${phone}`)}</Badge>
-          ) : null}
-          <span className="font-mono text-lg">
-            <span className="sr-only">{t("timeLeft")} </span>
-            <time>{formatClock(remaining)}</time>
-          </span>
-        </div>
-      </div>
+  const question = state.question;
+  // A coding question is answered in its console (ADR-0033), a design question has its notes pad.
+  const workspace =
+    question?.workspace === "code" ? "code" : question?.workspace === "whiteboard" ? "notes" : null;
+  // Typed answers only where speech can't be used.
+  const typed = (state.answer_mode === "text" || connection === "off") && workspace !== "code";
 
-      <div className="grid justify-items-center gap-3 py-6" aria-live="polite">
-        <div
-          className={`size-24 rounded-full ${state.voice === "speaking" ? "animate-pulse bg-accent" : "bg-surface-sunken"}`}
-          aria-hidden
-        />
-        <p className="font-medium">{t(`voice.${state.voice}`)}</p>
-        {caption ? (
-          <p className="max-w-xl text-center text-muted-foreground text-sm">{caption}</p>
-        ) : null}
-      </div>
-
-      {phone && liveView(phone).alert ? (
-        <p role="alert" className="rounded-md bg-warning-subtle p-3 text-sm text-warning">
-          {t("phoneLost")}
-        </p>
-      ) : null}
-
-      {servicesProblem ? (
-        <p role="status" className="rounded-md bg-warning-subtle p-3 text-sm text-warning">
-          {t("servicesProblem")}
-        </p>
-      ) : null}
-
-      {state.notice ? (
-        <p role="alert" className="rounded-md bg-warning-subtle p-3 text-sm text-warning">
-          {t("notice", { kind: state.notice.kind })}
-        </p>
-      ) : null}
-
-      {state.question ? (
-        <article className="grid gap-2 rounded-md border border-border p-4">
-          <span className="text-muted-foreground text-xs">
-            {t("questionNumber", { index: state.question.index })}
-          </span>
-          <p>{state.question.text}</p>
-        </article>
-      ) : null}
-
-      {state.question && coding ? (
-        <CodingConsole
-          key={state.question.id}
-          interviewId={interviewId}
-          questionId={state.question.id}
-          onSubmitted={setState}
-          registerFlush={registerFlush}
-          onClosed={() => void refresh()}
-        />
-      ) : null}
-
-      {state.question?.workspace === "whiteboard" ? (
-        <NotesPad
-          key={state.question.id}
-          interviewId={interviewId}
-          questionId={state.question.id}
-          registerFlush={registerFlush}
-        />
-      ) : null}
-
-      {!coding && (textMode || state.question) ? (
-        <div className="grid gap-2">
-          <Label htmlFor={`${id}-answer`}>{textMode ? t("answerLabel") : t("typeInstead")}</Label>
-          <Textarea
-            id={`${id}-answer`}
-            rows={5}
-            value={answer}
-            onChange={(event) => setAnswer(event.target.value)}
-          />
-          <Button
-            className="w-fit"
-            disabled={!answer.trim() || !state.question}
-            onClick={() => void sendAnswer()}
-          >
-            {t("sendAnswer")}
-          </Button>
-        </div>
-      ) : null}
-
-      {error ? <ErrorText>{errors(error)}</ErrorText> : null}
-
-      <div className="flex flex-wrap gap-2 border-border border-t pt-4">
-        {connection === "connected" ? (
-          <>
-            <Button variant="secondary" onClick={() => control("done_answering")}>
-              {t("controls.done")}
-            </Button>
-            <Button variant="secondary" onClick={() => control("repeat")}>
-              {t("controls.repeat")}
-            </Button>
-            <Button variant="secondary" onClick={() => control("need_a_moment")}>
-              {t("controls.moment")}
-            </Button>
-          </>
-        ) : null}
-        {confirmEnd ? (
-          <>
-            <Button variant="danger" onClick={() => void finish("candidate_ended")}>
-              {t("endConfirm")}
-            </Button>
-            <Button variant="ghost" onClick={() => setConfirmEnd(false)}>
-              {t("keepGoing")}
-            </Button>
-          </>
+  const side =
+    workspace || typed ? (
+      <>
+        {question ? (
+          <p className="text-[1.1rem] leading-relaxed">{question.text}</p>
         ) : (
-          <Button variant="ghost" onClick={() => setConfirmEnd(true)}>
-            {t("end")}
-          </Button>
+          <p className="text-muted-foreground">{t("waitingForQuestion")}</p>
         )}
-      </div>
-    </section>
+        {question && workspace === "code" ? (
+          <CodingConsole
+            key={question.id}
+            interviewId={interviewId}
+            questionId={question.id}
+            onSubmitted={setState}
+            registerFlush={registerFlush}
+            onClosed={() => void refresh()}
+          />
+        ) : null}
+        {question && workspace === "notes" ? (
+          <NotesPad
+            key={question.id}
+            interviewId={interviewId}
+            questionId={question.id}
+            registerFlush={registerFlush}
+          />
+        ) : null}
+        {typed ? (
+          <div className="grid gap-2">
+            <Label htmlFor={`${id}-answer`}>{t("answerLabel")}</Label>
+            <Textarea
+              id={`${id}-answer`}
+              rows={6}
+              className="rounded-xl"
+              value={answer}
+              onChange={(event) => setAnswer(event.target.value)}
+            />
+            <PillButton
+              className="w-fit"
+              disabled={!answer.trim() || !question}
+              onClick={() => void sendAnswer()}
+            >
+              {t("sendAnswer")}
+            </PillButton>
+          </div>
+        ) : null}
+      </>
+    ) : null;
+
+  return (
+    <>
+      <InterviewStage
+        connection={connection}
+        indicators={indicators(problems, phone)}
+        remaining={remaining}
+        voice={state.voice}
+        caption={caption}
+        side={side}
+        onExit={() => setConfirmEnd(true)}
+        notices={
+          <>
+            {soundBlocked ? (
+              <div className="flex items-center gap-3 rounded-full bg-warning-subtle py-2 pr-2 pl-4 text-[0.9rem] text-warning">
+                {t("soundBlocked")}
+                <PillButton className="h-8 px-4" onClick={() => void room.current?.startAudio()}>
+                  {t("turnOnSound")}
+                </PillButton>
+              </div>
+            ) : null}
+            {connection === "off" && state.answer_mode === "voice" ? (
+              <Notice role="alert">
+                {t("voiceUnavailable")}
+                {error ? ` ${errors(error)}` : ""}
+              </Notice>
+            ) : null}
+            {phone && liveView(phone).alert ? <Notice role="alert">{t("phoneLost")}</Notice> : null}
+            {problems && problems.size > 0 ? <Notice>{t("servicesProblem")}</Notice> : null}
+            {notice && noticeShown ? (
+              <Notice role="alert">{notice.text ?? t("noticeFallback")}</Notice>
+            ) : null}
+          </>
+        }
+      />
+
+      {/* The interviewer's voice plays through here. */}
+      <div ref={speaker} hidden />
+
+      <Dialog open={confirmEnd} onOpenChange={setConfirmEnd}>
+        <DialogContent
+          title={t("exitTitle")}
+          description={t("exitBody")}
+          closeLabel={t("keepGoing")}
+          className="rounded-[20px]"
+          footer={
+            <>
+              <PillButton variant="secondary" onClick={() => setConfirmEnd(false)}>
+                {t("keepGoing")}
+              </PillButton>
+              <PillButton variant="danger" onClick={() => void finish("candidate_ended")}>
+                {t("exitConfirm")}
+              </PillButton>
+            </>
+          }
+        />
+      </Dialog>
+    </>
   );
 }
 
@@ -395,42 +421,50 @@ export function CompletedScreen({
 }) {
   const t = useTranslations("completed");
   const view = uploadView(useUploadProgress(interviewId));
+  const done = view.state === "done";
   return (
-    <section className="grid gap-4" aria-labelledby="completed-title">
-      <h1 id="completed-title" className="font-semibold text-2xl">
-        {t("title")}
-      </h1>
-      <p>{t("body")}</p>
-      <div className="grid gap-2" aria-live="polite">
-        {view.state === "done" ? (
-          <>
-            <p role="status" className="font-medium text-success">
-              {t("safeToClose")}
-            </p>
-            {view.gaps > 0 ? (
-              <p className="text-muted-foreground text-sm">{t("gaps", { count: view.gaps })}</p>
-            ) : null}
-          </>
-        ) : (
-          <>
-            <progress
-              className="h-2 w-full accent-accent"
-              max={100}
-              value={view.state === "uploading" ? view.percent : undefined}
-              aria-label={t("uploadLabel")}
-            />
-            <p className="text-muted-foreground text-sm">
-              {view.state === "uploading"
-                ? t("uploading", { percent: view.percent, pending: view.pending })
-                : t("checking")}
-            </p>
-            <p className="font-medium">{t("keepOpen")}</p>
-          </>
-        )}
-      </div>
-      <Button variant="secondary" className="w-fit" onClick={onBack}>
-        {t("back")}
-      </Button>
+    <section className="m-auto grid w-full max-w-xl gap-6" aria-labelledby="completed-title">
+      <Panel className="grid justify-items-center gap-5 p-10 text-center">
+        <CircleCheck className="size-12 text-success" strokeWidth={1.5} aria-hidden />
+        <ScreenTitle
+          id="completed-title"
+          title={t("title")}
+          lead={done ? t("bodyDone") : t("body")}
+          className="justify-items-center"
+        />
+        <div className="grid w-full gap-2" aria-live="polite">
+          {done ? (
+            <>
+              <p role="status" className="font-medium text-success">
+                {t("safeToClose")}
+              </p>
+              {view.gaps > 0 ? (
+                <p className="text-[0.9rem] text-muted-foreground">
+                  {t("gaps", { count: view.gaps })}
+                </p>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <progress
+                className="h-1.5 w-full overflow-hidden rounded-full accent-accent"
+                max={100}
+                value={view.state === "uploading" ? view.percent : undefined}
+                aria-label={t("uploadLabel")}
+              />
+              <p className="text-[0.9rem] text-muted-foreground">
+                {view.state === "uploading"
+                  ? t("uploading", { percent: view.percent, pending: view.pending })
+                  : t("checking")}
+              </p>
+              <p className="font-medium">{t("keepOpen")}</p>
+            </>
+          )}
+        </div>
+        <PillButton variant={done ? "primary" : "secondary"} onClick={onBack}>
+          {t("back")}
+        </PillButton>
+      </Panel>
     </section>
   );
 }

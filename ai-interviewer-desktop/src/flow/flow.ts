@@ -2,20 +2,14 @@ import type { Profile, ReleaseState } from "../native/commands";
 
 /**
  * The candidate's way through the app (PRD §26, master plan §6.4): version check → sign-in →
- * (code on a new device) → interviews → briefing (§30's instructions) → system check (§29) →
- * consent (§30, §83) → the phone as a third eye (when the interview uses one; §6.4) → ready →
- * interview → completed. A pure state machine, so every path is
- * tested without a window; the screens dispatch events and render the state.
+ * (code on a new device) → interviews → prepare → interview → completed. "Prepare" is one page
+ * (product owner, 2026-11-16) holding what used to be separate screens: the briefing (§30's
+ * instructions), camera and microphone, the system check (§29), the Terms and Conditions (§30,
+ * §83) and the phone as a third eye (§6.4). A pure state machine, so every path is tested
+ * without a window; the screens dispatch events and render the state.
  */
 
-type Step =
-  | "briefing"
-  | "system-check"
-  | "consent"
-  | "third-eye"
-  | "ready"
-  | "interview"
-  | "completed";
+type Step = "prepare" | "interview" | "completed";
 
 export type FlowState =
   | { screen: "launch" }
@@ -34,11 +28,6 @@ export type FlowEvent =
   | { type: "signed-in"; profile: Profile }
   | { type: "profile-updated"; profile: Profile }
   | { type: "interview-chosen"; interviewId: string }
-  | { type: "briefing-read" }
-  | { type: "check-passed" }
-  | { type: "consented"; thirdEye: "off" | "optional" | "required" }
-  | { type: "third-eye-done" }
-  | { type: "third-eye-needed" }
   | { type: "started" }
   | { type: "completed" }
   | { type: "back" }
@@ -49,21 +38,11 @@ export const initialState: FlowState = { screen: "launch" };
 
 /** Each step's successor, and the event that moves to it. */
 const NEXT: Partial<Record<FlowEvent["type"], [from: Step, to: Step]>> = {
-  "briefing-read": ["briefing", "system-check"],
-  "check-passed": ["system-check", "consent"],
-  "third-eye-done": ["third-eye", "ready"],
-  "third-eye-needed": ["ready", "third-eye"],
-  started: ["ready", "interview"],
+  started: ["prepare", "interview"],
   completed: ["interview", "completed"],
 };
-const BEFORE_THE_INTERVIEW: readonly FlowState["screen"][] = [
-  "briefing",
-  "system-check",
-  "consent",
-  "third-eye",
-  "ready",
-  "completed",
-];
+/** "Back" leads to the interviews from these; never out of a running interview. */
+const BACK_TO_INTERVIEWS: readonly FlowState["screen"][] = ["prepare", "completed"];
 
 export function transition(state: FlowState, event: FlowEvent): FlowState {
   switch (event.type) {
@@ -90,15 +69,9 @@ export function transition(state: FlowState, event: FlowEvent): FlowState {
       return "profile" in state ? { ...state, profile: event.profile } : state;
     case "interview-chosen":
       if (state.screen !== "interviews") return state;
-      return { screen: "briefing", profile: state.profile, interviewId: event.interviewId };
-    case "consented": {
-      if (state.screen !== "consent") return state;
-      // The phone step only when the interview uses a third eye.
-      const next = event.thirdEye === "off" ? "ready" : "third-eye";
-      return { screen: next, profile: state.profile, interviewId: state.interviewId };
-    }
+      return { screen: "prepare", profile: state.profile, interviewId: event.interviewId };
     case "back":
-      if (BEFORE_THE_INTERVIEW.includes(state.screen) && "profile" in state) {
+      if (BACK_TO_INTERVIEWS.includes(state.screen) && "profile" in state) {
         return { screen: "interviews", profile: state.profile };
       }
       if (state.screen === "code") return { screen: "sign-in", updateAvailable: false };

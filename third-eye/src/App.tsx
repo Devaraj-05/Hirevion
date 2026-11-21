@@ -1,5 +1,14 @@
 import { kbps, summarizeConnection, type VideoSample, videoSample } from "@hirevion/rtc-stats";
 import type { LocalVideoTrack } from "livekit-client";
+import {
+  BatteryCharging,
+  Camera,
+  Lightbulb,
+  MonitorSmartphone,
+  RotateCw,
+  ScanEye,
+  SwitchCamera,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type JoinResponse, PairingError, redeem, rejoin, roomUrl, stillValid } from "./api";
 import { captureOptions, type Facing, needsTurning, nextFacing } from "./camera";
@@ -15,8 +24,8 @@ const STATS_INTERVAL_MS = 2_000;
 const STATE_TEXT: Record<EyeState, string> = {
   idle: "Not started",
   starting: "Starting the camera…",
-  live: "Live: the interview can see this camera",
-  paused: "Paused: keep this page open and the screen on",
+  live: "Live. The interview can see this camera.",
+  paused: "Paused. Unlock the phone and keep this page open.",
   reconnecting: "Reconnecting…",
   failed: "Stopped",
   ended: "Ended: this pairing was cancelled",
@@ -202,128 +211,215 @@ export function App() {
   }
 
   const advice = turnAdvice(lock);
+  const placing = (phase === "ready" || phase === "camera" || phase === "denied") && joined;
   return (
     <main className="eye">
-      <h1>Third Eye</h1>
-      {joined && (
-        <p className="context">
-          {joined.interview.company} · {joined.interview.job_title}
-        </p>
-      )}
-      {phase === "pairing" && <p role="status">Pairing with the interview…</p>}
-      {phase === "error" && <p role="alert">{error}</p>}
-      {phase === "error" && joined && (
-        <button type="button" onClick={() => void start()}>
-          Try again
-        </button>
+      <header className="brand">
+        <span className="mark">
+          <ScanEye size={18} aria-hidden />
+          Hirevion
+        </span>
+        <span>Second camera</span>
+      </header>
+
+      {phase === "pairing" && (
+        <div className="waiting" role="status">
+          <span className="spinner" aria-hidden />
+          Connecting to your interview…
+        </div>
       )}
 
-      {(phase === "ready" || phase === "camera" || phase === "denied") && joined && (
-        <section aria-labelledby="placement">
-          <h2 id="placement">Place this phone</h2>
-          <ol className="steps">
-            <li>Stand this phone sideways (landscape), not upright.</li>
-            <li>
-              On your left or right side, about {joined.placement.distance_m} m away and a little
-              behind you, at about head height.
-            </li>
-            <li>
-              Point the camera so it sees all of you and your whole laptop, keyboard included. The
-              interview computer shows you what it sees.
-            </li>
-            <li>Pick a well-lit spot, without a bright window behind you.</li>
-            <li>Plug in the charger and stand the phone so it doesn't move.</li>
-            <li>Keep this page open and the screen on until the interview ends.</li>
-          </ol>
-          <figure className="placement" aria-hidden="true">
-            <div className="desk">Screen</div>
-            <div className="you">You</div>
-            <div className="phone">Phone</div>
-          </figure>
+      {phase === "error" && (
+        <section className="message danger" role="alert">
+          <strong>This phone couldn't connect</strong>
+          {error}
+          {joined && (
+            <button type="button" className="button" onClick={() => void start()}>
+              Try again
+            </button>
+          )}
         </section>
       )}
 
-      {phase === "ready" && (
+      {placing && (
         <>
-          {cameraHelp(browser, "prompt").map((line) => (
-            <p key={line}>{line}</p>
-          ))}
-          <button type="button" onClick={() => void start()}>
-            Start camera
-          </button>
+          <div className="hero">
+            <h1>Set up your second camera</h1>
+            <p className="context">
+              {joined.interview.company} · {joined.interview.job_title}
+            </p>
+          </div>
+          <section className="card" aria-labelledby="placement">
+            <h2 id="placement">Place this phone</h2>
+            <figure className="placement" aria-hidden="true">
+              <div className="view" />
+              <div className="desk" />
+              <div className="laptop">Laptop</div>
+              <div className="you">You</div>
+              <div className="phone">Phone</div>
+              <figcaption>Seen from above</figcaption>
+            </figure>
+            <ol className="steps">
+              <li>
+                <span className="icon">
+                  <MonitorSmartphone size={18} aria-hidden />
+                </span>
+                <span>
+                  On your left or right, about {joined.placement.distance_m} m away and a little
+                  behind you.
+                </span>
+              </li>
+              <li>
+                <span className="icon">
+                  <RotateCw size={18} aria-hidden />
+                </span>
+                <span>Sideways (landscape), standing at about head height.</span>
+              </li>
+              <li>
+                <span className="icon">
+                  <ScanEye size={18} aria-hidden />
+                </span>
+                <span>
+                  Seeing all of you and your whole laptop, keyboard included. The interview computer
+                  shows you the picture.
+                </span>
+              </li>
+              <li>
+                <span className="icon">
+                  <Lightbulb size={18} aria-hidden />
+                </span>
+                <span>In a well-lit spot, with no bright window behind you.</span>
+              </li>
+              <li>
+                <span className="icon">
+                  <BatteryCharging size={18} aria-hidden />
+                </span>
+                <span>Plugged in and steady, with this page open until the interview ends.</span>
+              </li>
+            </ol>
+          </section>
         </>
       )}
-      {phase === "camera" && <p role="status">Starting the camera…</p>}
+
       {phase === "denied" && (
-        <section role="alert" aria-labelledby="denied">
-          <h2 id="denied">The camera is blocked</h2>
+        <section className="message danger" role="alert" aria-labelledby="denied">
+          <strong id="denied">The camera is blocked</strong>
           {cameraHelp(browser, "denied").map((line) => (
-            <p key={line}>{line}</p>
+            <span key={line}>{line}</span>
           ))}
-          <button type="button" onClick={() => void start()}>
+          <button type="button" className="button" onClick={() => void start()}>
             Try again
           </button>
         </section>
       )}
 
+      {phase === "ready" &&
+        cameraHelp(browser, "prompt").map((line) => (
+          <p key={line} className="note">
+            {line}
+          </p>
+        ))}
+      {/* Only the button stays under the thumb; the advice above scrolls with the page. */}
+      {(phase === "ready" || phase === "camera") && (
+        <div className="action">
+          <button
+            type="button"
+            className="button"
+            disabled={phase === "camera"}
+            onClick={() => void start()}
+          >
+            <Camera size={18} aria-hidden />
+            {phase === "camera" ? "Starting the camera…" : "Start camera"}
+          </button>
+        </div>
+      )}
+
+      {phase === "streaming" && (
+        <div className="hero">
+          <h1>{state === "live" ? "You're on camera" : "Second camera"}</h1>
+          <p>Leave this phone where it is, with this page open, until the interview ends.</p>
+        </div>
+      )}
+
       {phase === "streaming" && upright && (
-        <section className="turn">
-          <p role="alert">
+        <section className="message warning">
+          <strong role="alert">
             Turn this phone sideways (landscape). Standing upright, it can't fit you and your whole
             laptop in the picture.
-          </p>
+          </strong>
           {advice.button && (
-            <button type="button" onClick={() => void turnToLandscape()}>
+            <button type="button" className="button" onClick={() => void turnToLandscape()}>
+              <RotateCw size={18} aria-hidden />
               Turn to landscape
             </button>
           )}
           {advice.rotationHint && (
-            <p>
+            <span>
               If the picture stays upright with the phone sideways, switch rotation lock off
               (auto-rotate on) in the phone's quick settings.
-            </p>
+            </span>
           )}
         </section>
       )}
-      <video
-        ref={preview}
-        autoPlay
-        muted
-        playsInline
-        hidden={phase !== "streaming"}
-        // The first size may come with the metadata and no `resize` (some WebKit versions).
-        onLoadedMetadata={(event) =>
-          setUpright(needsTurning(event.currentTarget.videoWidth, event.currentTarget.videoHeight))
-        }
-        onResize={(event) =>
-          setUpright(needsTurning(event.currentTarget.videoWidth, event.currentTarget.videoHeight))
-        }
-      />
+
+      <div className="preview" hidden={phase !== "streaming"}>
+        <video
+          ref={preview}
+          autoPlay
+          muted
+          playsInline
+          hidden={phase !== "streaming"}
+          // The first size may come with the metadata and no `resize` (some WebKit versions).
+          onLoadedMetadata={(event) =>
+            setUpright(
+              needsTurning(event.currentTarget.videoWidth, event.currentTarget.videoHeight),
+            )
+          }
+          onResize={(event) =>
+            setUpright(
+              needsTurning(event.currentTarget.videoWidth, event.currentTarget.videoHeight),
+            )
+          }
+        />
+      </div>
+
       {phase === "streaming" && (
-        <button type="button" disabled={switching} onClick={() => void switchCamera()}>
-          {facing === "environment" ? "Use the front camera" : "Use the back camera"}
-        </button>
-      )}
-      {phase === "streaming" && error && <p role="alert">{error}</p>}
-      {phase === "streaming" && (
-        <dl>
-          <dt>Status</dt>
-          <dd role="status" data-state={state}>
+        <section className="card">
+          <p className="status" role="status" data-state={state}>
             {STATE_TEXT[state]}
-          </dd>
-          {pairedIn !== null && (
-            <>
-              <dt>Paired in</dt>
-              <dd data-testid="paired-in">{pairedIn.toFixed(1)} s</dd>
-            </>
+          </p>
+          <button
+            type="button"
+            className="button secondary"
+            disabled={switching}
+            onClick={() => void switchCamera()}
+          >
+            <SwitchCamera size={18} aria-hidden />
+            {facing === "environment" ? "Use the front camera" : "Use the back camera"}
+          </button>
+          {error && (
+            <p className="message danger" role="alert">
+              {error}
+            </p>
           )}
-          {video && (
-            <>
-              <dt>Video</dt>
-              <dd>{video}</dd>
-            </>
-          )}
-        </dl>
+          <details>
+            <summary>Connection details</summary>
+            <dl>
+              {pairedIn !== null && (
+                <>
+                  <dt>Paired in</dt>
+                  <dd data-testid="paired-in">{pairedIn.toFixed(1)} s</dd>
+                </>
+              )}
+              {video && (
+                <>
+                  <dt>Video</dt>
+                  <dd>{video}</dd>
+                </>
+              )}
+            </dl>
+          </details>
+        </section>
       )}
     </main>
   );

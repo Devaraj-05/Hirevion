@@ -98,6 +98,96 @@ describe("whether the phone's picture shows the candidate and their whole laptop
   });
 });
 
+describe("someone or something else in the picture (owner, 2026-11-16)", () => {
+  it("finds a second laptop and isn't green, even with the candidate's own laptop in full view", () => {
+    // EfficientDet-Lite2 on the owner's picture with a second laptop at the left (693×390).
+    const seen = framing(
+      [
+        person(194, 57, 380, 328, 0.9),
+        laptop(0, 268, 187, 118, 0.41),
+        laptop(183, 254, 103, 55, 0.33),
+      ],
+      693,
+      390,
+    );
+    expect(seen.extra).toBe("laptop");
+    expect(seen.green).toBe(false);
+    expect(seen.others).toHaveLength(1);
+  });
+
+  it("judges the laptop beside the candidate, not the one scored highest", () => {
+    const seen = framing(
+      [
+        person(500, 60, 400, 660),
+        laptop(560, 420, 300, 180, 0.5), // in front of the candidate
+        laptop(20, 300, 260, 200, 0.8), // across the room
+      ],
+      W,
+      H,
+    );
+    expect(seen.laptopBox).toMatchObject({ x: 560 });
+    expect(seen.laptopScore).toBeCloseTo(0.5);
+    expect(seen.others).toEqual([{ x: 20, y: 300, width: 260, height: 200 }]);
+  });
+
+  it("never takes the candidate's own faint laptop for another one", () => {
+    const seen = framing([person(500, 60, 400, 660), laptop(560, 420, 300, 180, 0.35)], W, H);
+    expect(seen).toMatchObject({ extra: null, laptop: "missing", green: false });
+  });
+
+  it("finds a second person standing right behind the candidate", () => {
+    // A candidate near the phone fills the picture; the helper's centre falls inside their box.
+    const seen = framing(
+      [person(300, 0, 900, 720), person(700, 40, 260, 500, 0.8), laptop(150, 380, 380, 220)],
+      W,
+      H,
+    );
+    expect(seen).toMatchObject({ extra: "person", green: false });
+  });
+
+  it("finds a second person", () => {
+    const seen = framing(
+      [person(500, 60, 400, 660), person(40, 120, 220, 560, 0.7), laptop(150, 380, 380, 220)],
+      W,
+      H,
+    );
+    expect(seen).toMatchObject({ extra: "person", green: false });
+  });
+
+  it("doesn't count one laptop seen twice, or its keyboard, as another", () => {
+    const keyboard: Detection = {
+      label: "keyboard",
+      score: 0.5,
+      box: { x: 200, y: 470, width: 280, height: 110 },
+    };
+    const seen = framing(
+      [
+        person(500, 60, 400, 660),
+        laptop(150, 380, 380, 220, 0.7),
+        laptop(160, 400, 360, 190, 0.35),
+        keyboard,
+      ],
+      W,
+      H,
+    );
+    expect(seen).toMatchObject({ extra: null, green: true, others: [] });
+  });
+
+  it("ignores faint guesses and tiny far-off people", () => {
+    const seen = framing(
+      [
+        person(500, 60, 400, 660),
+        laptop(150, 380, 380, 220),
+        laptop(900, 40, 200, 120, 0.2),
+        person(1200, 10, 30, 60, 0.6), // a poster on the wall: under 2% of the picture
+      ],
+      W,
+      H,
+    );
+    expect(seen).toMatchObject({ extra: null, green: true });
+  });
+});
+
 describe("the phone's orientation", () => {
   it("is never green with an upright phone's tall picture, and says to turn it", () => {
     // A 720×1280 picture: the phone stands upright, so the laptop and the candidate can't both fit.

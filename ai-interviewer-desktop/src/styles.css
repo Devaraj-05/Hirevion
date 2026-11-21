@@ -4,8 +4,219 @@
 /* The design system's components live outside this app; let Tailwind see their classes. */
 @source "../../packages/ui/src";
 
-:root {
-  font-family: "Segoe UI", system-ui, sans-serif;
+/*
+ * The candidate app's own look (product owner, 2026-11-16): calm and Apple-like. It keeps the
+ * design system's token names and components, and changes their values here: soft grey
+ * canvas, white surfaces, one blue accent, the system font. Text and background pairs meet
+ * WCAG 2.2 AA in both themes.
+ */
+:root,
+[data-theme="light"] {
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --background: #f5f5f7;
+  --foreground: #1d1d1f;
+  --surface: #ffffff;
+  --surface-muted: #f5f5f7;
+  --surface-sunken: #e8e8ed;
+  --border: #e0e0e5;
+  --input: #c7c7cc;
+  --muted-foreground: #63636a;
+
+  --accent: #0068d6;
+  --accent-hover: #0058b8;
+  --accent-foreground: #ffffff;
+  --accent-subtle: #e6f1fd;
+  --accent-subtle-foreground: #004a99;
+  --ring: #0068d6;
+
+  --success: #1b7438;
+  --success-subtle: #e7f6ec;
+  --warning: #8a5300;
+  --warning-subtle: #fff4dc;
+  --danger: #b3261e;
+  --danger-subtle: #fdecea;
+  --danger-solid: #c9241c;
+  --danger-solid-foreground: #ffffff;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.04);
+  --shadow-md: 0 1px 2px rgb(0 0 0 / 0.04), 0 12px 32px rgb(0 0 0 / 0.07);
+  --overlay: rgb(0 0 0 / 0.36);
+  --chrome: rgb(255 255 255 / 0.72);
+}
+
+[data-theme="dark"] {
+  --background: #0e0e10;
+  --foreground: #f5f5f7;
+  --surface: #1c1c1e;
+  --surface-muted: #2a2a2d;
+  --surface-sunken: #161618;
+  --border: #38383b;
+  --input: #505054;
+  --muted-foreground: #a6a6ad;
+
+  --accent: #409cff;
+  --accent-hover: #6ab2ff;
+  --accent-foreground: #001a33;
+  --accent-subtle: #0c2743;
+  --accent-subtle-foreground: #a8d1ff;
+  --ring: #409cff;
+
+  --success: #4cd97b;
+  --success-subtle: #0f2b19;
+  --warning: #ffd257;
+  --warning-subtle: #332700;
+  --danger: #ff8a80;
+  --danger-subtle: #3a1512;
+  --danger-solid: #d93a31;
+  --danger-solid-foreground: #ffffff;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.45);
+  --overlay: rgb(0 0 0 / 0.6);
+  --chrome: rgb(28 28 30 / 0.72);
+}
+
+@layer base {
+  /* A desktop app: the window never scrolls; a screen's own content does when it must. */
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  html {
+    font-size: 15px;
+  }
+
+  body {
+    margin: 0;
+    overflow: hidden;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--muted-foreground) 45%, transparent) transparent;
+  }
+
+  h1,
+  h2 {
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+}
+
+@layer components {
+  /* The translucent bar across the top: content scrolls under it. */
+  .chrome {
+    background: var(--chrome);
+    backdrop-filter: blur(20px) saturate(180%);
+  }
+
+  /* The interviewer's presence: a soft sphere that breathes with what it is doing. */
+  .orb {
+    position: relative;
+    border-radius: 9999px;
+    background:
+      radial-gradient(circle at 32% 26%, rgb(255 255 255 / 0.85), transparent 42%),
+      radial-gradient(circle at 70% 78%, var(--accent-hover), transparent 60%), var(--accent);
+    box-shadow:
+      inset 0 -10px 24px rgb(0 0 0 / 0.16),
+      0 18px 44px color-mix(in srgb, var(--accent) 34%, transparent);
+    transition:
+      transform 400ms cubic-bezier(0.22, 1, 0.36, 1),
+      filter 400ms ease,
+      opacity 400ms ease;
+  }
+
+  .orb::after {
+    content: "";
+    position: absolute;
+    inset: -14%;
+    border-radius: inherit;
+    border: 1.5px solid color-mix(in srgb, var(--accent) 45%, transparent);
+    opacity: 0;
+  }
+
+  .orb[data-voice="speaking"] {
+    animation: orb-speak 1.5s ease-in-out infinite;
+  }
+
+  .orb[data-voice="listening"]::after {
+    animation: orb-listen 2.4s ease-out infinite;
+  }
+
+  .orb[data-voice="thinking"] {
+    animation: orb-think 1.8s ease-in-out infinite;
+  }
+
+  .orb[data-voice="waiting"],
+  .orb[data-voice="paused"],
+  .orb[data-voice="ended"],
+  .orb[data-voice="error"] {
+    filter: saturate(0.35);
+    opacity: 0.7;
+  }
+
+  /* The caption's lines arrive from below, like subtitles. */
+  .caption {
+    animation: caption-in 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .fade-in {
+    animation: fade-in 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+
+@keyframes orb-speak {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.07);
+  }
+}
+
+@keyframes orb-think {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes orb-listen {
+  0% {
+    transform: scale(0.86);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.12);
+    opacity: 0;
+  }
+}
+
+@keyframes caption-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .chrome {
+    background: var(--surface);
+    backdrop-filter: none;
+  }
 }
 
 /* The spike pages (debug builds only) keep their simple layout. */
@@ -13,6 +224,8 @@
   max-width: 72rem;
   margin: 0 auto;
   padding: 1.5rem;
+  height: 100%;
+  overflow: auto;
 }
 
 .shell nav {

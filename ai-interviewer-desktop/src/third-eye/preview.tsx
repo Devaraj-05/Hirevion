@@ -33,6 +33,8 @@ const GREEN_LOST_AFTER_MS = 1_000;
 /** No picture this long after joining: say so instead of waiting. */
 const NO_PICTURE_MS = 20_000;
 const COLORS: Record<Part, string> = { ok: "#16a34a", cut: "#d97706", missing: "#d97706" };
+/** Someone or something that shouldn't be in the picture. */
+const OTHER = "#dc2626";
 
 /** What the stub's phone "films" (HV_DESKTOP_STUB): a candidate and a laptop, well placed. */
 const STUB_PICTURE: Seen = {
@@ -231,4 +233,11 @@ function draw(canvas: HTMLCanvasElement | null, verdict: Framing, seen: Seen) {
   };
   outline(verdict.personBox, verdict.person);
   outline(verdict.laptopBox, verdict.laptop);
+  for (const box of verdict.others) {
+    const placed = toScreen(box, seen, { width, height });
+    context.strokeStyle = OTHER;
+    context.setLineDash([8, 6]);
+    context.strokeRect(placed.x, placed.y, placed.width, placed.height);
+    context.setLineDash([]);
+  }
 }

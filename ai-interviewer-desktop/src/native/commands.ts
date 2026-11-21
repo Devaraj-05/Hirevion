@@ -337,7 +337,7 @@ export interface InterviewState {
   voice: VoiceState;
   stage: string;
   message: string | null;
-  notice: { kind: string } | null;
+  notice: { kind: string; id?: string; text?: string } | null;
   third_eye?: string;
   workspace?: string;
 }

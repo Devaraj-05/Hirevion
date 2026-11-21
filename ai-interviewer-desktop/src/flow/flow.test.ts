@@ -52,12 +52,9 @@ describe("the launch flow (PRD §26)", () => {
     });
   });
 
-  it("walks briefing, system check, consent and ready, in that order, to the interview", () => {
+  it("prepares on one page, then runs the interview (owner, 2026-11-16)", () => {
     const steps: [FlowEvent, FlowState["screen"]][] = [
-      [{ type: "interview-chosen", interviewId: "iv-1" }, "briefing"],
-      [{ type: "briefing-read" }, "system-check"],
-      [{ type: "check-passed" }, "consent"],
-      [{ type: "consented", thirdEye: "off" }, "ready"],
+      [{ type: "interview-chosen", interviewId: "iv-1" }, "prepare"],
       [{ type: "started" }, "interview"],
       [{ type: "completed" }, "completed"],
     ];
@@ -69,57 +66,28 @@ describe("the launch flow (PRD §26)", () => {
     }
   });
 
-  it("goes back to the interviews from any step before the interview starts", () => {
-    const consent = run(
-      ...SIGNED_IN,
-      { type: "interview-chosen", interviewId: "iv-1" },
-      { type: "briefing-read" },
-      { type: "check-passed" },
-    );
-    expect(transition(consent, { type: "back" })).toEqual({
+  it("goes back to the interviews from the page before the interview, or after it", () => {
+    const prepare = run(...SIGNED_IN, { type: "interview-chosen", interviewId: "iv-1" });
+    expect(transition(prepare, { type: "back" })).toEqual({
       screen: "interviews",
       profile: PROFILE,
     });
+    const completed = run(
+      ...SIGNED_IN,
+      { type: "interview-chosen", interviewId: "iv-1" },
+      { type: "started" },
+      { type: "completed" },
+    );
+    expect(transition(completed, { type: "back" }).screen).toBe("interviews");
   });
 
   it("doesn't leave a running interview by going back", () => {
     const interview = run(
       ...SIGNED_IN,
       { type: "interview-chosen", interviewId: "iv-1" },
-      { type: "briefing-read" },
-      { type: "check-passed" },
-      { type: "consented", thirdEye: "off" },
       { type: "started" },
     );
     expect(transition(interview, { type: "back" })).toBe(interview);
-  });
-
-  it("puts the phone step after consent when the interview uses a third eye", () => {
-    const consent = run(
-      ...SIGNED_IN,
-      { type: "interview-chosen", interviewId: "iv-1" },
-      { type: "briefing-read" },
-      { type: "check-passed" },
-    );
-    for (const mode of ["optional", "required"] as const) {
-      const phone = transition(consent, { type: "consented", thirdEye: mode });
-      expect(phone).toMatchObject({ screen: "third-eye", interviewId: "iv-1" });
-      expect(transition(phone, { type: "third-eye-done" }).screen).toBe("ready");
-      expect(transition(phone, { type: "back" }).screen).toBe("interviews");
-    }
-  });
-
-  it("goes back to the phone step when the server says the third eye isn't live yet", () => {
-    const ready = run(
-      ...SIGNED_IN,
-      { type: "interview-chosen", interviewId: "iv-1" },
-      { type: "briefing-read" },
-      { type: "check-passed" },
-      { type: "consented", thirdEye: "required" },
-      { type: "third-eye-done" },
-    );
-    expect(ready.screen).toBe("ready");
-    expect(transition(ready, { type: "third-eye-needed" }).screen).toBe("third-eye");
   });
 
   it("returns to sign-in from anywhere after signing out or losing the session", () => {
@@ -136,6 +104,6 @@ describe("the launch flow (PRD §26)", () => {
   });
 
   it("ignores events that don't apply to the current screen", () => {
-    expect(transition(initialState, { type: "check-passed" })).toEqual(initialState);
+    expect(transition(initialState, { type: "started" })).toEqual(initialState);
   });
 });

@@ -1,9 +1,11 @@
-import { Button, Input, Label } from "@hirevion/ui";
+import { Input, Label } from "@hirevion/ui";
 import { type FormEvent, useId, useState } from "react";
 import { useTranslations } from "use-intl";
 import { commands, type SignInResult } from "../native/commands";
+import { Notice, Panel, PillButton, ScreenTitle } from "../ui/kit";
 import { type ErrorKey, errorKey } from "./errors";
-import { ErrorText } from "./shell";
+
+const FIELD = "h-11 rounded-xl px-3.5 text-[0.95rem]";
 
 /** Email and password from the invitation (PRD §28). The API checks the six items. */
 export function SignInScreen({
@@ -39,42 +41,52 @@ export function SignInScreen({
   }
 
   return (
-    <form noValidate onSubmit={submit} className="mx-auto grid w-full max-w-sm gap-5">
-      <div className="grid gap-1">
-        <h1 className="font-semibold text-2xl">{t("title")}</h1>
-        <p className="text-muted-foreground text-sm">{t("intro")}</p>
-      </div>
-      {notice === "session-expired" ? (
-        <p className="text-sm text-warning">{t("sessionExpired")}</p>
-      ) : null}
-      {updateAvailable ? (
-        <p className="text-muted-foreground text-sm">{t("updateAvailable")}</p>
-      ) : null}
-      <div className="grid gap-1.5">
-        <Label htmlFor={`${id}-email`}>{t("email")}</Label>
-        <Input
-          id={`${id}-email`}
-          type="email"
-          autoComplete="username"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-        />
-      </div>
-      <div className="grid gap-1.5">
-        <Label htmlFor={`${id}-password`}>{t("password")}</Label>
-        <Input
-          id={`${id}-password`}
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-        />
-      </div>
-      {error ? <ErrorText>{errors(error)}</ErrorText> : null}
-      <Button type="submit" disabled={working || !email.trim() || !password}>
-        {working ? t("working") : t("submit")}
-      </Button>
-    </form>
+    <div className="m-auto w-full max-w-[25rem]">
+      <Panel className="p-8">
+        <form noValidate onSubmit={submit} className="grid gap-6">
+          <ScreenTitle title={t("title")} lead={t("intro")} />
+          {notice === "session-expired" ? <Notice>{t("sessionExpired")}</Notice> : null}
+          {updateAvailable ? <Notice tone="accent">{t("updateAvailable")}</Notice> : null}
+          <div className="grid gap-4">
+            <div className="grid gap-1.5">
+              <Label htmlFor={`${id}-email`}>{t("email")}</Label>
+              <Input
+                id={`${id}-email`}
+                type="email"
+                autoComplete="username"
+                className={FIELD}
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor={`${id}-password`}>{t("password")}</Label>
+              <Input
+                id={`${id}-password`}
+                type="password"
+                autoComplete="current-password"
+                className={FIELD}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            </div>
+          </div>
+          {error ? (
+            <Notice role="alert" tone="danger">
+              {errors(error)}
+            </Notice>
+          ) : null}
+          <PillButton
+            type="submit"
+            size="lg"
+            className="w-full"
+            disabled={working || !email.trim() || !password}
+          >
+            {working ? t("working") : t("submit")}
+          </PillButton>
+        </form>
+      </Panel>
+    </div>
   );
 }
 
@@ -125,35 +137,46 @@ export function CodeScreen({
   }
 
   return (
-    <form noValidate onSubmit={submit} className="mx-auto grid w-full max-w-sm gap-5">
-      <div className="grid gap-1">
-        <h1 className="font-semibold text-2xl">{t("title")}</h1>
-        <p className="text-muted-foreground text-sm">{t("intro", { sentTo })}</p>
-      </div>
-      <div className="grid gap-1.5">
-        <Label htmlFor={`${id}-code`}>{t("label")}</Label>
-        <Input
-          id={`${id}-code`}
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          maxLength={6}
-          value={code}
-          onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))}
-        />
-      </div>
-      {error ? <ErrorText>{errors(error)}</ErrorText> : null}
-      {resent && !error ? <p className="text-muted-foreground text-sm">{t("resent")}</p> : null}
-      <Button type="submit" disabled={working || code.length !== 6}>
-        {t("submit")}
-      </Button>
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="ghost" onClick={resend}>
-          {t("resend")}
-        </Button>
-        <Button type="button" variant="ghost" onClick={onBack}>
-          {t("back")}
-        </Button>
-      </div>
-    </form>
+    <div className="m-auto w-full max-w-[25rem]">
+      <Panel className="p-8">
+        <form noValidate onSubmit={submit} className="grid gap-6">
+          <ScreenTitle title={t("title")} lead={t("intro", { sentTo })} />
+          <div className="grid gap-1.5">
+            <Label htmlFor={`${id}-code`}>{t("label")}</Label>
+            <Input
+              id={`${id}-code`}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              className={`${FIELD} text-center font-medium text-xl tabular-nums tracking-[0.5em]`}
+              value={code}
+              onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))}
+            />
+          </div>
+          {error ? (
+            <Notice role="alert" tone="danger">
+              {errors(error)}
+            </Notice>
+          ) : null}
+          {resent && !error ? <Notice tone="success">{t("resent")}</Notice> : null}
+          <PillButton
+            type="submit"
+            size="lg"
+            className="w-full"
+            disabled={working || code.length !== 6}
+          >
+            {t("submit")}
+          </PillButton>
+          <div className="flex flex-wrap justify-center gap-1">
+            <PillButton type="button" variant="quiet" onClick={resend}>
+              {t("resend")}
+            </PillButton>
+            <PillButton type="button" variant="quiet" onClick={onBack}>
+              {t("back")}
+            </PillButton>
+          </div>
+        </form>
+      </Panel>
+    </div>
   );
 }

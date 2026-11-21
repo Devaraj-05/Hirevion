@@ -20,6 +20,7 @@ export function sameVerdict(a: Verdict, b: Verdict): boolean {
     a.framing?.portrait === b.framing?.portrait &&
     a.framing?.person === b.framing?.person &&
     a.framing?.laptop === b.framing?.laptop &&
+    a.framing?.extra === b.framing?.extra &&
     a.evidence === b.evidence
   );
 }
@@ -31,6 +32,8 @@ export function checkMessage(verdict: Verdict): string {
   if (seen === null) return "checking";
   if (seen.portrait) return "portrait";
   if (seen.person === "missing") return "personMissing";
+  if (seen.extra === "person") return "extraPerson";
+  if (seen.extra === "laptop") return "extraLaptop";
   if (seen.laptop === "missing") return "laptopMissing";
   if (seen.laptop === "cut") return "laptopCut";
   return "hold";

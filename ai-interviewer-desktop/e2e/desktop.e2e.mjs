@@ -1,5 +1,6 @@
-// The candidate's way to "Ready", in the real app: launch → version ok → sign in → interviews →
-// briefing → system check → consent → phone (third eye) → ready; then the interview's coding
+// The candidate's way to the interview, in the real app: launch → version ok → sign in →
+// interviews → the one page before the interview (camera and microphone, system check, Terms
+// and Conditions, phone as a third eye; owner, 2026-11-16) → start; then the interview's coding
 // question (ADR-0033): code typed in the console is saved as a draft and submitted once, and
 // nothing runs it; then a design question's notes pad (ADR-0041). Run by `pnpm e2e`
 // (e2e/run.mjs), which starts tauri-driver and passes the debug build in HV_E2E_APP. The app
@@ -59,51 +60,54 @@ test("launch → ready", async (t) => {
 
     // Interviews: the first is open now.
     await session.waitFor(heading("Your interviews"));
-    await session.click(button("Start the system check"));
+    await session.click(button("Get ready"));
 
-    // Briefing, then the system check.
-    await session.waitFor(heading("Before you start"));
-    await session.click(button("Continue to the system check"));
-    await session.waitFor(heading("System check"));
+    // Everything before the interview is one page of four steps, each opening after the last.
+    await session.waitFor(heading("Get ready for your interview"));
+    const start = await session.find(button("Start interview"));
+    assert.equal(await start.property("disabled"), true, "Start waits for every step");
 
-    // The check runs the native checks (canned), then the camera and microphone on the fake
-    // devices (the microphone listens for about three seconds), the network, then asks about
-    // the speaker. The screen renders every result before asking.
-    await session.click(button("Run the check"));
+    // 1. Camera and microphone: allowed (fake devices), seen, then Continue.
+    await session.click(button("Allow access"));
+    await session.waitFor(button("Continue"), 20_000);
+    await session.click(button("Continue"));
+
+    // 2. The system check starts by itself: the native checks (canned), then the camera and
+    // microphone on the fake devices (the microphone listens for about three seconds), the
+    // network, then it asks about the speaker.
     await session.waitFor(button("Yes, I heard it"), 60_000);
     const results = await session.findAll("ul[aria-label='System check'] li");
     assert.ok(results.length >= 8, `expected the check results, got ${results.length}`);
     await session.click(button("Yes, I heard it"));
 
-    // Consent: one Terms and Conditions checkbox accepts every item (owner, 2026-11-15).
-    await session.waitFor(heading("Your consent"), 30_000);
+    // 3. One Terms and Conditions checkbox accepts every item (owner, 2026-11-15).
+    await session.waitFor(
+      `//label[starts-with(normalize-space(), "I have read and agree")]`,
+      30_000,
+    );
     const boxes = await session.findAll("button[role=checkbox]");
     assert.equal(boxes.length, 1, "one checkbox, for the Terms and Conditions");
     await boxes[0].click();
-    await session.click(button("Continue"));
 
-    // The phone as a third eye (the stub's interview offers one): a QR code with where to put
-    // the phone under it, then the stub phone scans it and its camera connects within a few
-    // status reads.
-    await session.waitFor(heading("Connect your phone"), 30_000);
-    assert.ok(await session.find("svg[role=img] path"), "the QR code is drawn");
+    // 4. The phone as a third eye (the stub's interview needs one): a QR code beside where to
+    // put the phone; the stub phone scans it and its camera connects within a few reads.
+    await session.waitFor("svg[role=img] path", 30_000);
     assert.ok(
-      await session.find(`//figure/following::h2[normalize-space()="Where to put your phone"]`),
-      "where to put the phone is shown under the code",
+      await session.find(`//h3[normalize-space()="Where to put your phone"]`),
+      "where to put the phone is shown beside the code",
     );
-    await session.waitFor(`//p[starts-with(normalize-space(), "Phone connected")]`, 20_000);
     // C8-3: the phone's picture must show the candidate and the whole laptop (the stub's phone
-    // "films" both), and the candidate confirms it; Continue stays off until then.
-    const proceed = await session.find(button("Continue"));
-    assert.equal(await proceed.property("disabled"), true, "Continue waits for the green zone");
-    await session.waitFor(`//p[starts-with(normalize-space(), "In the green zone")]`, 20_000);
+    // "films" both), and the candidate confirms it before the step is done.
+    await session.waitFor(`//p[starts-with(normalize-space(), "In the green zone")]`, 30_000);
+    const placed = await session.find(button("Confirm placement"));
+    assert.equal(await placed.property("disabled"), true, "confirming waits for the tick");
     const [confirm] = await session.findAll("button[role=checkbox]");
     await confirm.click();
-    await session.click(button("Continue"));
+    await session.click(button("Confirm placement"));
 
-    // Ready.
-    await session.waitFor(heading("You're ready"));
-    assert.ok(await session.find(button("Start the interview")));
+    // Every step done: Start opens.
+    await session.waitFor(`//*[normalize-space()="You're all set."]`);
+    assert.equal(await (await session.find(button("Start interview"))).property("disabled"), false);
     ready = true;
   } catch (error) {
     await keepScreenshot(t, error, "ready");
@@ -113,16 +117,17 @@ test("launch → ready", async (t) => {
 
 test("the coding console and the design notes pad keep the candidate's work", async (t) => {
   if (!ready) {
-    t.skip('needs "launch → ready" to reach the Ready screen');
+    t.skip('needs "launch → ready" to reach the Start button');
     return;
   }
   try {
     // The stub's interview runs in text mode: no LiveKit, the answers go through the API.
-    await session.click(button("Start the interview"));
-    await session.waitFor(heading("Interview"), 60_000);
+    await session.click(button("Start interview"));
+    // The interview fills the window; Exit sits at the top right (owner, 2026-11-16).
+    await session.waitFor(button("Exit interview"), 60_000);
 
-    // The phone paired before Ready stays in view: the status bar shows its camera.
-    await session.waitFor(`//*[normalize-space()="Phone camera: connected"]`, 15_000);
+    // The phone set up before the start stays in view: the bar's indicators show its camera.
+    await session.waitFor(`//li[@title="Phone camera: working"]`, 15_000);
 
     // Question 1 is spoken-style: answer it in the text box.
     await (await session.waitFor(field("Your answer"))).type(
@@ -139,10 +144,10 @@ test("the coding console and the design notes pad keep the candidate's work", as
     // While typing, the draft is saved every 30 s (the server keeps it if time runs out).
     await session.waitFor(`//p[starts-with(normalize-space(), "Saved at")]`, 45_000);
 
-    // One Submit, confirmed; the interview moves on to question 3.
+    // One Submit, confirmed; the interview moves on to question 3, answered in the text box.
     await session.click(button("Submit code"));
     await session.click(button("Submit now"));
-    await session.waitFor(`//span[normalize-space()="Question 3"]`, 20_000);
+    await session.waitFor(field("Your answer"), 20_000);
     assert.equal((await session.findAll(`//h2[normalize-space()="Your code"]`)).length, 0);
 
     // Question 3 is answered in the text box; question 4 is a design question with the notes

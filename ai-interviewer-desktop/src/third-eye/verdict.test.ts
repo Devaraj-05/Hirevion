@@ -11,6 +11,8 @@ const seen = (changes: Partial<Framing> = {}): Framing => ({
   laptopScore: 0.6,
   personBox: null,
   laptopBox: null,
+  extra: null,
+  others: [],
   ...changes,
 });
 const verdict = (framing: Framing | null, green = false): Verdict => ({
@@ -30,6 +32,15 @@ describe("what the status line under the phone's picture says", () => {
     expect(checkMessage(verdict(seen()))).toBe("laptopCut");
     expect(checkMessage(verdict(seen({ laptop: "ok", green: true })))).toBe("hold");
     expect(checkMessage(verdict(seen({ laptop: "ok", green: true }), true))).toBe("green");
+  });
+
+  it("asks for another person or laptop to leave the picture", () => {
+    expect(checkMessage(verdict(seen({ laptop: "ok", extra: "person" })))).toBe("extraPerson");
+    expect(checkMessage(verdict(seen({ laptop: "ok", extra: "laptop" })))).toBe("extraLaptop");
+    // The candidate first: a second laptop matters once they are in the picture.
+    expect(checkMessage(verdict(seen({ person: "missing", extra: "laptop" })))).toBe(
+      "personMissing",
+    );
   });
 });
 

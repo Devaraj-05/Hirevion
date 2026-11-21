@@ -60,7 +60,7 @@
     "opens": "Opens {date}",
     "closes": "Open until {date}",
     "startsIn": "Starts in {time}",
-    "start": "Start the system check",
+    "start": "Get ready",
     "notYet": "Not open yet",
     "coding": "Includes a coding exercise",
     "thirdEyeRequired": "Needs your phone as a second camera",
@@ -160,26 +160,10 @@
       "confirm": "My phone shows me and my whole laptop, keyboard included",
       "checkFailed": "The picture check couldn't start on this computer.",
       "portrait": "Your phone sends an upright picture. Turn it sideways (landscape); if it already is, follow the steps on the phone's screen.",
-      "confirmHint": "You can tick this once the picture is green."
+      "confirmHint": "You can tick this once the picture is green.",
+      "extraPerson": "Someone else is in the picture. Only you should be visible.",
+      "extraLaptop": "We can see another laptop. Remove it, so only your own laptop is in view."
     }
-  },
-  "ready": {
-    "title": "You're ready",
-    "body": "Your computer passed the check and your consent is recorded. The interview starts as soon as you press Start.",
-    "start": "Start the interview",
-    "starting": "Starting…",
-    "back": "Back to your interviews",
-    "errors": {
-      "third-eye-required": "Your phone's camera isn't connected yet. Set up your phone to start.",
-      "media-unavailable": "The interview service is busy. Try again in a moment.",
-      "checks-incomplete": "Run the system check again before starting.",
-      "consents-missing": "Give your consent before starting.",
-      "interview-not-open": "This interview hasn't opened yet.",
-      "interview-expired": "The window for this interview has closed.",
-      "resume-limit-reached": "This interview can't be resumed again. Contact the company.",
-      "unknown": "The interview couldn't start. Try again."
-    },
-    "phone": "Set up your phone"
   },
   "errors": {
     "invalid-credentials": "That email address and password don't match.",
@@ -222,12 +206,6 @@
       "fps": "Face detection: {fps} frames per second",
       "stopped": "Face detection is off."
     }
-  },
-  "briefing": {
-    "title": "Before you start",
-    "continue": "Continue to the system check",
-    "back": "Back to your interviews",
-    "textMode": "You'll answer in writing: type each answer and send it."
   },
   "consent": {
     "title": "Your consent",
@@ -285,18 +263,8 @@
       "ended": "Finished",
       "error": "Having trouble, please wait"
     },
-    "notice": "Please check: {kind}",
-    "questionNumber": "Question {index}",
     "answerLabel": "Your answer",
-    "typeInstead": "Prefer to type? Write your answer here",
     "sendAnswer": "Send answer",
-    "controls": {
-      "done": "I'm done answering",
-      "repeat": "Repeat the question",
-      "moment": "I need a moment"
-    },
-    "end": "End the interview",
-    "endConfirm": "Yes, end it now",
     "keepGoing": "Keep going",
     "servicesProblem": "Some of the checks that protect your interview didn't start. Please keep this window open; the app is trying again.",
     "phone": {
@@ -305,7 +273,27 @@
       "connected": "Phone camera: connected",
       "disconnected": "Phone camera: disconnected"
     },
-    "phoneLost": "Your phone's camera disconnected. Unlock the phone and keep its page open; it reconnects by itself."
+    "phoneLost": "Your phone's camera disconnected. Unlock the phone and keep its page open; it reconnects by itself.",
+    "exit": "Exit interview",
+    "exitTitle": "Exit the interview?",
+    "exitBody": "Your answers so far are submitted, and you can't return to this interview.",
+    "exitConfirm": "Exit and submit",
+    "voiceOff": "Voice is off",
+    "voiceUnavailable": "We couldn't connect your voice, so type your answers instead.",
+    "waitingForQuestion": "The next question appears here.",
+    "soundBlocked": "Your sound is off.",
+    "turnOnSound": "Turn on sound",
+    "noticeFallback": "Please stay in view of your camera, on this window.",
+    "health": {
+      "title": "What protects your interview",
+      "camera": "Camera",
+      "microphone": "Microphone",
+      "screen": "Screen",
+      "phone": "Phone camera",
+      "starting": "starting",
+      "ok": "working",
+      "problem": "needs attention"
+    }
   },
   "coding": {
     "title": "Your code",
@@ -358,6 +346,83 @@
     "uploading": "{percent}% uploaded. {pending, plural, one {# part} other {# parts}} still to go.",
     "keepOpen": "Please don't close the app yet.",
     "safeToClose": "Everything is uploaded. It's safe to close the app.",
-    "gaps": "{count, plural, one {# part of your recording couldn't be uploaded, so the recording will have a gap.} other {# parts of your recording couldn't be uploaded, so the recording will have gaps.}}"
+    "gaps": "{count, plural, one {# part of your recording couldn't be uploaded, so the recording will have a gap.} other {# parts of your recording couldn't be uploaded, so the recording will have gaps.}}",
+    "bodyDone": "Your interview is finished and submitted. The company will be in touch about the next steps."
+  },
+  "prepare": {
+    "back": "Your interviews",
+    "title": "Get ready for your interview",
+    "lead": "Complete these {count} steps, then start whenever you're ready. Each step opens when the one before it is done.",
+    "about": "About this interview",
+    "minutes": "{minutes} minutes",
+    "instructions": "Before you begin",
+    "progress": "{done} of {total} steps done",
+    "ready": "You're all set.",
+    "start": "Start interview",
+    "starting": "Starting…",
+    "stepLabel": "Step {number}, {state}:",
+    "state": {
+      "done": "done",
+      "active": "to do now",
+      "locked": "not open yet"
+    },
+    "devices": {
+      "title": "Camera and microphone",
+      "lead": "Allow access so the interviewer can see and hear you.",
+      "summary": "Your camera and microphone work.",
+      "allow": "Allow access",
+      "asking": "Waiting for your permission…",
+      "again": "Try again",
+      "preview": "Your camera",
+      "speak": "Say something. The bar moves when we hear you.",
+      "level": "Microphone level",
+      "continue": "Continue",
+      "blocked": "Access was blocked. Open Windows Settings, then Privacy & security, allow Camera and Microphone for this app, and try again.",
+      "missing": "We couldn't find a camera or a microphone. Connect one, then try again."
+    },
+    "checks": {
+      "title": "System check",
+      "lead": "We check your computer, your connection and your speakers. It takes about a minute.",
+      "summary": "Your computer is ready.",
+      "running": "Checking your computer…",
+      "speak": "Now say a few words so we can test your microphone…",
+      "speakerQuestion": "Play the test sound. Did you hear it?",
+      "speakerNo": "I didn't hear it",
+      "saving": "Saving the results…",
+      "mustFix": "These need attention: {items}. Fix them, then check again."
+    },
+    "terms": {
+      "title": "Terms and Conditions",
+      "lead": "Read what is recorded during the interview, then agree to continue.",
+      "summary": "You agreed to the Terms and Conditions.",
+      "incomplete": "Some items weren't accepted. Ask for an accommodation below, or agree to the terms."
+    },
+    "phone": {
+      "title": "Phone camera",
+      "leadRequired": "Your phone becomes a second camera that shows you and your laptop.",
+      "leadOptional": "You can add your phone as a second camera that shows you and your laptop.",
+      "summary": "Your phone is in place.",
+      "making": "Making your code…",
+      "scan": "Open the camera on your phone and point it at this code.",
+      "link": "Can't scan it? Open this link on your phone:",
+      "done": "Confirm placement",
+      "placement": {
+        "side": "Put it on your left or right, about 1 to 1.5 metres away and a little behind you.",
+        "sideways": "Turn it sideways (landscape) and stand it at about head height.",
+        "frame": "Check that it shows you and your whole laptop, keyboard included.",
+        "light": "Choose a well-lit spot, with no bright window behind you.",
+        "steady": "Keep it still and plugged in, with its screen on, for the whole interview."
+      }
+    },
+    "startErrors": {
+      "third-eye-required": "Your phone's camera isn't connected yet. Set it up in the last step.",
+      "media-unavailable": "The interview service is busy. Try again in a moment.",
+      "checks-incomplete": "Run the system check again before starting.",
+      "consents-missing": "Agree to the Terms and Conditions before starting.",
+      "interview-not-open": "This interview hasn't opened yet.",
+      "interview-expired": "The window for this interview has closed.",
+      "resume-limit-reached": "This interview can't be resumed again. Contact the company.",
+      "unknown": "The interview couldn't start. Try again."
+    }
   }
 }
