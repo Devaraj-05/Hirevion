@@ -70,6 +70,7 @@ from .latency import LatencyCollector, TurnLatency
 from .load import session_load
 from .lock import AgentLock
 from .settings import AgentSettings
+from .turns import SpeechWindow
 from .warm import IDLE_RUNNERS, INITIALIZE_TIMEOUT_SECONDS, prewarm
 
 logger = logging.getLogger("hirevion.interview_agent")
@@ -141,6 +142,8 @@ class Interviewer(Agent):
         text = (new_message.text_content or "").strip()
         if text:
             await self._speaker.answered(text, new_message.transcript_confidence)
+        else:
+            self._speaker.no_words()
         raise StopResponse()
 
     def tts_node(self, text: AsyncIterable[str], model_settings: ModelSettings) -> Any:
@@ -167,8 +170,7 @@ class Speaker:
         self._session = session
         self._bridge = bridge
         self._acks = acks
-        self._speech_started: datetime | None = None
-        self._speech_ended: datetime | None = None
+        self._speech = SpeechWindow()
         self._turn = 0
         self._tasks: set[asyncio.Task[None]] = set()
         self.completed = asyncio.Event()
@@ -202,13 +204,20 @@ class Speaker:
     def user_state(self, event: UserStateChangedEvent) -> None:
         now = datetime.now(UTC)
         if event.new_state == "speaking":
-            self._speech_started = now
+            self._speech.speaking(now)
             self.background(self._bridge.candidate_speaking(True))
         elif event.old_state == "speaking":
-            self._speech_ended = now
+            self._speech.stopped(now)
             self.background(self._bridge.candidate_speaking(False))
 
+    def no_words(self) -> None:
+        """A turn the recogniser heard no words in: its sound starts no answer."""
+        self._speech.clear()
+
     def agent_state(self, event: AgentStateChangedEvent) -> None:
+        if event.new_state == "speaking":
+            # Sound heard before the interviewer speaks again isn't the next answer's start.
+            self._speech.clear()
         voice = VOICE_STATES.get(event.new_state)
         if voice is not None:
             self.background(self.voice(voice))
@@ -217,6 +226,8 @@ class Speaker:
         await self.publish(await self._bridge.voice(voice))  # type: ignore[arg-type]
 
     async def answered(self, text: str, confidence: float | None) -> None:
+        # From the answer's first speech to its last; speech from here on is the next answer's.
+        started_at, ended_at = self._speech.take(datetime.now(UTC))
         # A short acknowledgement covers an answer's analysis (master plan §6.8's latency path).
         acknowledged = acknowledges(text)
         if acknowledged:
@@ -228,12 +239,11 @@ class Speaker:
             )
         spoken = await self._bridge.heard(
             text,
-            started_at=self._speech_started,
-            ended_at=self._speech_ended or datetime.now(UTC),
+            started_at=started_at,
+            ended_at=ended_at,
             confidence=confidence,
             acknowledged=acknowledged,
         )
-        self._speech_started = self._speech_ended = None
         await self.say(spoken)
 
     async def ended_elsewhere(self) -> None:
