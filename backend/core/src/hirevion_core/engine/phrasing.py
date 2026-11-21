@@ -139,9 +139,18 @@ def greeting(state: InterviewState, minutes: int) -> str:
     return (
         f"Hello {state.candidate.first_name}, I'm the AI interviewer for the "
         f"{state.job.title} role at {state.job.company}. This interview takes about "
-        f"{minutes} minutes.{covers} You can ask me to repeat a question, or say you need a "
-        "moment, at any time."
+        f"{minutes} minutes.{covers} {WARNING} You can ask me to repeat a question, or say "
+        "you need a moment, at any time."
     )
+
+
+# Spoken once at the start (owner, 2026-11-21: "give a tight warning to the candidates"). What is
+# recorded depends on the interview's policy, and the terms the candidate agreed to list it, so
+# the warning names no device.
+WARNING = (
+    "Please note that this interview is monitored and recorded, as described in the terms you "
+    "agreed to. Any outside help, other device or AI tool will be reported to the hiring team."
+)
 
 
 INTRODUCTION = "To start, could you briefly introduce yourself and the work you've done recently?"
@@ -228,8 +237,7 @@ def closing(state: InterviewState, reason: str) -> str:
     )
     return (
         f"{lead} Thank you for your time, {state.candidate.first_name}. The "
-        f"{state.job.company} team will review it and be in touch. Please keep the app open "
-        "until it says your recordings have finished uploading."
+        f"{state.job.company} team will review it and be in touch."
     )
 
 

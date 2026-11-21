@@ -17,7 +17,7 @@ from hirevion_core.engine.context import FaqEntry
 from hirevion_core.engine.difficulty import DifficultyController
 from hirevion_core.engine.followups import FollowUpGenerator
 from hirevion_core.engine.guardrails import classify, safe_question
-from hirevion_core.engine.planner import has_fresh, pick
+from hirevion_core.engine.planner import has_fresh, pick, said
 from hirevion_core.engine.skills import SkillMatrixBuilder, ladder, resume_hooks
 from hirevion_core.engine.state import AskedQuestion, InterviewState, SkillState
 from hirevion_core.engine.timing import TimeController
@@ -382,6 +382,42 @@ def test_generated_questions_never_repeat_while_unused_ones_remain() -> None:
     assert not has_fresh(state, skill)
 
 
+def test_a_question_is_never_asked_twice_when_the_library_holds_copies_of_it() -> None:
+    # The owner's run of 2026-11-21: the library held 13 copies of one Redis question (each
+    # with its own id), and the interview asked it 10 times.
+    copies = [library("Python", "easy", "What is a list?") for _ in range(3)]
+    copies.append(library("Python", "easy", "  what IS a list "))
+    state = make_state(make_context(questions=copies, question_count=12, skills=(("Python", 100),)))
+    skill = state.skills[0]
+    texts = []
+    for _ in range(10):  # the library's one question, then the nine generated ones
+        texts.append(pick(state, skill, "easy").text)
+        skill.asked += 1
+    assert said(texts[0]) == "what is a list"  # whichever copy the shuffle put first
+    assert len({said(text) for text in texts}) == 10
+    assert not has_fresh(state, skill)
+
+
+def test_a_copy_left_out_by_the_filters_never_hides_a_usable_one() -> None:
+    # Eight texts, each once under a skill the job doesn't have and once under Python: the
+    # shuffle puts the unusable copy first about half the time.
+    texts = [f"Question {n} about closures?" for n in range(8)]
+    copies = [library("Rust", "easy", text) for text in texts]
+    copies += [library("Python", "easy", text) for text in texts]
+    state = make_state(make_context(questions=copies, skills=(("Python", 100),)))
+    assert {q.text for q in state.pool if q.source == "library"} == set(texts)
+
+
+def test_a_copy_of_an_asked_question_is_skipped_in_a_saved_interview() -> None:
+    # A checkpoint saved before the fix may still hold copies in its pool.
+    state = make_state(make_context(questions=[], skills=(("Python", 100),)))
+    skill = state.skills[0]
+    first = pick(state, skill, "easy")
+    copy = first.model_copy(update={"key": "q:copy:1", "source": "library", "used": False})
+    state.pool.append(copy)
+    assert pick(state, skill, "easy").text != first.text
+
+
 def test_follow_ups_stop_before_questions_do() -> None:
     state = make_state()
     timing = TimeController()
@@ -466,6 +502,31 @@ def test_final_questions_are_answered_only_from_the_faq() -> None:
 
 
 # Speech helpers
+
+
+def test_the_engine_acknowledgements_never_judge_the_answer() -> None:
+    judging = {"right", "correct", "good", "great", "exactly", "perfect", "nice", "excellent"}
+    for phrase in phrasing.ACKS:
+        words = {word.strip(".,!").casefold() for word in phrase.split()}
+        assert not words & judging, phrase
+
+
+def test_the_greeting_warns_that_the_interview_is_monitored() -> None:
+    text = phrasing.greeting(make_state(), 30)
+    assert "monitored" in text and "recorded" in text
+    assert "reported to the hiring team" in text
+    # What is recorded depends on the interview's policy (screen, phone…), which the terms list:
+    # the spoken warning names none of it, so it is never wrong.
+    assert "screen" not in text and "phone" not in text
+
+
+def test_the_closing_never_asks_the_candidate_to_wait_for_uploads() -> None:
+    state = make_state()
+    for reason in ("time_up", "finished"):
+        text = phrasing.closing(state, reason).casefold()
+        assert "upload" not in text and "keep the app open" not in text
+        # The desktop is still finishing while this plays; its last page says when to close.
+        assert "close the app" not in text
 
 
 def test_the_lexicon_spells_terms_for_speech_and_keyterms_prime_stt() -> None:

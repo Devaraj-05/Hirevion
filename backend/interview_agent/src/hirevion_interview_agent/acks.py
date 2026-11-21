@@ -15,9 +15,19 @@ from typing import Any
 from livekit import rtc
 from livekit.agents import tts
 
+from hirevion_core.engine.guardrails import classify
+
 log = logging.getLogger(__name__)
 
-ACKNOWLEDGEMENTS = ("Mm-hm.", "Okay.", "Right.", "I see.")
+# Neutral: the interviewer notes that it heard the answer, never whether it was correct
+# ("Right." told the owner his answer was right, 2026-11-21).
+ACKNOWLEDGEMENTS = ("Thank you.", "Okay, thank you.", "Thanks.", "Noted.")
+
+
+def acknowledges(text: str) -> bool:
+    """Whether `text` gets an acknowledgement: only an answer does. A request ("repeat that", "I
+    need a moment") or silence goes straight to the engine, which replies at once anyway."""
+    return classify(text) == "answer"
 
 
 class Acknowledgements:

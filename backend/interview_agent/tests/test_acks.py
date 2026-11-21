@@ -8,7 +8,7 @@ from typing import Any
 
 from livekit import rtc
 
-from hirevion_interview_agent.acks import Acknowledgements
+from hirevion_interview_agent.acks import ACKNOWLEDGEMENTS, Acknowledgements, acknowledges
 
 
 @dataclass
@@ -87,3 +87,21 @@ def test_the_phrases_take_turns() -> None:
     acks = Acknowledgements(("Okay.", "Right.", "I see."))
     picked: list[Any] = [acks.pick(turn) for turn in range(1, 5)]
     assert picked == ["Right.", "I see.", "Okay.", "Right."]
+
+
+def test_the_acknowledgements_never_judge_the_answer() -> None:
+    # The owner's run of 2026-11-21: "Right." after a correct answer told the candidate it was
+    # correct. The interviewer only notes that it heard the answer.
+    judging = {"right", "correct", "good", "great", "exactly", "perfect", "nice", "excellent"}
+    for phrase in ACKNOWLEDGEMENTS:
+        words = {word.strip(".,!").casefold() for word in phrase.split()}
+        assert not words & judging, phrase
+
+
+def test_only_an_answer_is_acknowledged() -> None:
+    # Played before the engine reads the words: "Thank you." after "Can you repeat the
+    # question?" would sound as if the request were the answer (review, 2026-11-21).
+    assert acknowledges("Redis keeps hot keys in memory so reads skip the database.")
+    assert not acknowledges("Can you repeat the question?")
+    assert not acknowledges("I need a moment.")
+    assert not acknowledges("   ")

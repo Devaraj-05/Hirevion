@@ -36,7 +36,6 @@ from livekit.agents import (
     AgentSession,
     CloseEvent,
     JobContext,
-    JobProcess,
     MetricsCollectedEvent,
     ModelSettings,
     StopResponse,
@@ -46,7 +45,7 @@ from livekit.agents import (
 )
 from livekit.agents.metrics import EOUMetrics, LLMMetrics, TTSMetrics
 from livekit.agents.voice.events import AgentStateChangedEvent, UserStateChangedEvent
-from livekit.plugins import deepgram, silero
+from livekit.plugins import deepgram
 from redis.asyncio import Redis
 
 from hirevion_core.ai import build_ai
@@ -57,7 +56,7 @@ from hirevion_core.interview_session.conductor import Conductor
 from hirevion_core.interview_session.media import candidate_identity
 from hirevion_core.settings import load_core_settings
 
-from .acks import Acknowledgements
+from .acks import Acknowledgements, acknowledges
 from .bridge import (
     CONTROL_TOPIC,
     CONTROLS,
@@ -71,6 +70,7 @@ from .latency import LatencyCollector, TurnLatency
 from .load import session_load
 from .lock import AgentLock
 from .settings import AgentSettings
+from .warm import IDLE_RUNNERS, INITIALIZE_TIMEOUT_SECONDS, prewarm
 
 logger = logging.getLogger("hirevion.interview_agent")
 
@@ -217,19 +217,21 @@ class Speaker:
         await self.publish(await self._bridge.voice(voice))  # type: ignore[arg-type]
 
     async def answered(self, text: str, confidence: float | None) -> None:
-        # A short acknowledgement covers the analysis (master plan §6.8's latency path).
-        self._turn += 1
-        phrase = self._acks.pick(self._turn)
-        audio = self._acks.audio(phrase)
-        self._session.say(
-            phrase, audio=NOT_GIVEN if audio is None else audio, add_to_chat_ctx=False
-        )
+        # A short acknowledgement covers an answer's analysis (master plan §6.8's latency path).
+        acknowledged = acknowledges(text)
+        if acknowledged:
+            self._turn += 1
+            phrase = self._acks.pick(self._turn)
+            audio = self._acks.audio(phrase)
+            self._session.say(
+                phrase, audio=NOT_GIVEN if audio is None else audio, add_to_chat_ctx=False
+            )
         spoken = await self._bridge.heard(
             text,
             started_at=self._speech_started,
             ended_at=self._speech_ended or datetime.now(UTC),
             confidence=confidence,
-            acknowledged=True,
+            acknowledged=acknowledged,
         )
         self._speech_started = self._speech_ended = None
         await self.say(spoken)
@@ -248,10 +250,6 @@ class Speaker:
             self._session.commit_user_turn()
             return
         await self.say(await self._bridge.control(action))
-
-
-def prewarm(process: JobProcess) -> None:
-    process.userdata["vad"] = silero.VAD.load()
 
 
 async def entrypoint(ctx: JobContext) -> None:
@@ -412,6 +410,8 @@ def main() -> None:
         api_key=settings.livekit_api_key,
         api_secret=settings.livekit_api_secret.get_secret_value(),
         setup_fnc=prewarm,
+        num_idle_processes=IDLE_RUNNERS,
+        initialize_process_timeout=INITIALIZE_TIMEOUT_SECONDS,
         load_fnc=session_load(settings.hv_agent_max_sessions),
         load_threshold=1.0,
     )

@@ -112,10 +112,29 @@ class Seeded:
     knowledge: dict[str, list[str]] = field(default_factory=dict)
 
 
+async def _seeded(conn: Any, organization_id: UUID, question: str, skill: str) -> bool:
+    """Whether the organisation's library already holds `question` for `skill`."""
+    found = await conn.scalar(
+        text(
+            "SELECT q.id FROM questions q JOIN question_versions v "
+            "ON v.question_id = q.id AND v.organization_id = q.organization_id "
+            "WHERE q.organization_id = :org AND q.status = 'approved' "
+            "AND v.text = :text AND v.skill_name = :skill LIMIT 1"
+        ),
+        {"org": organization_id, "text": question, "skill": skill},
+    )
+    return found is not None
+
+
 async def _library(conn: Any, organization_id: UUID) -> dict[str, list[str]]:
+    """The simulator's library, inserted once per organisation: each seeded interview used to add
+    another copy of every question (13 by the owner's run of 2026-11-21)."""
     knowledge: dict[str, list[str]] = {}
     for skill, rungs in LIBRARY.items():
         for difficulty, (question, concepts) in rungs.items():
+            knowledge[question] = list(concepts)
+            if await _seeded(conn, organization_id, question, skill):
+                continue
             question_id = uuid7()
             await conn.execute(
                 text(
@@ -144,12 +163,13 @@ async def _library(conn: Any, organization_id: UUID) -> dict[str, list[str]]:
                     ),
                 },
             )
-            knowledge[question] = list(concepts)
     return knowledge
 
 
 async def _coding_question(conn: Any, organization_id: UUID) -> None:
-    """The coding question the simulator's interviews ask when coding is on (SP-16)."""
+    """The coding question the simulator's interviews ask when coding is on (SP-16), once."""
+    if await _seeded(conn, organization_id, CODING_QUESTION, CODING_SKILL):
+        return
     question_id = uuid7()
     await conn.execute(
         text(

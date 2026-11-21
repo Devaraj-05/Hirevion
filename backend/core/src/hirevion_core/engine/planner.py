@@ -51,6 +51,13 @@ def _from_library(question: LibraryQuestion, skill: str, source: str) -> PoolQue
     )
 
 
+def said(text: str) -> str:
+    """A question's text as compared for repeats: case, spacing and the closing mark ignored.
+    A library may hold the same question more than once, each copy with its own id (the owner's
+    run of 2026-11-21 asked one of 13 copies ten times)."""
+    return " ".join(text.casefold().split()).rstrip("?.! ")
+
+
 def _order(seed: int, question: LibraryQuestion) -> bytes:
     return hashlib.sha256(f"{seed}:{question.question_id}".encode()).digest()
 
@@ -109,20 +116,35 @@ class QuestionPlanner:
                     str(lang).lower() for lang in (question.coding or {}).get("languages", [])
                 }
                 if coding.get("enabled") and (not languages or offered & languages):
-                    pool.append(_from_library(question, question.skill_name, "library"))
+                    _add_once(pool, _from_library(question, question.skill_name, "library"))
                 continue
             if allowed and question.type not in allowed:
                 continue
             known = names.get(question.skill_name.casefold())
             if known is not None:
-                pool.append(_from_library(question, known, "library"))
+                _add_once(pool, _from_library(question, known, "library"))
         return pool
 
 
+def _add_once(pool: list[PoolQuestion], question: PoolQuestion) -> None:
+    """Adds `question` unless the pool already holds its text: a library copy is left out only
+    once a usable copy is in, so a copy the filters turn away never hides one."""
+    if all(said(q.text) != said(question.text) for q in pool):
+        pool.append(question)
+
+
 def _unused(state: InterviewState, skill: str) -> list[PoolQuestion]:
+    """The skill's questions not yet asked, leaving out any whose text this interview has asked
+    (a checkpoint saved before the pool dropped copies may still hold them)."""
     folded = skill.casefold()
+    asked = {said(q.text) for q in state.pool if q.used}
     return [
-        q for q in state.pool if not q.used and q.type != "coding" and q.skill.casefold() == folded
+        q
+        for q in state.pool
+        if not q.used
+        and q.type != "coding"
+        and q.skill.casefold() == folded
+        and said(q.text) not in asked
     ]
 
 
