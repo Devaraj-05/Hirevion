@@ -126,10 +126,63 @@ def _unused(state: InterviewState, skill: str) -> list[PoolQuestion]:
     ]
 
 
+def _generated_texts(state: InterviewState, skill: SkillState) -> set[str]:
+    folded = skill.name.casefold()
+    return {q.text for q in state.pool if q.source == "generated" and q.skill.casefold() == folded}
+
+
+def _templates(skill: SkillState, rung: str, start: int) -> list[tuple[str, int]]:
+    """The rung's generated questions for `skill` with their template numbers, from `start`."""
+    count = len(phrasing.GENERATED.get(rung) or phrasing.GENERATED["medium"])
+    return [
+        (phrasing.generated_question(skill.name, rung, start + k), (start + k) % count)
+        for k in range(count)
+    ]
+
+
+def has_fresh(state: InterviewState, skill: SkillState) -> bool:
+    """Whether `skill` has a question left that this interview hasn't asked: an unused one in
+    the pool, or a generated one not yet used (an interview that runs its full length must not
+    repeat itself, owner 2026-11-16)."""
+    if _unused(state, skill.name):
+        return True
+    asked = _generated_texts(state, skill)
+    return any(text not in asked for rung in RUNGS for text, _ in _templates(skill, rung, 0))
+
+
+def _generated(state: InterviewState, skill: SkillState, rung: str) -> PoolQuestion:
+    """A generated question at `rung` not yet asked for `skill`, else at the nearest rung; once
+    every one was asked, the rung's next in turn."""
+    asked = _generated_texts(state, skill)
+    number = len(asked)
+    index = RUNGS.index(rung) if rung in RUNGS else 1
+    by_distance = sorted(range(len(RUNGS)), key=lambda i: (abs(i - index), -i))
+    found = next(
+        (
+            (RUNGS[i], text, template)
+            for i in by_distance
+            for text, template in _templates(skill, RUNGS[i], number + state.seed)
+            if text not in asked
+        ),
+        None,
+    )
+    level, text, template = found or (rung, *_templates(skill, rung, number + state.seed)[0])
+    return PoolQuestion(
+        key=f"gen:{skill.name.casefold()}:{number}",
+        skill=skill.name,
+        difficulty=level,
+        type="technical",
+        text=text,
+        source="generated",
+        source_ref={"template": f"{level}-{template}"},
+    )
+
+
 def pick(state: InterviewState, skill: SkillState, rung: str) -> PoolQuestion:
     """The next question for `skill` at `rung`: an unused pinned question first (whatever its
-    rung), the resume question to open the skill, then the library at the nearest rung, else a
-    generated one. The question is marked used."""
+    rung), the resume question to open the skill, then the library at the rung or one either
+    side, else a generated one at the rung (an easy question never follows a hard one just
+    because the library ran out). The question is marked used."""
     unused = _unused(state, skill.name)
     choice = next((q for q in unused if q.source == "pinned"), None)
     if choice is None and skill.asked == 0:
@@ -138,27 +191,17 @@ def pick(state: InterviewState, skill: SkillState, rung: str) -> PoolQuestion:
             choice.difficulty = rung
     if choice is None:
         index = RUNGS.index(rung) if rung in RUNGS else 1
-        by_distance = sorted(range(len(RUNGS)), key=lambda i: (abs(i - index), -i))
+        by_distance = sorted(
+            (i for i in range(len(RUNGS)) if abs(i - index) <= 1),
+            key=lambda i: (abs(i - index), -i),
+        )
         library = [q for q in unused if q.source == "library"]
         for candidate_index in by_distance:
             choice = next((q for q in library if q.difficulty == RUNGS[candidate_index]), None)
             if choice is not None:
                 break
     if choice is None:
-        number = sum(
-            1
-            for q in state.pool
-            if q.source == "generated" and q.skill.casefold() == skill.name.casefold()
-        )
-        choice = PoolQuestion(
-            key=f"gen:{skill.name.casefold()}:{number}",
-            skill=skill.name,
-            difficulty=rung,
-            type="technical",
-            text=phrasing.generated_question(skill.name, rung, number + state.seed),
-            source="generated",
-            source_ref={"template": f"{rung}-{(number + state.seed) % 3}"},
-        )
+        choice = _generated(state, skill, rung)
         state.pool.append(choice)
     choice.used = True
     return choice

@@ -17,7 +17,7 @@ from hirevion_core.engine.context import FaqEntry
 from hirevion_core.engine.difficulty import DifficultyController
 from hirevion_core.engine.followups import FollowUpGenerator
 from hirevion_core.engine.guardrails import classify, safe_question
-from hirevion_core.engine.planner import pick
+from hirevion_core.engine.planner import has_fresh, pick
 from hirevion_core.engine.skills import SkillMatrixBuilder, ladder, resume_hooks
 from hirevion_core.engine.state import AskedQuestion, InterviewState, SkillState
 from hirevion_core.engine.timing import TimeController
@@ -320,6 +320,66 @@ def test_shrinking_keeps_one_question_for_each_uncovered_required_skill() -> Non
     assert cut[0] == "Docker"  # the optional skill goes first
     remaining = {s.name: s.remaining for s in state.skills}
     assert remaining == {"Python": 1, "PostgreSQL": 1, "Docker": 0}
+
+
+def test_spare_time_plans_one_more_question_for_the_least_asked_skill() -> None:
+    """Product owner, 2026-11-16: an interview lasts its full length; the planned question count
+    is a floor, not the end."""
+    state = make_state(
+        make_context(
+            question_count=2,
+            skills=(("Python", 60), ("PostgreSQL", 40)),
+            job_skills=(("Python", "required"),),
+        )
+    )
+    timing = TimeController()
+    assert timing.extend(state, NOW) is None  # planned questions are still to come
+    for skill in state.skills:
+        skill.asked = skill.target
+    state.skill("PostgreSQL").asked += 1  # type: ignore[union-attr]
+    assert timing.extend(state, NOW) == "Python"
+    assert {s.name: s.remaining for s in state.skills} == {"Python": 1, "PostgreSQL": 0}
+    state.skill("Python").asked += 1  # type: ignore[union-attr]
+    nearly_over = NOW + timedelta(minutes=45) - timedelta(seconds=150 + 60)
+    assert timing.extend(state, nearly_over) is None  # no time for another question
+
+
+def test_an_extra_question_never_takes_a_pending_coding_questions_time() -> None:
+    state = make_state(
+        make_context(
+            question_count=2,
+            coding={"enabled": True, "languages": ["python"], "minutes": 5},
+        )
+    )
+    for skill in state.skills:
+        skill.asked = skill.target
+    timing = TimeController()
+    # 150 s beyond the reserve and the 5-minute coding question: not a whole question's time.
+    tight = NOW + timedelta(minutes=45) - timedelta(seconds=150 + 300 + 150)
+    assert timing.extend(state, tight) is None
+    roomy = NOW + timedelta(minutes=45) - timedelta(seconds=150 + 300 + 200)
+    assert timing.extend(state, roomy) is not None
+
+
+def test_no_extra_question_for_a_skill_with_nothing_new_to_ask() -> None:
+    state = make_state(make_context(question_count=2))
+    for skill in state.skills:
+        skill.asked = skill.target
+    timing = TimeController()
+    assert timing.extend(state, NOW, fresh=lambda skill: skill.name != "Python") == "PostgreSQL"
+    assert timing.extend(state, NOW, fresh=lambda skill: False) is None
+
+
+def test_generated_questions_never_repeat_while_unused_ones_remain() -> None:
+    state = make_state(make_context(questions=[], question_count=12, skills=(("Python", 100),)))
+    skill = state.skills[0]
+    texts = []
+    for _ in range(9):  # three templates at each of the three rungs
+        question = pick(state, skill, "hard")
+        skill.asked += 1
+        texts.append(question.text)
+    assert len(set(texts)) == 9
+    assert not has_fresh(state, skill)
 
 
 def test_follow_ups_stop_before_questions_do() -> None:

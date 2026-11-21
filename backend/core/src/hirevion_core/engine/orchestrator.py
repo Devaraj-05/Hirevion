@@ -23,7 +23,7 @@ from hirevion_core.engine.context import FaqEntry, InterviewContext
 from hirevion_core.engine.difficulty import DifficultyController
 from hirevion_core.engine.followups import FollowUpGenerator, FollowUpPlan
 from hirevion_core.engine.guardrails import classify, fingerprint, integrity_flags
-from hirevion_core.engine.planner import QuestionPlanner, pick, seed_for
+from hirevion_core.engine.planner import QuestionPlanner, has_fresh, pick, seed_for
 from hirevion_core.engine.skills import SkillMatrixBuilder
 from hirevion_core.engine.state import (
     AskedQuestion,
@@ -562,6 +562,9 @@ class Orchestrator:
             cut = self.time.shrink(state, now)
             if cut:
                 turn.events.append(("plan.shortened", {"skills": cut}))
+            extra = self.time.extend(state, now, fresh=lambda skill: has_fresh(state, skill))
+            if extra:
+                turn.events.append(("plan.extended", {"skill": extra}))
             skill = self._next_skill(state) if remaining > RESERVE else None
             if skill is None and remaining <= RESERVE:
                 # Out of time for the ladder: an uncovered required skill still gets its question.

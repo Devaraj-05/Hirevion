@@ -83,7 +83,8 @@ def test_a_strong_candidate_walks_every_stage_and_covers_every_skill() -> None:
     spoken = " ".join(t.text for t in turns)
     assert "Within five working days." in spoken
     assert "Hello Asha" in spoken and "Thank you for your time, Asha" in spoken
-    assert sum(1 for q in state.questions_asked if q.kind == "main") == 6
+    # The six planned questions are a floor: the 45 minutes left room for more.
+    assert sum(1 for q in state.questions_asked if q.kind == "main") > 6
 
 
 def test_strong_answers_climb_the_ladder() -> None:
@@ -92,7 +93,7 @@ def test_strong_answers_climb_the_ladder() -> None:
     python = [
         q.difficulty for q in state.questions_asked if q.skill == "Python" and q.kind == "main"
     ]
-    assert python[0] == "easy" and python[-1] == "hard"
+    assert python[:3] == ["easy", "medium", "hard"]
 
 
 def test_a_partial_answer_gets_one_targeted_follow_up() -> None:
@@ -172,14 +173,16 @@ def test_an_unknown_question_in_final_questions_is_passed_on() -> None:
     engine = Orchestrator()
     engine.begin(state, NOW)
     step(engine, state, "Hello, I'm a developer.", NOW)
-    step(engine, state, STRONG, NOW)
+    # Near the end, so no extra question is planned and final questions come.
+    late = NOW + timedelta(minutes=45) - timedelta(seconds=200)
+    step(engine, state, STRONG, late)
     assert state.current is not None and state.current.kind == "final"
-    turn = step(engine, state, "What is the salary band for this role?", NOW)
+    turn = step(engine, state, "What is the salary band for this role?", late)
     assert "pass your question on" in turn.text
     assert turn.events == [
         ("faq.unanswered", {"question": "What is the salary band for this role?"})
     ]
-    turn = step(engine, state, "No, that's all.", NOW)
+    turn = step(engine, state, "No, that's all.", late)
     assert turn.completed == "finished"
 
 
@@ -196,6 +199,17 @@ def test_time_running_out_shrinks_the_plan_but_keeps_required_coverage() -> None
     required = [s for s in state.skills if s.required]
     assert all(s.covered for s in required)
     assert sum(s.asked for s in state.skills) < 10
+
+
+def test_the_interview_keeps_asking_until_its_time_is_used() -> None:
+    """Product owner, 2026-11-16: a 30-minute interview asks questions for 30 minutes, then
+    closes; it doesn't stop once the planned questions are asked."""
+    state = make_state(make_context(question_count=3, minutes=30, faq=FAQ), minutes=30)
+    _, end = run(state, by_kind(state), seconds=60)
+    assert sum(s.asked for s in state.skills) > 3
+    assert all(s.asked >= 2 for s in state.skills)  # the extra questions take turns
+    assert end >= NOW + timedelta(minutes=26)
+    assert state.ended_reason == "finished"  # final questions and the close still come
 
 
 def test_the_clock_ends_the_interview() -> None:

@@ -153,8 +153,28 @@ async def prepare(
     return check.id, consent.id
 
 
-def conductor(app_db: Database, valkey: Redis, media: FakeMedia | None = None) -> Conductor:
-    return Conductor(app_db, valkey, llm=None, media=media or FakeMedia())
+class Answering:
+    """A clock that moves on as the candidate answers: an interview lasts its whole length
+    (product owner, 2026-11-16), so instant answers would never reach its end."""
+
+    def __init__(self) -> None:
+        self.offset = timedelta()
+
+    def now(self) -> datetime:
+        return datetime.now(UTC) + self.offset
+
+    def answered(self) -> None:
+        self.offset += timedelta(minutes=2)
+
+
+def conductor(
+    app_db: Database,
+    valkey: Redis,
+    media: FakeMedia | None = None,
+    clock: Answering | None = None,
+) -> Conductor:
+    kwargs = {"clock": clock.now} if clock else {}
+    return Conductor(app_db, valkey, llm=None, media=media or FakeMedia(), **kwargs)
 
 
 async def start(cond: Conductor, scene: Scene, check: UUID, consent: UUID) -> Any:
@@ -179,10 +199,13 @@ def reply(view: Any) -> str:
     return STRONG
 
 
-async def finish_in_text(cond: Conductor, scene: Scene, view: Any, limit: int = 40) -> Any:
+async def finish_in_text(
+    cond: Conductor, scene: Scene, view: Any, clock: Answering, limit: int = 40
+) -> Any:
     for _ in range(limit):
         if view.status != "in_progress":
             return view
+        clock.answered()
         result = await cond.answer(
             scene.organization_id,
             scene.interview_id,
@@ -274,14 +297,15 @@ async def test_a_text_interview_runs_to_completion_with_its_rows_and_events(
     scene = await invited(app_db, make_hiring, await make_organization("Acme"))
     check, consent = await prepare(app_db, scene, accommodations=["text_answers"])
     media = FakeMedia()
-    cond = conductor(app_db, valkey, media)
+    clock = Answering()
+    cond = conductor(app_db, valkey, media, clock)
     started = await start(cond, scene, check, consent)
     assert started.view.status == "in_progress" and started.view.answer_mode == "text"
     assert started.view.question.type == "introduction"
     assert started.view.message.startswith("Hello")
     assert media.dispatches == []  # no agent in text mode
     assert started.media.room == f"iv-{scene.interview_id}"
-    final = await finish_in_text(cond, scene, started.view)
+    final = await finish_in_text(cond, scene, started.view, clock)
     assert final.status == "completed" and final.voice == "ended"
 
     async with app_db.tenant(scene.organization_id) as session:
@@ -514,7 +538,8 @@ async def test_a_new_process_carries_on_from_the_checkpoint(
 ) -> None:
     scene = await invited(app_db, make_hiring, await make_organization("Acme"))
     check, consent = await prepare(app_db, scene, accommodations=["text_answers"])
-    first = conductor(app_db, valkey)
+    clock = Answering()
+    first = conductor(app_db, valkey, clock=clock)
     view = (await start(first, scene, check, consent)).view
     view = (
         await first.answer(
@@ -528,7 +553,7 @@ async def test_a_new_process_carries_on_from_the_checkpoint(
     ).view
     open_question = view.question.id
     # The process dies; another one picks the interview up from its checkpoint.
-    second = conductor(app_db, valkey)
+    second = conductor(app_db, valkey, clock=clock)
     restored = await second.session_state(scene.organization_id, scene.interview_id)
     assert restored.question.id == open_question
     with pytest.raises(Conflict, match="question-not-current"):
@@ -540,7 +565,7 @@ async def test_a_new_process_carries_on_from_the_checkpoint(
             mode="text",
             by=CANDIDATE,
         )
-    final = await finish_in_text(second, scene, restored)
+    final = await finish_in_text(second, scene, restored, clock)
     assert final.status == "completed"
     async with app_db.tenant(scene.organization_id) as session:
         positions = (
@@ -615,8 +640,9 @@ async def test_the_transcript_artifacts_are_written_and_recorded(
 ) -> None:
     scene = await invited(app_db, make_hiring, await make_organization("Acme"))
     check, consent = await prepare(app_db, scene, accommodations=["text_answers"])
-    cond = conductor(app_db, valkey)
-    await finish_in_text(cond, scene, (await start(cond, scene, check, consent)).view)
+    clock = Answering()
+    cond = conductor(app_db, valkey, clock=clock)
+    await finish_in_text(cond, scene, (await start(cond, scene, check, consent)).view, clock)
     blobs = Blobs()
     transcript = await write_artifacts(app_db, blobs, scene.organization_id, scene.interview_id)
     assert transcript.status == "ready" and set(transcript.artifacts) >= {"json", "vtt", "txt"}
