@@ -121,4 +121,25 @@ describe("proxy", () => {
     expect(response.headers.get("content-security-policy")).toMatch(/'nonce-[^']+'/);
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
   });
+
+  it("lets only the recruiter app show pictures from storage", async () => {
+    vi.stubEnv("HV_STORAGE_PUBLIC_ORIGIN", "https://acct.blob.core.windows.net");
+    const recruiter = await proxy(request("/dashboard", "app.hirevion.localhost", "recruiter"));
+    expect(recruiter.headers.get("content-security-policy")).toContain(
+      "img-src 'self' data: blob: https://acct.blob.core.windows.net",
+    );
+    const portal = await proxy(request("/download", "candidate.hirevion.localhost"));
+    expect(portal.headers.get("content-security-policy")).not.toContain("blob.core.windows.net");
+  });
+
+  it("falls back to the local storage origin only in development", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const dev = await proxy(request("/dashboard", "app.hirevion.localhost", "recruiter"));
+    expect(dev.headers.get("content-security-policy")).toContain(
+      "https://storage.hirevion.localhost",
+    );
+    vi.stubEnv("NODE_ENV", "production");
+    const prod = await proxy(request("/dashboard", "app.hirevion.localhost", "recruiter"));
+    expect(prod.headers.get("content-security-policy")).not.toContain("storage.hirevion");
+  });
 });

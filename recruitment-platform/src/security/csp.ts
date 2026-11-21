@@ -6,16 +6,35 @@
  * run code.
  */
 
-export function buildCsp(nonce: string, dev: boolean): string {
+/** `value`'s origin when it is a plain http(s) URL with a host (no wildcard), else null. */
+function storageOrigin(value: string | undefined): string | null {
+  if (!value || value.includes("*")) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.origin : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * `storage`: where signed links to blob storage point (`HV_STORAGE_PUBLIC_ORIGIN`): recordings
+ * and evidence pictures load from there, so images and media may come from it, and nothing else
+ * (C8-8; the review player's media was blocked before).
+ */
+export function buildCsp(nonce: string, dev: boolean, storage?: string): string {
   const scripts = ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'"];
   if (dev) {
     scripts.push("'unsafe-eval'"); // React Refresh in `next dev` only
   }
+  const origin = storageOrigin(storage);
+  const from = origin ? ` ${origin}` : "";
   return [
     "default-src 'self'",
     `script-src ${scripts.join(" ")}`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
+    `img-src 'self' data: blob:${from}`,
+    `media-src 'self' blob:${from}`,
     "font-src 'self'",
     "connect-src 'self'",
     "object-src 'none'",

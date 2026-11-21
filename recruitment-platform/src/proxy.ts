@@ -9,6 +9,19 @@ import { buildCsp, newNonce, SECURITY_HEADERS } from "./security/csp";
 
 const FORBIDDEN_PAGE = "/recruiter/forbidden";
 
+/** Where signed storage links point in the local stack (Caddy's `storage.` site). */
+const LOCAL_STORAGE_ORIGIN = "https://storage.hirevion.localhost";
+
+/**
+ * The storage origin the recruiter app may show pictures from (the evidence, ADR-0048): a
+ * deployment sets `HV_STORAGE_PUBLIC_ORIGIN`; only development falls back to the local one. The
+ * candidate portal never shows stored pictures, so it gets none.
+ */
+function storageOriginFor(kind: string, dev: boolean): string | undefined {
+  if (kind !== "recruiter") return undefined;
+  return process.env.HV_STORAGE_PUBLIC_ORIGIN ?? (dev ? LOCAL_STORAGE_ORIGIN : undefined);
+}
+
 /**
  * Runs before every page request:
  * - sends each host to its own route tree;
@@ -24,7 +37,8 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   }
 
   const nonce = newNonce();
-  const csp = buildCsp(nonce, process.env.NODE_ENV === "development");
+  const dev = process.env.NODE_ENV === "development";
+  const csp = buildCsp(nonce, dev, storageOriginFor(kind, dev));
   const { pathname, search } = request.nextUrl;
 
   let target = `${internalPath(kind, pathname)}${search}`;

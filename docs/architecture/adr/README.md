@@ -32,6 +32,7 @@
 | [0034](0034-ai-routing-openrouter-nemotron.md) | Development AI routed by task: OpenRouter screens, NVIDIA Nemotron interviews | Accepted |
 | [0041](0041-design-notes-pad.md) | A plain-text notes pad for design questions, instead of a whiteboard | Accepted |
 | [0040](0040-third-eye-and-egress.md) | The third eye: a single-use pairing, LiveKit's view as its status, and Egress files beside the desktop's tracks | Accepted |
+| [0048](0048-evidence-pictures-in-the-analytics.md) | The evidence pictures (screen, webcam and phone camera at a detected event) in an interview's analytics, for the hiring team only, loaded on request; the CSP allows the storage origin for images | Accepted |
 | [0047](0047-interview-analytics-dashboard.md) | One interview's analytics on the candidate page and the interview page: scores per skill and question, time per answer, PRD §59's speech measures and the integrity timeline; answers stored from their first speech | Accepted |
 | [0046](0046-close-other-apps-and-the-process-list-at-the-start.md) | Before Start, the running apps the policy blocks must be closed (others advised), and the process list the interview starts with is saved whole as evidence | Accepted |
 | [0045](0045-owner-run-fixes-no-repeats-neutral-voice-no-upload-wait.md) | No repeated questions, neutral acknowledgements and a spoken and written warning, an interviewer runner ready before the interview, and no wait after submitting | Accepted |

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderAdmin } from "@/test/render";
 import * as api from "./analytics-api";
 import { InterviewAnalyticsPanel } from "./analytics-panel";
+import * as proctoring from "./proctoring-api";
 import * as gate from "./use-evaluation-gate";
 
 vi.setConfig({ testTimeout: 20_000 });
@@ -13,6 +14,25 @@ vi.mock("./analytics-api", async (importOriginal) => ({
   getInterviewAnalytics: vi.fn(),
 }));
 vi.mock("./use-evaluation-gate", () => ({ useEvaluationGate: vi.fn() }));
+vi.mock("./proctoring-api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./proctoring-api")>()),
+  getEvidence: vi.fn(),
+}));
+
+const picture = (id: string, eventId: string, ref: Record<string, unknown>) => ({
+  id,
+  event_id: eventId,
+  kind: "screenshot",
+  origin: "server" as const,
+  url: `https://storage.example/${id}.jpg?sp=r`,
+  content_type: "image/jpeg",
+  bytes: 1000,
+  sha256: "a".repeat(64),
+  window_start: null,
+  window_end: null,
+  ref,
+  created_at: "2026-11-21T10:22:05Z",
+});
 
 const question = (position: number, fields: Partial<api.AnalyticsQuestion>) => ({
   id: `q-${position}`,
@@ -228,6 +248,101 @@ describe("InterviewAnalyticsPanel", () => {
       await screen.findByRole("button", {
         name: "Phone detected · 5 min 0 s · confirmed by a reviewer",
       }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the evidence pictures only when asked, each with its event and source", async () => {
+    vi.mocked(proctoring.getEvidence).mockResolvedValue({
+      items: [
+        picture("p-1", "e-2", {}),
+        picture("p-2", "e-3", { capture: "screen", status: "issued" }),
+        { ...picture("p-3", "e-3", {}), kind: "process_metadata", url: null, content_type: null },
+      ],
+    });
+    renderAdmin(<InterviewAnalyticsPanel interviewId="iv-1" />);
+    await screen.findByText("Score per skill");
+    expect(proctoring.getEvidence).not.toHaveBeenCalled(); // viewing it is audited: only on request
+    await userEvent.click(screen.getByRole("button", { name: "Show the evidence pictures" }));
+    const gallery = await screen.findByRole("list", { name: "Evidence pictures" });
+    const tiles = within(gallery).getAllByRole("listitem");
+    expect(tiles).toHaveLength(2); // the process list isn't a picture
+    const [first, second] = tiles as [HTMLElement, HTMLElement];
+    // In time order: the blocked app at 10 s, then the phone at 5 min.
+    expect(within(first).getByText("Blocked application running")).toBeInTheDocument();
+    expect(within(first).getByText("Screen · 0 min 10 s")).toBeInTheDocument();
+    expect(within(second).getByText("Phone camera · 5 min 0 s")).toBeInTheDocument();
+    expect(within(second).getByText("Confirmed by a reviewer")).toBeInTheDocument();
+    const link = within(second).getByRole("link", { name: /Open the picture/ });
+    expect(link).toHaveAttribute("href", "https://storage.example/p-1.jpg?sp=r");
+  });
+
+  it("says when a picture can't be loaded instead of showing a broken image", async () => {
+    vi.mocked(proctoring.getEvidence).mockResolvedValue({
+      items: [picture("p-2", "e-3", { capture: "camera", status: "issued" })],
+    });
+    renderAdmin(<InterviewAnalyticsPanel interviewId="iv-1" />);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Show the evidence pictures" }),
+    );
+    const image = await screen.findByRole("img", { name: /Webcam picture/ });
+    image.dispatchEvent(new Event("error"));
+    expect(
+      await screen.findByText("Couldn't load the picture. It may never have been uploaded."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Load the pictures again" })).toBeNull();
+  });
+
+  it("says when the links expired and loads fresh ones only when asked", async () => {
+    vi.mocked(proctoring.getEvidence)
+      .mockResolvedValueOnce({ items: [picture("p-2", "e-3", { capture: "screen" })] })
+      .mockResolvedValueOnce({
+        items: [
+          {
+            ...picture("p-2", "e-3", { capture: "screen" }),
+            url: "https://storage.example/fresh.jpg",
+          },
+        ],
+      });
+    renderAdmin(<InterviewAnalyticsPanel interviewId="iv-1" />);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Show the evidence pictures" }),
+    );
+    const image = await screen.findByRole("img", { name: /Screen picture/ });
+    const later = Date.now() + 6 * 60_000; // past the links' five minutes
+    const clock = vi.spyOn(Date, "now").mockReturnValue(later);
+    image.dispatchEvent(new Event("error"));
+    expect(await screen.findByText("The link has expired")).toBeInTheDocument();
+    expect(proctoring.getEvidence).toHaveBeenCalledTimes(1);
+    await userEvent.click(screen.getByRole("button", { name: "Load the pictures again" }));
+    const fresh = await screen.findByRole("img", { name: /Screen picture/ });
+    expect(fresh).toHaveAttribute("src", "https://storage.example/fresh.jpg");
+    expect(proctoring.getEvidence).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText("The link has expired")).toBeNull();
+    clock.mockRestore();
+  });
+
+  it("counts the snapshots that were asked for but never sent, and puts untimed pictures last", async () => {
+    vi.mocked(proctoring.getEvidence).mockResolvedValue({
+      items: [
+        picture("p-9", "e-unknown", { capture: "screen", status: "issued" }),
+        picture("p-1", "e-2", {}),
+        {
+          ...picture("p-5", "e-2", { capture: "screen", status: "requested" }),
+          url: null,
+          content_type: null,
+        },
+      ],
+    });
+    renderAdmin(<InterviewAnalyticsPanel interviewId="iv-1" />);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Show the evidence pictures" }),
+    );
+    const gallery = await screen.findByRole("list", { name: "Evidence pictures" });
+    const [first, second] = within(gallery).getAllByRole("listitem") as [HTMLElement, HTMLElement];
+    expect(within(first).getByText("Phone detected")).toBeInTheDocument();
+    expect(within(second).getByText("Proctoring event")).toBeInTheDocument();
+    expect(
+      screen.getByText("1 more snapshot was asked for, but the desktop never sent it."),
     ).toBeInTheDocument();
   });
 });

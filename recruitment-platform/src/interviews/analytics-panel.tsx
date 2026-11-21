@@ -26,6 +26,7 @@ import {
   type InterviewAnalytics,
 } from "./analytics-api";
 import { answerBars, splitDuration, timelinePercent, withAnswers } from "./analytics-model";
+import { type EvidenceItem, getEvidence, proctoringKeys } from "./proctoring-api";
 import { useEvaluationGate } from "./use-evaluation-gate";
 
 const SCORE_MAX = 10;
@@ -79,6 +80,7 @@ export function InterviewAnalyticsPanel({ interviewId }: { interviewId: string }
       <SpeechCard speech={data.speech} />
       {data.integrity ? (
         <IntegrityCard
+          interviewId={interviewId}
           integrity={data.integrity}
           durationMs={data.duration_ms}
           plannedMinutes={data.planned_minutes}
@@ -585,10 +587,12 @@ const SEVERITY_DOT: Record<AnalyticsEvent["severity"], string> = {
 };
 
 function IntegrityCard({
+  interviewId,
   integrity,
   durationMs: ended,
   plannedMinutes,
 }: {
+  interviewId: string;
   integrity: NonNullable<InterviewAnalytics["integrity"]>;
   durationMs: number | null;
   plannedMinutes: number;
@@ -679,9 +683,171 @@ function IntegrityCard({
             ))}
           </ul>
         ) : null}
+        <EvidencePictures interviewId={interviewId} events={integrity.events} />
         <Inventory inventory={integrity.inventory} />
       </div>
     </ChartCard>
+  );
+}
+
+/** The evidence links last five minutes (the API's signing); the list is reused for four, and a
+ * picture failing in the last half minute or after is taken as an expired link. */
+const LINK_LIFETIME_MS = 5 * 60_000;
+const LINK_REUSE_MS = 4 * 60_000;
+const LINK_MARGIN_MS = 30_000;
+
+/** Where a picture came from: the desktop's screen or webcam, or the phone's camera. */
+function pictureSource(item: EvidenceItem, event: AnalyticsEvent | undefined) {
+  const capture = item.ref?.capture;
+  if (capture === "screen" || capture === "camera") return capture;
+  return event?.source === "third_eye" ? "third_eye" : "other";
+}
+
+/**
+ * The pictures taken when something was detected (owner, 2026-11-21: "screenshots taken during
+ * the interview found any malpractice"): the screen or webcam snapshot the desktop took at a
+ * critical event, and the phone camera's frame the vision agent kept. For the hiring team only;
+ * viewing them is audited, so they load when the recruiter asks, from five-minute links.
+ */
+function EvidencePictures({
+  interviewId,
+  events,
+}: {
+  interviewId: string;
+  events: AnalyticsEvent[];
+}) {
+  const t = useTranslations("interviews.analytics.evidence");
+  const labels = useTranslations("interviews.proctoring.events");
+  const [open, setOpen] = useState(false);
+  // Pictures that failed, by link: fresh links from a reload are tried again.
+  const [failed, setFailed] = useState<ReadonlySet<string>>(new Set());
+  const [expired, setExpired] = useState<ReadonlySet<string>>(new Set());
+  const query = useQuery({
+    queryKey: proctoringKeys.evidence(interviewId),
+    queryFn: () => getEvidence(interviewId),
+    enabled: open,
+    staleTime: LINK_REUSE_MS,
+    // Each load is an audited look: only the recruiter's own clicks load it again.
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+  const label = (event: string) =>
+    labels.has(event as "FACE_ABSENT") ? labels(event as "FACE_ABSENT") : event;
+  const onError = (url: string) => {
+    const late = Date.now() - query.dataUpdatedAt >= LINK_LIFETIME_MS - LINK_MARGIN_MS;
+    (late ? setExpired : setFailed)((now) => new Set(now).add(url));
+  };
+  if (!open) {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-3 border-border border-t pt-4">
+        <p className="text-muted-foreground text-sm">{t("lead")}</p>
+        <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
+          {t("show")}
+        </Button>
+      </div>
+    );
+  }
+  if (query.isPending) return <Skeleton className="h-40 w-full" />;
+  if (query.isError) return <p className="text-muted-foreground text-sm">{t("loadFailed")}</p>;
+  const byId = new Map(events.map((event) => [event.id, event]));
+  // Untimed pictures (no interview anchor, or an event not listed) go last.
+  const at = (offset: number | null | undefined) => offset ?? Number.MAX_SAFE_INTEGER;
+  const pictures = query.data.items
+    .filter((item) => item.url && item.event_id && item.content_type?.startsWith("image/"))
+    .map((item) => ({ item, url: item.url ?? "", event: byId.get(item.event_id ?? "") }))
+    .sort((a, b) => at(a.event?.offset_ms) - at(b.event?.offset_ms));
+  // A server request the desktop never answered has no picture to link to.
+  const untaken = query.data.items.filter(
+    (item) => item.origin === "server" && !item.url && item.ref?.status === "requested",
+  ).length;
+  const anyExpired = pictures.some(({ url }) => expired.has(url));
+  return (
+    <div className="grid gap-3 border-border border-t pt-4">
+      <div className="grid gap-1">
+        <p className="font-medium text-sm">{t("title", { count: pictures.length })}</p>
+        <p className="text-muted-foreground text-xs">{t("privacy")}</p>
+        {untaken > 0 ? (
+          <p className="text-muted-foreground text-xs">{t("untaken", { count: untaken })}</p>
+        ) : null}
+      </div>
+      {anyExpired ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-surface-muted px-3 py-2">
+          <p className="text-sm">{t("expiredLead")}</p>
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={query.isFetching}
+            onClick={() => void query.refetch()}
+          >
+            {t("reload")}
+          </Button>
+        </div>
+      ) : null}
+      {pictures.length === 0 ? (
+        <p className="text-muted-foreground text-sm">{t("none")}</p>
+      ) : (
+        <ul
+          aria-label={t("listLabel")}
+          className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
+        >
+          {pictures.map(({ item, url, event }) => {
+            const source = t(`source.${pictureSource(item, event)}`);
+            const name = event ? label(event.event) : t("unknownEvent");
+            const offset = splitDuration(event?.offset_ms ?? null);
+            const when = offset ? t("at", { ...offset }) : "—";
+            const problem = expired.has(url) ? "expired" : failed.has(url) ? "notLoaded" : null;
+            return (
+              <li
+                key={item.id}
+                className="grid content-start gap-2 rounded-lg border border-border p-2"
+              >
+                {problem ? (
+                  <div className="grid aspect-video place-items-center rounded-md bg-surface-muted px-3 text-center text-muted-foreground text-sm">
+                    {t(problem)}
+                  </div>
+                ) : (
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={t("open", { source, event: name })}
+                    className="block rounded-md outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
+                  >
+                    {/* biome-ignore lint/performance/noImgElement: a five-minute signed link to private storage, not an asset Next.js could optimise */}
+                    <img
+                      key={url}
+                      src={url}
+                      alt={t("alt", { source, event: name })}
+                      loading="lazy"
+                      onError={() => onError(url)}
+                      className="aspect-video w-full rounded-md bg-surface-muted object-contain"
+                    />
+                  </a>
+                )}
+                <div className="grid gap-0.5 px-1 text-sm">
+                  <p className="flex items-center gap-2 font-medium">
+                    {event ? (
+                      <span
+                        className={cn(
+                          "size-2.5 shrink-0 rounded-full",
+                          SEVERITY_DOT[event.severity],
+                        )}
+                        aria-hidden
+                      />
+                    ) : null}
+                    {name}
+                  </p>
+                  <p className="text-muted-foreground text-xs">{t("caption", { source, when })}</p>
+                  {event?.review ? (
+                    <p className="text-xs">{t(`review.${event.review}` as "review.confirmed")}</p>
+                  ) : null}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 

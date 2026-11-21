@@ -236,6 +236,7 @@ How it is put together is in [ADR-0012](../architecture/adr/0012-web-app-archite
   | `HV_API_INTERNAL_URL` | `http://127.0.0.1:8000` | Where the server asks the API for the session |
   | `HV_WEB_RECRUITER_HOSTS` | `app.hirevion.localhost,localhost,127.0.0.1,::1` | Hosts served the recruiter app |
   | `HV_WEB_PORTAL_HOSTS` | `candidate.hirevion.localhost` | Hosts served the candidate portal |
+  | `HV_STORAGE_PUBLIC_ORIGIN` | `https://storage.hirevion.localhost` under `next dev`, none otherwise | Storage origin the recruiter app's CSP allows for evidence pictures; `http://127.0.0.1:10000` with the API's `STORAGE_PUBLIC_ENDPOINT` below |
 
 - **Tests.**
   - `pnpm --filter @hirevion/recruitment-platform test` runs the unit and component tests.
@@ -728,6 +729,8 @@ keeps only 8088), start the API with `STORAGE_PUBLIC_ENDPOINT=http://127.0.0.1:1
 (the `AZURE_STORAGE_ACCOUNT` from `.env`) in its environment: a debug desktop build accepts plain
 HTTP to this PC only. Without it nothing uploads during the interview, the server reads the gap
 as `SCREEN_CAPTURE_STOPPED`, and every part waits on disk (the owner's run of 2026-11-21).
+To see the evidence pictures in the recruiter app's Analytics tab, start `next dev` with
+`HV_STORAGE_PUBLIC_ORIGIN=http://127.0.0.1:10000` too, so its CSP allows that origin.
 
 **Measuring pairing without a phone:** from `third-eye`, `pnpm e2e` runs headless Chromium with a
 fake 720p camera against the local LiveKit and prints "Paired in N s" (about 1.6 s on this PC;

@@ -2203,7 +2203,37 @@
         "weak": "Weak",
         "no_answer": "No answer"
       },
-      "interviewLabel": "{reference} · {job}"
+      "interviewLabel": "{reference} · {job}",
+      "evidence": {
+        "lead": "Pictures taken when something was detected: the screen or webcam at a critical event, and the phone camera's frame.",
+        "show": "Show the evidence pictures",
+        "loadFailed": "The pictures couldn't be loaded. Try again in a moment.",
+        "title": "{count, plural, =0 {No evidence pictures} one {# evidence picture} other {# evidence pictures}}",
+        "privacy": "For the hiring team only: candidates never see them. Each look is recorded, and the links expire after five minutes.",
+        "none": "No pictures were taken in this interview.",
+        "listLabel": "Evidence pictures",
+        "source": {
+          "screen": "Screen",
+          "camera": "Webcam",
+          "third_eye": "Phone camera",
+          "other": "Picture"
+        },
+        "unknownEvent": "Proctoring event",
+        "at": "{minutes} min {seconds} s",
+        "caption": "{source} · {when}",
+        "open": "Open the picture: {source}, {event}",
+        "alt": "{source} picture: {event}",
+        "review": {
+          "confirmed": "Confirmed by a reviewer",
+          "false_positive": "Dismissed: false positive",
+          "not_relevant": "Dismissed: not relevant"
+        },
+        "notLoaded": "Couldn't load the picture. It may never have been uploaded.",
+        "expired": "The link has expired",
+        "expiredLead": "The links last five minutes. Load them again to see the pictures (this look is recorded too).",
+        "reload": "Load the pictures again",
+        "untaken": "{count, plural, one {# more snapshot was asked for, but the desktop never sent it.} other {# more snapshots were asked for, but the desktop never sent them.}}"
+      }
     }
   },
   "candidateRequests": {

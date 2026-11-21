@@ -32,6 +32,33 @@ describe("buildCsp", () => {
   });
 });
 
+describe("buildCsp's storage origin", () => {
+  // Recordings and evidence pictures play from signed links to blob storage, another origin:
+  // the review player's media and the analytics' pictures were blocked (C8-8, 2026-11-21).
+  it("lets images and media load from the storage origin, and nothing else from it", () => {
+    const csp = directives(buildCsp("n", false, "https://storage.hirevion.localhost"));
+    expect(csp.get("img-src")).toBe("'self' data: blob: https://storage.hirevion.localhost");
+    expect(csp.get("media-src")).toBe("'self' blob: https://storage.hirevion.localhost");
+    expect(csp.get("connect-src")).toBe("'self'");
+    expect(csp.get("default-src")).toBe("'self'");
+  });
+
+  it("keeps an origin only: no path, wildcard or other scheme", () => {
+    expect(directives(buildCsp("n", false, "http://127.0.0.1:10000/hirevion")).get("img-src")).toBe(
+      "'self' data: blob: http://127.0.0.1:10000",
+    );
+    for (const bad of [
+      "*",
+      "https://*.blob.core.windows.net",
+      "javascript:alert(1)",
+      "not a url",
+      "",
+    ]) {
+      expect(directives(buildCsp("n", false, bad)).get("img-src")).toBe("'self' data: blob:");
+    }
+  });
+});
+
 describe("SECURITY_HEADERS", () => {
   it("sets the baseline headers", () => {
     expect(SECURITY_HEADERS).toMatchObject({

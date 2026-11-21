@@ -10,6 +10,8 @@ export type ProctorEvent = Schemas["ProctorEventItem"];
 export type ProctoringStatus = Schemas["ProctoringStatus"];
 export type Counts = Schemas["Counts"];
 export type ReviewOutcome = Schemas["ReviewBody"]["outcome"];
+export type EvidenceList = Schemas["EvidenceList"];
+export type EvidenceItem = Schemas["EvidenceItem"];
 
 function required<T>(data: T | undefined): T {
   if (data === undefined) throw new Error("The API answered without a body");
@@ -42,6 +44,18 @@ export async function reviewEvent(
   );
 }
 
+/** The interview's evidence (PRD §67): snapshots carry a five-minute download link. Viewing it
+ * is audited, so it is asked for only when the recruiter chooses to look. */
+export async function getEvidence(id: string): Promise<EvidenceList> {
+  return required(
+    (
+      await apiClient().GET("/api/v1/proctoring/{interview_id}/evidence", {
+        params: { path: { interview_id: id } },
+      })
+    ).data,
+  );
+}
+
 /** The websocket of the live dashboard, replaying from the last event id seen. */
 export function proctoringSocketUrl(id: string, after?: string | null): string {
   const origin = window.location.origin.replace(/^http/, "ws");
@@ -51,4 +65,5 @@ export function proctoringSocketUrl(id: string, after?: string | null): string {
 
 export const proctoringKeys = {
   live: (id: string) => ["interviews", "proctoring-live", id] as const,
+  evidence: (id: string) => ["interviews", "proctoring-evidence", id] as const,
 };
