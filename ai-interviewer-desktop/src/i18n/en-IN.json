@@ -339,15 +339,8 @@
   },
   "completed": {
     "title": "Thank you",
-    "body": "Your interview is finished. Please keep this window open until your recordings have finished uploading.",
-    "back": "Back to your interviews",
-    "uploadLabel": "Upload progress",
-    "checking": "Checking your recordings…",
-    "uploading": "{percent}% uploaded. {pending, plural, one {# part} other {# parts}} still to go.",
-    "keepOpen": "Please don't close the app yet.",
-    "safeToClose": "Everything is uploaded. It's safe to close the app.",
-    "gaps": "{count, plural, one {# part of your recording couldn't be uploaded, so the recording will have a gap.} other {# parts of your recording couldn't be uploaded, so the recording will have gaps.}}",
-    "bodyDone": "Your interview is finished and submitted. The company will be in touch about the next steps."
+    "body": "Your interview has been submitted. The company will be in touch about the next steps. You can close the app now.",
+    "back": "Back to your interviews"
   },
   "prepare": {
     "back": "Your interviews",
@@ -395,7 +388,9 @@
       "title": "Terms and Conditions",
       "lead": "Read what is recorded during the interview, then agree to continue.",
       "summary": "You agreed to the Terms and Conditions.",
-      "incomplete": "Some items weren't accepted. Ask for an accommodation below, or agree to the terms."
+      "incomplete": "Some items weren't accepted. Ask for an accommodation below, or agree to the terms.",
+      "warningTitle": "This interview is monitored",
+      "warning": "This interview is monitored and recorded, as the Terms and Conditions below describe. Using another app, device, person or AI tool is reported to the hiring team, who may end your application."
     },
     "phone": {
       "title": "Phone camera",

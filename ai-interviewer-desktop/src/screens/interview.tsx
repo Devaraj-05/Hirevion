@@ -15,13 +15,7 @@ import {
 } from "../interview/native-services";
 import { InterviewServices } from "../interview/services";
 import { mergeState, parseStateMessage, STATE_TOPIC } from "../interview/session";
-import { UPLOAD_POLL_MS, uploadView } from "../interview/upload";
-import {
-  commands,
-  type InterviewState,
-  type StartResult,
-  type UploadProgress,
-} from "../native/commands";
+import { commands, type InterviewState, type StartResult } from "../native/commands";
 import { type LiveThirdEye, liveView } from "../third-eye/pairing";
 import { Notice, Panel, PillButton, ScreenTitle } from "../ui/kit";
 import { CodingConsole } from "./coding-console";
@@ -385,43 +379,14 @@ export function InterviewScreen({
   );
 }
 
-/** Asks Rust how much of the recording the server holds, until it holds all of it. */
-function useUploadProgress(interviewId: string): UploadProgress | null {
-  const [progress, setProgress] = useState<UploadProgress | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    let timer: number | undefined;
-    const poll = async () => {
-      try {
-        const next = await commands.uploadProgress(interviewId);
-        if (cancelled) return;
-        setProgress(next);
-        if (next.done) return;
-      } catch {
-        // Keep the last reading; "safe to close" needs an answer that says so.
-      }
-      if (!cancelled) timer = window.setTimeout(() => void poll(), UPLOAD_POLL_MS);
-    };
-    void poll();
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [interviewId]);
-  return progress;
-}
-
-/** PRD §51: the app says it is safe to close only when every segment is acknowledged. */
-export function CompletedScreen({
-  interviewId,
-  onBack,
-}: {
-  interviewId: string;
-  onBack: () => void;
-}) {
+/**
+ * The end of the interview. Nothing to wait for (owner, 2026-11-21: "candidates should not wait
+ * after closing the interview"): every answer and event is saved as it happens, the recording
+ * uploads during the interview (PRD §50), and what is left uploads in the background or at the
+ * next launch (§51).
+ */
+export function CompletedScreen({ onBack }: { onBack: () => void }) {
   const t = useTranslations("completed");
-  const view = uploadView(useUploadProgress(interviewId));
-  const done = view.state === "done";
   return (
     <section className="m-auto grid w-full max-w-xl gap-6" aria-labelledby="completed-title">
       <Panel className="grid justify-items-center gap-5 p-10 text-center">
@@ -429,41 +394,10 @@ export function CompletedScreen({
         <ScreenTitle
           id="completed-title"
           title={t("title")}
-          lead={done ? t("bodyDone") : t("body")}
+          lead={t("body")}
           className="justify-items-center"
         />
-        <div className="grid w-full gap-2" aria-live="polite">
-          {done ? (
-            <>
-              <p role="status" className="font-medium text-success">
-                {t("safeToClose")}
-              </p>
-              {view.gaps > 0 ? (
-                <p className="text-[0.9rem] text-muted-foreground">
-                  {t("gaps", { count: view.gaps })}
-                </p>
-              ) : null}
-            </>
-          ) : (
-            <>
-              <progress
-                className="h-1.5 w-full overflow-hidden rounded-full accent-accent"
-                max={100}
-                value={view.state === "uploading" ? view.percent : undefined}
-                aria-label={t("uploadLabel")}
-              />
-              <p className="text-[0.9rem] text-muted-foreground">
-                {view.state === "uploading"
-                  ? t("uploading", { percent: view.percent, pending: view.pending })
-                  : t("checking")}
-              </p>
-              <p className="font-medium">{t("keepOpen")}</p>
-            </>
-          )}
-        </div>
-        <PillButton variant={done ? "primary" : "secondary"} onClick={onBack}>
-          {t("back")}
-        </PillButton>
+        <PillButton onClick={onBack}>{t("back")}</PillButton>
       </Panel>
     </section>
   );

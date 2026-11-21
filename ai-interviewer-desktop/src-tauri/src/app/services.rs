@@ -42,7 +42,6 @@ use tokio::sync::{broadcast, watch};
 use super::error::{CommandError, CommandResult};
 use super::interview::{SessionTokens, check_interview_id, session_token};
 use super::proctoring::{FaceEvent, StatusSnapshot, device_label, heartbeat_status};
-use super::progress::UploadProgress;
 use super::snapshots::{CameraFrames, LiveAnswers, LivePictures, LiveTime, Release, answer_all};
 use super::third_eye::{ThirdEyeWatch, watch_third_eye};
 
@@ -1028,7 +1027,7 @@ impl Services {
 
     /// Ends the services for the running interview: the monitor and the event queue first (so
     /// the last events go out while the proctor session is open), then the screen recorder.
-    /// The remaining segments upload in the background; see [`Services::upload_progress`].
+    /// The remaining segments upload in the background, or at the next launch (PRD §51).
     pub async fn stop(&self, mode: StopMode) {
         let mut guard = self.inner.active.lock().await;
         let Some(active) = guard.take() else {
@@ -1195,24 +1194,6 @@ impl Services {
             .clone()
             .ok_or_else(|| CommandError::new("recording-inactive", None))?;
         intake.store(header, bytes).await
-    }
-
-    /// How much of an interview's recording the server has, for the drain screen.
-    pub fn upload_progress(&self, interview_id: &str) -> CommandResult<UploadProgress> {
-        check_interview_id(interview_id)?;
-        let recording = lock(&self.inner.recording)
-            .as_ref()
-            .is_some_and(|intake| intake.interview_id == interview_id);
-        let store = self
-            .inner
-            .live
-            .as_ref()
-            .and_then(|live| live.store.as_ref());
-        let Some(store) = store else {
-            return Ok(UploadProgress::nothing(recording));
-        };
-        let counts = store.counts(interview_id).map_err(store_error)?;
-        Ok(UploadProgress::from_counts(&counts, recording))
     }
 
     /// When the app exits: stop everything quickly; what's pending uploads at the next launch.
@@ -1522,7 +1503,6 @@ mod tests {
         assert_eq!(started, ServicesStarted::default());
         services.stop(StopMode::Complete).await;
         assert!(services.set_devices(Some("cam".into()), None).is_ok());
-        assert!(services.upload_progress(INTERVIEW).expect("progress").done);
         assert_eq!(
             services
                 .store_segment(camera_headers("0"), b"x")
@@ -1555,32 +1535,5 @@ mod tests {
             .await
             .unwrap_err();
         assert_eq!(error.code, "invalid-interview");
-        assert_eq!(
-            services.upload_progress("a/b").unwrap_err().code,
-            "invalid-interview"
-        );
-    }
-
-    #[test]
-    fn progress_reads_the_store_and_the_recording_flag() {
-        let dir = TempDir::new();
-        let store = open_store(&dir);
-        store
-            .put(
-                NewSegment {
-                    interview_id: INTERVIEW.to_owned(),
-                    track: Track::Camera,
-                    seq: 0,
-                    started_at_ms: 1,
-                    duration_ms: 1000,
-                    container: Container::Mp4,
-                    codec: Codec::H264,
-                },
-                b"segment",
-            )
-            .expect("put");
-        let counts = store.counts(INTERVIEW).expect("counts");
-        let progress = UploadProgress::from_counts(&counts, false);
-        assert_eq!((progress.pending, progress.done), (1, false));
     }
 }

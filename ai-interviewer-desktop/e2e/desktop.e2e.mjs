@@ -76,8 +76,15 @@ test("launch → ready", async (t) => {
     // microphone on the fake devices (the microphone listens for about three seconds), the
     // network, then it asks about the speaker.
     await session.waitFor(button("Yes, I heard it"), 60_000);
+    // The camera, microphone, network and display show first; the other checks run unseen and
+    // show only when they fail (owner, 2026-11-21), so a passing one never does.
     const results = await session.findAll("ul[aria-label='System check'] li");
-    assert.ok(results.length >= 8, `expected the check results, got ${results.length}`);
+    const shown = await Promise.all(results.map((row) => row.text()));
+    const first = ["Camera", "Microphone", "Network", "Displays"];
+    first.forEach((name, index) => {
+      assert.ok(shown[index]?.trim().startsWith(name), `row ${index + 1} is ${shown[index]}`);
+    });
+    assert.ok(!shown.some((row) => row.trim().startsWith("Processor")), "a passing check shows");
     await session.click(button("Yes, I heard it"));
 
     // 3. One Terms and Conditions checkbox accepts every item (owner, 2026-11-15).
@@ -85,6 +92,8 @@ test("launch → ready", async (t) => {
       `//label[starts-with(normalize-space(), "I have read and agree")]`,
       30_000,
     );
+    // A firm warning comes before the agreement (owner, 2026-11-21).
+    await session.find(`//p[normalize-space()="This interview is monitored"]`);
     const boxes = await session.findAll("button[role=checkbox]");
     assert.equal(boxes.length, 1, "one checkbox, for the Terms and Conditions");
     await boxes[0].click();

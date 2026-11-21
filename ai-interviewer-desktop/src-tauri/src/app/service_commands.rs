@@ -8,7 +8,6 @@ use tauri::{AppHandle, Emitter, State};
 
 use super::error::{CommandError, CommandResult};
 use super::proctoring::{FaceEvent, startup_integrity};
-use super::progress::UploadProgress;
 use super::services::{Notify, ServicesStarted, StopMode, StoredSegmentView};
 use super::state::AppState;
 
@@ -32,9 +31,9 @@ pub async fn services_start(
         .await
 }
 
-/// Ends monitoring and screen recording; what's left uploads in the background
-/// (`upload_progress`). Call it before `complete`, so the last events go out while the
-/// proctor session is still open.
+/// Ends monitoring and screen recording; what's left uploads in the background, or at the next
+/// launch (PRD §51). Call it before `complete`, so the last events go out while the proctor
+/// session is still open.
 #[tauri::command]
 pub async fn services_stop(state: State<'_, AppState>) -> CommandResult<()> {
     state.services.stop(StopMode::Complete).await;
@@ -121,15 +120,6 @@ pub async fn proctoring_snapshot(
         ));
     };
     state.services.deliver_snapshot(&request_id, bytes)
-}
-
-/// How much of the interview's recording the server has acknowledged.
-#[tauri::command]
-pub async fn upload_progress(
-    state: State<'_, AppState>,
-    interview_id: String,
-) -> CommandResult<UploadProgress> {
-    state.services.upload_progress(&interview_id)
 }
 
 #[cfg(test)]

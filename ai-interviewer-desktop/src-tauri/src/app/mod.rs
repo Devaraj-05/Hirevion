@@ -5,7 +5,6 @@ pub mod commands;
 pub mod error;
 pub mod interview;
 mod proctoring;
-mod progress;
 pub mod service_commands;
 mod services;
 mod snapshots;

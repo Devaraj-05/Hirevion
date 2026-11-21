@@ -202,8 +202,6 @@ export const commands = {
    * made, and uploads it itself. */
   proctoringSnapshot: (requestId: string, jpeg: Uint8Array) =>
     invoke<null>("proctoring_snapshot", jpeg, { headers: { "x-hv-request-id": requestId } }),
-  uploadProgress: (interviewId: string) =>
-    invoke<UploadProgress>("upload_progress", { interviewId }),
 };
 
 /** What `services_start` reports: which parts run, and which didn't start (try again). */
@@ -215,23 +213,6 @@ export interface ServicesStarted {
   /** The proctor policy's `thresholds` and `accommodations`, for the camera analysis. */
   policy: { thresholds?: Record<string, unknown>; accommodations?: string[] } | null;
   problems: { part: "proctoring" | "recording"; code: string }[];
-}
-
-/** How much of the recording the server has acknowledged (the upload-drain screen). */
-export interface UploadProgress {
-  pending: number;
-  pending_bytes: number;
-  acknowledged: number;
-  /** Segments whose file is gone: the server sees a gap. */
-  lost: number;
-  /** Segments the server refused for good. */
-  rejected: number;
-  /** 0 to 100; 100 only when `done`. */
-  percent: number;
-  /** Recording hasn't stopped, so more segments will follow. */
-  recording: boolean;
-  /** Nothing left to upload and nothing more to record: closing the app is safe. */
-  done: boolean;
 }
 
 /** Events Rust sends the webview while the services run. */

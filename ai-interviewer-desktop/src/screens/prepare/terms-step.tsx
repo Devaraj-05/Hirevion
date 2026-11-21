@@ -1,4 +1,5 @@
 import { Checkbox, Dialog, DialogContent, Label, Textarea } from "@hirevion/ui";
+import { ShieldAlert } from "lucide-react";
 import { useId, useState } from "react";
 import { useTranslations } from "use-intl";
 import {
@@ -71,6 +72,21 @@ export function TermsStep({
 
   return (
     <div className="grid gap-4">
+      {/* A firm warning before the candidate agrees (owner, 2026-11-21). The AI says it again
+          when the interview starts. */}
+      <div
+        role="note"
+        aria-labelledby={`${id}-warning`}
+        className="flex items-start gap-3 rounded-2xl border border-danger/25 bg-danger-subtle p-4"
+      >
+        <ShieldAlert className="mt-0.5 size-5 shrink-0 text-danger" aria-hidden />
+        <div className="grid min-w-0 gap-1">
+          <p id={`${id}-warning`} className="font-semibold text-danger">
+            {p("warningTitle")}
+          </p>
+          <p className="text-[0.9rem] leading-snug">{p("warning")}</p>
+        </div>
+      </div>
       <div className="flex items-start gap-3 rounded-2xl bg-surface-muted p-4">
         <Checkbox
           id={`${id}-terms`}

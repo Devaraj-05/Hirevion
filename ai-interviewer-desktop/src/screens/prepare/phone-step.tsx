@@ -251,7 +251,8 @@ export function PhoneStep({
             )}
             <figcaption className="max-w-48 text-[0.85rem] text-[#63636a]">{p("scan")}</figcaption>
           </figure>
-          <div className="grid h-fit gap-4">
+          {/* min-w-0: a long link never widens the column past the card (owner, 2026-11-21). */}
+          <div className="grid h-fit min-w-0 gap-4">
             <h3 className="font-semibold">{t("placement.title")}</h3>
             <ol className="grid gap-3">
               {PLACEMENT.map(({ key, icon: Icon }) => (
@@ -259,14 +260,17 @@ export function PhoneStep({
                   <span className="grid size-8 shrink-0 place-items-center rounded-full bg-accent-subtle text-accent-subtle-foreground">
                     <Icon className="size-4" aria-hidden />
                   </span>
-                  <span className="pt-1 text-[0.92rem] leading-snug">{p(`placement.${key}`)}</span>
+                  <span className="min-w-0 pt-1 text-[0.92rem] leading-snug">
+                    {p(`placement.${key}`)}
+                  </span>
                 </li>
               ))}
             </ol>
             {link && phone === "waiting" ? (
-              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.85rem] text-muted-foreground">
+              <p className="grid min-w-0 justify-items-start gap-1.5 text-[0.85rem] text-muted-foreground">
                 {p("link")}
-                <code className="max-w-full truncate rounded-md bg-surface-sunken px-1.5 py-0.5 text-foreground">
+                {/* The whole link, wrapped: a candidate may have to type it on the phone. */}
+                <code className="max-w-full break-all rounded-md bg-surface-sunken px-2 py-1 text-foreground">
                   {link}
                 </code>
                 <button

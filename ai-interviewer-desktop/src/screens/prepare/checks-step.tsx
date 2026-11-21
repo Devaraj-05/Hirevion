@@ -6,6 +6,7 @@ import { checkMicrophone } from "../../checks/microphone";
 import { networkResult } from "../../checks/network";
 import type { SystemCheckPayload } from "../../checks/payload";
 import { buildPayload, missingMandatory } from "../../checks/payload";
+import { shownToCandidate } from "../../checks/shown";
 import { playTestTone, speakerResult } from "../../checks/speaker";
 import { webview2Result } from "../../checks/thresholds";
 import type { CheckResult } from "../../checks/types";
@@ -130,8 +131,8 @@ export function ChecksStep({
     }
   }
 
-  const shown = buildPayload({ appVersion: "", native: results, web: [] }).results.filter(
-    (result) => result.check !== "third_eye" && result.status !== "skipped",
+  const shown = shownToCandidate(
+    buildPayload({ appVersion: "", native: results, web: [] }).results,
   );
   return (
     <div className="grid gap-5">
