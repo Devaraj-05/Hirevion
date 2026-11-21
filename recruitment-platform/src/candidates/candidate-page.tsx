@@ -16,6 +16,7 @@ import { ArrowLeft, SearchX } from "lucide-react";
 import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 import type { ReactNode } from "react";
+import { AnalyticsTab } from "./analytics-tab";
 import { type Candidate, downloadHref, getCandidate } from "./api";
 import {
   AiInterviewTab,
@@ -142,6 +143,7 @@ export function CandidatePage({ id, canManage = false }: { id: string; canManage
                 <>
                   <TabsTrigger value="coding">{t("page.tabs.coding")}</TabsTrigger>
                   <TabsTrigger value="ai">{t("page.tabs.ai")}</TabsTrigger>
+                  <TabsTrigger value="analytics">{t("page.tabs.analytics")}</TabsTrigger>
                 </>
               ) : null}
               {access?.proctoring ? (
@@ -183,6 +185,9 @@ export function CandidatePage({ id, canManage = false }: { id: string; canManage
             </TabsContent>
             <TabsContent value="ai">
               <AiInterviewTab data={overview.data} />
+            </TabsContent>
+            <TabsContent value="analytics">
+              <AnalyticsTab data={overview.data} />
             </TabsContent>
             <TabsContent value="proctoring">
               <ProctoringTab data={overview.data} />

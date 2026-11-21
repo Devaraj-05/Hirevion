@@ -35,6 +35,11 @@
   --info: #075985; /* sky-800 */
   --info-subtle: #f0f9ff;
 
+  /* Chart series (C8-7): categorical slots 1 and 2, checked with the dataviz validator on this
+     surface (lightness band, chroma, colour-blind and normal-vision separation, 3:1 contrast). */
+  --chart-1: #4f46e5; /* indigo-600 */
+  --chart-2: #eb6834; /* orange */
+
   /* Proctoring severities (PRD §64) */
   --sev-info: var(--info);
   --sev-info-subtle: var(--info-subtle);
@@ -60,6 +65,9 @@
   --muted-foreground: #94a3b8; /* slate-400 */
 
   --accent: #818cf8; /* indigo-400 */
+  /* Chart series: indigo-400 is too light for a mark on this surface, so slot 1 is indigo-500. */
+  --chart-1: #6366f1; /* indigo-500 */
+  --chart-2: #d95926; /* orange */
   --accent-hover: #a5b4fc; /* indigo-300 */
   --accent-foreground: #020617;
   --accent-subtle: #1e1b4b; /* indigo-950 */
@@ -111,6 +119,8 @@
   --color-danger-solid-foreground: var(--danger-solid-foreground);
   --color-info: var(--info);
   --color-info-subtle: var(--info-subtle);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
   --color-sev-info: var(--sev-info);
   --color-sev-info-subtle: var(--sev-info-subtle);
   --color-sev-warning: var(--sev-warning);

@@ -27,6 +27,7 @@ import { useAdminProblem } from "@/admin/problems";
 import { getJobChoices } from "@/jobs/api";
 import { PageHeader } from "@/page/page-header";
 import { AccommodationsCard } from "./accommodations-card";
+import { InterviewAnalyticsPanel } from "./analytics-panel";
 import {
   cancelInterview,
   getInterview,
@@ -85,6 +86,7 @@ export function InterviewPage({
   const t = useTranslations("interviews.assigned");
   const statuses = useTranslations("interviews.assigned.statuses");
   const format = useFormatter();
+  const analyticsId = useId();
   const problems = useAdminProblem();
   const queryClient = useQueryClient();
   const [asking, setAsking] = useState<Asking>(null);
@@ -297,6 +299,14 @@ export function InterviewPage({
           id={id}
           canDecide={canManage && (data.status === "scheduled" || data.status === "invited")}
         />
+        {canReview && EVALUATED.has(data.status) ? (
+          <section className="grid gap-3 lg:col-span-2" aria-labelledby={`${analyticsId}-title`}>
+            <h2 id={`${analyticsId}-title`} className="font-semibold text-lg">
+              {t("analytics")}
+            </h2>
+            <InterviewAnalyticsPanel interviewId={id} />
+          </section>
+        ) : null}
         {canMonitor && HAPPENED.has(data.status) ? (
           <MonitoringPanel
             id={id}

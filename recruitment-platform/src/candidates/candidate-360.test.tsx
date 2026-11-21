@@ -144,6 +144,8 @@ const ALL_TABS = [
   "Technical skills",
   "Coding",
   "AI interview",
+  // C8-7: one interview's analytics (ADR-0047).
+  "Analytics",
   "Proctoring",
   "Recordings",
   "Reports",
@@ -160,11 +162,11 @@ beforeEach(() => {
 });
 
 describe("Candidate 360", () => {
-  it("has PRD §20's thirteen tabs for a reader who may see everything", async () => {
+  it("has PRD §20's thirteen tabs and the analytics for a reader who may see everything", async () => {
     renderAdmin(<CandidatePage id="c-1" canManage />);
     await screen.findByRole("tab", { name: "Activity timeline" });
     const names = tabNames();
-    expect(names).toHaveLength(13);
+    expect(names).toHaveLength(14);
     for (const name of ALL_TABS.filter((tab) => tab !== "Resume")) expect(names).toContain(name);
   });
 
@@ -187,6 +189,7 @@ describe("Candidate 360", () => {
       "Interview history",
       "Coding",
       "AI interview",
+      "Analytics",
       "Proctoring",
       "Recordings",
       "Reports",

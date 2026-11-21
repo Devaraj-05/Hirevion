@@ -1211,7 +1211,8 @@
         "recordings": "Recordings",
         "reports": "Reports",
         "notes": "Recruiter notes",
-        "timeline": "Activity timeline"
+        "timeline": "Activity timeline",
+        "analytics": "Analytics"
       },
       "warnings": "Things to check"
     },
@@ -1864,7 +1865,8 @@
       "windowValue": "{start} – {end} ({zone})",
       "emailLine": "{kind} · {to} · {when}",
       "eventReason": "— {reason}",
-      "openReview": "Open the review workspace"
+      "openReview": "Open the review workspace",
+      "analytics": "Analytics"
     },
     "assign": {
       "title": "{count, plural, one {Create an interview} other {Create # interviews}}",
@@ -2043,6 +2045,165 @@
         "approved": "Accommodations approved",
         "declined": "Request declined"
       }
+    },
+    "analytics": {
+      "loadFailed": "The analytics couldn't be loaded. Try again in a moment.",
+      "hidden": "The AI's scores stay hidden until you've scored every question ({saved} of {total} scored), so they don't set yours.",
+      "showWithoutScoring": "Show the scores without scoring",
+      "tab": "Analytics",
+      "pick": "Interview",
+      "noInterview": "There is no interview to analyse yet.",
+      "notStarted": "This interview hasn't taken place yet.",
+      "overview": {
+        "overall": "Overall score",
+        "communication": "Communication",
+        "outOf": "{score} / 10",
+        "noScore": "Not scored yet",
+        "length": "Length",
+        "minutes": "{minutes} min {seconds} s",
+        "planned": "{minutes} minutes planned",
+        "noLength": "Not measured",
+        "answered": "Questions answered",
+        "answeredOf": "{answered} of {asked}",
+        "response": "Typical wait before answering",
+        "seconds": "{seconds} s",
+        "noSpeech": "No speech measured",
+        "critical": "Critical proctoring events",
+        "noIntegrity": "Not shown to you"
+      },
+      "skills": {
+        "title": "Score per skill",
+        "lead": "Each skill's score out of 10 from the evaluation, with how many questions it got.",
+        "none": "The interview had no skills to cover.",
+        "required": "Required",
+        "notCovered": "Not covered",
+        "dropped": "Dropped",
+        "outOf": "{score} / 10",
+        "meter": "{skill}: {score} out of 10",
+        "meterNone": "{skill}: no score shown",
+        "asked": "{asked, plural, one {# question asked} other {# questions asked}} · {answered} answered · {planned} planned"
+      },
+      "questions": {
+        "title": "Score per question",
+        "lead": "Every answered question in order, its score out of 10. Hover or focus a column to see its question below the chart.",
+        "hidden": "Hidden until you've scored every question.",
+        "notEvaluated": "The interview hasn't been evaluated yet.",
+        "tipTitle": "Question {position} · {kind}",
+        "noScore": "Not scored",
+        "outOf": "{score} / 10",
+        "column": "Question {position}: {score}",
+        "short": {
+          "easy": "E",
+          "medium": "M",
+          "hard": "H"
+        },
+        "difficulty": {
+          "easy": "Easy",
+          "medium": "Medium",
+          "hard": "Hard"
+        },
+        "legend": "Under each column: the question's number and its level (E easy, M medium, H hard).",
+        "number": "Q{position}",
+        "noLevel": "–",
+        "detailLabel": "Question details",
+        "detailHint": "Hover or focus a column to see its question."
+      },
+      "timing": {
+        "title": "Time per answer",
+        "lead": "How long the candidate waited before answering, then how long they spoke, for each answered question.",
+        "none": "No answers were timed.",
+        "legendLabel": "Legend",
+        "thinking": "Wait before answering",
+        "speaking": "Speaking",
+        "row": "Q{position} · {skill}",
+        "general": "General",
+        "tip": "Waited {thinking} s, spoke {speaking} s",
+        "total": "{seconds} s",
+        "seconds": "{seconds} s",
+        "unreliable": "This interview was recorded before 21 Nov 2026, when each answer kept only its last stretch of speech: speaking times here are too short and waits too long."
+      },
+      "speech": {
+        "title": "Speech",
+        "lead": "Measured from the transcript's timing (PRD §59).",
+        "talkTitle": "Who spoke",
+        "talkLabel": "The candidate spoke {share}% of the time either side spoke",
+        "candidate": "Candidate",
+        "interviewer": "AI interviewer",
+        "duration": "{minutes} min {seconds} s",
+        "noSpeech": "No speech was measured.",
+        "words": "Words spoken",
+        "pace": "Pace",
+        "wpm": "{wpm} words a minute",
+        "paceUnreliable": "Not measured",
+        "paceNote": "The stored speech times of this interview are too short to give a pace: answers recorded before 21 Nov 2026 kept only their last stretch of speech.",
+        "medianWait": "Typical wait",
+        "seconds": "{seconds} s",
+        "longPauses": "Waits over 10 s",
+        "fillers": "Filler words",
+        "fillersRate": "{rate} per 100 words",
+        "fillersFound": "Heard: {list}.",
+        "caveat": "These are signals for a reviewer, never proof of anything: a pause, a pace or a filler word doesn't show whether an answer was the candidate's own, and speech recognition can leave some filler words out.",
+        "spoke": "{time} · {share}%"
+      },
+      "integrity": {
+        "title": "Integrity",
+        "lead": "Proctoring events across the interview. Events a reviewer dismissed are faded and not counted.",
+        "countsLabel": "Events by severity",
+        "severity": {
+          "CRITICAL": "Critical",
+          "WARNING": "Warning",
+          "INFO": "Info"
+        },
+        "timeline": "When they happened",
+        "start": "Start",
+        "at": "{minutes} min {seconds} s",
+        "none": "No proctoring events were recorded.",
+        "review": {
+          "confirmed": "confirmed by a reviewer",
+          "false_positive": "dismissed: false positive",
+          "not_relevant": "dismissed: not relevant"
+        },
+        "times": "×{count}"
+      },
+      "inventory": {
+        "none": "No list of the apps running at the start was recorded for this interview.",
+        "title": "{count, plural, one {# process was} other {# processes were}} running when monitoring started",
+        "windows": "Apps with a window:",
+        "showAll": "Show every process",
+        "tableLabel": "Processes running when monitoring started",
+        "name": "Program",
+        "publisher": "Publisher (verified)",
+        "window": "First window",
+        "program": "{name} ×{count}"
+      },
+      "table": {
+        "show": "Show the numbers as a table",
+        "caption": "Every question with its score and timing",
+        "question": "Question",
+        "kind": "Kind",
+        "skill": "Skill",
+        "difficulty": "Level",
+        "score": "Score",
+        "thinking": "Wait (s)",
+        "speaking": "Spoke (s)",
+        "words": "Words",
+        "quality": "Live analysis",
+        "number": "Q{position}"
+      },
+      "kinds": {
+        "introduction": "Introduction",
+        "main": "Main question",
+        "follow_up": "Follow-up",
+        "coding": "Coding",
+        "final": "Final questions"
+      },
+      "quality": {
+        "strong": "Strong",
+        "partial": "Partial",
+        "weak": "Weak",
+        "no_answer": "No answer"
+      },
+      "interviewLabel": "{reference} · {job}"
     }
   },
   "candidateRequests": {
