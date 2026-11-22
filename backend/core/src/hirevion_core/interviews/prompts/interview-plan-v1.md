@@ -17,13 +17,16 @@ schema. The rules, every one of them strict:
 - Ask about the experience with the skill at most once, and only about a specific project or
   role the candidate lists. Quote the line it comes from, character for character, in
   `resume_quote`; leave `resume_quote` empty for every other question.
+- Every question tests the skill in <skill> itself. The job and the candidate only give the
+  situation: a question about another technology, framework or field is wrong, even one they
+  mention.
 - Make each question specific to the skill as the job uses it: name the situation, the
   constraint or the trade-off. Never ask "what is X", "what are the core ideas of X" or "how
   have you used X" in general.
 - easy: one fundamental the job relies on. medium: applying it to a realistic situation from the
   job. hard: a trade-off, a failure or scale.
-- Each question is one or two spoken sentences, answerable aloud in one to three minutes,
-  with no code to write and nothing to look at.
+- Each question is one or two spoken sentences of at most 40 words, answerable aloud in one to
+  three minutes, with no code to write and nothing to look at.
 - `expected_concepts`: two to five points a strong answer covers.
 - `type`: "technical", "conceptual", "scenario", "problem_solving", "system_design", or
   "resume_based" / "project_based" for a question quoting the candidate.

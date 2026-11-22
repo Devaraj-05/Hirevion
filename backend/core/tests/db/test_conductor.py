@@ -1037,11 +1037,25 @@ async def test_a_new_interview_asks_for_its_prepared_questions(
 
 async def test_the_worker_prepares_distinct_questions_at_every_level(
     app_db: Database,
+    admin_engine: AsyncEngine,
     valkey: Redis,
     make_organization: MakeOrganization,
     make_hiring: Any,
 ) -> None:
     scene = await invited(app_db, make_hiring, await make_organization("Acme"))
+    project = {
+        "name": "Ledger service",
+        "description": "Moved reporting queries to PostgreSQL read replicas and cut p95 by 60%",
+    }
+    async with admin_engine.begin() as conn:  # a resume line the plan can quote (PRD §36)
+        await conn.execute(
+            text(
+                "UPDATE candidates SET profile = jsonb_set(coalesce(profile, '{}'::jsonb), "
+                "'{projects}', CAST(:projects AS jsonb)) WHERE id = "
+                "(SELECT candidate_id FROM interviews WHERE id = :id)"
+            ),
+            {"projects": json.dumps([project]), "id": scene.interview_id},
+        )
     ai = build_ai(AiSettings(profile="mock"), app_db)
     async with app_db.tenant(scene.organization_id) as session:
         interview = await session.get_one(Interview, scene.interview_id)
@@ -1056,6 +1070,9 @@ async def test_the_worker_prepares_distinct_questions_at_every_level(
     required = {i["skill"] for i in items}
     for skill in required:
         assert {i["difficulty"] for i in items if i["skill"] == skill} == {"easy", "medium", "hard"}
+    # PRD §36: one resume question from a verified quote (the mock model writes none itself).
+    resume = [i for i in items if i["source"] == "resume"]
+    assert len(resume) == 1 and resume[0]["source_ref"]["quote"]
     # The interview's pool now comes from the plan.
     check, consent = await prepare(app_db, scene)
     cond = conductor(app_db, valkey)

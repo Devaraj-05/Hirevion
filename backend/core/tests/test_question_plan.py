@@ -192,3 +192,63 @@ def test_the_plan_prompt_keeps_every_strict_rule() -> None:
     for name, clause in CLAUSES.items():
         without = " ".join(_PROMPT.split()).replace(clause, "")
         assert lint(without) == [name], name
+
+
+def test_a_question_about_another_skill_of_the_interview_is_not_this_skills() -> None:
+    # The live run of 2026-11-22: a PostgreSQL resume question came back under Python.
+    kept = checked(
+        [
+            _q(
+                "How would you keep PostgreSQL read replicas consistent for reports?", "Replica lag"
+            ),
+            _q("How would you speed up a CPU-bound service limited by the GIL?", "The GIL"),
+            _q("How would Python batch writes to PostgreSQL efficiently?", "Batching writes"),
+        ],
+        skill="Python",
+        counts={"easy": 3, "medium": 0, "hard": 0},
+        resume=RESUME,
+        taken_texts=set(),
+        taken_concepts=set(),
+        other_skills=["Python", "PostgreSQL", "Redis"],
+    )
+    assert [q.concept for q in kept] == ["The GIL", "Batching writes"]
+
+
+def test_one_question_per_resume_line_in_the_whole_interview() -> None:
+    quotes: set[str] = set()
+    line = "Moved reporting queries to PostgreSQL read replicas"
+    first = checked(
+        [
+            _q(
+                "In your Python reader, how did you handle replica lag?",
+                "Lag in code",
+                "hard",
+                type="project_based",
+                quote=line,
+            )
+        ],
+        skill="Python",
+        counts={"easy": 0, "medium": 0, "hard": 1},
+        resume=RESUME,
+        taken_texts=set(),
+        taken_concepts=set(),
+        taken_quotes=quotes,
+    )
+    second = checked(
+        [
+            _q(
+                "Why might a report miss the latest entry on a replica?",
+                "Replication lag",
+                "medium",
+                type="project_based",
+                quote=line.upper(),
+            )
+        ],
+        skill="PostgreSQL",
+        counts={"easy": 0, "medium": 1, "hard": 0},
+        resume=RESUME,
+        taken_texts=set(),
+        taken_concepts=set(),
+        taken_quotes=quotes,
+    )
+    assert len(first) == 1 and second == []
