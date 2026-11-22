@@ -9,6 +9,7 @@ vary and a re-run repeats), and a generated question fills any gap when it's nee
 from __future__ import annotations
 
 import hashlib
+import re
 from collections.abc import Sequence
 
 from hirevion_core.engine import phrasing
@@ -56,6 +57,14 @@ def said(text: str) -> str:
     A library may hold the same question more than once, each copy with its own id (the owner's
     run of 2026-11-21 asked one of 13 copies ten times)."""
     return " ".join(text.casefold().split()).rstrip("?.! ")
+
+
+def concept_key(concept: str | None) -> str | None:
+    """A concept as compared for repeats: case, spacing and punctuation ignored (C8-10)."""
+    if not concept:
+        return None
+    folded = re.sub(r"[^\w+#]+", " ", concept.casefold()).strip()
+    return folded or None
 
 
 def _order(seed: int, question: LibraryQuestion) -> bytes:
@@ -134,10 +143,12 @@ def _add_once(pool: list[PoolQuestion], question: PoolQuestion) -> None:
 
 
 def _unused(state: InterviewState, skill: str) -> list[PoolQuestion]:
-    """The skill's questions not yet asked, leaving out any whose text this interview has asked
-    (a checkpoint saved before the pool dropped copies may still hold them)."""
+    """The skill's questions not yet asked, leaving out any whose text or concept this interview
+    has asked (C8-10: never the same question in other words; a checkpoint saved before the pool
+    dropped copies may still hold them)."""
     folded = skill.casefold()
     asked = {said(q.text) for q in state.pool if q.used}
+    concepts = {key for q in state.pool if q.used and (key := concept_key(q.concept))}
     return [
         q
         for q in state.pool
@@ -145,12 +156,17 @@ def _unused(state: InterviewState, skill: str) -> list[PoolQuestion]:
         and q.type != "coding"
         and q.skill.casefold() == folded
         and said(q.text) not in asked
+        and (concept_key(q.concept) is None or concept_key(q.concept) not in concepts)
     ]
+
+
+def _template(question: PoolQuestion) -> bool:
+    return question.source == "generated" and "template" in question.source_ref
 
 
 def _generated_texts(state: InterviewState, skill: SkillState) -> set[str]:
     folded = skill.name.casefold()
-    return {q.text for q in state.pool if q.source == "generated" and q.skill.casefold() == folded}
+    return {q.text for q in state.pool if _template(q) and q.skill.casefold() == folded}
 
 
 def _templates(skill: SkillState, rung: str, start: int) -> list[tuple[str, int]]:
@@ -163,13 +179,16 @@ def _templates(skill: SkillState, rung: str, start: int) -> list[tuple[str, int]
 
 
 def has_fresh(state: InterviewState, skill: SkillState) -> bool:
-    """Whether `skill` has a question left that this interview hasn't asked: an unused one in
-    the pool, or a generated one not yet used (an interview that runs its full length must not
-    repeat itself, owner 2026-11-16)."""
-    if _unused(state, skill.name):
-        return True
-    asked = _generated_texts(state, skill)
-    return any(text not in asked for rung in RUNGS for text, _ in _templates(skill, rung, 0))
+    """Whether `skill` has a question this interview hasn't asked, in its text or its concept.
+    A generic template never counts: the owner's run of 2026-11-22 asked nine of them per skill,
+    the same question in other words."""
+    return bool(_ladder(_unused(state, skill.name)))
+
+
+def _ladder(unused: list[PoolQuestion]) -> list[PoolQuestion]:
+    """The questions the difficulty ladder may take: the library's and the plan's. A resume hook
+    only opens its skill; a second "tell me about it" would be the first in other words."""
+    return [q for q in unused if q.source == "library" or q.source_ref.get("plan")]
 
 
 def _generated(state: InterviewState, skill: SkillState, rung: str) -> PoolQuestion:
@@ -200,29 +219,32 @@ def _generated(state: InterviewState, skill: SkillState, rung: str) -> PoolQuest
     )
 
 
-def pick(state: InterviewState, skill: SkillState, rung: str) -> PoolQuestion:
-    """The next question for `skill` at `rung`: an unused pinned question first (whatever its
-    rung), the resume question to open the skill, then the library at the rung or one either
-    side, else a generated one at the rung (an easy question never follows a hard one just
-    because the library ran out). The question is marked used."""
+def pick(state: InterviewState, skill: SkillState, rung: str) -> PoolQuestion | None:
+    """The next question for `skill` at `rung`, marked used; None when the skill has nothing new
+    to ask (C8-10, owner 2026-11-22: never repeat). In turn: an unused pinned question (whatever
+    its rung); the resume question to open the skill; the library's or the plan's question at the
+    rung, then the nearest rung (higher first); and only in an interview without a plan, one
+    generic question for a skill that has nothing else."""
     unused = _unused(state, skill.name)
     choice = next((q for q in unused if q.source == "pinned"), None)
     if choice is None and skill.asked == 0:
         choice = next((q for q in unused if q.source == "resume"), None)
-        if choice is not None:
+        if choice is not None and not choice.source_ref.get("plan"):
             choice.difficulty = rung
     if choice is None:
         index = RUNGS.index(rung) if rung in RUNGS else 1
-        by_distance = sorted(
-            (i for i in range(len(RUNGS)) if abs(i - index) <= 1),
-            key=lambda i: (abs(i - index), -i),
-        )
-        library = [q for q in unused if q.source == "library"]
-        for candidate_index in by_distance:
-            choice = next((q for q in library if q.difficulty == RUNGS[candidate_index]), None)
-            if choice is not None:
-                break
+
+        def distance(question: PoolQuestion) -> tuple[int, int]:
+            at = RUNGS.index(question.difficulty) if question.difficulty in RUNGS else 1
+            return abs(at - index), -at
+
+        choice = min(_ladder(unused), key=distance, default=None)
     if choice is None:
+        folded = skill.name.casefold()
+        if state.plan_version or any(
+            _template(q) and q.skill.casefold() == folded for q in state.pool
+        ):
+            return None
         choice = _generated(state, skill, rung)
         state.pool.append(choice)
     choice.used = True

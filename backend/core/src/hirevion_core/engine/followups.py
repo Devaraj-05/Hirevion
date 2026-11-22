@@ -27,6 +27,7 @@ from hirevion_core.ai.mock import respond_with
 from hirevion_core.ai.types import AiContext, AiError, ChatMessage, LLMService
 from hirevion_core.engine import phrasing
 from hirevion_core.engine.guardrails import safe_question
+from hirevion_core.engine.planner import concept_key
 from hirevion_core.engine.state import AskedQuestion, InterviewState
 
 log = logging.getLogger(__name__)
@@ -55,6 +56,20 @@ class FollowUpPlan:
     @property
     def ask_model(self) -> bool:
         return self.kind == "targeted" and not self.rule
+
+
+def _free(state: InterviewState, question: AskedQuestion, missing: Sequence[str]) -> list[str]:
+    """The missing concepts no other question covers: not another pool question's concept (asked
+    or still to come), nor in the words of a question already asked. A follow-up on one of them
+    would repeat a question, or ask one before its turn (C8-10)."""
+    others = [q for q in state.pool if q.text != question.text]
+    covered = {key for q in others if (key := concept_key(q.concept))}
+    asked_text = " ".join(f" {concept_key(q.text) or ''} " for q in others if q.used)
+    return [
+        concept
+        for concept in missing
+        if (key := concept_key(concept)) and key not in covered and f" {key} " not in asked_text
+    ]
 
 
 def _rule(question: AskedQuestion, when: str) -> str | None:
@@ -92,7 +107,6 @@ class FollowUpGenerator:
             return None
         if question.follow_ups >= 1:
             return None
-        topic = question.topic or question.skill or "this"
         seed = state.seed + question.position
         if quality == "strong":
             rule = _rule(question, "strong")
@@ -101,15 +115,24 @@ class FollowUpGenerator:
             rule = _rule(question, "partial")
             if rule:
                 return FollowUpPlan("targeted", rule, True, tuple(missing))
+            free = _free(state, question, missing)
+            if missing and not free:
+                return None  # what's missing is another question's: it comes there
             return FollowUpPlan(
-                "targeted", phrasing.partial_follow_up(missing, seed), False, tuple(missing)
+                "targeted", phrasing.partial_follow_up(free, seed), False, tuple(free)
             )
         if quality == "weak":
             skill = state.skill(question.skill)
             if skill is not None and skill.weak_streak + 1 >= WEAK_STREAK:
                 return None
             rule = _rule(question, "weak")
-            return FollowUpPlan("clarify", rule or phrasing.clarification(topic, seed), bool(rule))
+            if rule:
+                return FollowUpPlan("clarify", rule, True)
+            # One smaller question on a concept nothing else covers; none rather than a rephrase.
+            free = _free(state, question, [*missing, *question.expected_concepts])
+            if not free:
+                return None
+            return FollowUpPlan("clarify", phrasing.clarification(free[0], seed), False, (free[0],))
         return None
 
     async def phrase(

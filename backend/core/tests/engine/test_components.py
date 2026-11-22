@@ -17,9 +17,9 @@ from hirevion_core.engine.context import FaqEntry
 from hirevion_core.engine.difficulty import DifficultyController
 from hirevion_core.engine.followups import FollowUpGenerator
 from hirevion_core.engine.guardrails import classify, safe_question
-from hirevion_core.engine.planner import has_fresh, pick, said
+from hirevion_core.engine.planner import concept_key, has_fresh, pick, said
 from hirevion_core.engine.skills import SkillMatrixBuilder, ladder, resume_hooks
-from hirevion_core.engine.state import AskedQuestion, InterviewState, SkillState
+from hirevion_core.engine.state import AskedQuestion, InterviewState, PoolQuestion, SkillState
 from hirevion_core.engine.timing import TimeController
 
 from .factory import (
@@ -265,8 +265,32 @@ def test_follow_ups_follow_the_rules() -> None:
     targeted = _decide(state, "partial")
     assert targeted.kind == "targeted" and "wait timeout" in targeted.text and targeted.ask_model
     assert _decide(state, "weak", with_rules).text.startswith("What is a database connection")
-    assert _decide(state, "weak").kind == "clarify"
+    narrower = _decide(state, "weak")
+    assert narrower.kind == "clarify" and "wait timeout" in narrower.text
+    assert "high level" not in narrower.text  # never the same question in other words
+    assert _decide(state, "weak", asked(expected_concepts=[]), missing=[]) is None
     assert _decide(state, "no_answer") is None
+
+
+def test_a_follow_up_never_asks_what_another_question_covers() -> None:
+    state = make_state()
+    state.pool.append(
+        PoolQuestion(
+            key="plan:9",
+            skill="Python",
+            difficulty="medium",
+            type="technical",
+            text="How do you size a connection pool?",
+            source="generated",
+            source_ref={"plan": True},
+            concept="Wait timeout",
+        )
+    )
+    # The only missing concept is another question's: no follow-up (it will be asked there).
+    assert _decide(state, "partial", missing=["wait timeout"]) is None
+    # One of two is free: the follow-up asks only about that one.
+    plan = _decide(state, "partial", missing=["wait timeout", "pool health checks"])
+    assert plan is not None and plan.missing == ("pool health checks",)
 
 
 def test_no_follow_up_after_repeated_weak_answers_or_without_time() -> None:
@@ -370,16 +394,75 @@ def test_no_extra_question_for_a_skill_with_nothing_new_to_ask() -> None:
     assert timing.extend(state, NOW, fresh=lambda skill: False) is None
 
 
-def test_generated_questions_never_repeat_while_unused_ones_remain() -> None:
+def test_a_skill_with_nothing_left_gets_one_generic_question_never_a_second() -> None:
+    # The owner's run of 2026-11-22: once the library ran out, nine templates per skill asked
+    # the same thing in other words ("what is Redis", "the core ideas of Redis", ...).
     state = make_state(make_context(questions=[], question_count=12, skills=(("Python", 100),)))
     skill = state.skills[0]
+    assert not has_fresh(state, skill)  # a template never counts as something new to ask
+    first = pick(state, skill, "hard")
+    assert first is not None and first.source == "generated"
+    skill.asked += 1
+    assert pick(state, skill, "hard") is None
+    assert pick(state, skill, "easy") is None
+
+
+def test_an_interview_with_a_prepared_plan_never_falls_back_to_a_template() -> None:
+    state = make_state(make_context(questions=[], skills=(("Python", 100),)))
+    state.plan_version = 1
+    assert pick(state, state.skills[0], "medium") is None
+
+
+def _planned(key: str, text: str, concept: str, difficulty: str = "easy") -> PoolQuestion:
+    return PoolQuestion(
+        key=key,
+        skill="Redis",
+        difficulty=difficulty,
+        type="technical",
+        text=text,
+        source="generated",
+        source_ref={"plan": True, "concept": concept},
+        concept=concept,
+    )
+
+
+def test_a_question_on_a_concept_already_asked_is_never_picked() -> None:
+    # The owner's run: "How do you keep a Redis cache consistent with the database?" and, later,
+    # "If a cached value in Redis changes in the database, how do you ensure ... no stale reads?"
+    state = make_state(
+        make_context(questions=[], skills=(("Redis", 100),), job_skills=(("Redis", "required"),))
+    )
+    state.plan_version = 1
+    state.pool.extend(
+        [
+            _planned(
+                "plan:1",
+                "How do you keep a Redis cache consistent with the database?",
+                "Cache invalidation",
+            ),
+            _planned(
+                "plan:2",
+                "If a value changes in the database, how do you avoid stale reads?",
+                "  cache-invalidation ",
+            ),
+            _planned(
+                "plan:3",
+                "When would you choose RDB snapshots over AOF?",
+                "Persistence: RDB vs AOF",
+                "medium",
+            ),
+        ]
+    )
+    skill = state.skills[0]
     texts = []
-    for _ in range(9):  # three templates at each of the three rungs
-        question = pick(state, skill, "hard")
-        skill.asked += 1
+    while (question := pick(state, skill, "easy")) is not None:
         texts.append(question.text)
-    assert len(set(texts)) == 9
-    assert not has_fresh(state, skill)
+        skill.asked += 1
+    assert texts == [
+        "How do you keep a Redis cache consistent with the database?",
+        "When would you choose RDB snapshots over AOF?",
+    ]
+    assert concept_key("  cache-invalidation ") == concept_key("Cache invalidation")
 
 
 def test_a_question_is_never_asked_twice_when_the_library_holds_copies_of_it() -> None:
@@ -390,11 +473,11 @@ def test_a_question_is_never_asked_twice_when_the_library_holds_copies_of_it() -
     state = make_state(make_context(questions=copies, question_count=12, skills=(("Python", 100),)))
     skill = state.skills[0]
     texts = []
-    for _ in range(10):  # the library's one question, then the nine generated ones
-        texts.append(pick(state, skill, "easy").text)
+    while (question := pick(state, skill, "easy")) is not None:
+        texts.append(question.text)  # the library's one question, then one generic question
         skill.asked += 1
     assert said(texts[0]) == "what is a list"  # whichever copy the shuffle put first
-    assert len({said(text) for text in texts}) == 10
+    assert len(texts) == 2 and len({said(text) for text in texts}) == 2
     assert not has_fresh(state, skill)
 
 
@@ -413,9 +496,10 @@ def test_a_copy_of_an_asked_question_is_skipped_in_a_saved_interview() -> None:
     state = make_state(make_context(questions=[], skills=(("Python", 100),)))
     skill = state.skills[0]
     first = pick(state, skill, "easy")
+    assert first is not None
     copy = first.model_copy(update={"key": "q:copy:1", "source": "library", "used": False})
     state.pool.append(copy)
-    assert pick(state, skill, "easy").text != first.text
+    assert pick(state, skill, "easy") is None  # neither the copy nor a second template
 
 
 def test_follow_ups_stop_before_questions_do() -> None:

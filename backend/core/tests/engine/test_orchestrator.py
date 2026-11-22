@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import datetime, timedelta
+from typing import Any
 
 import pytest
 
@@ -201,15 +202,40 @@ def test_time_running_out_shrinks_the_plan_but_keeps_required_coverage() -> None
     assert sum(s.asked for s in state.skills) < 10
 
 
+def _many(skill: str, count: int) -> list[Any]:
+    rungs = ("easy", "medium", "hard")
+    return [
+        library(skill, rungs[n % 3], f"{skill} question {n}: what changes at step {n}?")
+        for n in range(count)
+    ]
+
+
 def test_the_interview_keeps_asking_until_its_time_is_used() -> None:
     """Product owner, 2026-11-16: a 30-minute interview asks questions for 30 minutes, then
     closes; it doesn't stop once the planned questions are asked."""
-    state = make_state(make_context(question_count=3, minutes=30, faq=FAQ), minutes=30)
+    questions = _many("Python", 20) + _many("PostgreSQL", 20)
+    state = make_state(
+        make_context(question_count=3, minutes=30, faq=FAQ, questions=questions), minutes=30
+    )
     _, end = run(state, by_kind(state), seconds=60)
     assert sum(s.asked for s in state.skills) > 3
     assert all(s.asked >= 2 for s in state.skills)  # the extra questions take turns
     assert end >= NOW + timedelta(minutes=26)
     assert state.ended_reason == "finished"  # final questions and the close still come
+
+
+def test_an_interview_out_of_new_questions_finishes_rather_than_repeats() -> None:
+    """Product owner, 2026-11-22: "never repeat the same question again and again"."""
+    state = make_state(
+        make_context(question_count=3, minutes=30, faq=FAQ, questions=_many("Python", 2)),
+        minutes=30,
+    )
+    turns, end = run(state, by_kind(state), seconds=60)
+    mains = [t.asked for t in turns if t.asked is not None and t.asked.kind == "main"]
+    assert len({q.text for q in mains}) == len(mains)
+    generated = [q for q in mains if q.source == "generated"]
+    assert len(generated) <= len(state.skills)  # at most one generic question per skill
+    assert state.ended_reason == "finished" and end < NOW + timedelta(minutes=26)
 
 
 def test_the_clock_ends_the_interview() -> None:

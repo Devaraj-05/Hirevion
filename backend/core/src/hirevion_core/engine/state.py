@@ -112,6 +112,9 @@ class PoolQuestion(_Model):
     workspace: Workspace = "none"
     languages: list[str] = Field(default_factory=list)
     used: bool = False
+    concept: str | None = None
+    """What the question tests, as the question plan labelled it (C8-10): a concept asked once is
+    never asked again, in any words."""
 
 
 class AskedQuestion(_Model):
@@ -259,6 +262,10 @@ class InterviewState(_Model):
     """Fingerprints of earlier answers, to flag a repeated paste."""
     ended_reason: str | None = None
     seed: int = 0
+    plan_version: int = 0
+    """The question plan's version merged into `pool` (C8-10); 0 without a plan."""
+    top_ups: int = 0
+    """How many more questions this interview has asked its plan for."""
 
     def skill(self, name: str | None) -> SkillState | None:
         if name is None:

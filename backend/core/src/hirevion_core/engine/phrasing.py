@@ -56,10 +56,12 @@ PARTIAL = (
     "Good start. How does {concepts} fit into your answer?",
 )
 PARTIAL_NO_CONCEPTS = "Could you go a little deeper on that, perhaps with a concrete example?"
-WEAK = (
-    "No problem. At a high level, how would you approach {topic}? A rough outline is fine.",
-    "Let me put it another way: what would your first step be with {topic}?",
+NARROWER = (
+    "Let's narrow it down: what do you know about {concept}?",
+    "Let's try one part of it: how would you explain {concept}?",
 )
+"""After a weak answer, a smaller question on one expected concept (PRD §38's clarification),
+never the same question in other words (owner, 2026-11-22)."""
 STRONG_DEEPER = "Let's go a level deeper on {topic}. What changes when the stakes are higher?"
 
 LEXICON: dict[str, str] = {
@@ -178,8 +180,8 @@ def partial_follow_up(missing: Sequence[str], seed: int) -> str:
     return _pick(PARTIAL, seed).format(concepts=_join(list(missing)[:2]))
 
 
-def clarification(topic: str, seed: int) -> str:
-    return _pick(WEAK, seed).format(topic=topic)
+def clarification(concept: str, seed: int) -> str:
+    return _pick(NARROWER, seed).format(concept=concept)
 
 
 def deeper(topic: str) -> str:
@@ -216,6 +218,20 @@ FINAL_QUESTIONS = (
     "That's all my questions. Do you have any questions about the role or the process?"
 )
 FAQ_MORE = "Do you have any other questions?"
+FAQ_MORE_AGAIN = (
+    "Is there anything else you'd like to know?",
+    "Anything else I can help with?",
+)
+
+
+def faq_more(asked: int) -> str:
+    """The question after answering one of the candidate's: worded differently each time, so the
+    interviewer never says the same sentence twice in a row."""
+    if asked <= 1:
+        return FAQ_MORE
+    return FAQ_MORE_AGAIN[(asked - 2) % len(FAQ_MORE_AGAIN)]
+
+
 FAQ_UNKNOWN = (
     "I don't have that information, but I'll pass your question on to the recruiting team so "
     "they can follow up."

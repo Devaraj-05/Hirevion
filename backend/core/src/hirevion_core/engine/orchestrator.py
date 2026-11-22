@@ -541,7 +541,7 @@ class Orchestrator:
             now,
             kind="final",
             stage="final_questions",
-            text=phrasing.FAQ_MORE,
+            text=phrasing.faq_more(state.faq_asked),
             source="faq",
             source_ref={"matched": entry.question} if entry else {"matched": None},
         )
@@ -575,6 +575,12 @@ class Orchestrator:
             if skill is not None:
                 rung = self.difficulty.next_rung(skill)
                 chosen = pick(state, skill, rung)
+                if chosen is None:
+                    # Nothing new to ask for this skill: it is done, never repeated (C8-10).
+                    skill.target = skill.asked
+                    turn.events.append(("plan.exhausted", {"skill": skill.name}))
+                    self._advance(state, turn, now)
+                    return
                 first = all(s.asked == 0 for s in state.skills)
                 prefix = (
                     phrasing.transition(skill.name, first)
