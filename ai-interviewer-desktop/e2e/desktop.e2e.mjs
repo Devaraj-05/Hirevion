@@ -184,6 +184,9 @@ test("the coding console and the design notes pad keep the candidate's work", as
 
     // That was the last question.
     await session.waitFor(heading("Thank you"), 30_000);
+    // One attempt (C8-9): only a way out, never back into the interviews.
+    assert.equal((await session.findAll(button("Close app"))).length, 1);
+    assert.equal((await session.findAll(button("Back to your interviews"))).length, 0);
   } catch (error) {
     await keepScreenshot(t, error, "coding");
     throw error;

@@ -11,6 +11,8 @@ export const KNOWN_ERRORS = [
   "interview-not-available",
   "interview-expired",
   "interview-not-open",
+  "interview-already-taken",
+  "interview-other-device",
   "otp-invalid",
   "otp-expired",
   "otp-attempts-exceeded",

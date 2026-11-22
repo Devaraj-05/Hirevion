@@ -199,6 +199,8 @@ fn profile(email: &str) -> ProfileView {
                 third_eye: "optional".into(),
                 proctoring_level: "standard".into(),
                 coding: true,
+                attempt: "available".into(),
+                reconnect_until: None,
             },
             Interview {
                 id: "00000000-0000-7000-8000-000000000002".into(),
@@ -210,6 +212,8 @@ fn profile(email: &str) -> ProfileView {
                 third_eye: "required".into(),
                 proctoring_level: "strict".into(),
                 coding: false,
+                attempt: "not_open".into(),
+                reconnect_until: None,
             },
         ],
     }

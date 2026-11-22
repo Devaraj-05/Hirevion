@@ -1,7 +1,8 @@
 import { CalendarClock, Clock3, Code2, Smartphone } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useFormatter, useTranslations } from "use-intl";
-import type { InterviewSummary, Profile } from "../native/commands";
+import { formatRejoin, listed, offerFor, rejoinSecondsLeft } from "../interview/attempt";
+import { commands, type InterviewSummary, type Profile } from "../native/commands";
 import { Panel, PillButton } from "../ui/kit";
 
 /** Whether an interview can be started now, and how long until it opens. */
@@ -35,14 +36,31 @@ function useNow(intervalMs: number): number {
 export function InterviewsScreen({
   profile,
   onStart,
+  onRejoin,
+  onProfile,
 }: {
   profile: Profile;
   onStart: (interviewId: string) => void;
+  onRejoin: (interviewId: string) => void;
+  onProfile: (profile: Profile) => void;
 }) {
   const t = useTranslations("interviews");
   const format = useFormatter();
   const now = useNow(1000);
-  const open = profile.interviews.filter((interview) => !windowState(interview, now).closed);
+  // The list is the server's every time it shows (C8-9): a submitted interview drops out of it.
+  useEffect(() => {
+    let live = true;
+    commands
+      .profile()
+      .then((fresh) => {
+        if (live) onProfile(fresh);
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [onProfile]);
+  const open = profile.interviews.filter((interview) => listed(interview, now));
   const when = (iso: string) =>
     format.dateTime(new Date(iso), { dateStyle: "medium", timeStyle: "short" });
 
@@ -97,15 +115,13 @@ export function InterviewsScreen({
                         : t("opens", { date: when(interview.starts_at) })}
                     </p>
                   </div>
-                  {window.open ? (
-                    <PillButton size="lg" onClick={() => onStart(interview.id)}>
-                      {t("start")}
-                    </PillButton>
-                  ) : (
-                    <p className="font-medium tabular-nums" aria-live="polite">
-                      {t("startsIn", { time: formatCountdown(window.msUntilOpen) })}
-                    </p>
-                  )}
+                  <InterviewAction
+                    interview={interview}
+                    now={now}
+                    msUntilOpen={window.msUntilOpen}
+                    onStart={onStart}
+                    onRejoin={onRejoin}
+                  />
                 </Panel>
               </li>
             );
@@ -113,5 +129,53 @@ export function InterviewsScreen({
         </ul>
       )}
     </section>
+  );
+}
+
+/** The card's action, from what the server allows (one attempt, C8-9). */
+function InterviewAction({
+  interview,
+  now,
+  msUntilOpen,
+  onStart,
+  onRejoin,
+}: {
+  interview: InterviewSummary;
+  now: number;
+  msUntilOpen: number;
+  onStart: (interviewId: string) => void;
+  onRejoin: (interviewId: string) => void;
+}) {
+  const t = useTranslations("interviews");
+  const offer = offerFor(interview, now);
+  if (offer === "start") {
+    return (
+      <PillButton size="lg" onClick={() => onStart(interview.id)}>
+        {t("start")}
+      </PillButton>
+    );
+  }
+  if (offer === "rejoin") {
+    const left = rejoinSecondsLeft(interview, now);
+    return (
+      <div className="grid justify-items-end gap-1.5">
+        <PillButton size="lg" onClick={() => onRejoin(interview.id)}>
+          {t("rejoin")}
+        </PillButton>
+        {left !== null ? (
+          <p className="text-[0.9rem] text-muted-foreground tabular-nums" aria-live="polite">
+            {t("rejoinWithin", { time: formatRejoin(left) })}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+  if (offer === "elsewhere") {
+    return <p className="font-medium text-muted-foreground">{t("elsewhere")}</p>;
+  }
+  return (
+    <p className="font-medium tabular-nums" aria-live="polite">
+      {t("startsIn", { time: formatCountdown(msUntilOpen) })}
+    </p>
   );
 }

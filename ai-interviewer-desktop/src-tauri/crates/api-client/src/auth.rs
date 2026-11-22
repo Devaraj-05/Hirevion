@@ -121,6 +121,17 @@ pub struct Interview {
     pub third_eye: String,
     pub proctoring_level: String,
     pub coding: bool,
+    /// What the candidate may do now (one attempt, C8-9): `available`, `not_open`,
+    /// `reconnect` (rejoin once, from the laptop that started it) or `elsewhere`.
+    #[serde(default = "available")]
+    pub attempt: String,
+    /// While interrupted: when the one reconnect's window closes (RFC 3339).
+    #[serde(default)]
+    pub reconnect_until: Option<String>,
+}
+
+fn available() -> String {
+    "available".into()
 }
 
 /// `POST /candidate-auth/otp/verify` body.

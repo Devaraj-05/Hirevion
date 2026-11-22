@@ -2,8 +2,10 @@ import { Toaster } from "@hirevion/ui";
 import { lazy, Suspense, useCallback, useEffect, useReducer, useState } from "react";
 import { type FlowEvent, initialState, transition } from "./flow/flow";
 import { I18nProvider, type Locale, pickLocale } from "./i18n/i18n";
+import { rejoinable } from "./interview/attempt";
 import {
   commands,
+  type Profile,
   type ReleaseState,
   type SignInResult,
   type StartResult,
@@ -13,6 +15,7 @@ import { CompletedScreen, InterviewScreen } from "./screens/interview";
 import { InterviewsScreen } from "./screens/interviews";
 import { LaunchScreen, UpdateRequiredScreen } from "./screens/launch";
 import { PrepareScreen } from "./screens/prepare";
+import { ReconnectScreen } from "./screens/reconnect";
 import { Shell } from "./screens/shell";
 import { CodeScreen, SignInScreen } from "./screens/sign-in";
 
@@ -66,11 +69,25 @@ export function App() {
 function CandidateApp() {
   const [state, dispatch] = useReducer(transition, initialState);
   const [locale, setLocale] = useState<Locale>(() => pickLocale(navigator.languages));
+  // The start answer (the LiveKit join) for the interview screen.
+  const [started, setStarted] = useState<StartResult | null>(null);
 
-  const onRelease = useCallback(
-    (release: ReleaseState) => dispatch({ type: "release-checked", release }),
-    [],
-  );
+  const onRelease = useCallback(async (release: ReleaseState) => {
+    dispatch({ type: "release-checked", release });
+    if (release.status === "update-required") return;
+    // After a crash the saved session leads straight back to the interview, once (C8-9); it
+    // never replaces signing in otherwise.
+    try {
+      const saved = await commands.profile();
+      const rejoin = rejoinable(saved);
+      if (rejoin) {
+        setLocale(pickLocale([saved.candidate.locale, ...navigator.languages]));
+        dispatch({ type: "session-restored", profile: saved, interviewId: rejoin.id });
+      }
+    } catch {
+      // No saved session: the candidate signs in.
+    }
+  }, []);
   const onSignIn = useCallback((result: SignInResult) => {
     if (result.status === "code_required") {
       dispatch({ type: "code-required", challengeId: result.challenge_id, sentTo: result.sent_to });
@@ -81,6 +98,14 @@ function CandidateApp() {
     dispatch({ type: "signed-in", profile });
   }, []);
   const send = useCallback((event: FlowEvent) => dispatch(event), []);
+  const onProfile = useCallback(
+    (fresh: Profile) => dispatch({ type: "profile-updated", profile: fresh }),
+    [],
+  );
+  const onStarted = useCallback((start: StartResult) => {
+    setStarted(start);
+    dispatch({ type: "started" });
+  }, []);
   const signOut = useCallback(async () => {
     try {
       await commands.signOut();
@@ -91,8 +116,6 @@ function CandidateApp() {
   const lost = useCallback((error: unknown) => {
     if (isSessionLost(error)) dispatch({ type: "session-expired" });
   }, []);
-  // The start answer (the LiveKit join) for the interview screen.
-  const [started, setStarted] = useState<StartResult | null>(null);
 
   const profile = "profile" in state ? state.profile : undefined;
   return (
@@ -128,16 +151,24 @@ function CandidateApp() {
           <InterviewsScreen
             profile={state.profile}
             onStart={(interviewId) => send({ type: "interview-chosen", interviewId })}
+            onRejoin={(interviewId) => send({ type: "reconnect-chosen", interviewId })}
+            onProfile={onProfile}
           />
         ) : null}
         {state.screen === "prepare" ? (
           <PrepareScreen
             interviewId={state.interviewId}
             summary={state.profile.interviews.find((one) => one.id === state.interviewId)}
-            onStarted={(start) => {
-              setStarted(start);
-              send({ type: "started" });
-            }}
+            onStarted={onStarted}
+            onBack={() => send({ type: "back" })}
+            onError={lost}
+          />
+        ) : null}
+        {state.screen === "reconnect" ? (
+          <ReconnectScreen
+            interviewId={state.interviewId}
+            summary={state.profile.interviews.find((one) => one.id === state.interviewId)}
+            onStarted={onStarted}
             onBack={() => send({ type: "back" })}
             onError={lost}
           />
@@ -150,9 +181,7 @@ function CandidateApp() {
             onError={lost}
           />
         ) : null}
-        {state.screen === "completed" ? (
-          <CompletedScreen onBack={() => send({ type: "back" })} />
-        ) : null}
+        {state.screen === "completed" ? <CompletedScreen /> : null}
       </Shell>
       <Toaster theme="system" />
     </I18nProvider>

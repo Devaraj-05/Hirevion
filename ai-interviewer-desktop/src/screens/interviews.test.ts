@@ -12,6 +12,8 @@ const INTERVIEW: InterviewSummary = {
   third_eye: "optional",
   proctoring_level: "standard",
   coding: true,
+  attempt: "available",
+  reconnect_until: null,
 };
 
 describe("an interview's window", () => {

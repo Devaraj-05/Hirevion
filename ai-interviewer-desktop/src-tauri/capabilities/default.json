@@ -3,5 +3,9 @@
   "identifier": "default",
   "description": "Permissions for the main window. Keep this list minimal.",
   "windows": ["main"],
-  "permissions": ["core:default", "core:window:allow-set-fullscreen"]
+  "permissions": [
+    "core:default",
+    "core:window:allow-set-fullscreen",
+    "core:window:allow-destroy"
+  ]
 }

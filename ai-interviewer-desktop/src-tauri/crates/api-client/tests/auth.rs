@@ -91,6 +91,9 @@ async fn login_sends_the_contract_body_and_maps_ok() {
     assert_eq!(interview.third_eye, "optional");
     assert_eq!(interview.proctoring_level, "standard");
     assert!(interview.coding);
+    // An answer from before one attempt (C8-9) has no `attempt`: it reads as available.
+    assert_eq!(interview.attempt, "available");
+    assert_eq!(interview.reconnect_until, None);
 
     // Tokens never show up in debug output.
     let debug = format!("{signed_in:?} {:?}", login_request());
@@ -340,4 +343,27 @@ fn release_statuses_use_the_contract_spelling() {
         let parsed: ReleaseStatus = serde_json::from_value(json!(text)).expect("parse");
         assert_eq!(parsed, status);
     }
+}
+
+#[test]
+fn an_interview_to_rejoin_carries_its_reconnect_window() {
+    let interview: hv_api_client::auth::Interview = serde_json::from_value(json!({
+        "id": "i-1",
+        "job_title": "Backend Engineer",
+        "status": "interrupted",
+        "starts_at": "2026-11-22T10:00:00Z",
+        "expires_at": "2026-11-22T18:00:00Z",
+        "duration_minutes": 30,
+        "third_eye": "optional",
+        "proctoring_level": "standard",
+        "coding": false,
+        "attempt": "reconnect",
+        "reconnect_until": "2026-11-22T10:12:00Z"
+    }))
+    .expect("an interview");
+    assert_eq!(interview.attempt, "reconnect");
+    assert_eq!(
+        interview.reconnect_until.as_deref(),
+        Some("2026-11-22T10:12:00Z")
+    );
 }

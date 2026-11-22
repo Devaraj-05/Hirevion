@@ -66,6 +66,10 @@ export interface InterviewSummary {
   third_eye: "off" | "optional" | "required";
   proctoring_level: string;
   coding: boolean;
+  /** What the candidate may do now (one attempt, C8-9): decided by the server. */
+  attempt: "available" | "not_open" | "reconnect" | "elsewhere";
+  /** While interrupted: when the one reconnect's window closes. */
+  reconnect_until: string | null;
 }
 
 export interface Profile {
@@ -126,11 +130,13 @@ export const commands = {
       kinds,
       note,
     }),
-  start: (interviewId: string, systemCheckId: string, consentId: string) =>
-    interviewRequest<StartResult>(interviewId, "start", {
-      system_check_id: systemCheckId,
-      consent_id: consentId,
-    }),
+  /** The first start sends the check and the consent; a rejoin sends neither (C8-9). */
+  start: (interviewId: string, systemCheckId?: string, consentId?: string) =>
+    interviewRequest<StartResult>(
+      interviewId,
+      "start",
+      systemCheckId && consentId ? { system_check_id: systemCheckId, consent_id: consentId } : {},
+    ),
   session: (interviewId: string) =>
     interviewRequest<{ state: InterviewState }>(interviewId, "session"),
   answer: (interviewId: string, questionId: string, text: string) =>

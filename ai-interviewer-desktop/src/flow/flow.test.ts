@@ -66,19 +66,44 @@ describe("the launch flow (PRD §26)", () => {
     }
   });
 
-  it("goes back to the interviews from the page before the interview, or after it", () => {
+  it("goes back to the interviews from the page before the interview", () => {
     const prepare = run(...SIGNED_IN, { type: "interview-chosen", interviewId: "iv-1" });
     expect(transition(prepare, { type: "back" })).toEqual({
       screen: "interviews",
       profile: PROFILE,
     });
+  });
+
+  it("offers no way back once the interview is submitted (one attempt, C8-9)", () => {
     const completed = run(
       ...SIGNED_IN,
       { type: "interview-chosen", interviewId: "iv-1" },
       { type: "started" },
       { type: "completed" },
     );
-    expect(transition(completed, { type: "back" }).screen).toBe("interviews");
+    expect(transition(completed, { type: "back" })).toBe(completed);
+    expect(transition(completed, { type: "interview-chosen", interviewId: "iv-1" })).toBe(
+      completed,
+    );
+  });
+
+  it("rejoins an interrupted interview from the list or straight after launch", () => {
+    const chosen = run(...SIGNED_IN, { type: "reconnect-chosen", interviewId: "iv-1" });
+    expect(chosen).toEqual({ screen: "reconnect", profile: PROFILE, interviewId: "iv-1" });
+    expect(transition(chosen, { type: "started" })).toEqual({
+      screen: "interview",
+      profile: PROFILE,
+      interviewId: "iv-1",
+    });
+    expect(transition(chosen, { type: "back" }).screen).toBe("interviews");
+    const restored = run(
+      { type: "release-checked", release: { status: "ok" } },
+      { type: "session-restored", profile: PROFILE, interviewId: "iv-1" },
+    );
+    expect(restored).toEqual({ screen: "reconnect", profile: PROFILE, interviewId: "iv-1" });
+    expect(
+      transition(initialState, { type: "session-restored", profile: PROFILE, interviewId: "x" }),
+    ).toBe(initialState);
   });
 
   it("doesn't leave a running interview by going back", () => {

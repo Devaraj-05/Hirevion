@@ -99,6 +99,27 @@ export function InterviewScreen({
     [interviewId, onCompleted, onError],
   );
 
+  // Closing the window mid-interview ends it for good (one attempt, C8-9): ask first, as End
+  // Interview does. A crash or a killed app is a lost connection, which may rejoin once.
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let live = true;
+    void getCurrentWindow()
+      .onCloseRequested((event) => {
+        event.preventDefault();
+        setConfirmEnd(true);
+      })
+      .then((stop) => {
+        if (live) unlisten = stop;
+        else stop();
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+      unlisten?.();
+    };
+  }, []);
+
   // Fullscreen for the whole interview (PRD §31); restored when it ends.
   useEffect(() => {
     const window = getCurrentWindow();
@@ -385,7 +406,8 @@ export function InterviewScreen({
  * uploads during the interview (PRD §50), and what is left uploads in the background or at the
  * next launch (§51).
  */
-export function CompletedScreen({ onBack }: { onBack: () => void }) {
+/** The interview is submitted (one attempt, C8-9): there is no way back into it, only out. */
+export function CompletedScreen() {
   const t = useTranslations("completed");
   return (
     <section className="m-auto grid w-full max-w-xl gap-6" aria-labelledby="completed-title">
@@ -397,7 +419,7 @@ export function CompletedScreen({ onBack }: { onBack: () => void }) {
           lead={t("body")}
           className="justify-items-center"
         />
-        <PillButton onClick={onBack}>{t("back")}</PillButton>
+        <PillButton onClick={() => void getCurrentWindow().destroy()}>{t("close")}</PillButton>
       </Panel>
     </section>
   );

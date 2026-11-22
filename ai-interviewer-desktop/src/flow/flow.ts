@@ -7,9 +7,13 @@ import type { Profile, ReleaseState } from "../native/commands";
  * instructions), camera and microphone, the system check (§29), the Terms and Conditions (§30,
  * §83) and the phone as a third eye (§6.4). A pure state machine, so every path is tested
  * without a window; the screens dispatch events and render the state.
+ *
+ * One attempt (C8-9, product owner 2026-11-22): a submitted interview has no way back, and an
+ * interrupted one is rejoined from "reconnect" (from the list, or straight after launch with the
+ * saved session), never through the preparation page again.
  */
 
-type Step = "prepare" | "interview" | "completed";
+type Step = "prepare" | "reconnect" | "interview" | "completed";
 
 export type FlowState =
   | { screen: "launch" }
@@ -28,6 +32,8 @@ export type FlowEvent =
   | { type: "signed-in"; profile: Profile }
   | { type: "profile-updated"; profile: Profile }
   | { type: "interview-chosen"; interviewId: string }
+  | { type: "reconnect-chosen"; interviewId: string }
+  | { type: "session-restored"; profile: Profile; interviewId: string }
   | { type: "started" }
   | { type: "completed" }
   | { type: "back" }
@@ -37,12 +43,12 @@ export type FlowEvent =
 export const initialState: FlowState = { screen: "launch" };
 
 /** Each step's successor, and the event that moves to it. */
-const NEXT: Partial<Record<FlowEvent["type"], [from: Step, to: Step]>> = {
-  started: ["prepare", "interview"],
-  completed: ["interview", "completed"],
+const NEXT: Partial<Record<FlowEvent["type"], [from: readonly Step[], to: Step]>> = {
+  started: [["prepare", "reconnect"], "interview"],
+  completed: [["interview"], "completed"],
 };
-/** "Back" leads to the interviews from these; never out of a running interview. */
-const BACK_TO_INTERVIEWS: readonly FlowState["screen"][] = ["prepare", "completed"];
+/** "Back" leads to the interviews from these; never out of a running or submitted interview. */
+const BACK_TO_INTERVIEWS: readonly FlowState["screen"][] = ["prepare", "reconnect"];
 
 export function transition(state: FlowState, event: FlowEvent): FlowState {
   switch (event.type) {
@@ -70,6 +76,13 @@ export function transition(state: FlowState, event: FlowEvent): FlowState {
     case "interview-chosen":
       if (state.screen !== "interviews") return state;
       return { screen: "prepare", profile: state.profile, interviewId: event.interviewId };
+    case "reconnect-chosen":
+      if (state.screen !== "interviews") return state;
+      return { screen: "reconnect", profile: state.profile, interviewId: event.interviewId };
+    case "session-restored":
+      // Only right after launch: a saved session is used to rejoin, never to skip sign-in.
+      if (state.screen !== "sign-in") return state;
+      return { screen: "reconnect", profile: event.profile, interviewId: event.interviewId };
     case "back":
       if (BACK_TO_INTERVIEWS.includes(state.screen) && "profile" in state) {
         return { screen: "interviews", profile: state.profile };
@@ -78,7 +91,12 @@ export function transition(state: FlowState, event: FlowEvent): FlowState {
       return state;
     default: {
       const step = NEXT[event.type];
-      if (!step || state.screen !== step[0] || !("interviewId" in state)) return state;
+      if (
+        !step ||
+        !(step[0] as readonly string[]).includes(state.screen) ||
+        !("interviewId" in state)
+      )
+        return state;
       return { screen: step[1], profile: state.profile, interviewId: state.interviewId };
     }
   }

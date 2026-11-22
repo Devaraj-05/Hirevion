@@ -54,7 +54,7 @@
   "interviews": {
     "title": "Your interviews",
     "hello": "Hello, {name}",
-    "empty": "You have no interviews to take right now.",
+    "empty": "You have no interviews to take right now. A submitted interview can't be taken again.",
     "job": "{job} at {company}",
     "duration": "{minutes} minutes",
     "opens": "Opens {date}",
@@ -64,7 +64,10 @@
     "notYet": "Not open yet",
     "coding": "Includes a coding exercise",
     "thirdEyeRequired": "Needs your phone as a second camera",
-    "thirdEyeOptional": "You may use your phone as a second camera"
+    "thirdEyeOptional": "You may use your phone as a second camera",
+    "rejoin": "Rejoin interview",
+    "rejoinWithin": "Rejoin within {time}",
+    "elsewhere": "In progress on another device"
   },
   "checks": {
     "title": "System check",
@@ -172,14 +175,16 @@
     "app-update-required": "Update the app to continue.",
     "no-interview": "You have no interview assigned right now.",
     "job-closed": "The job for this interview is no longer open.",
-    "interview-not-available": "This interview can't be taken right now.",
+    "interview-not-available": "You have no interview to take right now. A submitted interview can't be taken again.",
     "interview-expired": "The window for this interview has closed.",
     "interview-not-open": "This interview hasn't opened yet.",
     "otp-invalid": "That code isn't right.",
     "otp-expired": "That code has expired. Send a new one.",
     "otp-attempts-exceeded": "Too many wrong codes. Sign in again.",
     "network": "Can't reach the interview service. Check your internet connection.",
-    "unknown": "Something went wrong. Try again."
+    "unknown": "Something went wrong. Try again.",
+    "interview-already-taken": "You've already taken this interview.",
+    "interview-other-device": "This interview was started on another device."
   },
   "vision": {
     "guidance": {
@@ -340,7 +345,7 @@
   "completed": {
     "title": "Thank you",
     "body": "Your interview has been submitted. The company will be in touch about the next steps. You can close the app now.",
-    "back": "Back to your interviews"
+    "close": "Close app"
   },
   "prepare": {
     "back": "Your interviews",
@@ -426,8 +431,31 @@
       "consents-missing": "Agree to the Terms and Conditions before starting.",
       "interview-not-open": "This interview hasn't opened yet.",
       "interview-expired": "The window for this interview has closed.",
-      "resume-limit-reached": "This interview can't be resumed again. Contact the company.",
-      "unknown": "The interview couldn't start. Try again."
+      "resume-limit-reached": "This interview can't be rejoined again. What you answered has been submitted.",
+      "unknown": "The interview couldn't start. Try again.",
+      "interview-already-taken": "You've already taken this interview.",
+      "interview-other-device": "This interview was started on another device."
+    }
+  },
+  "reconnect": {
+    "title": "Rejoin your interview",
+    "lead": "Your {job} interview was interrupted. You can rejoin it once, from this laptop. Its clock kept running.",
+    "timeLeft": "{time} left to rejoin",
+    "rejoin": "Rejoin now",
+    "rejoining": "Rejoining…",
+    "closeApps": "Close these apps first, then rejoin:",
+    "back": "Back to your interviews",
+    "overTitle": "Your interview has ended",
+    "overBody": "It can't be rejoined now. What you answered has been submitted, and the company will be in touch.",
+    "errors": {
+      "resume-limit-reached": "This interview can't be rejoined again.",
+      "interview-already-taken": "You've already taken this interview.",
+      "interview-other-device": "This interview was started on another device.",
+      "interview-in-use": "This interview is already open in another window.",
+      "interview-expired": "The window for this interview has closed.",
+      "media-unavailable": "The interview service is busy. Try again in a moment.",
+      "third-eye-required": "Your phone's camera isn't connected. Open its page again, then rejoin.",
+      "unknown": "We couldn't rejoin the interview. Try again."
     }
   }
 }
