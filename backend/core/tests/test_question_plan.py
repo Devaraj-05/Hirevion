@@ -9,6 +9,8 @@ from dataclasses import replace
 
 from hirevion_core.engine.planner import fresh_count, merge_plan, said
 from hirevion_core.interviews.plan import (
+    _PROMPT,
+    CLAUSES,
     CROSS_SKILL_MAX,
     SAME_SKILL_MAX,
     PlannedQuestion,
@@ -16,6 +18,7 @@ from hirevion_core.interviews.plan import (
     checked,
     distinct,
     item,
+    lint,
     needs_top_up,
     plan_size,
     quote_found,
@@ -181,3 +184,11 @@ def test_a_top_up_is_asked_for_before_the_questions_run_out() -> None:
     state = make_state(make_context(questions=[]))
     merge_plan(state, [_plan_item(1, "Python", "Generators"), _plan_item(2, "Python", "GIL")], 1)
     assert fresh_count(state) == 2
+
+
+def test_the_plan_prompt_keeps_every_strict_rule() -> None:
+    assert lint(_PROMPT) == []
+    # The gate notices each rule going (each removal fails it on its own).
+    for name, clause in CLAUSES.items():
+        without = " ".join(_PROMPT.split()).replace(clause, "")
+        assert lint(without) == [name], name
