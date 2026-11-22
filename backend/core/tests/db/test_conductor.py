@@ -19,7 +19,10 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from hirevion_core.access.actor import Actor
 from hirevion_core.access.errors import Conflict, Gone, Invalid, NotFound, TooLarge
 from hirevion_core.access.scope import ResourceScope
+from hirevion_core.ai import build_ai
+from hirevion_core.ai.settings import AiSettings
 from hirevion_core.db.session import Database
+from hirevion_core.engine.planner import said
 from hirevion_core.identity.permissions import permissions_for
 from hirevion_core.identity.settings import IdentitySettings
 from hirevion_core.ids import uuid7
@@ -32,6 +35,7 @@ from hirevion_core.interview_session.transcripts import render_vtt, write_artifa
 from hirevion_core.interviews import assignment
 from hirevion_core.interviews.assignment import Assignment
 from hirevion_core.interviews.lifecycle import By
+from hirevion_core.interviews.plan import write_plan
 from hirevion_core.interviews.scheduler import run_due
 from hirevion_core.models import (
     Application,
@@ -1007,3 +1011,69 @@ async def test_the_scheduler_ends_a_strict_interview_after_the_window(
     assert await _events(admin_engine, scene, "completed") == [("left_early", "completed")]
     assert await _outbox(admin_engine, scene, "evaluation") == 1
     assert await _outbox(admin_engine, scene, "interview.completed") == 1
+
+
+# Prepared questions (C8-10, owner 2026-11-22): written when the interview is created, distinct,
+# at every level; the interview's pool comes from them, and a newer version merges in.
+
+
+async def test_a_new_interview_asks_for_its_prepared_questions(
+    app_db: Database,
+    admin_engine: AsyncEngine,
+    make_organization: MakeOrganization,
+    make_hiring: Any,
+) -> None:
+    scene = await invited(app_db, make_hiring, await make_organization("Acme"))
+    async with admin_engine.connect() as conn:
+        queued = await conn.scalar(
+            text(
+                "SELECT count(*) FROM outbox_events WHERE topic = 'interview.plan' "
+                "AND payload->>'interview_id' = :id AND payload->>'action' = 'plan'"
+            ),
+            {"id": str(scene.interview_id)},
+        )
+    assert queued == 1
+
+
+async def test_the_worker_prepares_distinct_questions_at_every_level(
+    app_db: Database,
+    valkey: Redis,
+    make_organization: MakeOrganization,
+    make_hiring: Any,
+) -> None:
+    scene = await invited(app_db, make_hiring, await make_organization("Acme"))
+    ai = build_ai(AiSettings(profile="mock"), app_db)
+    async with app_db.tenant(scene.organization_id) as session:
+        interview = await session.get_one(Interview, scene.interview_id)
+        plan = await write_plan(session, ai, interview)
+        items = list(plan.items)
+        assert plan.status == "ready" and plan.version == 1
+        again = await write_plan(session, ai, interview)  # a duplicate event changes nothing
+        assert again.version == 1
+    assert len({said(i["text"]) for i in items}) == len(items)
+    concepts = [i["concept"] for i in items if i["concept"]]
+    assert len(set(concepts)) == len(concepts)
+    required = {i["skill"] for i in items}
+    for skill in required:
+        assert {i["difficulty"] for i in items if i["skill"] == skill} == {"easy", "medium", "hard"}
+    # The interview's pool now comes from the plan.
+    check, consent = await prepare(app_db, scene)
+    cond = conductor(app_db, valkey)
+    await start(cond, scene, check, consent)
+    async with app_db.tenant(scene.organization_id) as session:
+        row = await session.get_one(InterviewSession, scene.interview_id)
+    assert row.state["plan_version"] == 1
+    assert {q["key"] for q in row.state["pool"]} >= {i["key"] for i in items}
+
+    # A top-up adds new questions on new concepts, and the running interview merges them.
+    async with app_db.tenant(scene.organization_id) as session:
+        interview = await session.get_one(Interview, scene.interview_id)
+        topped = await write_plan(session, ai, interview, top_up=True)
+        assert topped.version == 2 and len(topped.items) > len(items)
+        added = topped.items[len(items) :]
+    assert not {said(i["text"]) for i in added} & {said(i["text"]) for i in items}
+    view = await cond.session_state(scene.organization_id, scene.interview_id)
+    assert view.status == "in_progress"
+    _, _, state = await cond._checkpoint(scene.organization_id, scene.interview_id)
+    assert state.plan_version == 2
+    assert {i["key"] for i in added} <= {q.key for q in state.pool}

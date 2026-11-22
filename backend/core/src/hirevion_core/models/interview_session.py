@@ -152,6 +152,32 @@ class InterviewSession(TenantMixin, TimestampMixin, Base):
     only that laptop may rejoin it (C8-9)."""
 
 
+PLAN_STATUSES = ("pending", "ready", "failed")
+
+
+class InterviewQuestionPlan(TenantMixin, TimestampMixin, Base):
+    """One interview's prepared questions (C8-10, ADR-0050): written by the worker from the job's
+    required skills and the candidate's resume, at easy, medium and hard, checked to be distinct.
+    `version` rises with each top-up; the conductor merges a newer one into the running pool."""
+
+    __tablename__ = "interview_question_plans"
+    __table_args__ = (
+        _interview_fk(),
+        CheckConstraint(_in("status", PLAN_STATUSES), name="status"),
+        CheckConstraint("version >= 0", name="version"),
+    )
+
+    interview_id: Mapped[UUID] = mapped_column(primary_key=True)
+    status: Mapped[str] = mapped_column(Text, server_default="pending")
+    version: Mapped[int] = mapped_column(Integer, server_default=sql_text("0"))
+    items: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, server_default=sql_text("'[]'::jsonb")
+    )
+    model: Mapped[str | None] = mapped_column(Text)
+    prompt_version: Mapped[str | None] = mapped_column(Text)
+    error: Mapped[str | None] = mapped_column(Text)
+
+
 class InterviewQuestion(IdMixin, TenantMixin, Base):
     """A question as it was asked, in order, with where it came from (PRD §36): a library or
     pinned question's version, the resume evidence it quotes, or the rule that generated it."""

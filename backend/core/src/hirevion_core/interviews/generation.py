@@ -112,7 +112,7 @@ def _scrub(text: str) -> str:
     return out
 
 
-def _candidate_text(candidate: Candidate) -> str:
+def candidate_text(candidate: Candidate) -> str:
     """Work only: titles, companies, skills, projects. No name, contact or personal details,
     not even inside a project's description."""
     profile = candidate.profile or {}
@@ -131,7 +131,7 @@ def _candidate_text(candidate: Candidate) -> str:
     return _scrub("\n".join(line.strip() for line in lines if line.strip()))
 
 
-def _job_text(job: Job, skills: Sequence[JobSkill]) -> str:
+def job_text(job: Job, skills: Sequence[JobSkill]) -> str:
     lines = [f"Title: {job.title}"]
     lines += [f"{s.importance.capitalize()} skill: {s.name}" for s in skills]
     lines += [f"Responsibility: {item}" for item in job.responsibilities]
@@ -163,7 +163,7 @@ def clean_skills(skills: Sequence[str]) -> list[str]:
     return [" ".join(s.split())[:100] for s in skills if s.strip()]
 
 
-def _block(tag: str, body: str) -> str:
+def prompt_block(tag: str, body: str) -> str:
     """`body` between the prompt's own `<tag>` markers, with any such marker inside it defanged,
     so text from a job description or a resume cannot close the block and speak as the prompt.
     (The markers delimit data for the model; they are not HTML and nothing renders them.)"""
@@ -181,8 +181,8 @@ async def gather(session: AsyncSession, request: GenerationRequest) -> tuple[str
     if request.experience_level not in LEVELS:
         raise Invalid("invalid-level", "Choose an experience level", field="experience_level")
     parts = [
-        _block("skills", ", ".join(skills)),
-        _block("experience_level", request.experience_level),
+        prompt_block("skills", ", ".join(skills)),
+        prompt_block("experience_level", request.experience_level),
         f"Write {request.count} questions.",
     ]
     if request.types:
@@ -194,12 +194,12 @@ async def gather(session: AsyncSession, request: GenerationRequest) -> tuple[str
         job_skills = (
             await session.scalars(select(JobSkill).where(JobSkill.job_id == job.id))
         ).all()
-        parts.append(_block("job", _job_text(job, job_skills)))
+        parts.append(prompt_block("job", job_text(job, job_skills)))
     if request.candidate_id is not None:
         candidate = await session.get(Candidate, request.candidate_id)
         if candidate is None:
             raise Invalid("candidate-not-found", "No such candidate", field="candidate_id")
-        parts.append(_block("candidate", _candidate_text(candidate)))
+        parts.append(prompt_block("candidate", candidate_text(candidate)))
     if request.template is not None:
         t = request.template
         mix = ", ".join(f"{k} {v}%" for k, v in t.difficulty.items())

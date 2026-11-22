@@ -27,6 +27,7 @@ from hirevion_core.db.search import like_escape
 from hirevion_core.identity.settings import IdentitySettings
 from hirevion_core.interviews import invitations
 from hirevion_core.interviews.lifecycle import STATUS_GROUPS, By, record_event, transition
+from hirevion_core.interviews.plan import queue_plan
 from hirevion_core.interviews.templates import PROCTORING_PRESETS
 from hirevion_core.models import (
     Application,
@@ -402,6 +403,7 @@ async def _assign_one(
         },
         key=str(interview.id),
     )
+    await queue_plan(session, interview)  # the worker prepares its questions (C8-10)
     await _set_reviewers(session, actor, interview, reviewer_ids)
     if assignment.invite:
         await invite(session, actor, interview, settings=settings, now=now)

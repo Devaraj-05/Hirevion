@@ -35,6 +35,7 @@ from hirevion_core.identity.settings import load_identity_settings
 from hirevion_core.interview_session.conductor import Conductor
 from hirevion_core.interview_session.transcripts import ABANDONED_TOPIC, handle_completed
 from hirevion_core.interview_session.transcripts import TOPIC as COMPLETED_TOPIC
+from hirevion_core.interviews.plan import PLAN_TOPIC, give_up_plan, handle_plan_event
 from hirevion_core.interviews.scheduler import InterviewScheduler
 from hirevion_core.mail.consumer import MailConsumer
 from hirevion_core.mail.sender import SmtpSender
@@ -152,6 +153,15 @@ async def run_workers(
                 retry_idle_ms=SLOW_RETRY_IDLE_MS,
             )
             workers.append(evaluation.run_forever(stop))
+            # Each interview's prepared questions (C8-10).
+            plans = StreamConsumer(
+                redis,
+                partial(handle_plan_event, app_db, services.ai),
+                topic=PLAN_TOPIC,
+                on_give_up=partial(give_up_plan, app_db),
+                retry_idle_ms=SLOW_RETRY_IDLE_MS,
+            )
+            workers.append(plans.run_forever(stop))
         await asyncio.gather(*workers)
     finally:
         if storage is not None:

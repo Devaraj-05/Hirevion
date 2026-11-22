@@ -21,6 +21,7 @@ from hirevion_core.models import (
     Candidate,
     CandidateAccount,
     Interview,
+    InterviewQuestionPlan,
     Job,
     JobSkill,
     Organization,
@@ -73,6 +74,9 @@ class InterviewContext:
     pinned: Sequence[LibraryQuestion] = ()
     library: Sequence[LibraryQuestion] = ()
     faq: Sequence[FaqEntry] = ()
+    plan: Sequence[dict[str, Any]] = ()
+    """The interview's prepared questions when they are ready (C8-10): the pool's source."""
+    plan_version: int = 0
 
     @property
     def template_skills(self) -> list[dict[str, Any]]:
@@ -159,6 +163,7 @@ class ContextBuilder:
         library = await self._library(session, sorted(n for n in names if n))
         profile = dict(candidate.profile or {})
         years = profile.get("total_experience_years")
+        plan = await session.get(InterviewQuestionPlan, interview.id)
         return InterviewContext(
             interview_id=interview.id,
             organization_id=interview.organization_id,
@@ -175,6 +180,8 @@ class ContextBuilder:
             pinned=pinned,
             library=library,
             faq=faq_entries(briefing),
+            plan=list(plan.items) if plan is not None and plan.status == "ready" else [],
+            plan_version=plan.version if plan is not None and plan.status == "ready" else 0,
         )
 
     async def _pinned(

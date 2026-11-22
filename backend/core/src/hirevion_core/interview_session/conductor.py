@@ -43,6 +43,7 @@ from hirevion_core.engine.analysis import Analysed, AnswerAnalyzer
 from hirevion_core.engine.context import ContextBuilder
 from hirevion_core.engine.followups import FollowUpGenerator
 from hirevion_core.engine.orchestrator import Control, EngineError, Orchestrator, Turn, build_state
+from hirevion_core.engine.planner import fresh_count, merge_plan
 from hirevion_core.engine.state import AskedQuestion, InterviewState
 from hirevion_core.interview_session import realtime
 from hirevion_core.interview_session.attempts import TAKEN
@@ -62,6 +63,7 @@ from hirevion_core.interview_session.media import (
 )
 from hirevion_core.interview_session.transcripts import segment
 from hirevion_core.interviews.lifecycle import By, record_event, transition
+from hirevion_core.interviews.plan import ensure_plan, needs_top_up, queue_plan
 from hirevion_core.models import (
     Application,
     CandidateAccount,
@@ -70,6 +72,7 @@ from hirevion_core.models import (
     Interview,
     InterviewAnswer,
     InterviewQuestion,
+    InterviewQuestionPlan,
     InterviewSession,
     SystemCheckResult,
     Transcript,
@@ -313,7 +316,17 @@ class Conductor:
                 raise Conflict("interview-not-started", "The interview hasn't started")
             if interview.status != "in_progress":
                 raise Conflict("interview-not-in-progress", f"The interview is {interview.status}")
-            return interview, row, InterviewState.from_json(row.state)
+            state = InterviewState.from_json(row.state)
+            await self._merge_plan(session, interview, state)
+            return interview, row, state
+
+    async def _merge_plan(
+        self, session: AsyncSession, interview: Interview, state: InterviewState
+    ) -> None:
+        """Brings a newer question plan (a late one, a top-up) into the pool (C8-10)."""
+        plan = await session.get(InterviewQuestionPlan, interview.id)
+        if plan is not None and plan.status == "ready" and plan.version > state.plan_version:
+            merge_plan(state, plan.items, plan.version)
 
     async def _apply(
         self,
@@ -329,6 +342,14 @@ class Conductor:
         candidate: tuple[str, str | None, Speech, Literal["voice", "text"]] | None = None,
     ) -> int:
         """Writes one turn: the checkpoint and its rows. Returns the new `state_seq`."""
+        if (
+            state.plan_version
+            and not state.ended
+            and needs_top_up(fresh_count(state), state.clock.remaining(now), state.top_ups)
+        ):
+            # Running low: more questions, never the same ones again (C8-10).
+            state.top_ups += 1
+            await queue_plan(session, interview, action="top_up")
         if candidate is not None and candidate[0].strip():
             text, question_id, speech, _mode = candidate
             session.add(
@@ -690,6 +711,8 @@ class Conductor:
         device_jkt: str | None = None,
     ) -> tuple[InterviewSession, InterviewState, Turn | None]:
         context = await ContextBuilder().build(session, interview)
+        if not context.plan:
+            await ensure_plan(session, interview)  # it merges into the pool when it lands
         mode = answer_mode(interview.policy or {})
         deadline = now + timedelta(minutes=duration_minutes(interview))
         state = build_state(context, now=now, deadline=deadline, answer_mode=mode)

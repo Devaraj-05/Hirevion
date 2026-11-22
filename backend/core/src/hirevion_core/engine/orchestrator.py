@@ -117,6 +117,7 @@ def build_state(
         stages=[StageMark(stage="start", at=now)],
     )
     state.pool = QuestionPlanner().plan(context, skills, hooks, seed)
+    state.plan_version = context.plan_version if context.plan else 0
     state.remaining_seconds = state.clock.remaining(now)
     return state
 

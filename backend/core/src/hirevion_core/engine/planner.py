@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import re
 from collections.abc import Sequence
+from typing import Any
 
 from hirevion_core.engine import phrasing
 from hirevion_core.engine.context import InterviewContext, LibraryQuestion
@@ -67,12 +68,63 @@ def concept_key(concept: str | None) -> str | None:
     return folded or None
 
 
-def _order(seed: int, question: LibraryQuestion) -> bytes:
+def library_order(seed: int, question: LibraryQuestion) -> bytes:
     return hashlib.sha256(f"{seed}:{question.question_id}".encode()).digest()
 
 
 def seed_for(interview_id: str) -> int:
     return int.from_bytes(hashlib.sha256(interview_id.encode()).digest()[:4], "big")
+
+
+def pool_question(item: dict[str, Any]) -> PoolQuestion:
+    """A question plan's item as a pool question (C8-10)."""
+    kind = str(item.get("type") or "technical")
+    return PoolQuestion(
+        key=str(item["key"]),
+        skill=str(item["skill"]),
+        difficulty=str(item.get("difficulty") or "medium"),
+        type=kind,
+        text=str(item["text"]),
+        source=item.get("source") or "generated",
+        source_ref=dict(item.get("source_ref") or {}),
+        topic=item.get("concept"),
+        expected_concepts=[str(c) for c in item.get("expected_concepts") or []],
+        rubric=[dict(r) for r in item.get("rubric") or []],
+        time_limit_seconds=item.get("time_limit_seconds"),
+        workspace=WORKSPACES.get(kind, "none"),
+        concept=item.get("concept"),
+    )
+
+
+def merge_plan(state: InterviewState, items: Sequence[dict[str, Any]], version: int) -> int:
+    """Adds a newer plan's questions (a late plan, a top-up) to a running interview's pool,
+    leaving out any it already holds by key, text or concept; returns how many were added."""
+    keys = {q.key for q in state.pool}
+    texts = {said(q.text) for q in state.pool}
+    concepts = {key for q in state.pool if (key := concept_key(q.concept))}
+    added = 0
+    for entry in items:
+        question = pool_question(entry)
+        concept = concept_key(question.concept)
+        if (
+            question.key in keys
+            or said(question.text) in texts
+            or (concept and concept in concepts)
+        ):
+            continue
+        state.pool.append(question)
+        keys.add(question.key)
+        texts.add(said(question.text))
+        if concept:
+            concepts.add(concept)
+        added += 1
+    state.plan_version = version
+    return added
+
+
+def fresh_count(state: InterviewState) -> int:
+    """How many questions this interview could still ask, across its skills."""
+    return sum(len(_ladder(_unused(state, skill.name))) for skill in state.skills)
 
 
 class QuestionPlanner:
@@ -84,6 +136,8 @@ class QuestionPlanner:
         seed: int,
     ) -> list[PoolQuestion]:
         names = {s.name.casefold(): s.name for s in skills}
+        if context.plan:
+            return self._from_plan(context, names)
         allowed = set(context.question_types)
         coding = context.coding
         languages = {str(lang).lower() for lang in coding.get("languages") or []}
@@ -119,7 +173,7 @@ class QuestionPlanner:
                     )
                 )
         library = [q for q in context.library if (q.question_id, q.version) not in pinned_keys]
-        for question in sorted(library, key=lambda q: _order(seed, q)):
+        for question in sorted(library, key=lambda q: library_order(seed, q)):
             if question.type == "coding":
                 offered = {
                     str(lang).lower() for lang in (question.coding or {}).get("languages", [])
@@ -132,6 +186,34 @@ class QuestionPlanner:
             known = names.get(question.skill_name.casefold())
             if known is not None:
                 _add_once(pool, _from_library(question, known, "library"))
+        return pool
+
+    def _from_plan(self, context: InterviewContext, names: dict[str, str]) -> list[PoolQuestion]:
+        """With prepared questions (C8-10): the template's pinned questions, then the plan's
+        (its library and AI questions already checked to be distinct), and the coding question
+        from the library as before."""
+        pool = [
+            _from_library(q, names.get(q.skill_name.casefold(), q.skill_name), "pinned")
+            for q in context.pinned
+        ]
+        for entry in context.plan:
+            planned = pool_question(entry)
+            planned.skill = names.get(planned.skill.casefold(), planned.skill)
+            _add_once(pool, planned)
+        coding = context.coding
+        languages = {str(lang).lower() for lang in coding.get("languages") or []}
+        if coding.get("enabled"):
+            pinned_keys = {(q.question_id, q.version) for q in context.pinned}
+            for question in context.library:
+                if question.type != "coding" or (question.question_id, question.version) in (
+                    pinned_keys
+                ):
+                    continue
+                offered = {
+                    str(lang).lower() for lang in (question.coding or {}).get("languages", [])
+                }
+                if not languages or offered & languages:
+                    _add_once(pool, _from_library(question, question.skill_name, "library"))
         return pool
 
 

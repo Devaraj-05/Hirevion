@@ -47,6 +47,7 @@ from hirevion_core.interview_session.conductor import Conductor, MediaUnavailabl
 from hirevion_core.interview_session.media import MediaControl
 from hirevion_core.interview_session.preparation import CheckReport, ConsentAnswer
 from hirevion_core.interviews.lifecycle import By
+from hirevion_core.interviews.plan import ensure_plan
 from hirevion_core.models import Interview
 from hirevion_core.models import InterviewSession as SessionRow
 from hirevion_core.ratelimit import RateRule
@@ -157,6 +158,7 @@ async def interview_briefing(
     """§30's instructions and the itemised consent notice, before the system check."""
     async with get_db(request).tenant(principal.organization_id) as session:
         interview = await _load_open(session, request, interview_id, principal)
+        await ensure_plan(session, interview)  # lost or failed: asked for again (C8-10)
         result = await briefing(session, interview)
     return BriefingResponse(
         instructions=result.instructions,
