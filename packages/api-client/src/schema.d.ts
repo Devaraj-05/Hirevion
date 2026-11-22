@@ -4359,6 +4359,12 @@ export interface components {
         };
         /** CandidateInterview */
         CandidateInterview: {
+            /**
+             * Attempt
+             * @default available
+             * @enum {string}
+             */
+            attempt: "available" | "not_open" | "reconnect" | "elsewhere";
             /** Coding */
             coding: boolean;
             /** Duration Minutes */
@@ -4380,6 +4386,8 @@ export interface components {
              * @enum {string}
              */
             proctoring_level: "off" | "basic" | "standard" | "strict";
+            /** Reconnect Until */
+            reconnect_until?: string | null;
             /**
              * Starts At
              * Format: date-time
@@ -9293,18 +9301,15 @@ export interface components {
              */
             requested_at: string;
         };
-        /** StartBody */
+        /**
+         * StartBody
+         * @description Both ids are needed at the first start; a resume may leave them out (C8-9).
+         */
         StartBody: {
-            /**
-             * Consent Id
-             * Format: uuid
-             */
-            consent_id: string;
-            /**
-             * System Check Id
-             * Format: uuid
-             */
-            system_check_id: string;
+            /** Consent Id */
+            consent_id?: string | null;
+            /** System Check Id */
+            system_check_id?: string | null;
         };
         /** StartResponse */
         StartResponse: {

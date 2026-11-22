@@ -51,11 +51,15 @@ Checks 3 to 6 consider every assigned interview: the login succeeds if any one i
       "duration_minutes": 45,
       "third_eye": "optional",
       "proctoring_level": "standard",
-      "coding": true
+      "coding": true,
+      "attempt": "available",
+      "reconnect_until": null
     }
   ]
 }
 ```
+
+- **`attempt`** (one attempt, C8-9): `available` (start it), `not_open` (wait for the window), `reconnect` (rejoin it, once, from the laptop that started it; while interrupted, `reconnect_until` is when that window closes), or `elsewhere` (another laptop started it). A used attempt isn't listed.
 
 **200, a one-time code is needed.** This happens when the organisation requires a code on new devices and this key hasn't been seen:
 
@@ -110,6 +114,8 @@ Checks 3 to 6 consider every assigned interview: the login succeeds if any one i
   - `409 interview-not-open` with `starts_at` (the window hasn't started);
   - `410 interview-expired`;
   - `403 interview-not-available` with `interview_status`;
+  - `409 interview-other-device` (another laptop started the interview; C8-9);
+  - `409 resume-limit-reached` (its one reconnect is used or its window passed);
   - `404 interview-not-found` (not this candidate's).
 - **The token's claims:** `sub` (the candidate account), `org`, `interview_id`, `scope: "interview"` and `cnf.jkt`. Its `exp` is the earliest of the window end plus the interview's duration (so an interview started late in its window can finish), now + 4 hours, and the refresh family's end.
 

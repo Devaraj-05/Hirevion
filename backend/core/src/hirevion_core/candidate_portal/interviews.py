@@ -11,7 +11,8 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from hirevion_core.candidate_access.service import AVAILABLE, window_end
+from hirevion_core.candidate_access.service import AVAILABLE
+from hirevion_core.interview_session.attempts import window_end
 from hirevion_core.interviews.invitations import recorded
 from hirevion_core.interviews.lifecycle import reference
 from hirevion_core.models import CandidateAccount, Interview, Job

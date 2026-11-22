@@ -28,8 +28,10 @@ from hirevion_core.ai.settings import AiSettings
 from hirevion_core.db.session import Database
 from hirevion_core.identity.sessions import create_session
 from hirevion_core.identity.settings import IdentitySettings
+from hirevion_core.interview_session.conductor import Conductor
 from hirevion_core.interview_session.media import FakeMedia
-from hirevion_core.models import Interview, InterviewAnswer
+from hirevion_core.interviews.lifecycle import By
+from hirevion_core.models import Interview, InterviewAnswer, InterviewSession
 from hirevion_interview_simulator.client import DesktopClient
 from hirevion_interview_simulator.personas import PERSONAS, persona
 from hirevion_interview_simulator.run import simulate
@@ -430,3 +432,54 @@ async def test_the_live_events_need_an_allowed_origin_and_a_session_that_can_see
     assert later[0]["id"] == events[3]["id"]  # a reconnect picks up after the last one seen
     async with admin_engine.connect() as conn:
         assert await conn.scalar(text("SELECT count(*) FROM transcript_segments")) > 0
+
+
+async def test_one_attempt_over_http(
+    client: AsyncClient,
+    app_db: Database,
+    admin_engine: AsyncEngine,
+    valkey: Redis,
+    media: FakeMedia,
+    make_organization: MakeOrganization,
+    make_user: Any,
+) -> None:
+    """C8-9 (owner, 2026-11-22): the laptop that starts is the one that may rejoin, once and
+    without redoing its checks; a taken interview refuses everything before the interview."""
+    seed, _ = await seeded(admin_engine, app_db, make_organization, make_user)
+    desktop = await desktop_for(client, seed)
+    interview = str(seed.interview_id)
+    briefing = await desktop.briefing(interview)
+    check = await desktop.system_check(interview, briefing["mandatory_checks"])
+    consent = await desktop.consent(interview, briefing["notice"])
+    await desktop.start(interview, check["id"], consent["id"])
+    async with app_db.tenant(seed.organization_id) as session:
+        row = await session.get_one(InterviewSession, seed.interview_id)
+    assert row.device_jkt  # the started laptop's DPoP key
+
+    async def listed() -> dict[str, Any]:
+        me = await desktop.call("GET", "/candidate-auth/me", token=desktop.access)
+        assert me.status_code == 200
+        [item] = me.json()["interviews"]
+        return dict(item)
+
+    running = await listed()
+    assert running["attempt"] == "reconnect" and running["reconnect_until"] is None
+    cond = Conductor(app_db, valkey, llm=None, media=media)
+    await cond.interrupt(seed.organization_id, seed.interview_id, reason="left", by=By.system())
+    dropped = await listed()
+    assert dropped["attempt"] == "reconnect" and dropped["reconnect_until"]
+    rejoined = await desktop.interview("POST", interview, "start", {})
+    assert rejoined.status_code == 200, rejoined.text
+    assert rejoined.json()["state"]["status"] == "in_progress"
+
+    assert await desktop.complete(interview, "candidate_ended") == {"status": "completed"}
+    checks = {"app_version": "1.4.0", "os": "W", "results": [{"check": "cpu", "status": "pass"}]}
+    for method, action, body in (
+        ("GET", "briefing", None),
+        ("POST", "system-checks", checks),
+        ("POST", "consents", {"notice_version": briefing["notice"]["version"], "items": []}),
+        ("POST", "start", {"system_check_id": check["id"], "consent_id": consent["id"]}),
+    ):
+        refused = await desktop.interview(method, interview, action, body)
+        assert refused.status_code == 409, (action, refused.text)
+        assert refused.json()["code"] == "interview-already-taken", action

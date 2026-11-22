@@ -76,6 +76,8 @@ def _interview(view: InterviewView) -> CandidateInterview:
         third_eye=view.third_eye,  # type: ignore[arg-type]
         proctoring_level=view.proctoring_level,  # type: ignore[arg-type]
         coding=view.coding,
+        attempt=view.attempt,  # type: ignore[arg-type]
+        reconnect_until=view.reconnect_until,
     )
 
 

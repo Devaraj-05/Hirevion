@@ -97,8 +97,10 @@ class AccommodationCreated(BaseModel):
 
 
 class StartBody(BaseModel):
-    system_check_id: UUID
-    consent_id: UUID
+    """Both ids are needed at the first start; a resume may leave them out (C8-9)."""
+
+    system_check_id: UUID | None = None
+    consent_id: UUID | None = None
 
 
 class QuestionState(BaseModel):

@@ -1803,6 +1803,17 @@
       },
       "CandidateInterview": {
         "properties": {
+          "attempt": {
+            "default": "available",
+            "enum": [
+              "available",
+              "not_open",
+              "reconnect",
+              "elsewhere"
+            ],
+            "title": "Attempt",
+            "type": "string"
+          },
           "coding": {
             "title": "Coding",
             "type": "boolean"
@@ -1834,6 +1845,18 @@
             ],
             "title": "Proctoring Level",
             "type": "string"
+          },
+          "reconnect_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reconnect Until"
           },
           "starts_at": {
             "format": "date-time",
@@ -15823,22 +15846,33 @@
         "type": "object"
       },
       "StartBody": {
+        "description": "Both ids are needed at the first start; a resume may leave them out (C8-9).",
         "properties": {
           "consent_id": {
-            "format": "uuid",
-            "title": "Consent Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consent Id"
           },
           "system_check_id": {
-            "format": "uuid",
-            "title": "System Check Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "System Check Id"
           }
         },
-        "required": [
-          "system_check_id",
-          "consent_id"
-        ],
         "title": "StartBody",
         "type": "object"
       },

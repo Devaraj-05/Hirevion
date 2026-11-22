@@ -72,7 +72,7 @@ Body:
 
 ### Start — `POST /interviews/{id}/start`
 
-- **Body:** `{ "system_check_id": "uuid", "consent_id": "uuid" }`.
+- **Body:** `{ "system_check_id": "uuid", "consent_id": "uuid" }`. Both are needed at the first start; a resume may send `{}` and the first start's are used (C8-9: a reconnect must fit its 2-minute window).
 - **`200`:**
 
 ```json
@@ -105,6 +105,13 @@ Body:
 
 - **What the participant token allows:** publishing the microphone, the camera and a screen-preview track, and sending and receiving data on the topics below. It allows nothing else.
 - **Resuming:** calling start again after a disconnect resumes the same interview, by the resume policy, and returns `"status": "in_progress"`.
+- **One attempt (C8-9, ADR-0049):** a new interview's resume policy is `{grace_seconds: 120, max_interruptions: 1, pause_timer: false, same_device: true}`:
+  - the first start binds the interview to the session token's DPoP key;
+  - one reconnect, within 2 minutes of the drop, from that laptop, with the clock running;
+  - a start while the interview is still `in_progress` (the app restarted before the drop was seen) counts as that reconnect;
+  - a second drop, or the window passing, completes the interview with the reason `left_early`, and it is evaluated.
+  
+  Interviews assigned before keep their snapshot's policy.
 - **Errors:**
   - `503 media-unavailable` (no media server; retry);
   - `409 checks-incomplete`;
@@ -112,7 +119,11 @@ Body:
   - `409 third-eye-required` (the policy needs a paired phone);
   - `409 interview-not-open`;
   - `410 interview-expired`;
-  - `409 resume-limit-reached`.
+  - `409 resume-limit-reached` (the one reconnect is used or its window passed);
+  - `409 interview-already-taken` (completed, evaluated or abandoned);
+  - `409 interview-other-device` (another laptop started it);
+  - `409 interview-in-use` (the candidate is still in the room).
+- **Before the interview** (briefing, system checks, consents, accommodations): the same `interview-already-taken`, `resume-limit-reached`, `interview-other-device`, `interview-not-open` and `interview-expired` refusals apply, so a cached session token never reopens a taken interview.
 
 ### Data channel topics (LiveKit, reliable, JSON)
 

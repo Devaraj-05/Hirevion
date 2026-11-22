@@ -52,6 +52,11 @@ class CandidateInterview(BaseModel):
     third_eye: Literal["off", "optional", "required"]
     proctoring_level: Literal["off", "basic", "standard", "strict"]
     coding: bool
+    attempt: Literal["available", "not_open", "reconnect", "elsewhere"] = "available"
+    """What the candidate may do now (one attempt, C8-9): start, wait for the window, rejoin
+    once from the laptop that started, or nothing because another laptop started it."""
+    reconnect_until: datetime | None = None
+    """While interrupted: when the one reconnect's window closes."""
 
 
 class SignedInResponse(BaseModel):

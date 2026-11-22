@@ -48,6 +48,11 @@ from hirevion_core.identity.lockout import Lockout
 from hirevion_core.identity.passwords import verify_password_in_thread
 from hirevion_core.identity.settings import IdentitySettings
 from hirevion_core.ids import uuid7
+from hirevion_core.interview_session.attempts import (
+    AttemptView,
+    attempt_of,
+    window_end,
+)
 from hirevion_core.mail.sender import queue_mail
 from hirevion_core.models import (
     Candidate,
@@ -56,12 +61,13 @@ from hirevion_core.models import (
     CandidateOtp,
     CandidateRefreshToken,
     Interview,
+    InterviewSession,
     Job,
     Organization,
     OrganizationSettings,
 )
 
-# Statuses a candidate can start or resume (PRD §28 check 5).
+# Statuses a candidate can start or resume (PRD §28 check 5); `attempt_of` decides the rest.
 AVAILABLE = ("invited", "in_progress", "interrupted")
 _USER_AGENT = re.compile(r"HirevionInterview/(\S+)")
 _audit = AuditService()
@@ -106,6 +112,9 @@ class InterviewView:
     third_eye: str
     proctoring_level: str
     coding: bool
+    attempt: str = "available"
+    """What the candidate may do now (C8-9): available, not_open, reconnect or elsewhere."""
+    reconnect_until: datetime | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -186,16 +195,9 @@ def app_version_from(user_agent: str | None) -> str | None:
     return match.group(1) if match else None
 
 
-def window_end(interview: Interview) -> datetime:
-    """When the interview can no longer be taken: the window's end, plus its duration once it
-    has started (so one started late in its window can finish)."""
-    if interview.status in ("in_progress", "interrupted"):
-        return interview.expires_at + timedelta(minutes=interview.duration_minutes)
-    return interview.expires_at
-
-
-def _view(interview: Interview, job: Job) -> InterviewView:
+def _view(interview: Interview, job: Job, attempt: AttemptView | None = None) -> InterviewView:
     policy = interview.policy
+    attempt = attempt or AttemptView("available")
     return InterviewView(
         id=interview.id,
         job_title=job.title,
@@ -206,7 +208,33 @@ def _view(interview: Interview, job: Job) -> InterviewView:
         third_eye=str(policy.get("third_eye", "optional")),
         proctoring_level=str(policy.get("proctoring_level", "standard")),
         coding=bool(policy.get("coding", {}).get("enabled")),
+        attempt=attempt.state,
+        reconnect_until=attempt.reconnect_until,
     )
+
+
+async def interview_views(
+    session: AsyncSession,
+    pairs: list[tuple[Interview, Job]],
+    *,
+    jkt: str | None,
+    now: datetime,
+) -> list[InterviewView]:
+    """The candidate's interviews with what they may do with each (C8-9); a used attempt isn't
+    listed, as a taken interview isn't."""
+    running = [i.id for i, _ in pairs if i.status in ("in_progress", "interrupted")]
+    rows: dict[UUID, InterviewSession] = {}
+    if running:
+        found = await session.scalars(
+            select(InterviewSession).where(InterviewSession.interview_id.in_(running))
+        )
+        rows = {row.interview_id: row for row in found.all()}
+    views = []
+    for interview, job in pairs:
+        attempt = attempt_of(interview, rows.get(interview.id), jkt=jkt, now=now)
+        if attempt.state not in ("used", "expired"):
+            views.append(_view(interview, job, attempt))
+    return views
 
 
 async def evaluate(session: AsyncSession, account: CandidateAccount, now: datetime) -> _Evaluation:
@@ -599,7 +627,8 @@ class CandidateAuthService:
             account = await session.get_one(CandidateAccount, claims.account_id)
             evaluation = await evaluate(session, account, now)
             candidate, organization = await self._views(session, account)
-        return Profile(candidate, organization, [_view(i, j) for i, j in evaluation.eligible])
+            views = await interview_views(session, evaluation.eligible, jkt=claims.jkt, now=now)
+        return Profile(candidate, organization, views)
 
     async def session_token(
         self,
@@ -648,6 +677,14 @@ class CandidateAuthService:
                     "The interview's window has closed",
                     expired_at=end.isoformat(),
                 )
+            row = await session.get(InterviewSession, interview.id)
+            attempt = attempt_of(interview, row, jkt=claims.jkt, now=now)
+            if attempt.state == "elsewhere":
+                raise Refusal(
+                    409, "interview-other-device", "This interview was started on another device"
+                )
+            if attempt.state == "used":
+                raise Refusal(409, "resume-limit-reached", "The interview can no longer be resumed")
             family_end = await session.scalar(
                 select(CandidateRefreshToken.family_expires_at)
                 .where(CandidateRefreshToken.family_id == claims.family_id)
@@ -679,7 +716,7 @@ class CandidateAuthService:
                 user_agent,
                 {"interview_id": str(interview.id)},
             )
-            return SessionToken(token, expires_at, _view(interview, job))
+            return SessionToken(token, expires_at, _view(interview, job, attempt))
 
     # Helpers
 
@@ -787,6 +824,7 @@ class CandidateAuthService:
             now=now,
         )
         candidate, organization = await self._views(session, account)
+        views = await interview_views(session, evaluation.eligible, jkt=device.jkt, now=now)
         return SignedIn(
             access_token=access,
             expires_in=int(self._settings.access_ttl.total_seconds()),
@@ -794,7 +832,7 @@ class CandidateAuthService:
             refresh_expires_in=int(self._settings.refresh_ttl.total_seconds()),
             candidate=candidate,
             organization=organization,
-            interviews=[_view(i, j) for i, j in evaluation.eligible],
+            interviews=views,
         )
 
     async def _views(

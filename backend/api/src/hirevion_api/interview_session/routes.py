@@ -41,12 +41,14 @@ from hirevion_api.problems import ProblemError
 from hirevion_api.ratelimit import enforce, rate_limited
 from hirevion_api.routing import api_router
 from hirevion_core.interview_session import preparation
+from hirevion_core.interview_session.attempts import TAKEN, attempt_of
 from hirevion_core.interview_session.briefing import briefing
 from hirevion_core.interview_session.conductor import Conductor, MediaUnavailable, SessionView
 from hirevion_core.interview_session.media import MediaControl
 from hirevion_core.interview_session.preparation import CheckReport, ConsentAnswer
 from hirevion_core.interviews.lifecycle import By
 from hirevion_core.models import Interview
+from hirevion_core.models import InterviewSession as SessionRow
 from hirevion_core.ratelimit import RateRule
 
 router = api_router(tags=["interview-session"])
@@ -122,13 +124,37 @@ async def _load(session: AsyncSession, interview_id: UUID) -> Interview:
     return interview
 
 
+async def _load_open(
+    session: AsyncSession, request: Request, interview_id: UUID, principal: InterviewSession
+) -> Interview:
+    """The interview, if the candidate may still prepare for it: it can be started, or rejoined
+    once from the laptop that started it (one attempt, C8-9). A cached session token never
+    reopens a taken interview."""
+    interview = await _load(session, interview_id)
+    row = await session.get(SessionRow, interview.id)
+    found = attempt_of(interview, row, jkt=principal.claims.jkt, now=interview_clock(request)())
+    if found.state in ("available", "reconnect"):
+        return interview
+    if found.state == "elsewhere":
+        raise ProblemError(
+            409, "interview-other-device", "This interview was started on another device"
+        )
+    if found.state == "expired":
+        raise ProblemError(410, "interview-expired", "The interview's window has closed")
+    if found.state == "not_open":
+        raise ProblemError(409, "interview-not-open", "The interview's window hasn't opened yet")
+    if interview.status in TAKEN:
+        raise ProblemError(409, "interview-already-taken", "This interview has already been taken")
+    raise ProblemError(409, "resume-limit-reached", "The interview can no longer be resumed")
+
+
 @router.get("/interviews/{interview_id}/briefing")
 async def interview_briefing(
     interview_id: UUID, request: Request, principal: InterviewSession
 ) -> BriefingResponse:
     """§30's instructions and the itemised consent notice, before the system check."""
     async with get_db(request).tenant(principal.organization_id) as session:
-        interview = await _load(session, interview_id)
+        interview = await _load_open(session, request, interview_id, principal)
         result = await briefing(session, interview)
     return BriefingResponse(
         instructions=result.instructions,
@@ -159,7 +185,7 @@ async def record_system_check(
 ) -> SystemCheckResponse:
     """The desktop's system check (§29); it passes when every mandatory check passed."""
     async with get_db(request).tenant(principal.organization_id) as session:
-        interview = await _load(session, interview_id)
+        interview = await _load_open(session, request, interview_id, principal)
         row = await preparation.record_system_check(
             session,
             interview,
@@ -183,7 +209,7 @@ async def record_consents(
     """The candidate's answer to each purpose of the current notice (§30, §83)."""
     place = where(request)
     async with get_db(request).tenant(principal.organization_id) as session:
-        interview = await _load(session, interview_id)
+        interview = await _load_open(session, request, interview_id, principal)
         row = await preparation.record_consent(
             session,
             interview,
@@ -205,7 +231,7 @@ async def request_accommodation(
 ) -> AccommodationCreated:
     """Asks for accommodations; a recruiter decides in the web app."""
     async with get_db(request).tenant(principal.organization_id) as session:
-        interview = await _load(session, interview_id)
+        interview = await _load_open(session, request, interview_id, principal)
         row = await preparation.request_accommodation(
             session, interview, body.kinds, body.note, _by(request, principal)
         )
@@ -229,6 +255,7 @@ async def start_interview(
             consent_id=body.consent_id,
             token_expires_at=principal.claims.expires_at,
             by=_by(request, principal),
+            device_jkt=principal.claims.jkt,
         )
     except MediaUnavailable as error:
         raise ProblemError(
