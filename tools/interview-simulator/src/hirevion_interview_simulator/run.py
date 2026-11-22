@@ -37,6 +37,23 @@ class SimulationReport:
     def finished(self) -> bool:
         return self.status == "completed"
 
+    @property
+    def repeats(self) -> list[str]:
+        """Questions asked more than once, case, spacing and the closing mark aside: the
+        interviewer never repeats itself (C8-10, owner 2026-11-22). A question that stays open
+        (an off-topic answer, a manipulation) is the same question, not a repeat; the final
+        questions' "any other questions?" is the candidate's turn."""
+        seen: dict[str, str] = {}
+        repeated: list[str] = []
+        for exchange in self.exchanges:
+            if exchange.question_type == "final":
+                continue
+            key = " ".join(exchange.question.casefold().split()).rstrip("?.! ")
+            if key in seen and seen[key] != exchange.question_id:
+                repeated.append(exchange.question)
+            seen.setdefault(key, exchange.question_id)
+        return repeated
+
 
 async def simulate(
     client: DesktopClient,

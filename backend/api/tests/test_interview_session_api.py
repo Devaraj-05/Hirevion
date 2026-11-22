@@ -182,6 +182,7 @@ async def test_every_persona_finishes_a_full_interview(
     report = await simulate(desktop, str(seed.interview_id), persona(name, seed.knowledge))
     assert report.finished, report.final_state
     assert report.final_state["voice"] == "ended" and report.final_state["question"] is None
+    assert report.repeats == []  # never the same question twice (C8-10)
     kinds = [e.question_type for e in report.exchanges]
     assert kinds[0] == "introduction" and kinds[-1] == "final"
 
