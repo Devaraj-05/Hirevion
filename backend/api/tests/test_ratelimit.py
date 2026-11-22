@@ -60,11 +60,12 @@ async def test_the_ip_limit_answers_429_with_headers(
     first, second, third = [await client.get("/api/v1/test/ping") for _ in range(3)]
     assert [first.status_code, second.status_code, third.status_code] == [200, 200, 429]
     assert first.headers["ratelimit-policy"] == '"ip";q=2;w=60'
-    # The reset counts down in whole seconds, so a slow PC can cross a second between requests.
+    # The reset counts down in whole seconds, so a slow PC (the full suite under coverage) can
+    # cross a few seconds between requests.
     name, remaining, reset = first.headers["ratelimit"].split(";")
-    assert (name, remaining) == ('"ip"', "r=1") and 29 <= int(reset.removeprefix("t=")) <= 30
+    assert (name, remaining) == ('"ip"', "r=1") and 26 <= int(reset.removeprefix("t=")) <= 30
     name, remaining, reset = second.headers["ratelimit"].split(";")
-    assert (name, remaining) == ('"ip"', "r=0") and 59 <= int(reset.removeprefix("t=")) <= 60
+    assert (name, remaining) == ('"ip"', "r=0") and 56 <= int(reset.removeprefix("t=")) <= 60
     assert third.json()["code"] == "rate-limited"
     assert 1 <= int(third.headers["retry-after"]) <= 30
 

@@ -611,7 +611,10 @@ async def test_egress_records_the_conversation_and_the_third_eye_into_playable_t
             text("UPDATE recordings SET status = 'assembly-pending' WHERE id = :id"),
             {"id": rows[0].id},
         )
-    await egress.collect(app_db, valkey, output, storage, org, queued[0].payload)
+    # The audio recording's own event: the outbox query has no order, so `queued[0]` may be the
+    # third eye's (it flaked in the full suite).
+    audio = next(e for e in queued if e.payload["recording_id"] == str(rows[0].id))
+    await egress.collect(app_db, valkey, output, storage, org, audio.payload)
     async with app_db.tenant(org) as session:
         again = await session.get_one(Recording, rows[0].id)
     assert again.status == "assembled" and again.assembled_sha256 == rows[0].assembled_sha256
