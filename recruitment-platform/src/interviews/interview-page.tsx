@@ -67,7 +67,10 @@ const EVALUATED = new Set(["completed", "evaluating", "evaluated"]);
  * with `canMonitor`, the live monitoring of proctoring (and with `canReviewEvents` the review of
  * its events). The API checks every permission again. */
 /** How an interview ended (the `completed` event's reason), labelled for the history (C8-9). */
-const END_REASONS = new Set(["left_early", "candidate_ended", "time_up", "finished"]);
+const END_REASONS = ["left_early", "candidate_ended", "time_up", "finished"] as const;
+type EndReason = (typeof END_REASONS)[number];
+const isEndReason = (value: string): value is EndReason =>
+  (END_REASONS as readonly string[]).includes(value);
 
 export function InterviewPage({
   id,
@@ -136,7 +139,7 @@ export function InterviewPage({
     resume?: { grace_seconds?: number; max_interruptions?: number; same_device?: boolean };
   };
   const reconnectMinutes = Math.max(1, Math.round((policy.resume?.grace_seconds ?? 300) / 60));
-  const reason = (value: string) => (END_REASONS.has(value) ? t(`endReasons.${value}`) : value);
+  const reason = (value: string) => (isEndReason(value) ? t(`endReasons.${value}`) : value);
 
   return (
     <>
