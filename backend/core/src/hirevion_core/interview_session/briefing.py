@@ -307,6 +307,8 @@ class ResumePolicy:
     grace_seconds: int
     max_interruptions: int
     pause_timer: bool
+    same_device: bool = False
+    """Only the laptop that started the interview may rejoin it (C8-9). Old snapshots lack it."""
 
 
 def resume_policy(policy: dict[str, Any]) -> ResumePolicy:
@@ -320,4 +322,5 @@ def resume_policy(policy: dict[str, Any]) -> ResumePolicy:
         grace_seconds=int(grace) if grace is not None else 300,
         max_interruptions=int(limit) if limit is not None else 3,
         pause_timer=bool(pause) if pause is not None else True,
+        same_device=bool(resume.get("same_device", False)),
     )

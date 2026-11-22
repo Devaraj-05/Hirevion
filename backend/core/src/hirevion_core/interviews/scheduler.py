@@ -26,7 +26,7 @@ from hirevion_core.access.errors import Invalid
 from hirevion_core.db.session import Database
 from hirevion_core.identity.settings import IdentitySettings
 from hirevion_core.interview_session.briefing import resume_policy
-from hirevion_core.interview_session.conductor import abandon
+from hirevion_core.interview_session.conductor import abandon, end_left_early
 from hirevion_core.interviews import invitations
 from hirevion_core.interviews.assignment import back_to_shortlist
 from hirevion_core.interviews.lifecycle import By, record_event, transition
@@ -44,6 +44,8 @@ class SchedulerReport:
     start_reminders: int = 0
     expiry_reminders: int = 0
     abandoned: int = 0
+    ended_early: int = 0
+    """Interviews under the one-attempt policy completed as left early (C8-9)."""
 
     @property
     def total(self) -> int:
@@ -99,11 +101,17 @@ async def _handle(
     report: SchedulerReport,
 ) -> None:
     if interview.status == "interrupted":
-        grace = timedelta(seconds=resume_policy(interview.policy).grace_seconds)
+        policy = resume_policy(interview.policy)
+        grace = timedelta(seconds=policy.grace_seconds)
         if interview.interrupted_at is not None and interview.interrupted_at + grace <= now:
-            await abandon(session, interview, now)
-            await back_to_shortlist(session, interview, "interview_abandoned", actor_id=None)
-            report.abandoned += 1
+            if policy.same_device:
+                # One attempt (C8-9): what was answered is kept and evaluated.
+                await end_left_early(session, interview, now)
+                report.ended_early += 1
+            else:
+                await abandon(session, interview, now)
+                await back_to_shortlist(session, interview, "interview_abandoned", actor_id=None)
+                report.abandoned += 1
         return
     if interview.status in ("scheduled", "invited") and interview.expires_at <= now:
         await transition(session, interview, "expired", "expired", By.system(), now=now)

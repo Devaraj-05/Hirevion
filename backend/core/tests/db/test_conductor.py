@@ -26,7 +26,7 @@ from hirevion_core.ids import uuid7
 from hirevion_core.interview_session import preparation, realtime
 from hirevion_core.interview_session.briefing import NOTICE_VERSION, briefing, notice_items
 from hirevion_core.interview_session.conductor import Conductor, Speech
-from hirevion_core.interview_session.media import FakeMedia
+from hirevion_core.interview_session.media import FakeMedia, candidate_identity
 from hirevion_core.interview_session.preparation import CheckReport, ConsentAnswer
 from hirevion_core.interview_session.transcripts import render_vtt, write_artifacts
 from hirevion_core.interviews import assignment
@@ -50,6 +50,8 @@ pytestmark = pytest.mark.db
 SETTINGS = IdentitySettings(hibp_enabled=False)
 MakeOrganization = Callable[[str], Awaitable[UUID]]
 CANDIDATE = By("candidate", "test")
+LAPTOP = "laptop-key-thumbprint"
+OLD_RESUME = {"grace_seconds": 300, "max_interruptions": 3, "pause_timer": True}
 STRONG = (
     "I would reuse connections from a pool with a maximum size, a wait timeout when it is "
     "exhausted, health checks before handing a connection out, and metrics on the queue so the "
@@ -177,7 +179,14 @@ def conductor(
     return Conductor(app_db, valkey, llm=None, media=media or FakeMedia(), **kwargs)
 
 
-async def start(cond: Conductor, scene: Scene, check: UUID, consent: UUID) -> Any:
+async def start(
+    cond: Conductor,
+    scene: Scene,
+    check: UUID | None,
+    consent: UUID | None,
+    *,
+    device: str | None = LAPTOP,
+) -> Any:
     return await cond.start(
         scene.organization_id,
         scene.interview_id,
@@ -186,7 +195,20 @@ async def start(cond: Conductor, scene: Scene, check: UUID, consent: UUID) -> An
         consent_id=consent,
         token_expires_at=datetime.now(UTC) + timedelta(hours=2),
         by=CANDIDATE,
+        device_jkt=device,
     )
+
+
+async def use_policy(admin_engine: AsyncEngine, scene: Scene, resume: dict[str, Any]) -> None:
+    """Gives the interview another resume policy, as an interview assigned before C8-9 has."""
+    async with admin_engine.begin() as conn:
+        await conn.execute(
+            text(
+                "UPDATE interviews SET policy = jsonb_set(policy, '{resume}', "
+                "CAST(:resume AS jsonb)) WHERE id = :id"
+            ),
+            {"resume": json.dumps(resume), "id": scene.interview_id},
+        )
 
 
 def reply(view: Any) -> str:
@@ -481,6 +503,7 @@ async def test_an_interruption_pauses_and_resumes_under_the_policy(
     make_hiring: Any,
 ) -> None:
     scene = await invited(app_db, make_hiring, await make_organization("Acme"))
+    await use_policy(admin_engine, scene, OLD_RESUME)  # assigned before C8-9
     check, consent = await prepare(app_db, scene, accommodations=["text_answers"])
     cond = conductor(app_db, valkey)
     started = await start(cond, scene, check, consent)
@@ -838,3 +861,133 @@ async def test_a_vision_agent_that_left_a_running_interview_is_sent_again(
     await valkey.set(f"hv:iv:{scene.interview_id}:vision", "job", ex=8)
     assert not await cond.redispatch_vision(scene.organization_id, scene.interview_id)
     assert len(media.vision_dispatches) == 2
+
+
+# One attempt (C8-9, product owner 2026-11-22): a new interview may be rejoined once, within
+# 2 minutes, from the laptop that started it, with the clock running; then it ends as
+# "left_early" and is evaluated.
+
+
+async def _events(admin_engine: AsyncEngine, scene: Scene, action: str) -> list[Any]:
+    async with admin_engine.connect() as conn:
+        rows = await conn.execute(
+            text(
+                "SELECT reason, to_status FROM interview_events WHERE interview_id = :id "
+                "AND action = :action ORDER BY created_at"
+            ),
+            {"id": scene.interview_id, "action": action},
+        )
+        return list(rows.all())
+
+
+async def _outbox(admin_engine: AsyncEngine, scene: Scene, topic: str) -> int:
+    async with admin_engine.connect() as conn:
+        count = await conn.scalar(
+            text(
+                "SELECT count(*) FROM outbox_events WHERE topic = :topic "
+                "AND payload->>'interview_id' = :id"
+            ),
+            {"topic": topic, "id": str(scene.interview_id)},
+        )
+    return int(count or 0)
+
+
+async def test_the_laptop_that_started_is_the_only_one_that_may_rejoin(
+    app_db: Database, valkey: Redis, make_organization: MakeOrganization, make_hiring: Any
+) -> None:
+    scene = await invited(app_db, make_hiring, await make_organization("Acme"))
+    check, consent = await prepare(app_db, scene, accommodations=["text_answers"])
+    cond = conductor(app_db, valkey)
+    started = await start(cond, scene, check, consent)
+    async with app_db.tenant(scene.organization_id) as session:
+        row = await session.get_one(InterviewSession, scene.interview_id)
+    assert row.device_jkt == LAPTOP
+    assert await cond.interrupt(
+        scene.organization_id, scene.interview_id, reason="left", by=By.system()
+    )
+    with pytest.raises(Conflict, match="interview-other-device"):
+        await start(cond, scene, check, consent, device="another-laptop")
+    # The same laptop rejoins without redoing the checks; the clock never stopped.
+    resumed = await start(cond, scene, None, None)
+    assert resumed.resumed and resumed.view.status == "in_progress"
+    assert resumed.view.deadline_at == started.view.deadline_at
+
+
+async def test_a_second_drop_ends_the_interview_and_it_is_evaluated(
+    app_db: Database,
+    admin_engine: AsyncEngine,
+    valkey: Redis,
+    make_organization: MakeOrganization,
+    make_hiring: Any,
+) -> None:
+    scene = await invited(app_db, make_hiring, await make_organization("Acme"))
+    check, consent = await prepare(app_db, scene, accommodations=["text_answers"])
+    cond = conductor(app_db, valkey)
+    await start(cond, scene, check, consent)
+    await cond.interrupt(scene.organization_id, scene.interview_id, reason="left", by=By.system())
+    await start(cond, scene, None, None)
+    assert await cond.interrupt(
+        scene.organization_id, scene.interview_id, reason="left", by=By.system()
+    )
+    async with app_db.tenant(scene.organization_id) as session:
+        interview = await session.get_one(Interview, scene.interview_id)
+        application = await session.get_one(Application, scene.application_id)
+    assert interview.status == "completed"
+    assert application.stage == "interviewed"
+    assert await _events(admin_engine, scene, "completed") == [("left_early", "completed")]
+    assert await _outbox(admin_engine, scene, "evaluation") == 1
+    with pytest.raises(Conflict, match="interview-already-taken"):
+        await start(cond, scene, None, None)
+
+
+async def test_restarting_before_the_drop_is_noticed_uses_the_one_reconnect(
+    app_db: Database,
+    admin_engine: AsyncEngine,
+    valkey: Redis,
+    make_organization: MakeOrganization,
+    make_hiring: Any,
+) -> None:
+    scene = await invited(app_db, make_hiring, await make_organization("Acme"))
+    check, consent = await prepare(app_db, scene, accommodations=["text_answers"])
+    media = FakeMedia()
+    cond = conductor(app_db, valkey, media)
+    await start(cond, scene, check, consent)
+    async with app_db.tenant(scene.organization_id) as session:
+        interview = await session.get_one(Interview, scene.interview_id)
+    identity = candidate_identity(interview.candidate_id)
+    media.present.add(identity)
+    with pytest.raises(Conflict, match="interview-in-use"):
+        await start(cond, scene, None, None)  # a second app while the first is still in
+    media.present.discard(identity)
+    rejoined = await start(cond, scene, None, None)  # the app restarted: the one reconnect
+    assert rejoined.view.status == "in_progress"
+    with pytest.raises(Conflict, match="resume-limit-reached"):
+        await start(cond, scene, None, None)  # a second restart ends it
+    assert await _events(admin_engine, scene, "completed") == [("left_early", "completed")]
+
+
+async def test_the_scheduler_ends_a_strict_interview_after_the_window(
+    app_db: Database,
+    admin_engine: AsyncEngine,
+    valkey: Redis,
+    make_organization: MakeOrganization,
+    make_hiring: Any,
+) -> None:
+    scene = await invited(app_db, make_hiring, await make_organization("Acme"))
+    check, consent = await prepare(app_db, scene)
+    cond = conductor(app_db, valkey)
+    await start(cond, scene, check, consent)
+    await cond.interrupt(scene.organization_id, scene.interview_id, reason="left", by=By.system())
+    with pytest.raises(Conflict, match="interview-other-device"):
+        await start(cond, scene, None, None, device=None)
+    report = await run_due(app_db, SETTINGS, now=datetime.now(UTC) + timedelta(minutes=3))
+    assert report.ended_early >= 1  # other tests may leave interrupted interviews too
+    async with app_db.tenant(scene.organization_id) as session:
+        interview = await session.get_one(Interview, scene.interview_id)
+        application = await session.get_one(Application, scene.application_id)
+        row = await session.get_one(InterviewSession, scene.interview_id)
+    assert interview.status == "completed" and application.stage == "interviewed"
+    assert row.state["ended_reason"] == "left_early" and row.ended_at is not None
+    assert await _events(admin_engine, scene, "completed") == [("left_early", "completed")]
+    assert await _outbox(admin_engine, scene, "evaluation") == 1
+    assert await _outbox(admin_engine, scene, "interview.completed") == 1

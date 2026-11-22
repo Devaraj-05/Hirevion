@@ -98,10 +98,12 @@ async def test_an_assigned_interview_has_the_nine_fields_and_a_policy(
         policy = interview.policy
         assert policy["proctoring_level"] == "standard"
         assert "gaze" in policy["checks"] and "camera" in policy["mandatory_checks"]
+        # One attempt (C8-9): one reconnect, within 2 minutes, from the same laptop.
         assert policy["resume"] == {
-            "grace_seconds": 300,
-            "max_interruptions": 3,
-            "pause_timer": True,
+            "grace_seconds": 120,
+            "max_interruptions": 1,
+            "pause_timer": False,
+            "same_device": True,
         }
         application = await session.get_one(Application, hiring.application_id)
         assert application.stage == "interview"

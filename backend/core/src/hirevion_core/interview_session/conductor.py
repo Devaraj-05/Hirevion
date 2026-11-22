@@ -45,6 +45,7 @@ from hirevion_core.engine.followups import FollowUpGenerator
 from hirevion_core.engine.orchestrator import Control, EngineError, Orchestrator, Turn, build_state
 from hirevion_core.engine.state import AskedQuestion, InterviewState
 from hirevion_core.interview_session import realtime
+from hirevion_core.interview_session.attempts import TAKEN
 from hirevion_core.interview_session.briefing import (
     NOTICE_VERSION,
     answer_mode,
@@ -53,7 +54,12 @@ from hirevion_core.interview_session.briefing import (
     third_eye_mode,
     watches_third_eye,
 )
-from hirevion_core.interview_session.media import MediaControl, MediaError, ParticipantToken
+from hirevion_core.interview_session.media import (
+    MediaControl,
+    MediaError,
+    ParticipantToken,
+    candidate_identity,
+)
 from hirevion_core.interview_session.transcripts import segment
 from hirevion_core.interviews.lifecycle import By, record_event, transition
 from hirevion_core.models import (
@@ -82,6 +88,9 @@ ANSWER_MAX = 20_000
 TOKEN_SLACK = timedelta(minutes=15)
 VOICE_STATES = ("listening", "thinking", "speaking", "waiting", "paused", "ended", "error")
 STARTABLE = ("invited", "in_progress", "interrupted")
+LEFT_EARLY = "left_early"
+"""The end reason of an interview whose candidate didn't come back under the one-attempt
+policy (C8-9): it is completed with what was answered, and evaluated."""
 _RELEASE = (
     "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) "
     "else return 0 end"
@@ -438,16 +447,7 @@ class Conductor:
         by: By,
         reason: str,
     ) -> None:
-        await transition(session, interview, "completed", "completed", by, reason=reason, now=now)
-        row.ended_at = now
-        application = await session.get_one(Application, interview.application_id)
-        if application.stage == "interview":
-            await record_stage(session, application, "interviewed", "interview_completed")
-        if await session.get(Transcript, interview.id) is None:
-            session.add(
-                Transcript(organization_id=interview.organization_id, interview_id=interview.id)
-            )
-        await session.flush()
+        await complete_interview(session, interview, row, now, by, reason)
 
     async def _publish(
         self,
@@ -544,12 +544,17 @@ class Conductor:
         interview_id: UUID,
         *,
         account_id: UUID,
-        system_check_id: UUID,
-        consent_id: UUID,
+        system_check_id: UUID | None,
+        consent_id: UUID | None,
         token_expires_at: datetime,
         by: By,
+        device_jkt: str | None = None,
     ) -> StartResult:
+        """Starts the interview, or resumes it. A resume may leave out the check and consent
+        (they were given at the first start), so a reconnect fits its window; `device_jkt` is the
+        session token's DPoP key, which a `same_device` policy holds the interview to (C8-9)."""
         now = self._clock()
+        refusal: Conflict | None = None
         if self._media is not None:
             # The room first: with the media server down nothing is committed, so the interview
             # hasn't started and its clock hasn't run.
@@ -560,39 +565,47 @@ class Conductor:
         async with self._turn(interview_id):
             async with self._db.tenant(organization_id) as session:
                 interview, row = await self._load(session, interview_id, lock=True)
-                self._check_startable(interview, row, now)
-                check = await session.get(SystemCheckResult, system_check_id)
-                if check is None or check.interview_id != interview.id or not check.passed:
-                    raise Conflict("checks-incomplete", "Complete the system check first")
-                consent = await session.get(Consent, consent_id)
-                if (
-                    consent is None
-                    or consent.interview_id != interview.id
-                    or not consent.complete
-                    or consent.notice_version != NOTICE_VERSION
-                ):
-                    raise Conflict("consents-missing", "Agree to the required items first")
+                self._check_startable(interview, row, now, device_jkt)
+                first = interview.status == "invited"
+                if first or system_check_id is not None or consent_id is not None:
+                    await self._check_ready(session, interview, system_check_id, consent_id)
                 if third_eye_mode(interview.policy) == "required" and not await third_eye_paired(
                     session, interview
                 ):
                     raise Conflict("third-eye-required", "Pair your phone as the third camera")
                 account = await session.get_one(CandidateAccount, account_id)
                 turn: Turn | None = None
-                resumed = interview.status != "invited"
-                if interview.status == "invited":
+                resumed = not first
+                if first:
+                    if system_check_id is None or consent_id is None:  # `_check_ready` refused it
+                        raise Conflict("checks-incomplete", "Complete the system check first")
                     row, state, turn = await self._first_start(
-                        session, interview, by, now, system_check_id, consent_id
+                        session, interview, by, now, system_check_id, consent_id, device_jkt
                     )
                     seq = row.state_seq
                 else:
                     if row is None:
                         raise Conflict("interview-not-open", "The interview can't be resumed")
                     state = InterviewState.from_json(row.state)
+                    policy = resume_policy(interview.policy)
                     if interview.status == "interrupted":
                         turn = await self._resume(session, interview, row, state, now, by)
+                    elif policy.same_device:
+                        # The app restarted before LiveKit saw it leave: this is the reconnect.
+                        if await self._present(interview):
+                            raise Conflict(
+                                "interview-in-use", "The interview is open in another window"
+                            )
+                        row.interruptions += 1
+                        if row.interruptions > policy.max_interruptions:
+                            turn = self._engine.finish(state, now, LEFT_EARLY)
+                            refusal = Conflict(
+                                "resume-limit-reached", "The interview can no longer be resumed"
+                            )
                     else:
                         row.reconnects += 1
-                    row.connected_at = now
+                    if refusal is None:
+                        row.connected_at = now
                     seq = await self._apply(
                         session,
                         interview,
@@ -605,6 +618,10 @@ class Conductor:
                     )
                 name = account.name
             await self._remember(interview.id, turn, seq)
+        if refusal is not None:
+            if turn is not None:
+                await self._publish(interview.id, state, turn, now)
+            raise refusal
         token = await self._connect(interview, state, name, token_expires_at)
         if turn is not None:
             await self._publish(interview.id, state, turn, now)
@@ -620,11 +637,17 @@ class Conductor:
         return StartResult(view, token, resumed)
 
     def _check_startable(
-        self, interview: Interview, row: InterviewSession | None, now: datetime
+        self,
+        interview: Interview,
+        row: InterviewSession | None,
+        now: datetime,
+        device_jkt: str | None = None,
     ) -> None:
         if interview.status not in STARTABLE:
             if interview.status == "expired":
                 raise Gone("interview-expired", "The interview's window has closed")
+            if interview.status in TAKEN:
+                raise Conflict("interview-already-taken", "This interview has already been taken")
             raise Conflict("interview-not-open", f"The interview is {interview.status}")
         if interview.status == "invited":
             if now < interview.starts_at:
@@ -634,12 +657,45 @@ class Conductor:
             return
         if row is None:
             raise Conflict("interview-not-open", "The interview can't be resumed")
+        policy = resume_policy(interview.policy)
+        if policy.same_device and row.device_jkt and device_jkt != row.device_jkt:
+            raise Conflict("interview-other-device", "This interview was started on another device")
         if interview.status == "interrupted":
-            policy = resume_policy(interview.policy)
             grace = timedelta(seconds=policy.grace_seconds)
             interrupted = interview.interrupted_at or now
             if row.interruptions > policy.max_interruptions or now - interrupted > grace:
                 raise Conflict("resume-limit-reached", "The interview can no longer be resumed")
+
+    async def _check_ready(
+        self,
+        session: AsyncSession,
+        interview: Interview,
+        system_check_id: UUID | None,
+        consent_id: UUID | None,
+    ) -> None:
+        check = await session.get(SystemCheckResult, system_check_id) if system_check_id else None
+        if check is None or check.interview_id != interview.id or not check.passed:
+            raise Conflict("checks-incomplete", "Complete the system check first")
+        consent = await session.get(Consent, consent_id) if consent_id else None
+        if (
+            consent is None
+            or consent.interview_id != interview.id
+            or not consent.complete
+            or consent.notice_version != NOTICE_VERSION
+        ):
+            raise Conflict("consents-missing", "Agree to the required items first")
+
+    async def _present(self, interview: Interview) -> bool:
+        """Whether the candidate is in the interview's room now (a second app while the first is
+        still in it). An unreachable media server counts as not present."""
+        if self._media is None:
+            return False
+        try:
+            return await self._media.candidate_present(
+                interview.id, candidate_identity(interview.candidate_id)
+            )
+        except MediaError:
+            return False
 
     async def _first_start(
         self,
@@ -649,6 +705,7 @@ class Conductor:
         now: datetime,
         system_check_id: UUID,
         consent_id: UUID,
+        device_jkt: str | None = None,
     ) -> tuple[InterviewSession, InterviewState, Turn | None]:
         context = await ContextBuilder().build(session, interview)
         mode = answer_mode(interview.policy or {})
@@ -667,6 +724,7 @@ class Conductor:
             system_check_id=system_check_id,
             consent_id=consent_id,
             connected_at=now,
+            device_jkt=device_jkt,
         )
         session.add(row)
         await session.flush()
@@ -968,25 +1026,51 @@ class Conductor:
                 state = InterviewState.from_json(row.state)
                 if state.ended:
                     return False
-                if resume_policy(interview.policy).pause_timer:
+                policy = resume_policy(interview.policy)
+                if policy.pause_timer:
                     state.clock.pause(now)
                 row.interruptions += 1
-                interview.interrupted_at = now
-                await transition(
-                    session,
-                    interview,
-                    "interrupted",
-                    "interrupted",
-                    by,
-                    reason=reason,
-                    details={"interruptions": row.interruptions},
-                    now=now,
-                )
-                seq = await self._apply(
-                    session, interview, row, state, Turn(), now, by=by, expected_seq=row.state_seq
-                )
-            await self._remember(interview_id, None, seq)
-            await self.set_voice(interview_id, "paused")
+                ended: Turn | None = None
+                if policy.same_device and row.interruptions > policy.max_interruptions:
+                    # A second drop under the one-attempt policy ends the interview (C8-9).
+                    ended = self._engine.finish(state, now, LEFT_EARLY)
+                    seq = await self._apply(
+                        session,
+                        interview,
+                        row,
+                        state,
+                        ended,
+                        now,
+                        by=by,
+                        expected_seq=row.state_seq,
+                    )
+                else:
+                    interview.interrupted_at = now
+                    await transition(
+                        session,
+                        interview,
+                        "interrupted",
+                        "interrupted",
+                        by,
+                        reason=reason,
+                        details={"interruptions": row.interruptions},
+                        now=now,
+                    )
+                    seq = await self._apply(
+                        session,
+                        interview,
+                        row,
+                        state,
+                        Turn(),
+                        now,
+                        by=by,
+                        expected_seq=row.state_seq,
+                    )
+            await self._remember(interview_id, ended, seq)
+            if ended is None:
+                await self.set_voice(interview_id, "paused")
+        if ended is not None:
+            await self._publish(interview_id, state, ended, now)
         return True
 
     async def redispatch_vision(self, organization_id: UUID, interview_id: UUID) -> bool:
@@ -1221,6 +1305,45 @@ class Conductor:
                 by=By.system(),
                 expected_seq=row.state_seq,
             )
+
+
+async def complete_interview(
+    session: AsyncSession,
+    interview: Interview,
+    row: InterviewSession | None,
+    now: datetime,
+    by: By,
+    reason: str,
+) -> None:
+    """Completes `interview` for `reason`: the transition (which queues its evaluation and the
+    transcript's artifacts), the session's end, the application's stage and the transcript row."""
+    await transition(session, interview, "completed", "completed", by, reason=reason, now=now)
+    if row is not None:
+        row.ended_at = now
+    application = await session.get_one(Application, interview.application_id)
+    if application.stage == "interview":
+        await record_stage(session, application, "interviewed", "interview_completed")
+    if await session.get(Transcript, interview.id) is None:
+        session.add(
+            Transcript(organization_id=interview.organization_id, interview_id=interview.id)
+        )
+    await session.flush()
+
+
+async def end_left_early(session: AsyncSession, interview: Interview, now: datetime) -> None:
+    """Ends an interview interrupted past its reconnect window under the one-attempt policy
+    (C8-9): it is completed with what was answered, and evaluated. The scheduler calls this, in
+    the interview's tenant, with the interview locked."""
+    row = await session.get(InterviewSession, interview.id, with_for_update=True)
+    await complete_interview(session, interview, row, now, By.system(), LEFT_EARLY)
+    if row is not None and row.state:
+        state = InterviewState.from_json(row.state)
+        state.ended_reason = LEFT_EARLY
+        state.enter("completion", now)
+        state.enter("evaluation", now)
+        row.state = state.to_json()
+        row.state_seq += 1
+    await session.flush()
 
 
 async def abandon(session: AsyncSession, interview: Interview, now: datetime) -> None:

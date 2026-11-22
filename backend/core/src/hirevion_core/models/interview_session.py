@@ -147,6 +147,9 @@ class InterviewSession(TenantMixin, TimestampMixin, Base):
     consent_id: Mapped[UUID | None]
     agent_dispatch_id: Mapped[str | None] = mapped_column(Text)
     ended_at: Mapped[datetime | None]
+    device_jkt: Mapped[str | None] = mapped_column(Text)
+    """The thumbprint of the DPoP key that started the interview: under a `same_device` policy
+    only that laptop may rejoin it (C8-9)."""
 
 
 class InterviewQuestion(IdMixin, TenantMixin, Base):

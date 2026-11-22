@@ -75,7 +75,14 @@ MANDATORY_CHECKS: dict[str, tuple[str, ...]] = {
         "media_foundation",
     ),
 }
-RESUME_POLICY = {"grace_seconds": 300, "max_interruptions": 3, "pause_timer": True}
+# One attempt (C8-9, product owner 2026-11-22): after a crash or a lost connection the candidate
+# may rejoin once, within 2 minutes, from the laptop that started; the clock keeps running.
+RESUME_POLICY = {
+    "grace_seconds": 120,
+    "max_interruptions": 1,
+    "pause_timer": False,
+    "same_device": True,
+}
 UNASSIGNABLE_STAGES = ("uploaded", "rejected")
 # Skip codes that mean the request's own input was wrong (a single assignment answers 422).
 INPUT_CODES = frozenset({"invalid-window", "window-past", "window-too-short", "window-too-long"})
