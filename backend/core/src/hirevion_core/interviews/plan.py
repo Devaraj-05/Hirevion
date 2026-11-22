@@ -628,16 +628,10 @@ async def write_plan(
     answers = await asyncio.gather(*(write_skill(skill, left) for skill, left in asks))
     written: list[dict[str, Any]] = []
     model = models[-1] if models else plan.model
-    start = len(existing) + 1
+    start = next_number(existing)
     for (skill, _), kept in zip(asks, answers, strict=True):
         written.extend(_model_items(kept, skill, start))
         start += len(kept)
-    if not top_up and not any(i["source"] == "resume" for i in written):
-        # PRD §36: a resume question in every interview whose candidate has evidence, from a
-        # verified quote when the model's own quotes didn't hold.
-        hook = next((h for h in inputs.hooks if _plain(h.quote) not in taken_quotes), None)
-        if hook is not None:
-            written.append(_hook_item(hook, start))
     fresh = await _distinct_items(
         ai.embeddings,
         interview.organization_id,
@@ -646,6 +640,10 @@ async def write_plan(
         [*library, *written],
         earlier=existing,
     )
+    if not top_up:
+        # After the dedupe, so nothing it drops can take these away.
+        fresh = with_resume(fresh, inputs.hooks, taken_quotes, next_number([*existing, *fresh]))
+        fresh = with_every_required_skill(fresh, inputs.shares, next_number([*existing, *fresh]))
     plan.items = [*existing, *fresh]
     plan.status = "ready"
     plan.version = (plan.version or 0) + 1
@@ -682,9 +680,12 @@ async def handle_plan_event(
     interview_id = UUID(str(payload["interview_id"]))
     async with db.tenant(organization_id) as session:
         interview = await session.get(Interview, interview_id)
-        if interview is None or interview.status in ("cancelled", "expired", "abandoned"):
+        top_up = payload.get("action") == "top_up"
+        if interview is None or interview.status not in ("scheduled", "invited", "in_progress"):
+            return  # over, cancelled or expired: nobody will be asked
+        if top_up and interview.status != "in_progress":
             return
-        await write_plan(session, ai, interview, top_up=payload.get("action") == "top_up")
+        await write_plan(session, ai, interview, top_up=top_up)
 
 
 async def give_up_plan(db: Database, organization_id: UUID, payload: dict[str, Any]) -> None:
@@ -693,10 +694,75 @@ async def give_up_plan(db: Database, organization_id: UUID, payload: dict[str, A
     interview_id = UUID(str(payload["interview_id"]))
     async with db.tenant(organization_id) as session:
         plan = await session.get(InterviewQuestionPlan, interview_id, with_for_update=True)
-        if plan is not None and plan.status != "ready":
+        if plan is None:
+            if await session.get(Interview, interview_id) is None:
+                return
+            plan = InterviewQuestionPlan(
+                organization_id=organization_id, interview_id=interview_id, items=[]
+            )
+            session.add(plan)
+        if plan.status != "ready":
             plan.status = "failed"
             plan.error = "The questions couldn't be prepared"
             log.warning("The question plan for %s couldn't be prepared", interview_id)
+
+
+def next_number(items: Sequence[dict[str, Any]]) -> int:
+    """The next free `plan:N`: after the highest held, whatever the dedupe dropped before."""
+    numbers = [
+        int(key[5:])
+        for entry in items
+        if (key := str(entry.get("key", ""))).startswith("plan:") and key[5:].isdigit()
+    ]
+    return max(numbers, default=0) + 1
+
+
+def with_resume(
+    items: list[dict[str, Any]], hooks: Sequence[ResumeHook], taken_quotes: set[str], n: int
+) -> list[dict[str, Any]]:
+    """PRD §36: `items` with a resume question, from a verified quote when none is there."""
+    if any(entry["source"] == "resume" for entry in items):
+        return items
+    hook = next((h for h in hooks if _plain(h.quote) not in taken_quotes), None)
+    return [*items, _hook_item(hook, n)] if hook is not None else items
+
+
+def with_every_required_skill(
+    items: list[dict[str, Any]], shares: Sequence[SkillShare], n: int
+) -> list[dict[str, Any]]:
+    """Every required skill keeps at least one question: when the checks or the dedupe left a
+    skill with none, one generic question stands in (once; the runtime never repeats it)."""
+    out = list(items)
+    covered = {entry["skill"].casefold() for entry in out}
+    for share in shares:
+        if share.required and share.name.casefold() not in covered:
+            out.append(
+                item(
+                    f"plan:{n}",
+                    skill=share.name,
+                    difficulty="medium",
+                    type="technical",
+                    text=phrasing.generated_question(share.name, "medium", 0),
+                    concept=f"{share.name} in practice",
+                    expected_concepts=["a concrete example", "a trade-off"],
+                    source="generated",
+                    source_ref={"template": "medium-0"},
+                )
+            )
+            n += 1
+    return out
+
+
+def wants_top_up(state: Any, remaining_seconds: int) -> bool:
+    """A running interview with a plan asks for more before it runs out, and only once the last
+    top-up has landed (its plan version moved on)."""
+    if not state.plan_version or state.ended:
+        return False
+    if state.top_ups and state.plan_version <= state.top_up_at_version:
+        return False  # the last one hasn't arrived yet
+    from hirevion_core.engine.planner import fresh_count
+
+    return needs_top_up(fresh_count(state), remaining_seconds, state.top_ups)
 
 
 def needs_top_up(fresh: int, remaining_seconds: int, top_ups: int) -> bool:

@@ -35,7 +35,7 @@ from hirevion_core.interview_session.transcripts import render_vtt, write_artifa
 from hirevion_core.interviews import assignment
 from hirevion_core.interviews.assignment import Assignment
 from hirevion_core.interviews.lifecycle import By
-from hirevion_core.interviews.plan import write_plan
+from hirevion_core.interviews.plan import give_up_plan, write_plan
 from hirevion_core.interviews.scheduler import run_due
 from hirevion_core.models import (
     Application,
@@ -43,6 +43,7 @@ from hirevion_core.models import (
     Interview,
     InterviewAnswer,
     InterviewQuestion,
+    InterviewQuestionPlan,
     InterviewSession,
     Transcript,
     TranscriptSegment,
@@ -1094,3 +1095,13 @@ async def test_the_worker_prepares_distinct_questions_at_every_level(
     _, _, state = await cond._checkpoint(scene.organization_id, scene.interview_id)
     assert state.plan_version == 2
     assert {i["key"] for i in added} <= {q.key for q in state.pool}
+
+
+async def test_a_plan_that_couldnt_be_prepared_says_so(
+    app_db: Database, make_organization: MakeOrganization, make_hiring: Any
+) -> None:
+    scene = await invited(app_db, make_hiring, await make_organization("Acme"))
+    await give_up_plan(app_db, scene.organization_id, {"interview_id": str(scene.interview_id)})
+    async with app_db.tenant(scene.organization_id) as session:
+        plan = await session.get_one(InterviewQuestionPlan, scene.interview_id)
+    assert plan.status == "failed" and plan.items == []

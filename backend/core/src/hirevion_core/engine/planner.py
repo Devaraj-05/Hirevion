@@ -124,7 +124,11 @@ def merge_plan(state: InterviewState, items: Sequence[dict[str, Any]], version: 
 
 def fresh_count(state: InterviewState) -> int:
     """How many questions this interview could still ask, across its skills."""
-    return sum(len(_ladder(_unused(state, skill.name))) for skill in state.skills)
+    total = 0
+    for skill in state.skills:
+        unused = _unused(state, skill.name)
+        total += sum(1 for q in unused if q.source == "pinned") + len(_ladder(unused))
+    return total
 
 
 class QuestionPlanner:
@@ -264,7 +268,8 @@ def has_fresh(state: InterviewState, skill: SkillState) -> bool:
     """Whether `skill` has a question this interview hasn't asked, in its text or its concept.
     A generic template never counts: the owner's run of 2026-11-22 asked nine of them per skill,
     the same question in other words."""
-    return bool(_ladder(_unused(state, skill.name)))
+    unused = _unused(state, skill.name)
+    return any(q.source == "pinned" for q in unused) or bool(_ladder(unused))
 
 
 def _ladder(unused: list[PoolQuestion]) -> list[PoolQuestion]:

@@ -266,6 +266,8 @@ class InterviewState(_Model):
     """The question plan's version merged into `pool` (C8-10); 0 without a plan."""
     top_ups: int = 0
     """How many more questions this interview has asked its plan for."""
+    top_up_at_version: int = 0
+    """The plan's version when the last top-up was asked: the next waits until it moves on."""
 
     def skill(self, name: str | None) -> SkillState | None:
         if name is None:

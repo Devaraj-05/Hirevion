@@ -288,6 +288,7 @@ def test_a_follow_up_never_asks_what_another_question_covers() -> None:
     )
     # The only missing concept is another question's: no follow-up (it will be asked there).
     assert _decide(state, "partial", missing=["wait timeout"]) is None
+    assert _decide(state, "weak", missing=["wait timeout"]) is None  # nor a narrower question
     # One of two is free: the follow-up asks only about that one.
     plan = _decide(state, "partial", missing=["wait timeout", "pool health checks"])
     assert plan is not None and plan.missing == ("pool health checks",)

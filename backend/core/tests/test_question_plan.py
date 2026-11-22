@@ -7,7 +7,8 @@ from __future__ import annotations
 import math
 from dataclasses import replace
 
-from hirevion_core.engine.planner import fresh_count, merge_plan, said
+from hirevion_core.engine.planner import fresh_count, has_fresh, merge_plan, said
+from hirevion_core.engine.state import ResumeHook
 from hirevion_core.interviews.plan import (
     _PROMPT,
     CLAUSES,
@@ -20,9 +21,13 @@ from hirevion_core.interviews.plan import (
     item,
     lint,
     needs_top_up,
+    next_number,
     plan_size,
     quote_found,
     targets,
+    wants_top_up,
+    with_every_required_skill,
+    with_resume,
 )
 
 from .engine.factory import library, make_context, make_state
@@ -252,3 +257,36 @@ def test_one_question_per_resume_line_in_the_whole_interview() -> None:
         taken_quotes=quotes,
     )
     assert len(first) == 1 and second == []
+
+
+def test_new_keys_never_collide_with_kept_ones() -> None:
+    kept = [_plan_item(1, "Python", "A"), _plan_item(9, "Python", "B"), {"key": "q:x:1"}]
+    assert next_number(kept) == 10  # the dedupe dropped 2 to 8: no reuse of their numbers
+    assert next_number([]) == 1
+
+
+def test_every_required_skill_keeps_a_question_and_one_resume_question_stays() -> None:
+    shares = [SkillShare("Python", 60, True), SkillShare("SQL", 40, True)]
+    items = with_every_required_skill([_plan_item(1, "Python", "GIL")], shares, 2)
+    assert [(i["skill"], i["key"]) for i in items] == [("Python", "plan:1"), ("SQL", "plan:2")]
+    hook = ResumeHook(skill="SQL", field="projects", index=0, label="Ledger", quote=RESUME[18:70])
+    with_hook = with_resume(items, [hook], set(), 3)
+    assert with_hook[-1]["source"] == "resume" and with_hook[-1]["source_ref"]["quote"]
+    assert with_resume(with_hook, [hook], set(), 4) == with_hook  # one is enough
+
+
+def test_one_top_up_at_a_time() -> None:
+    state = make_state(make_context(questions=[]))
+    merge_plan(state, [_plan_item(1, "Python", "Generators")], 1)
+    assert wants_top_up(state, 600)
+    state.top_ups, state.top_up_at_version = 1, 1
+    assert not wants_top_up(state, 600)  # the first hasn't landed yet
+    merge_plan(state, [_plan_item(2, "Python", "GIL")], 2)
+    assert wants_top_up(state, 600)
+
+
+def test_an_unasked_pinned_question_still_counts_as_something_to_ask() -> None:
+    pinned = library("Python", "medium", "Explain how you profile a slow endpoint?")
+    state = make_state(make_context(questions=[], pinned=[pinned], skills=(("Python", 100),)))
+    state.plan_version = 1
+    assert has_fresh(state, state.skills[0]) and fresh_count(state) == 1

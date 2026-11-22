@@ -43,7 +43,7 @@ from hirevion_core.engine.analysis import Analysed, AnswerAnalyzer
 from hirevion_core.engine.context import ContextBuilder
 from hirevion_core.engine.followups import FollowUpGenerator
 from hirevion_core.engine.orchestrator import Control, EngineError, Orchestrator, Turn, build_state
-from hirevion_core.engine.planner import fresh_count, merge_plan
+from hirevion_core.engine.planner import merge_plan
 from hirevion_core.engine.state import AskedQuestion, InterviewState
 from hirevion_core.interview_session import realtime
 from hirevion_core.interview_session.attempts import TAKEN
@@ -63,7 +63,7 @@ from hirevion_core.interview_session.media import (
 )
 from hirevion_core.interview_session.transcripts import segment
 from hirevion_core.interviews.lifecycle import By, record_event, transition
-from hirevion_core.interviews.plan import ensure_plan, needs_top_up, queue_plan
+from hirevion_core.interviews.plan import ensure_plan, queue_plan, wants_top_up
 from hirevion_core.models import (
     Application,
     CandidateAccount,
@@ -342,13 +342,10 @@ class Conductor:
         candidate: tuple[str, str | None, Speech, Literal["voice", "text"]] | None = None,
     ) -> int:
         """Writes one turn: the checkpoint and its rows. Returns the new `state_seq`."""
-        if (
-            state.plan_version
-            and not state.ended
-            and needs_top_up(fresh_count(state), state.clock.remaining(now), state.top_ups)
-        ):
+        if wants_top_up(state, state.clock.remaining(now)):
             # Running low: more questions, never the same ones again (C8-10).
             state.top_ups += 1
+            state.top_up_at_version = state.plan_version
             await queue_plan(session, interview, action="top_up")
         if candidate is not None and candidate[0].strip():
             text, question_id, speech, _mode = candidate

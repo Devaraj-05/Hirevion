@@ -129,7 +129,7 @@ class FollowUpGenerator:
             if rule:
                 return FollowUpPlan("clarify", rule, True)
             # One smaller question on a concept nothing else covers; none rather than a rephrase.
-            free = _free(state, question, [*missing, *question.expected_concepts])
+            free = _free(state, question, missing)  # never what the answer already covered
             if not free:
                 return None
             return FollowUpPlan("clarify", phrasing.clarification(free[0], seed), False, (free[0],))

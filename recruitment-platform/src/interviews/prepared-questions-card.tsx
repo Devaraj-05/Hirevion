@@ -28,6 +28,8 @@ export function PreparedQuestionsCard({ id }: { id: string }) {
   const plan = useQuery({
     queryKey: [...interviewKeys.detail(id), "question-plan"],
     queryFn: () => getQuestionPlan(id),
+    // The worker takes a little while: look again until the questions are ready.
+    refetchInterval: (query) => (query.state.data?.status === "pending" ? 5_000 : false),
   });
   const bySkill = new Map<string, PlannedQuestion[]>();
   for (const question of plan.data?.questions ?? []) {
