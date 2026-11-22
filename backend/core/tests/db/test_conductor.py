@@ -961,6 +961,7 @@ async def test_restarting_before_the_drop_is_noticed_uses_the_one_reconnect(
     media.present.discard(identity)
     rejoined = await start(cond, scene, None, None)  # the app restarted: the one reconnect
     assert rejoined.view.status == "in_progress"
+    assert len(await _events(admin_engine, scene, "reconnected")) == 1  # flagged for the recruiter
     with pytest.raises(Conflict, match="resume-limit-reached"):
         await start(cond, scene, None, None)  # a second restart ends it
     assert await _events(admin_engine, scene, "completed") == [("left_early", "completed")]

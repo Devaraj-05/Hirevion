@@ -602,6 +602,17 @@ class Conductor:
                             refusal = Conflict(
                                 "resume-limit-reached", "The interview can no longer be resumed"
                             )
+                        else:
+                            # The recruiter sees the reconnect, as an interruption's own events.
+                            await record_event(
+                                session,
+                                interview,
+                                "reconnected",
+                                by,
+                                from_status=interview.status,
+                                reason="The app restarted before the drop was seen",
+                                details={"interruptions": row.interruptions},
+                            )
                     else:
                         row.reconnects += 1
                     if refusal is None:
