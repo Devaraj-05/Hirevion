@@ -58,3 +58,11 @@ reason = "Mitigated like GHSA-xcq7-p3pf-p88h: TraceStateGuard drops a traceparen
 id = "RUSTSEC-2026-0387"
 ignoreUntil = 2027-02-28
 reason = "Timing side channel in crypto-bigint 0.5; the shipped Windows app signs only through NCrypt, and p256 signs only in non-Windows builds and tests; p256 0.14 upgrade tracked in STATUS"
+
+# chrono is marked unmaintained (informational, no vulnerability, no fixed version). It sits in the
+# desktop's Cargo.lock as an optional dependency nothing turns on: `cargo tree --target all
+# --all-features -i chrono` finds no path to it, so no build compiles it.
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0543"
+ignoreUntil = 2027-02-28
+reason = "chrono is unmaintained (informational, no vulnerability); it is in the desktop's Cargo.lock but no build compiles it (cargo tree --target all --all-features finds no path)"
