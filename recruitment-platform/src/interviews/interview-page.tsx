@@ -66,6 +66,9 @@ const EVALUATED = new Set(["completed", "evaluating", "evaluated"]);
  * `canRerun` the admin's re-run, with `canMeasure` the organisation's agreement with the AI);
  * with `canMonitor`, the live monitoring of proctoring (and with `canReviewEvents` the review of
  * its events). The API checks every permission again. */
+/** How an interview ended (the `completed` event's reason), labelled for the history (C8-9). */
+const END_REASONS = new Set(["left_early", "candidate_ended", "time_up", "finished"]);
+
 export function InterviewPage({
   id,
   canManage,
@@ -130,7 +133,10 @@ export function InterviewPage({
     checks?: string[];
     third_eye?: string;
     recording?: Record<string, boolean>;
+    resume?: { grace_seconds?: number; max_interruptions?: number; same_device?: boolean };
   };
+  const reconnectMinutes = Math.max(1, Math.round((policy.resume?.grace_seconds ?? 300) / 60));
+  const reason = (value: string) => (END_REASONS.has(value) ? t(`endReasons.${value}`) : value);
 
   return (
     <>
@@ -248,6 +254,15 @@ export function InterviewPage({
                   .map(([what]) => what)
                   .join(", ") || "—"}
               </dd>
+              <dt className="text-muted-foreground">{t("attempts")}</dt>
+              <dd>
+                {policy.resume?.same_device
+                  ? t("attemptsOne", { minutes: reconnectMinutes })
+                  : t("attemptsResume", {
+                      count: policy.resume?.max_interruptions ?? 3,
+                      minutes: reconnectMinutes,
+                    })}
+              </dd>
             </dl>
             <p className="mt-3 text-muted-foreground text-xs">{t("policyPinned")}</p>
           </CardContent>
@@ -336,7 +351,7 @@ export function InterviewPage({
                   <span>{event.action}</span>
                   {event.reason ? (
                     <span className="text-muted-foreground">
-                      {t("eventReason", { reason: event.reason })}
+                      {t("eventReason", { reason: reason(event.reason) })}
                     </span>
                   ) : null}
                 </li>

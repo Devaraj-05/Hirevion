@@ -1835,6 +1835,9 @@
       "proctoring": "Proctoring",
       "thirdEye": "Third eye",
       "recording": "Recording",
+      "attempts": "Attempts",
+      "attemptsOne": "One attempt · one reconnect within {minutes} min, from the same laptop",
+      "attemptsResume": "Up to {count, plural, one {# reconnect} other {# reconnects}} within {minutes} min",
       "policyPinned": "Fixed when the interview was created: later changes to the template don't affect it.",
       "reviewers": "Reviewers",
       "editReviewers": "Change",
@@ -1865,6 +1868,12 @@
       "windowValue": "{start} – {end} ({zone})",
       "emailLine": "{kind} · {to} · {when}",
       "eventReason": "— {reason}",
+      "endReasons": {
+        "left_early": "ended early: the connection dropped and the candidate didn't rejoin",
+        "candidate_ended": "ended early by the candidate",
+        "time_up": "the time ran out",
+        "finished": "all questions asked"
+      },
       "openReview": "Open the review workspace",
       "analytics": "Analytics"
     },

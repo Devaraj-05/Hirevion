@@ -131,6 +131,43 @@ describe("InterviewPage", () => {
     expect(screen.getByRole("button", { name: "Send invitation" })).toBeInTheDocument();
   });
 
+  it("shows the one-attempt rule and why an interview ended early", async () => {
+    vi.mocked(api.getInterview).mockResolvedValue(
+      interview({
+        status: "completed",
+        policy: {
+          ...interview().policy,
+          resume: {
+            grace_seconds: 120,
+            max_interruptions: 1,
+            pause_timer: false,
+            same_device: true,
+          },
+        },
+        events: [
+          {
+            id: "e-2",
+            action: "completed",
+            from_status: "interrupted",
+            to_status: "completed",
+            reason: "left_early",
+            actor_type: "system",
+            actor_id: "scheduler",
+            details: {},
+            created_at: "2026-11-22T10:00:00Z",
+          },
+        ],
+      }),
+    );
+    renderAdmin(<InterviewPage id="iv-1" canManage />);
+    expect(
+      await screen.findByText("One attempt · one reconnect within 2 min, from the same laptop"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("— ended early: the connection dropped and the candidate didn't rejoin"),
+    ).toBeInTheDocument();
+  });
+
   it("sends the invitation of a scheduled interview", async () => {
     vi.mocked(api.getInterview).mockResolvedValue(interview({ status: "scheduled" }));
     vi.mocked(api.sendInvitation).mockResolvedValue(interview({ status: "invited" }));
