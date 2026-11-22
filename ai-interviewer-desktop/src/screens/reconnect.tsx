@@ -22,6 +22,14 @@ const REJOIN_ERRORS = [
   "third-eye-required",
 ] as const;
 type RejoinError = (typeof REJOIN_ERRORS)[number] | "unknown";
+/** Refusals that end the interview for good; the others (a connection still closing, the phone,
+ * a busy service) let the candidate try again. */
+const FINAL = [
+  "resume-limit-reached",
+  "interview-already-taken",
+  "interview-other-device",
+  "interview-expired",
+] as const;
 
 function rejoinError(failure: unknown): RejoinError {
   const code = isCommandError(failure) ? failure.code : "unknown";
@@ -58,8 +66,8 @@ export function ReconnectScreen({
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
+  // A guide only: the laptop's clock may be off, so the server alone says when it's too late.
   const left = summary ? rejoinSecondsLeft(summary, now) : null;
-  const timedOut = left === 0;
 
   const rejoin = useCallback(async () => {
     setBusy(true);
@@ -87,8 +95,7 @@ export function ReconnectScreen({
     void rejoin();
   }, [rejoin]);
 
-  const over =
-    timedOut || (failure !== null && failure !== "media-unavailable" && failure !== "unknown");
+  const over = failure !== null && (FINAL as readonly string[]).includes(failure);
   return (
     <section className="m-auto grid w-full max-w-xl gap-6" aria-labelledby="reconnect-title">
       <Panel className="grid justify-items-center gap-5 p-10 text-center">

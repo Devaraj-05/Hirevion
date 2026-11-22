@@ -108,7 +108,7 @@ Body:
 - **One attempt (C8-9, ADR-0049):** a new interview's resume policy is `{grace_seconds: 120, max_interruptions: 1, pause_timer: false, same_device: true}`:
   - the first start binds the interview to the session token's DPoP key;
   - one reconnect, within 2 minutes of the drop, from that laptop, with the clock running;
-  - a start while the interview is still `in_progress` (the app restarted before the drop was seen) counts as that reconnect;
+  - a start while the interview is still `in_progress` (a repeated start, or an app restarted before the drop was seen) is answered again without counting; only the drop LiveKit reports counts;
   - a second drop, or the window passing, completes the interview with the reason `left_early`, and it is evaluated.
   
   Interviews assigned before keep their snapshot's policy.

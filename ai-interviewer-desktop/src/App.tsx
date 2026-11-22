@@ -153,6 +153,7 @@ function CandidateApp() {
             onStart={(interviewId) => send({ type: "interview-chosen", interviewId })}
             onRejoin={(interviewId) => send({ type: "reconnect-chosen", interviewId })}
             onProfile={onProfile}
+            onError={lost}
           />
         ) : null}
         {state.screen === "prepare" ? (

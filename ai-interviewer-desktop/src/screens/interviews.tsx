@@ -38,11 +38,13 @@ export function InterviewsScreen({
   onStart,
   onRejoin,
   onProfile,
+  onError,
 }: {
   profile: Profile;
   onStart: (interviewId: string) => void;
   onRejoin: (interviewId: string) => void;
   onProfile: (profile: Profile) => void;
+  onError: (error: unknown) => void;
 }) {
   const t = useTranslations("interviews");
   const format = useFormatter();
@@ -55,11 +57,13 @@ export function InterviewsScreen({
       .then((fresh) => {
         if (live) onProfile(fresh);
       })
-      .catch(() => undefined);
+      .catch((error: unknown) => {
+        if (live) onError(error); // a lost session goes back to sign-in
+      });
     return () => {
       live = false;
     };
-  }, [onProfile]);
+  }, [onProfile, onError]);
   const open = profile.interviews.filter((interview) => listed(interview, now));
   const when = (iso: string) =>
     format.dateTime(new Date(iso), { dateStyle: "medium", timeStyle: "short" });

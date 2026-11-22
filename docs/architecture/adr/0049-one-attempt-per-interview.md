@@ -47,8 +47,9 @@ Asked about crashes and lost connections, the owner chose (2026-11-22): **one re
 
 - A drop seen by LiveKit (`interrupt`) counts one interruption.
 - The rejoin is `start` again from the same laptop, within 120 s. It may leave out the system check and the consent (the first start's stand), because the preparation page can't be redone in 2 minutes.
-- If the app restarted before LiveKit saw the drop, the interview is still `in_progress`: that start is the reconnect. It is refused with `409 interview-in-use` while the candidate is still in the room (`MediaControl.candidate_present`, as the LiveKit webhook already checks).
-- A second drop, or a second restart, completes the interview at once with the reason `left_early`.
+- A start while the interview is still `in_progress` (its answer was lost and the app asked again, or the app restarted before LiveKit saw the drop) is answered again and costs nothing. Only the drop LiveKit reports is counted. While the candidate is still in the room that start is refused with `409 interview-in-use` (`MediaControl.candidate_present`, as the LiveKit webhook already checks), so a second app can't join.
+- A second drop completes the interview at once with the reason `left_early`. Both drops stay in the history.
+- The open question is closed by the engine, and a coding draft becomes the final code, whether the second drop or the scheduler ends it.
 - The scheduler completes an interview interrupted past its 120 s the same way (`end_left_early`, beside `abandon`). A completed interview is evaluated (the evaluation queues only for `completed`) and its transcript artifacts are written.
 - The application moves to "interviewed", not back to the shortlist.
 - Old-policy interviews are still abandoned and sent back to the shortlist.
@@ -75,7 +76,7 @@ Heartbeats, proctoring events and recording uploads aren't refused: uploads cont
 
 - **The thank-you page:** one button, **Close app**, which closes the window (`core:window:allow-destroy`). The flow has no way back from a submitted interview.
 - **The interviews list:** fetched again from the server every time it shows (`profile`, which also restarts uploads a crash left behind). Each card's action comes from `attempt`: Get ready, Rejoin interview (with the time left), in progress on another device, or the countdown to the window.
-- **Rejoining:** a Reconnect screen. It checks that the apps the interview forbids are closed, then calls `start` without the check and consent. It shows the time left, and explains when the interview has ended. It opens:
+- **Rejoining:** a Reconnect screen. It checks that the apps the interview forbids are closed, then calls `start` without the check and consent. It shows the time left as a guide (the laptop's clock may be off, so only the server says when it's too late), and keeps Rejoin offered after a passing refusal: a connection still closing, the phone, a busy service. Only a final refusal (taken, spent, another laptop, expired) says the interview has ended. It opens:
   - from the list;
   - straight after launch, when the saved session (the 8-hour refresh token, DPoP-bound to this laptop, ADR-0021) finds an interview to rejoin. The saved session is used only for this; otherwise the candidate signs in as before.
 - **Closing the window during the interview:** asks first (the End Interview dialog). Confirming submits, so it ends the interview for good.

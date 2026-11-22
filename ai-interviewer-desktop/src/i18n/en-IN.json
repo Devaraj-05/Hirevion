@@ -440,7 +440,7 @@
   "reconnect": {
     "title": "Rejoin your interview",
     "lead": "Your {job} interview was interrupted. You can rejoin it once, from this laptop. Its clock kept running.",
-    "timeLeft": "{time} left to rejoin",
+    "timeLeft": "About {time} left to rejoin",
     "rejoin": "Rejoin now",
     "rejoining": "Rejoining…",
     "closeApps": "Close these apps first, then rejoin:",
@@ -451,7 +451,7 @@
       "resume-limit-reached": "This interview can't be rejoined again.",
       "interview-already-taken": "You've already taken this interview.",
       "interview-other-device": "This interview was started on another device.",
-      "interview-in-use": "This interview is already open in another window.",
+      "interview-in-use": "Your last connection is still closing. Try again in a few seconds.",
       "interview-expired": "The window for this interview has closed.",
       "media-unavailable": "The interview service is busy. Try again in a moment.",
       "third-eye-required": "Your phone's camera isn't connected. Open its page again, then rejoin.",

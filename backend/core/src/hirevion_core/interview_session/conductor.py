@@ -359,20 +359,7 @@ class Conductor:
                     flags=answer.flags,
                 )
             )
-        for question_id, status in turn.closed:
-            await session.execute(
-                update(InterviewQuestion)
-                .where(InterviewQuestion.id == UUID(question_id))
-                .values(status=status, closed_at=now)
-            )
-            if question_id == state.coding.question_id and state.coding.ended in (
-                "time_limit",
-                "closed",
-            ):
-                # Closed without a submission: the last text the console saved is the final code.
-                await console.keep_last_text(
-                    session, interview, UUID(question_id), state.coding.ended
-                )
+        await close_questions(session, interview, state, turn, now)
         if turn.asked is not None:
             asked = turn.asked
             session.add(
@@ -590,30 +577,14 @@ class Conductor:
                     policy = resume_policy(interview.policy)
                     if interview.status == "interrupted":
                         turn = await self._resume(session, interview, row, state, now, by)
-                    elif policy.same_device:
-                        # The app restarted before LiveKit saw it leave: this is the reconnect.
-                        if await self._present(interview):
+                    else:
+                        # Still running: a repeated start (its answer was lost) is answered again.
+                        # A real drop is counted when LiveKit reports it (`interrupt`); until then
+                        # a second app is refused while the first is still in the room.
+                        if policy.same_device and await self._present(interview):
                             raise Conflict(
                                 "interview-in-use", "The interview is open in another window"
                             )
-                        row.interruptions += 1
-                        if row.interruptions > policy.max_interruptions:
-                            turn = self._engine.finish(state, now, LEFT_EARLY)
-                            refusal = Conflict(
-                                "resume-limit-reached", "The interview can no longer be resumed"
-                            )
-                        else:
-                            # The recruiter sees the reconnect, as an interruption's own events.
-                            await record_event(
-                                session,
-                                interview,
-                                "reconnected",
-                                by,
-                                from_status=interview.status,
-                                reason="The app restarted before the drop was seen",
-                                details={"interruptions": row.interruptions},
-                            )
-                    else:
                         row.reconnects += 1
                     if refusal is None:
                         row.connected_at = now
@@ -1043,7 +1014,17 @@ class Conductor:
                 row.interruptions += 1
                 ended: Turn | None = None
                 if policy.same_device and row.interruptions > policy.max_interruptions:
-                    # A second drop under the one-attempt policy ends the interview (C8-9).
+                    # A second drop under the one-attempt policy ends the interview (C8-9); the
+                    # drop itself stays in the history.
+                    await record_event(
+                        session,
+                        interview,
+                        "interrupted",
+                        by,
+                        from_status=interview.status,
+                        reason=reason,
+                        details={"interruptions": row.interruptions},
+                    )
                     ended = self._engine.finish(state, now, LEFT_EARLY)
                     seq = await self._apply(
                         session,
@@ -1341,19 +1322,37 @@ async def complete_interview(
     await session.flush()
 
 
+async def close_questions(
+    session: AsyncSession, interview: Interview, state: InterviewState, turn: Turn, now: datetime
+) -> None:
+    """Closes the questions `turn` closed; a coding question closed without a submission keeps
+    the last text its console saved as the final code."""
+    for question_id, status in turn.closed:
+        await session.execute(
+            update(InterviewQuestion)
+            .where(InterviewQuestion.id == UUID(question_id))
+            .values(status=status, closed_at=now)
+        )
+        if question_id == state.coding.question_id and state.coding.ended in (
+            "time_limit",
+            "closed",
+        ):
+            await console.keep_last_text(session, interview, UUID(question_id), state.coding.ended)
+
+
 async def end_left_early(session: AsyncSession, interview: Interview, now: datetime) -> None:
     """Ends an interview interrupted past its reconnect window under the one-attempt policy
-    (C8-9): it is completed with what was answered, and evaluated. The scheduler calls this, in
-    the interview's tenant, with the interview locked."""
+    (C8-9): the engine finishes it (the open question closes, a coding draft becomes the final
+    code), and it is completed with what was answered, and evaluated. The scheduler calls this,
+    in the interview's tenant, with the interview locked."""
     row = await session.get(InterviewSession, interview.id, with_for_update=True)
-    await complete_interview(session, interview, row, now, By.system(), LEFT_EARLY)
     if row is not None and row.state:
         state = InterviewState.from_json(row.state)
-        state.ended_reason = LEFT_EARLY
-        state.enter("completion", now)
-        state.enter("evaluation", now)
+        turn = Orchestrator().finish(state, now, LEFT_EARLY)
+        await close_questions(session, interview, state, turn, now)
         row.state = state.to_json()
         row.state_seq += 1
+    await complete_interview(session, interview, row, now, By.system(), LEFT_EARLY)
     await session.flush()
 
 

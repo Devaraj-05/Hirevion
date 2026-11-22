@@ -935,12 +935,17 @@ async def test_a_second_drop_ends_the_interview_and_it_is_evaluated(
     assert interview.status == "completed"
     assert application.stage == "interviewed"
     assert await _events(admin_engine, scene, "completed") == [("left_early", "completed")]
+    # Both drops are in the history, the second one without a pause.
+    assert [reason for reason, _ in await _events(admin_engine, scene, "interrupted")] == [
+        "left",
+        "left",
+    ]
     assert await _outbox(admin_engine, scene, "evaluation") == 1
     with pytest.raises(Conflict, match="interview-already-taken"):
         await start(cond, scene, None, None)
 
 
-async def test_restarting_before_the_drop_is_noticed_uses_the_one_reconnect(
+async def test_a_repeated_start_is_answered_again_without_using_the_reconnect(
     app_db: Database,
     admin_engine: AsyncEngine,
     valkey: Redis,
@@ -959,12 +964,14 @@ async def test_restarting_before_the_drop_is_noticed_uses_the_one_reconnect(
     with pytest.raises(Conflict, match="interview-in-use"):
         await start(cond, scene, None, None)  # a second app while the first is still in
     media.present.discard(identity)
-    rejoined = await start(cond, scene, None, None)  # the app restarted: the one reconnect
-    assert rejoined.view.status == "in_progress"
-    assert len(await _events(admin_engine, scene, "reconnected")) == 1  # flagged for the recruiter
-    with pytest.raises(Conflict, match="resume-limit-reached"):
-        await start(cond, scene, None, None)  # a second restart ends it
-    assert await _events(admin_engine, scene, "completed") == [("left_early", "completed")]
+    # The start's answer was lost: asking again (twice) is answered, and costs nothing.
+    for _ in range(2):
+        again = await start(cond, scene, None, None)
+        assert again.view.status == "in_progress"
+    async with app_db.tenant(scene.organization_id) as session:
+        row = await session.get_one(InterviewSession, scene.interview_id)
+    assert row.interruptions == 0
+    assert await _events(admin_engine, scene, "completed") == []
 
 
 async def test_the_scheduler_ends_a_strict_interview_after_the_window(
@@ -989,6 +996,14 @@ async def test_the_scheduler_ends_a_strict_interview_after_the_window(
         row = await session.get_one(InterviewSession, scene.interview_id)
     assert interview.status == "completed" and application.stage == "interviewed"
     assert row.state["ended_reason"] == "left_early" and row.ended_at is not None
+    async with app_db.tenant(scene.organization_id) as session:
+        still_open = await session.scalar(
+            select(InterviewQuestion.id).where(
+                InterviewQuestion.interview_id == scene.interview_id,
+                InterviewQuestion.status == "asked",
+            )
+        )
+    assert still_open is None  # the question open at the drop was closed
     assert await _events(admin_engine, scene, "completed") == [("left_early", "completed")]
     assert await _outbox(admin_engine, scene, "evaluation") == 1
     assert await _outbox(admin_engine, scene, "interview.completed") == 1

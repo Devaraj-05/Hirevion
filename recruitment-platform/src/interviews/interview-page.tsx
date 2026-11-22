@@ -60,18 +60,18 @@ const HAPPENED = new Set([
 // Interviews that ended and are evaluated, or about to be.
 const EVALUATED = new Set(["completed", "evaluating", "evaluated"]);
 
-/** One interview (PRD §24): its pinned template and policy, its window and status, who reviews
- * it, its history and the emails sent; and, for `canManage`, sending, rescheduling, cancelling
- * and choosing reviewers; with `canReview`, its evaluation and the reviewer's own scores (with
- * `canRerun` the admin's re-run, with `canMeasure` the organisation's agreement with the AI);
- * with `canMonitor`, the live monitoring of proctoring (and with `canReviewEvents` the review of
- * its events). The API checks every permission again. */
 /** How an interview ended (the `completed` event's reason), labelled for the history (C8-9). */
 const END_REASONS = ["left_early", "candidate_ended", "time_up", "finished"] as const;
 type EndReason = (typeof END_REASONS)[number];
 const isEndReason = (value: string): value is EndReason =>
   (END_REASONS as readonly string[]).includes(value);
 
+/** One interview (PRD §24): its pinned template and policy, its window and status, who reviews
+ * it, its history and the emails sent; and, for `canManage`, sending, rescheduling, cancelling
+ * and choosing reviewers; with `canReview`, its evaluation and the reviewer's own scores (with
+ * `canRerun` the admin's re-run, with `canMeasure` the organisation's agreement with the AI);
+ * with `canMonitor`, the live monitoring of proctoring (and with `canReviewEvents` the review of
+ * its events). The API checks every permission again. */
 export function InterviewPage({
   id,
   canManage,

@@ -145,6 +145,8 @@ async def _load_open(
         raise ProblemError(409, "interview-not-open", "The interview's window hasn't opened yet")
     if interview.status in TAKEN:
         raise ProblemError(409, "interview-already-taken", "This interview has already been taken")
+    if interview.status == "cancelled":
+        raise ProblemError(403, "interview-not-available", "This interview was cancelled")
     raise ProblemError(409, "resume-limit-reached", "The interview can no longer be resumed")
 
 
