@@ -97,8 +97,9 @@ def test_another_laptop_is_refused_under_the_strict_policy() -> None:
     assert attempt_of(old, session(), jkt="other", now=NOW).state == "reconnect"
 
 
-def test_a_running_interview_without_its_session_row_is_used() -> None:
-    assert attempt_of(interview("in_progress"), None, jkt="laptop", now=NOW).state == "used"
+def test_a_running_interview_without_its_checkpoint_is_left_to_the_start() -> None:
+    # Only seeded data has one; the start refuses it ("can't be resumed").
+    assert attempt_of(interview("in_progress"), None, jkt="laptop", now=NOW).state == "reconnect"
 
 
 def test_a_running_interview_past_its_window_end_is_expired() -> None:

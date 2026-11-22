@@ -52,7 +52,9 @@ def attempt_of(
     if status not in RUNNING:
         return AttemptView("not_open")
     if row is None:
-        return AttemptView("used")
+        # No checkpoint to judge by (the first start writes it with the status, so only a seeded
+        # row lacks it): `Conductor.start` refuses such an interview itself.
+        return AttemptView("reconnect")
     policy = resume_policy(interview.policy)
     if policy.same_device and row.device_jkt and jkt != row.device_jkt:
         return AttemptView("elsewhere")
