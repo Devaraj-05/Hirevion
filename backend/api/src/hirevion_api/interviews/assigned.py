@@ -26,6 +26,8 @@ from hirevion_api.interviews.assigned_schemas import (
     InterviewSummary,
     InvitationResponse,
     PersonRef,
+    PlannedQuestionBody,
+    QuestionPlanResponse,
     RescheduleBody,
     ReviewersBody,
     SkippedApplication,
@@ -39,7 +41,7 @@ from hirevion_core.identity.settings import IdentitySettings
 from hirevion_core.interviews import assignment
 from hirevion_core.interviews.assignment import Assignment, InterviewDetail, InterviewFilters
 from hirevion_core.interviews.lifecycle import reference
-from hirevion_core.models import Candidate, Interview, Job
+from hirevion_core.models import Candidate, Interview, InterviewQuestionPlan, Job
 
 router = api_router(tags=["interviews"])
 
@@ -265,6 +267,36 @@ async def get_interview(
     async with own_tenant(request, principal) as session:
         scope = await resource_scope(session, principal.user_id)
         return await _reloaded(session, principal, scope, interview_id)
+
+
+@router.get("/interviews/{interview_id}/question-plan")
+async def get_question_plan(
+    interview_id: UUID, request: Request, principal: Views
+) -> QuestionPlanResponse:
+    """The questions prepared for the interview from the job and the resume (C8-10), read-only,
+    each with where it comes from."""
+    async with own_tenant(request, principal) as session:
+        scope = await resource_scope(session, principal.user_id)
+        interview = await assignment.get_interview(session, interview_id, scope)
+        plan = await session.get(InterviewQuestionPlan, interview.id)
+    if plan is None:
+        return QuestionPlanResponse(status="pending", version=0, questions=[])
+    return QuestionPlanResponse(
+        status=plan.status,  # type: ignore[arg-type]
+        version=plan.version,
+        questions=[
+            PlannedQuestionBody(
+                skill=str(entry["skill"]),
+                difficulty=str(entry["difficulty"]),
+                type=str(entry["type"]),
+                text=str(entry["text"]),
+                concept=entry.get("concept"),
+                source=entry.get("source") or "generated",
+                quote=(entry.get("source_ref") or {}).get("quote"),
+            )
+            for entry in plan.items
+        ],
+    )
 
 
 async def _locked(

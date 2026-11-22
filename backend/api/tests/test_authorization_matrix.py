@@ -154,6 +154,7 @@ EXPECTED: dict[str, tuple[tuple[str, ...], bool]] = {
     "POST /api/v1/interviews": (("interviews.manage",), False),
     "POST /api/v1/interviews/bulk": (("interviews.manage",), False),
     "GET /api/v1/interviews/{interview_id}": (("interviews.view",), False),
+    "GET /api/v1/interviews/{interview_id}/question-plan": (("interviews.view",), False),
     "POST /api/v1/interviews/{interview_id}/invitation": (("interviews.manage",), False),
     "POST /api/v1/interviews/{interview_id}/reschedule": (("interviews.manage",), False),
     "POST /api/v1/interviews/{interview_id}/cancel": (("interviews.manage",), False),

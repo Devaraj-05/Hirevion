@@ -43,6 +43,7 @@ import {
 } from "./assigned-api";
 import { EvaluationCard } from "./evaluation-card";
 import { MonitoringPanel } from "./monitoring-panel";
+import { PreparedQuestionsCard } from "./prepared-questions-card";
 import { TranscriptCard } from "./transcript-card";
 
 type Asking = "reschedule" | "cancel" | "reviewers" | null;
@@ -341,6 +342,7 @@ export function InterviewPage({
         {canReview && EVALUATED.has(data.status) ? (
           <EvaluationCard id={id} canRerun={canRerun} canMeasure={canMeasure} />
         ) : null}
+        <PreparedQuestionsCard id={id} />
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>{t("history")}</CardTitle>

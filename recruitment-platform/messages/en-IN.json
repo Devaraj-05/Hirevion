@@ -1875,7 +1875,22 @@
         "finished": "all questions asked"
       },
       "openReview": "Open the review workspace",
-      "analytics": "Analytics"
+      "analytics": "Analytics",
+      "prepared": {
+        "title": "Prepared questions",
+        "lead": "{count, plural, one {# question} other {# questions}} prepared from the job and the candidate's resume, at easy, medium and hard. The interviewer asks from these and never repeats one; the candidate doesn't see them.",
+        "pending": "The questions are being prepared from the job and the resume.",
+        "failed": "The questions couldn't be prepared, so the interview uses the question library. They're asked for again when the candidate opens the page before the interview.",
+        "unavailable": "The prepared questions couldn't be loaded.",
+        "fromJob": "From the job",
+        "fromResume": "From the resume: “{quote}”",
+        "fromLibrary": "From the question library",
+        "levels": {
+          "easy": "Easy",
+          "medium": "Medium",
+          "hard": "Hard"
+        }
+      }
     },
     "assign": {
       "title": "{count, plural, one {Create an interview} other {Create # interviews}}",

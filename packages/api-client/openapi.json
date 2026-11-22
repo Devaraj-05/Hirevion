@@ -10590,6 +10590,69 @@
         "title": "PlacementBody",
         "type": "object"
       },
+      "PlannedQuestionBody": {
+        "description": "One prepared question (C8-10), as recruiters read it.",
+        "properties": {
+          "concept": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Concept"
+          },
+          "difficulty": {
+            "title": "Difficulty",
+            "type": "string"
+          },
+          "quote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote"
+          },
+          "skill": {
+            "title": "Skill",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "library",
+              "generated",
+              "resume"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill",
+          "difficulty",
+          "type",
+          "text",
+          "concept",
+          "source",
+          "quote"
+        ],
+        "title": "PlannedQuestionBody",
+        "type": "object"
+      },
       "PlaybackFile": {
         "properties": {
           "bytes": {
@@ -12083,6 +12146,37 @@
           "model"
         ],
         "title": "QuestionEvaluationDetail",
+        "type": "object"
+      },
+      "QuestionPlanResponse": {
+        "properties": {
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/PlannedQuestionBody"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "ready",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "status",
+          "version",
+          "questions"
+        ],
+        "title": "QuestionPlanResponse",
         "type": "object"
       },
       "QuestionResponse": {
@@ -23402,6 +23496,60 @@
         "summary": "Add Interview Note",
         "tags": [
           "review"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/question-plan": {
+      "get": {
+        "description": "The questions prepared for the interview from the job and the resume (C8-10), read-only,\neach with where it comes from.",
+        "operationId": "get_question_plan",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionPlanResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Client error, as an RFC 9457 problem"
+          },
+          "5XX": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Server error, as an RFC 9457 problem"
+          }
+        },
+        "summary": "Get Question Plan",
+        "tags": [
+          "interviews"
         ]
       }
     },

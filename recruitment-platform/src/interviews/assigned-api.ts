@@ -69,6 +69,16 @@ export async function getInterview(id: string): Promise<Interview> {
   );
 }
 
+export type QuestionPlan = Schemas["QuestionPlanResponse"];
+
+/** The questions prepared for the interview from the job and the resume (C8-10), read-only. */
+export async function getQuestionPlan(id: string): Promise<QuestionPlan> {
+  return required(
+    (await apiClient().GET("/api/v1/interviews/{interview_id}/question-plan", { params: one(id) }))
+      .data,
+  );
+}
+
 export interface AssignInput {
   application_ids: string[];
   template_id: string | null;

@@ -1580,6 +1580,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/interviews/{interview_id}/question-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Question Plan
+         * @description The questions prepared for the interview from the job and the resume (C8-10), read-only,
+         *     each with where it comes from.
+         */
+        get: operations["get_question_plan"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/interviews/{interview_id}/questions/{question_id}/human-scores": {
         parameters: {
             query?: never;
@@ -7338,6 +7359,29 @@ export interface components {
             /** Person */
             person: number;
         };
+        /**
+         * PlannedQuestionBody
+         * @description One prepared question (C8-10), as recruiters read it.
+         */
+        PlannedQuestionBody: {
+            /** Concept */
+            concept: string | null;
+            /** Difficulty */
+            difficulty: string;
+            /** Quote */
+            quote: string | null;
+            /** Skill */
+            skill: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "library" | "generated" | "resume";
+            /** Text */
+            text: string;
+            /** Type */
+            type: string;
+        };
         /** PlaybackFile */
         PlaybackFile: {
             /** Bytes */
@@ -7918,6 +7962,18 @@ export interface components {
             unsupported: string[];
             /** Weight */
             weight: number;
+        };
+        /** QuestionPlanResponse */
+        QuestionPlanResponse: {
+            /** Questions */
+            questions: components["schemas"]["PlannedQuestionBody"][];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "ready" | "failed";
+            /** Version */
+            version: number;
         };
         /** QuestionResponse */
         QuestionResponse: {
@@ -13597,6 +13653,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NoteResponse"];
+                };
+            };
+            /** @description Client error, as an RFC 9457 problem */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Server error, as an RFC 9457 problem */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_question_plan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionPlanResponse"];
                 };
             };
             /** @description Client error, as an RFC 9457 problem */

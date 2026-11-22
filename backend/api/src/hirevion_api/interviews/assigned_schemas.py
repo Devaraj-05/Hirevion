@@ -164,3 +164,23 @@ class DashboardSummary(BaseModel):
     """Interviews that have ended and wait for a person to decide."""
     proctoring_alerts: int | None = None
     """WARNING and CRITICAL proctoring events of those interviews that no one has reviewed."""
+
+
+class PlannedQuestionBody(BaseModel):
+    """One prepared question (C8-10), as recruiters read it."""
+
+    skill: str
+    difficulty: str
+    type: str
+    text: str
+    concept: str | None
+    source: Literal["library", "generated", "resume"]
+    """`library` (approved), `generated` (the AI, from the job) or `resume` (quoting it)."""
+    quote: str | None
+    """For a resume question: the resume line it comes from."""
+
+
+class QuestionPlanResponse(BaseModel):
+    status: Literal["pending", "ready", "failed"]
+    version: int
+    questions: list[PlannedQuestionBody]

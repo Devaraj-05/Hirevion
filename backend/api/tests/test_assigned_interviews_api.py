@@ -280,3 +280,35 @@ async def test_a_job_keeps_a_default_template_that_was_archived_since(
         job, json={"title": "Senior Backend Engineer", "interview_template_id": template}
     )
     assert edited.status_code == 200, edited.text
+
+
+async def test_the_prepared_questions_are_read_only_for_the_hiring_team(
+    recruiter: AsyncClient,
+    acme: UUID,
+    recruiter_id: UUID,
+    make_hiring: Any,
+    app_db: Any,
+) -> None:
+    """C8-10 (owner, 2026-11-22): recruiters see each interview's prepared questions, read-only,
+    with where each comes from."""
+    hiring = await make_hiring(acme, recruiter_id=recruiter_id)
+    body = await create(recruiter, hiring)
+    preparing = await recruiter.get(f"/api/v1/interviews/{body['id']}/question-plan")
+    assert preparing.status_code == 200
+    assert preparing.json() == {"status": "pending", "version": 0, "questions": []}
+
+    from hirevion_core.ai import build_ai
+    from hirevion_core.ai.settings import AiSettings
+    from hirevion_core.interviews.plan import write_plan
+    from hirevion_core.models import Interview
+
+    async with app_db.tenant(acme) as session:
+        interview = await session.get(Interview, UUID(body["id"]))
+        await write_plan(session, build_ai(AiSettings(profile="mock"), app_db), interview)
+    ready = (await recruiter.get(f"/api/v1/interviews/{body['id']}/question-plan")).json()
+    assert ready["status"] == "ready" and ready["version"] == 1 and ready["questions"]
+    first = ready["questions"][0]
+    assert set(first) == {"skill", "difficulty", "type", "text", "concept", "source", "quote"}
+    assert {q["difficulty"] for q in ready["questions"]} == {"easy", "medium", "hard"}
+    other = await recruiter.get(f"/api/v1/interviews/{uuid7()}/question-plan")
+    assert other.status_code == 404

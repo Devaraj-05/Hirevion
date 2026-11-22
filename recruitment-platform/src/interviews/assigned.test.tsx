@@ -22,6 +22,7 @@ vi.mock("./assigned-api", async (importOriginal) => ({
   rescheduleInterview: vi.fn(),
   cancelInterview: vi.fn(),
   setInterviewReviewers: vi.fn(),
+  getQuestionPlan: vi.fn(),
 }));
 vi.mock("./session-api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./session-api")>()),
@@ -100,6 +101,11 @@ function interview(overrides: Partial<api.Interview> = {}): api.Interview {
 beforeEach(() => {
   vi.clearAllMocks();
   resetNavigation("/interviews");
+  vi.mocked(api.getQuestionPlan).mockResolvedValue({
+    status: "pending",
+    version: 0,
+    questions: [],
+  });
 });
 
 describe("InterviewsTable", () => {
@@ -166,6 +172,43 @@ describe("InterviewPage", () => {
     expect(
       screen.getByText("— ended early: the connection dropped and the candidate didn't rejoin"),
     ).toBeInTheDocument();
+  });
+
+  it("lists the questions prepared from the job and the resume, read-only", async () => {
+    vi.mocked(api.getInterview).mockResolvedValue(interview({ status: "invited" }));
+    vi.mocked(api.getQuestionPlan).mockResolvedValue({
+      status: "ready",
+      version: 1,
+      questions: [
+        {
+          skill: "PostgreSQL",
+          difficulty: "medium",
+          type: "project_based",
+          text: "How did the read replicas change your reporting queries?",
+          concept: "Read replica lag",
+          source: "resume",
+          quote: "Moved reporting queries to PostgreSQL read replicas",
+        },
+        {
+          skill: "Redis",
+          difficulty: "hard",
+          type: "scenario",
+          text: "How would you keep a cache consistent through a failover?",
+          concept: "Cache invalidation",
+          source: "generated",
+          quote: null,
+        },
+      ],
+    });
+    renderAdmin(<InterviewPage id="iv-1" canManage />);
+    expect(await screen.findByText("Prepared questions")).toBeInTheDocument();
+    expect(
+      await screen.findByText("How did the read replicas change your reporting queries?"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/From the resume: “Moved reporting queries/)).toBeInTheDocument();
+    expect(screen.getByText("From the job")).toBeInTheDocument();
+    expect(screen.getByText("Hard")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /edit|remove|regenerate/i })).toBeNull();
   });
 
   it("sends the invitation of a scheduled interview", async () => {
