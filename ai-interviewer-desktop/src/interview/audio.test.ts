@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type AudioRoom, playInterviewerAudio } from "./audio";
+import { type AudioRoom, PHONE_QUALITY, playInterviewerAudio } from "./audio";
 
 /** A room that records its listeners and what was subscribed. */
 function fakeRoom(existing: FakePublication[] = []) {
@@ -16,7 +16,9 @@ function fakeRoom(existing: FakePublication[] = []) {
       );
       return room;
     },
-    remoteParticipants: new Map([["agent", { trackPublications: new Map(existing.entries()) }]]),
+    remoteParticipants: new Map([
+      ["agent", { identity: "agent", trackPublications: new Map(existing.entries()) }],
+    ]),
     emit(event, ...args) {
       for (const listener of listeners.get(event) ?? []) listener(...(args as never[]));
     },
@@ -26,9 +28,16 @@ function fakeRoom(existing: FakePublication[] = []) {
 
 class FakePublication {
   subscribed: boolean | null = null;
-  constructor(readonly kind: "audio" | "video") {}
+  quality: number | null = null;
+  constructor(
+    readonly kind: "audio" | "video",
+    readonly source = kind === "audio" ? "microphone" : "camera",
+  ) {}
   setSubscribed(on: boolean) {
     this.subscribed = on;
+  }
+  setVideoQuality(quality: number) {
+    this.quality = quality;
   }
 }
 
@@ -61,14 +70,40 @@ describe("hearing the interviewer", () => {
     expect(voice.removed).toEqual(["element"]);
   });
 
-  it("subscribes to audio only, so the phone's video isn't downloaded back to the laptop", () => {
+  it("subscribes to the interviewer's audio, and to no one else's video", () => {
     const early = [new FakePublication("audio"), new FakePublication("video")];
     const room = fakeRoom(early);
     playInterviewerAudio(room, sink());
     expect(early.map((publication) => publication.subscribed)).toEqual([true, null]);
     const late = [new FakePublication("video"), new FakePublication("audio")];
-    for (const publication of late) room.emit("trackPublished", publication);
+    for (const publication of late) room.emit("trackPublished", publication, { identity: "agent" });
     expect(late.map((publication) => publication.subscribed)).toEqual([null, true]);
+  });
+
+  it("shows the phone's camera at its low layer, so the laptop downloads little (C8-12)", () => {
+    const camera = new FakePublication("video");
+    const room = fakeRoom();
+    const shown: unknown[] = [];
+    playInterviewerAudio(room, sink(), (track) => shown.push(track));
+    room.emit("trackPublished", camera, { identity: "third-eye-42" });
+    expect(camera.subscribed).toBe(true);
+    expect(camera.quality).toBe(PHONE_QUALITY);
+    const video = new FakeTrack("video");
+    room.emit("trackSubscribed", video, camera, { identity: "third-eye-42" });
+    room.emit("trackUnsubscribed", video, camera, { identity: "third-eye-42" });
+    expect(shown).toEqual([video, null]);
+  });
+
+  it("finds a phone already in the room when the join completes", () => {
+    const camera = new FakePublication("video");
+    const room = fakeRoom();
+    playInterviewerAudio(room, sink(), () => undefined);
+    room.remoteParticipants.set("third-eye-42", {
+      identity: "third-eye-42",
+      trackPublications: new Map([[0, camera]]),
+    });
+    room.emit("connected");
+    expect(camera.subscribed).toBe(true);
   });
 
   it("subscribes to an interviewer already in the room once the join completes", () => {
@@ -77,7 +112,10 @@ describe("hearing the interviewer", () => {
     const room = fakeRoom([]);
     playInterviewerAudio(room, sink());
     const voice = new FakePublication("audio");
-    room.remoteParticipants.set("agent", { trackPublications: new Map([[0, voice]]) });
+    room.remoteParticipants.set("agent", {
+      identity: "agent",
+      trackPublications: new Map([[0, voice]]),
+    });
     room.emit("connected");
     expect(voice.subscribed).toBe(true);
   });

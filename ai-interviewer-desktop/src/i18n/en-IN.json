@@ -259,18 +259,8 @@
       "reconnecting": "Reconnecting",
       "off": "Text mode"
     },
-    "voice": {
-      "listening": "Listening",
-      "thinking": "Thinking",
-      "speaking": "Speaking",
-      "waiting": "Waiting",
-      "paused": "Paused",
-      "ended": "Finished",
-      "error": "Having trouble, please wait"
-    },
     "answerLabel": "Your answer",
     "sendAnswer": "Send answer",
-    "keepGoing": "Keep going",
     "servicesProblem": "Some of the checks that protect your interview didn't start. Please keep this window open; the app is trying again.",
     "phone": {
       "not_paired": "Phone camera: not connected",
@@ -279,11 +269,6 @@
       "disconnected": "Phone camera: disconnected"
     },
     "phoneLost": "Your phone's camera disconnected. Unlock the phone and keep its page open; it reconnects by itself.",
-    "exit": "Exit interview",
-    "exitTitle": "Exit the interview?",
-    "exitBody": "Your answers so far are submitted, and you can't return to this interview.",
-    "exitConfirm": "Exit and submit",
-    "voiceOff": "Voice is off",
     "voiceUnavailable": "We couldn't connect your voice, so type your answers instead.",
     "waitingForQuestion": "The next question appears here.",
     "soundBlocked": "Your sound is off.",
@@ -297,7 +282,63 @@
       "phone": "Phone camera",
       "starting": "starting",
       "ok": "working",
-      "problem": "needs attention"
+      "problem": "needs attention",
+      "session": "Secure session"
+    },
+    "barTitle": "{name} – {job} – Interview",
+    "wordmark": "AI Interview",
+    "left": "left",
+    "minutesLeft": "{minutes, plural, one {One minute left} other {# minutes left}}",
+    "end": "End interview",
+    "interviewer": "Interviewer",
+    "orb": {
+      "speaking": "Interviewer is speaking",
+      "listening": "Listening",
+      "candidate": "You're speaking",
+      "thinking": "Thinking",
+      "connecting": "Connecting",
+      "off": "Voice is off: type your answers",
+      "resting": "Waiting"
+    },
+    "transcript": {
+      "title": "Transcript",
+      "live": "Live",
+      "interviewer": "Interviewer",
+      "you": "You",
+      "empty": "The conversation is written here as it's spoken.",
+      "latest": "Jump to latest"
+    },
+    "workspace": {
+      "label": "Coding area",
+      "empty": "When a coding question is asked, it opens here."
+    },
+    "cameras": {
+      "title": "Cameras",
+      "watermark": "Confidential • Interview session",
+      "main": {
+        "label": "Main camera",
+        "video": "Your camera",
+        "empty": "Starting your camera"
+      },
+      "side": {
+        "label": "Side camera · Third eye",
+        "video": "Your phone's camera",
+        "connecting": "Connecting to your phone",
+        "lost": "Your phone isn't connected. Keep its page open.",
+        "noPicture": "Your phone's camera is recording."
+      },
+      "status": {
+        "starting": "Starting",
+        "ok": "Live",
+        "problem": "Needs attention",
+        "off": "Not connected"
+      }
+    },
+    "endDialog": {
+      "title": "End the interview?",
+      "body": "You can't come back to it. What you've answered so far will be submitted.",
+      "continue": "Continue interview",
+      "end": "End interview"
     }
   },
   "coding": {

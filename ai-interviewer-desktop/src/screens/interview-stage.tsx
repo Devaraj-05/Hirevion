@@ -1,27 +1,18 @@
 import { cn } from "@hirevion/ui";
-import { LogOut, Mic, MonitorUp, Smartphone, Video } from "lucide-react";
-import { type ReactNode, useId } from "react";
+import { Lock, Mic, MonitorUp } from "lucide-react";
+import { type ReactNode, useCallback, useId, useState } from "react";
 import { useTranslations } from "use-intl";
 import type { Health, Indicators } from "../interview/health";
-import { formatClock } from "../interview/session";
+import { type Connection, orbState } from "../interview/orb-state";
+import type { Line } from "../interview/transcript";
 import type { VoiceState } from "../native/commands";
-import { PillButton, StatusPill } from "../ui/kit";
+import { CameraTile, type TileStatus, type VideoSource } from "./interview/camera-tile";
+import { TopBar } from "./interview/top-bar";
+import { TranscriptPanel } from "./interview/transcript-panel";
+import { VoiceOrb } from "./interview/voice-orb";
+import { WorkspaceColumn } from "./interview/workspace-column";
 
-export type Connection = "connecting" | "connected" | "reconnecting" | "off";
-
-const CONNECTION_TONES = {
-  connecting: "warning",
-  connected: "success",
-  reconnecting: "warning",
-  off: "neutral",
-} as const;
-
-const PARTS = [
-  { key: "camera", icon: Video },
-  { key: "microphone", icon: Mic },
-  { key: "screen", icon: MonitorUp },
-  { key: "phone", icon: Smartphone },
-] as const;
+export type { Connection } from "../interview/orb-state";
 
 const DOTS: Record<Health, string> = {
   starting: "bg-warning",
@@ -29,126 +20,129 @@ const DOTS: Record<Health, string> = {
   problem: "bg-danger",
 };
 
-/** The clock turns red for the last two minutes. */
-const LOW_SECONDS = 120;
+const SESSION: Record<Connection, Health> = {
+  connecting: "starting",
+  connected: "ok",
+  reconnecting: "starting",
+  off: "ok",
+};
 
 /**
- * What the candidate sees during the interview (product owner, 2026-11-16): the window's
- * whole height, a bar with the time left and Exit at the top right, the interviewer as a
- * soft sphere, and, while it speaks, its words (at most 250 characters, moving up as it goes
- * on). Nothing else to press: the candidate just talks. `side` holds a coding or design
- * question's workspace, or typed answers where speech can't be used.
+ * What the candidate sees during the interview (C8-12, product owner 2026-11-22): a bar with the
+ * interview's name, the time left and End interview; then three columns. The left one is the
+ * coding area, empty until a coding or design question opens. The centre is the interviewer, a
+ * sphere that moves with the voice, and the live transcript of both speakers. The right one is the
+ * main camera, the phone's camera, and the status of the microphone, the screen and the session.
  */
 export function InterviewStage({
+  title,
   connection,
   indicators,
   remaining,
   voice,
-  caption,
-  side,
+  lines,
+  workspace,
+  answerBox,
+  camera,
+  phone,
+  phoneNote,
+  interviewerAudio,
+  microphone,
   notices,
-  onExit,
+  onEnd,
 }: {
+  title: string;
   connection: Connection;
   indicators: Indicators;
   remaining: number;
   voice: VoiceState;
-  caption: string;
-  side: ReactNode | null;
+  lines: Line[];
+  /** The open question's workspace, or null for the empty coding area. */
+  workspace: ReactNode | null;
+  /** Typed answers, where speech can't be used. */
+  answerBox: ReactNode | null;
+  camera: VideoSource | null;
+  /** The phone's camera; `undefined` when the interview doesn't use one. */
+  phone: VideoSource | null | undefined;
+  /** What the side tile says when it has no picture. */
+  phoneNote: string;
+  interviewerAudio: MediaStreamTrack | null;
+  microphone: MediaStreamTrack | null;
   notices: ReactNode;
-  onExit: () => void;
+  onEnd: () => void;
 }) {
   const t = useTranslations("interview");
   const id = useId();
-  const split = side !== null;
-  const speaking = voice === "speaking" && connection !== "off";
+  const [candidateSpeaking, setCandidateSpeaking] = useState(false);
+  const onVoiced = useCallback((speaking: boolean) => setCandidateSpeaking(speaking), []);
+  const orb = orbState(voice, connection, candidateSpeaking);
+  const open = workspace !== null;
+  const cameraStatus: TileStatus = indicators.camera;
+  const phoneStatus: TileStatus = indicators.phone ?? "off";
+
+  const status = [
+    { key: "microphone", icon: Mic, health: indicators.microphone },
+    { key: "screen", icon: MonitorUp, health: indicators.screen },
+    { key: "session", icon: Lock, health: SESSION[connection] },
+  ] as const;
 
   return (
-    <div className="relative grid h-full grid-rows-[auto_minmax(0,1fr)]">
-      <header className="chrome z-10 grid h-14 grid-cols-[1fr_auto_1fr] items-center gap-4 border-border/70 border-b px-6">
-        <div className="flex min-w-0 items-center gap-2">
-          <h1 id={`${id}-title`} className="mr-1 font-semibold tracking-tight max-lg:sr-only">
-            {t("title")}
-          </h1>
-          <StatusPill tone={CONNECTION_TONES[connection]}>
-            {t(`connection.${connection}`)}
-          </StatusPill>
-        </div>
-        <p
-          className={`font-medium text-[1.05rem] tabular-nums ${remaining <= LOW_SECONDS ? "text-danger" : "text-foreground"}`}
-        >
-          <span className="sr-only">{t("timeLeft")} </span>
-          <time>{formatClock(remaining)}</time>
-        </p>
-        <div className="flex items-center justify-end gap-4">
-          <ul className="flex items-center gap-3" aria-label={t("health.title")}>
-            {PARTS.map(({ key, icon: Icon }) => {
-              const health = indicators[key];
-              if (health === null) return null;
-              const label = `${t(`health.${key}`)}: ${t(`health.${health}`)}`;
-              return (
-                <li key={key} title={label} className="relative text-muted-foreground">
-                  <Icon className="size-[18px]" strokeWidth={1.75} aria-hidden />
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "absolute -right-0.5 -bottom-0.5 size-2 rounded-full ring-2 ring-background",
-                      DOTS[health],
-                    )}
-                  />
-                  <span className="sr-only">{label}</span>
-                </li>
-              );
-            })}
-          </ul>
-          <PillButton variant="secondary" className="h-9 px-4 text-danger" onClick={onExit}>
-            <LogOut aria-hidden />
-            {t("exit")}
-          </PillButton>
-        </div>
-      </header>
+    <div className="stage grid h-full grid-rows-[auto_minmax(0,1fr)]">
+      <TopBar titleId={`${id}-title`} title={title} remaining={remaining} onEnd={onEnd} />
 
       <main
         aria-labelledby={`${id}-title`}
-        className={
-          split ? "grid min-h-0 grid-cols-[minmax(17rem,0.75fr)_minmax(0,1.5fr)]" : "grid min-h-0"
-        }
+        className="stage-grid"
+        data-workspace={open ? "open" : "closed"}
       >
-        <section
-          className="grid min-h-0 place-content-center justify-items-center gap-6 overflow-hidden px-8 py-6 text-center"
-          aria-live="polite"
-        >
-          <div
-            className={`orb ${split ? "size-28" : "size-40"}`}
-            data-voice={connection === "off" ? "paused" : voice}
-            aria-hidden
-          />
-          <p className="font-medium text-muted-foreground">
-            {connection === "off" ? t("voiceOff") : t(`voice.${voice}`)}
-          </p>
-          {/* A fixed height, so the interviewer doesn't jump as its words come and go. */}
-          <div className={`h-32 w-full ${split ? "max-w-sm" : "max-w-2xl"}`}>
-            {speaking && caption ? (
-              <p
-                className={`caption text-balance leading-relaxed ${split ? "text-base" : "text-[1.3rem]"}`}
-              >
-                {caption}
-              </p>
-            ) : null}
+        <WorkspaceColumn>{workspace}</WorkspaceColumn>
+
+        <section className="centre-column" aria-label={t("interviewer")}>
+          <div className="orb-stage">
+            <VoiceOrb
+              state={orb}
+              interviewer={interviewerAudio}
+              microphone={microphone}
+              onVoiced={onVoiced}
+            />
+            <p className="orb-label" data-state={orb}>
+              {t(`orb.${orb}`)}
+            </p>
           </div>
+          {/* What needs the candidate's attention, said once, never over the transcript. */}
+          <div className="notices">{notices}</div>
+          <TranscriptPanel lines={lines} live={connection === "connected"} />
+          {answerBox ? <div className="pane answer-pane">{answerBox}</div> : null}
         </section>
 
-        {split ? (
-          <section className="min-h-0 overflow-y-auto border-border/70 border-l bg-surface px-8 py-6">
-            <div className="mx-auto grid max-w-3xl gap-5">{side}</div>
-          </section>
-        ) : null}
+        <section className="camera-column" aria-label={t("cameras.title")}>
+          <CameraTile
+            kind="main"
+            source={camera}
+            status={cameraStatus}
+            note={t("cameras.main.empty")}
+          />
+          {phone !== undefined ? (
+            <CameraTile kind="side" source={phone} status={phoneStatus} note={phoneNote} />
+          ) : null}
+          <ul className="status-row" aria-label={t("health.title")}>
+            {status.map(({ key, icon: Icon, health }) => (
+              <li
+                key={key}
+                className="status-item"
+                title={`${t(`health.${key}`)}: ${t(`health.${health}`)}`}
+              >
+                <Icon aria-hidden className="size-4 text-muted-foreground" strokeWidth={1.75} />
+                <span className="status-name">{t(`health.${key}`)}</span>
+                <span className="status-state">
+                  <span aria-hidden className={cn("size-1.5 rounded-full", DOTS[health])} />
+                  {key === "session" ? t(`connection.${connection}`) : t(`health.${health}`)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
       </main>
-
-      {/* What needs the candidate's attention, said once, out of the way. */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-6 z-10 grid justify-items-center gap-2 px-6 [&>*]:pointer-events-auto [&>*]:max-w-xl">
-        {notices}
-      </div>
     </div>
   );
 }

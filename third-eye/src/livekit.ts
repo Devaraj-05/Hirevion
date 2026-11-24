@@ -1,4 +1,11 @@
-import { LocalVideoTrack, Room, RoomEvent, Track } from "livekit-client";
+import {
+  LocalVideoTrack,
+  Room,
+  RoomEvent,
+  Track,
+  type TrackPublishOptions,
+  VideoPresets,
+} from "livekit-client";
 import type { CameraTrack, Credentials, EyeDeps, RoomLike } from "./session";
 
 /** The browser's side of `EyeDeps`: the rear camera at 720p/15 fps, LiveKit, Wake Lock. */
@@ -27,6 +34,17 @@ async function openCamera(): Promise<LiveCamera> {
   return { track, stop: () => track.stop() };
 }
 
+/**
+ * How the phone sends its camera: 720p at 1.2 Mbps for the recorder and the vision agent, plus a
+ * 180p simulcast layer the candidate's laptop shows in its side camera tile (C8-12).
+ */
+export const CAMERA_PUBLISH: TrackPublishOptions = {
+  source: Track.Source.Camera,
+  simulcast: true,
+  videoSimulcastLayers: [VideoPresets.h180],
+  videoEncoding: { maxBitrate: 1_200_000, maxFramerate: 15 },
+};
+
 class LiveRoom implements RoomLike {
   constructor(readonly room: Room) {}
 
@@ -35,11 +53,7 @@ class LiveRoom implements RoomLike {
   }
 
   async publishCamera(camera: CameraTrack): Promise<void> {
-    await this.room.localParticipant.publishTrack((camera as LiveCamera).track, {
-      source: Track.Source.Camera,
-      simulcast: false,
-      videoEncoding: { maxBitrate: 1_200_000, maxFramerate: 15 },
-    });
+    await this.room.localParticipant.publishTrack((camera as LiveCamera).track, CAMERA_PUBLISH);
   }
 
   async unpublishCamera(): Promise<void> {

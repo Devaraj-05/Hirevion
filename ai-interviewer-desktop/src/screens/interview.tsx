@@ -1,11 +1,11 @@
-import { Dialog, DialogContent, Label, Textarea } from "@hirevion/ui";
+import { Label, Textarea } from "@hirevion/ui";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Room, RoomEvent } from "livekit-client";
+import { type RemoteTrack, Room, RoomEvent, Track } from "livekit-client";
 import { CircleCheck } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslations } from "use-intl";
-import { type AudioRoom, playInterviewerAudio } from "../interview/audio";
-import { captionWindow, isInterviewerCaption } from "../interview/captions";
+import { type AudioRoom, isPhoneCamera, playInterviewerAudio } from "../interview/audio";
+import { reconcile } from "../interview/countdown";
 import { indicators, type ServicePart } from "../interview/health";
 import {
   livekitTracks,
@@ -13,13 +13,24 @@ import {
   nativeOptions,
   openLocalTracks,
 } from "../interview/native-services";
-import { InterviewServices } from "../interview/services";
+import { InterviewServices, type LocalTracks } from "../interview/services";
 import { mergeState, parseStateMessage, STATE_TOPIC } from "../interview/session";
+import {
+  isFinalSegment,
+  type Line,
+  SEGMENT_ID,
+  speakerOf,
+  TRANSCRIBED_TRACK,
+  upsert,
+} from "../interview/transcript";
+import { typedAnswers, workspaceOf } from "../interview/workspace";
 import { commands, type InterviewState, type StartResult } from "../native/commands";
 import { type LiveThirdEye, liveView } from "../third-eye/pairing";
 import { Notice, Panel, PillButton, ScreenTitle } from "../ui/kit";
 import { CodingConsole } from "./coding-console";
 import { type ErrorKey, errorKey } from "./errors";
+import { mediaSource, type VideoSource } from "./interview/camera-tile";
+import { EndDialog } from "./interview/end-dialog";
 import { type Connection, InterviewStage } from "./interview-stage";
 import { NotesPad } from "./notes-pad";
 
@@ -32,20 +43,24 @@ const NOTICE_MS = 12_000;
 const TIME_UP_GRACE_MS = 30_000;
 
 /**
- * PRD §32–33: the interview itself, in the whole window (product owner, 2026-11-16). The
- * interviewer is heard, and what it is saying shows as a caption while it speaks (at most 250
- * characters). There is nothing to press but Exit: the candidate just talks. A coding or
- * design question opens its workspace beside the interviewer. Typed answers appear only where
- * speech can't be used: an approved text-answers accommodation, or no voice connection.
+ * PRD §32–33: the interview itself, in the whole window. The candidate talks with the
+ * interviewer and sees both voices written as they're spoken (C8-12, owner 2026-11-22), the
+ * time left, End interview, and both cameras. A coding or design question opens its workspace in
+ * the left column. Typed answers appear only where speech can't be used: an approved
+ * text-answers accommodation, or no voice connection.
  */
 export function InterviewScreen({
   interviewId,
   start,
+  candidateName,
+  jobTitle,
   onCompleted,
   onError,
 }: {
   interviewId: string;
   start: StartResult;
+  candidateName?: string | undefined;
+  jobTitle?: string | undefined;
   onCompleted: () => void;
   onError: (error: unknown) => void;
 }) {
@@ -54,7 +69,11 @@ export function InterviewScreen({
   const id = useId();
   const [state, setState] = useState<InterviewState>(start.state);
   const [remaining, setRemaining] = useState(start.state.remaining_seconds);
-  const [caption, setCaption] = useState("");
+  const [lines, setLines] = useState<Line[]>([]);
+  const [camera, setCamera] = useState<VideoSource | null>(null);
+  const [phoneVideo, setPhoneVideo] = useState<VideoSource | null>(null);
+  const [interviewerAudio, setInterviewerAudio] = useState<MediaStreamTrack | null>(null);
+  const [microphone, setMicrophone] = useState<MediaStreamTrack | null>(null);
   const [answer, setAnswer] = useState("");
   const [connection, setConnection] = useState<Connection>(
     start.livekit_url ? "connecting" : "off",
@@ -127,8 +146,11 @@ export function InterviewScreen({
     return () => void window.setFullscreen(false).catch(() => undefined);
   }, []);
 
-  // The clock counts down locally between the agent's updates.
-  useEffect(() => setRemaining(state.remaining_seconds), [state.remaining_seconds]);
+  // The clock counts down locally; the agent's time moves it only when they disagree (C8-12).
+  useEffect(
+    () => setRemaining((local) => reconcile(local, state.remaining_seconds)),
+    [state.remaining_seconds],
+  );
   useEffect(() => {
     const timer = window.setInterval(
       () => setRemaining((seconds) => Math.max(0, seconds - 1)),
@@ -158,6 +180,14 @@ export function InterviewScreen({
     return () => window.clearTimeout(timer);
   }, [remaining, connection, interviewId, finish]);
 
+  // Text mode opens the camera and microphone itself; the screen shows the same tracks.
+  const openShown = useCallback(async (): Promise<LocalTracks> => {
+    const tracks = await openLocalTracks();
+    if (tracks.camera) setCamera(mediaSource(tracks.camera));
+    setMicrophone(tracks.mic);
+    return tracks;
+  }, []);
+
   // The interview services (SP-08b): Rust's monitor, proctoring queue and recording, and the
   // webview's face module and camera/microphone recording that feed them.
   useEffect(() => {
@@ -169,21 +199,37 @@ export function InterviewScreen({
     services.current = created;
     // Text mode has no room to wait for: the services start now, on a camera and microphone
     // the app opens itself.
-    if (!start.livekit_url || !start.participant_token) void created.start(openLocalTracks);
+    if (!start.livekit_url || !start.participant_token) void created.start(openShown);
     return () => {
       created.dispose();
       if (services.current === created) services.current = null;
     };
-  }, [interviewId, start.livekit_url, start.participant_token]);
+  }, [interviewId, start.livekit_url, start.participant_token, openShown]);
 
-  // Voice: join the room, publish the microphone and camera, hear the interviewer.
+  // Voice: join the room, publish the microphone and camera, hear the interviewer, and see the
+  // phone's camera at its low layer (C8-12).
   useEffect(() => {
     if (!start.livekit_url || !start.participant_token) return;
     const next = new Room({ adaptiveStream: true, dynacast: true });
     room.current = next;
     const stopAudio = speaker.current
-      ? playInterviewerAudio(next as unknown as AudioRoom, speaker.current)
+      ? playInterviewerAudio(next as unknown as AudioRoom, speaker.current, (track) =>
+          setPhoneVideo(track as unknown as VideoSource | null),
+        )
       : () => undefined;
+    // The interviewer's voice also drives the orb.
+    const heard = (track: RemoteTrack, _: unknown, from: { identity: string }) => {
+      if (track.kind === "audio" && !isPhoneCamera("video", from.identity)) {
+        setInterviewerAudio(track.mediaStreamTrack);
+      }
+    };
+    const gone = (track: RemoteTrack) => {
+      if (track.kind === "audio") {
+        setInterviewerAudio((now) => (now === track.mediaStreamTrack ? null : now));
+      }
+    };
+    next.on(RoomEvent.TrackSubscribed, heard);
+    next.on(RoomEvent.TrackUnsubscribed, gone);
     next.on(RoomEvent.DataReceived, (payload, _participant, _kind, topic) => {
       if (topic !== STATE_TOPIC) return;
       const patch = parseStateMessage(payload);
@@ -192,17 +238,27 @@ export function InterviewScreen({
     next.on(RoomEvent.Reconnecting, () => setConnection("reconnecting"));
     next.on(RoomEvent.Reconnected, () => setConnection("connected"));
     next.on(RoomEvent.AudioPlaybackStatusChanged, () => setSoundBlocked(!next.canPlaybackAudio));
-    // The newest utterance owns the caption: its words appear as they are spoken.
-    let utterance = 0;
-    next.registerTextStreamHandler(CAPTION_TOPIC, async (reader, speaking) => {
-      if (!isInterviewerCaption(speaking.identity, next.localParticipant.identity)) return;
-      utterance += 1;
-      const mine = utterance;
+    // Both voices, written as they're spoken: each utterance is a stream named by its segment.
+    next.registerTextStreamHandler(CAPTION_TOPIC, async (reader, sender) => {
+      const attributes = reader.info.attributes ?? {};
+      const local = next.localParticipant;
+      const speaker = speakerOf(
+        sender.identity,
+        local.identity,
+        attributes[TRANSCRIBED_TRACK],
+        [...local.trackPublications.values()].map((publication) => publication.trackSid),
+      );
+      const segment = attributes[SEGMENT_ID] ?? reader.info.id;
+      const final = isFinalSegment(attributes);
       let spoken = "";
       for await (const chunk of reader) {
-        if (mine !== utterance) return;
         spoken += chunk;
-        setCaption(captionWindow(spoken));
+        const text = spoken;
+        setLines((now) => upsert(now, { id: segment, speaker, text, final }));
+      }
+      // The interviewer's words are complete when its stream ends.
+      if (!final && speaker === "interviewer") {
+        setLines((now) => upsert(now, { id: segment, speaker, text: spoken, final: true }));
       }
     });
     next
@@ -212,22 +268,28 @@ export function InterviewScreen({
         setConnection("connected");
         await next.localParticipant.setMicrophoneEnabled(true);
         await next.localParticipant.setCameraEnabled(true);
+        if (room.current !== next) return;
+        const own = next.localParticipant.getTrackPublication(Track.Source.Camera)?.track;
+        setCamera(own ?? null);
+        setMicrophone(livekitTracks(next).mic);
         // The same camera and microphone tracks go to the face module and the recorder.
-        if (room.current === next) void services.current?.start(async () => livekitTracks(next));
+        void services.current?.start(async () => livekitTracks(next));
       })
       .catch((failure: unknown) => {
         console.warn("interview: the voice room failed", failure);
         setConnection("off");
         setError(errorKey(failure));
         // The interview goes on with typed answers, and so does the monitoring.
-        if (room.current === next) void services.current?.start(openLocalTracks);
+        if (room.current === next) void services.current?.start(openShown);
       });
     return () => {
       stopAudio();
+      next.off(RoomEvent.TrackSubscribed, heard);
+      next.off(RoomEvent.TrackUnsubscribed, gone);
       next.unregisterTextStreamHandler(CAPTION_TOPIC);
       void next.disconnect();
     };
-  }, [start.livekit_url, start.participant_token]);
+  }, [start.livekit_url, start.participant_token, openShown]);
 
   // The phone's camera, as Rust's watcher reports it to the server (every 5 s).
   const usesPhone = state.third_eye !== undefined && state.third_eye !== "off";
@@ -287,20 +349,24 @@ export function InterviewScreen({
 
   const question = state.question;
   // A coding question is answered in its console (ADR-0033), a design question has its notes pad.
-  const workspace =
-    question?.workspace === "code" ? "code" : question?.workspace === "whiteboard" ? "notes" : null;
-  // Typed answers only where speech can't be used.
-  const typed = (state.answer_mode === "text" || connection === "off") && workspace !== "code";
+  const workspace = workspaceOf(question);
+  const typed = typedAnswers(state.answer_mode, connection, workspace);
+  const title =
+    candidateName && jobTitle ? t("barTitle", { name: candidateName, job: jobTitle }) : t("title");
+  const phoneView = phone ? liveView(phone) : null;
+  const phoneNote = !phone
+    ? t("cameras.side.connecting")
+    : phoneView?.alert
+      ? t("cameras.side.lost")
+      : phone === "connected"
+        ? t("cameras.side.noPicture")
+        : t("cameras.side.connecting");
 
-  const side =
-    workspace || typed ? (
+  const work =
+    question && workspace ? (
       <>
-        {question ? (
-          <p className="text-[1.1rem] leading-relaxed">{question.text}</p>
-        ) : (
-          <p className="text-muted-foreground">{t("waitingForQuestion")}</p>
-        )}
-        {question && workspace === "code" ? (
+        <p className="workspace-question">{question.text}</p>
+        {workspace === "code" ? (
           <CodingConsole
             key={question.id}
             interviewId={interviewId}
@@ -309,47 +375,59 @@ export function InterviewScreen({
             registerFlush={registerFlush}
             onClosed={() => void refresh()}
           />
-        ) : null}
-        {question && workspace === "notes" ? (
+        ) : (
           <NotesPad
             key={question.id}
             interviewId={interviewId}
             questionId={question.id}
             registerFlush={registerFlush}
           />
-        ) : null}
-        {typed ? (
-          <div className="grid gap-2">
-            <Label htmlFor={`${id}-answer`}>{t("answerLabel")}</Label>
-            <Textarea
-              id={`${id}-answer`}
-              rows={6}
-              className="rounded-xl"
-              value={answer}
-              onChange={(event) => setAnswer(event.target.value)}
-            />
-            <PillButton
-              className="w-fit"
-              disabled={!answer.trim() || !question}
-              onClick={() => void sendAnswer()}
-            >
-              {t("sendAnswer")}
-            </PillButton>
-          </div>
-        ) : null}
+        )}
       </>
     ) : null;
+
+  const answerBox = typed ? (
+    <div className="grid gap-2">
+      {question && !workspace ? (
+        <p className="text-[1rem] leading-relaxed">{question.text}</p>
+      ) : !question ? (
+        <p className="text-muted-foreground">{t("waitingForQuestion")}</p>
+      ) : null}
+      <Label htmlFor={`${id}-answer`}>{t("answerLabel")}</Label>
+      <Textarea
+        id={`${id}-answer`}
+        rows={4}
+        className="rounded-xl"
+        value={answer}
+        onChange={(event) => setAnswer(event.target.value)}
+      />
+      <PillButton
+        className="w-fit"
+        disabled={!answer.trim() || !question}
+        onClick={() => void sendAnswer()}
+      >
+        {t("sendAnswer")}
+      </PillButton>
+    </div>
+  ) : null;
 
   return (
     <>
       <InterviewStage
+        title={title}
         connection={connection}
         indicators={indicators(problems, phone)}
         remaining={remaining}
         voice={state.voice}
-        caption={caption}
-        side={side}
-        onExit={() => setConfirmEnd(true)}
+        lines={lines}
+        workspace={work}
+        answerBox={answerBox}
+        camera={camera}
+        phone={usesPhone ? phoneVideo : undefined}
+        phoneNote={phoneNote}
+        interviewerAudio={interviewerAudio}
+        microphone={microphone}
+        onEnd={() => setConfirmEnd(true)}
         notices={
           <>
             {soundBlocked ? (
@@ -366,7 +444,7 @@ export function InterviewScreen({
                 {error ? ` ${errors(error)}` : ""}
               </Notice>
             ) : null}
-            {phone && liveView(phone).alert ? <Notice role="alert">{t("phoneLost")}</Notice> : null}
+            {phoneView?.alert ? <Notice role="alert">{t("phoneLost")}</Notice> : null}
             {problems && problems.size > 0 ? <Notice>{t("servicesProblem")}</Notice> : null}
             {notice && noticeShown ? (
               <Notice role="alert">{notice.text ?? t("noticeFallback")}</Notice>
@@ -378,24 +456,11 @@ export function InterviewScreen({
       {/* The interviewer's voice plays through here. */}
       <div ref={speaker} hidden />
 
-      <Dialog open={confirmEnd} onOpenChange={setConfirmEnd}>
-        <DialogContent
-          title={t("exitTitle")}
-          description={t("exitBody")}
-          closeLabel={t("keepGoing")}
-          className="rounded-[20px]"
-          footer={
-            <>
-              <PillButton variant="secondary" onClick={() => setConfirmEnd(false)}>
-                {t("keepGoing")}
-              </PillButton>
-              <PillButton variant="danger" onClick={() => void finish("candidate_ended")}>
-                {t("exitConfirm")}
-              </PillButton>
-            </>
-          }
-        />
-      </Dialog>
+      <EndDialog
+        open={confirmEnd}
+        onOpenChange={setConfirmEnd}
+        onEnd={() => void finish("candidate_ended")}
+      />
     </>
   );
 }

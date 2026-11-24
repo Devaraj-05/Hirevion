@@ -178,6 +178,10 @@ function CandidateApp() {
           <InterviewScreen
             interviewId={state.interviewId}
             start={started}
+            candidateName={state.profile.candidate.name}
+            jobTitle={
+              state.profile.interviews.find((one) => one.id === state.interviewId)?.job_title
+            }
             onCompleted={() => send({ type: "completed" })}
             onError={lost}
           />

@@ -140,11 +140,29 @@ test("the coding console and the design notes pad keep the candidate's work", as
   try {
     // The stub's interview runs in text mode: no LiveKit, the answers go through the API.
     await session.click(button("Start interview"));
-    // The interview fills the window; Exit sits at the top right (owner, 2026-11-16).
-    await session.waitFor(button("Exit interview"), 60_000);
+    // The interview fills the window (C8-12): the bar names the interview and keeps the time and
+    // End interview at the top right.
+    await session.waitFor(button("End interview"), 60_000);
+    await session.waitFor(`//h1[contains(normalize-space(), "– Interview")]`);
+    assert.match(await (await session.find("header time")).text(), /^\d\d:\d\d$/);
 
-    // The phone set up before the start stays in view: the bar's indicators show its camera.
-    await session.waitFor(`//li[@title="Phone camera: working"]`, 15_000);
+    // End interview asks first; Continue keeps the interview going.
+    await session.click(button("End interview"));
+    await session.waitFor(heading("End the interview?"));
+    await session.click(button("Continue interview"));
+    await session.waitFor(button("End interview"));
+
+    // The cameras: the main one and the phone set up before the start, each with the mark.
+    await session.waitFor(`//figure[@data-kind="main"]`);
+    await session.waitFor(`//figure[@data-kind="side"][@data-status="ok"]`, 15_000);
+    assert.equal(
+      (await session.findAll(`//span[normalize-space()="Confidential • Interview session"]`))
+        .length,
+      2,
+    );
+
+    // A spoken-style question leaves the coding area empty.
+    await session.waitFor(`//p[normalize-space()="When a coding question is asked, it opens here."]`);
 
     // Question 1 is spoken-style: answer it in the text box.
     await (await session.waitFor(field("Your answer"))).type(
