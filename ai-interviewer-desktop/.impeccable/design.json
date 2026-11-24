@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-24T00:00:00Z",
+  "generatedAt": "2026-11-24T12:00:00Z",
   "title": "Design System: Hirevion Candidate App",
   "extensions": {
     "colorMeta": {
@@ -66,28 +66,87 @@
           "#e6f1fd"
         ]
       },
-      "candidate-violet": {
-        "role": "secondary",
-        "displayName": "Candidate Violet",
-        "canonical": "#6e5ce6",
+      "ai-ink": {
+        "role": "primary",
+        "displayName": "AI Blue",
+        "canonical": "#1d5bd8",
         "tonalRamp": [
-          "#1a1438",
-          "#221d3d",
-          "#3f3393",
-          "#5a48c9",
-          "#6e5ce6",
-          "#a598ff",
-          "#cfc7ff",
-          "#f1effd"
+          "#0b1d4a",
+          "#123180",
+          "#1745b0",
+          "#1d5bd8",
+          "#5a86e8",
+          "#8fb4ff",
+          "#dce7ff",
+          "#edf3ff"
         ]
       },
-      "orb-blue": { "role": "tertiary", "displayName": "Orb Blue Light", "canonical": "#4f86e8" },
-      "orb-violet": {
-        "role": "tertiary",
-        "displayName": "Orb Violet Light",
-        "canonical": "#7b6de0"
+      "you-ink": {
+        "role": "secondary",
+        "displayName": "Candidate Violet",
+        "canonical": "#6a3de0",
+        "tonalRamp": [
+          "#1e1046",
+          "#33197a",
+          "#4c27b0",
+          "#6a3de0",
+          "#8f6cf0",
+          "#bba6ff",
+          "#e8ddff",
+          "#f4eeff"
+        ]
       },
-      "orb-pearl": { "role": "tertiary", "displayName": "Orb Pearl", "canonical": "#eef3ff" },
+      "brand-from": {
+        "role": "tertiary",
+        "displayName": "Brand Gradient Blue",
+        "canonical": "#2f8bff",
+        "tonalRamp": [
+          "#0a2347",
+          "#0f3d7d",
+          "#1960c2",
+          "#2f8bff",
+          "#4d9bff",
+          "#86bbff",
+          "#c4defe",
+          "#ebf4ff"
+        ]
+      },
+      "brand-to": {
+        "role": "tertiary",
+        "displayName": "Brand Gradient Violet",
+        "canonical": "#8b5cf6",
+        "tonalRamp": [
+          "#22124a",
+          "#3d2185",
+          "#6239cf",
+          "#8b5cf6",
+          "#a07bff",
+          "#c2a9ff",
+          "#e3d8ff",
+          "#f5f0ff"
+        ]
+      },
+      "orb-highlight": {
+        "role": "tertiary",
+        "displayName": "Orb Highlight",
+        "canonical": "#9bf0ff"
+      },
+      "orb-interviewer": { "role": "tertiary", "displayName": "Orb Blue", "canonical": "#2c6bff" },
+      "orb-interviewer-edge": {
+        "role": "tertiary",
+        "displayName": "Orb Violet Edge",
+        "canonical": "#8d4dff"
+      },
+      "orb-candidate": {
+        "role": "tertiary",
+        "displayName": "Orb Candidate Violet",
+        "canonical": "#8b5cff"
+      },
+      "orb-candidate-edge": {
+        "role": "tertiary",
+        "displayName": "Orb Candidate Indigo",
+        "canonical": "#4c2fc0"
+      },
       "end-red": {
         "role": "tertiary",
         "displayName": "End Red",
@@ -98,15 +157,37 @@
           "#b3261e",
           "#c9241c",
           "#d93a31",
-          "#ff8a80",
+          "#ef4040",
           "#f8c4bf",
           "#fdecea"
+        ]
+      },
+      "stage-ground": { "role": "neutral", "displayName": "Stage Ground", "canonical": "#f3f5fb" },
+      "card-glass": {
+        "role": "neutral",
+        "displayName": "Card Glass",
+        "canonical": "rgb(255 255 255 / 0.86)"
+      },
+      "pill-grey": { "role": "neutral", "displayName": "Pill Grey", "canonical": "#eef1f7" },
+      "heading-ink": {
+        "role": "neutral",
+        "displayName": "Heading Ink",
+        "canonical": "#14183a",
+        "tonalRamp": [
+          "#14183a",
+          "#262b55",
+          "#3b4170",
+          "#555b88",
+          "#7e83a6",
+          "#a9adc6",
+          "#d8dae6",
+          "#f2f3f8"
         ]
       },
       "success": { "role": "neutral", "displayName": "Live Green", "canonical": "#1b7438" },
       "warning": { "role": "neutral", "displayName": "Low-Time Amber", "canonical": "#8a5300" },
       "danger": { "role": "neutral", "displayName": "Problem Red", "canonical": "#b3261e" },
-      "camera-black": { "role": "neutral", "displayName": "Camera Black", "canonical": "#15171c" }
+      "camera-black": { "role": "neutral", "displayName": "Camera Black", "canonical": "#10121a" }
     },
     "typographyMeta": {
       "display": {
@@ -118,46 +199,73 @@
         "purpose": "A screen title with its one line of lead."
       },
       "title": { "displayName": "Title", "purpose": "Step headings and interview cards." },
+      "card-title": {
+        "displayName": "Card Title",
+        "purpose": "A stage card's name beside its icon, one truncated line, heading ink."
+      },
       "bar-title": {
         "displayName": "Bar Title",
-        "purpose": "The interview's name in the top bar, one truncated line."
+        "purpose": "The top bar's name, job and Interview line; the name at 600."
       },
       "body": { "displayName": "Body", "purpose": "Prose and leads." },
       "transcript": {
         "displayName": "Transcript",
-        "purpose": "Transcript bubbles, capped at 60ch."
+        "purpose": "The words in a turn card, heading ink, max 62ch."
+      },
+      "speaker": {
+        "displayName": "Speaker",
+        "purpose": "The speaker's name above a turn, in the speaker's colour."
       },
       "question": { "displayName": "Question", "purpose": "The coding or notes prompt, max 70ch." },
       "label": {
         "displayName": "Label",
-        "purpose": "Pane titles, speaker names, chips; sentence case, muted."
+        "purpose": "Pane titles and live labels off the stage; sentence case, muted."
       },
-      "clock": { "displayName": "Clock", "purpose": "The countdown, tabular figures." },
+      "clock": { "displayName": "Clock", "purpose": "The countdown in its pill, tabular figures." },
       "wordmark": {
         "displayName": "Wordmark",
-        "purpose": "\"AI INTERVIEW\" and the camera watermark; the only tracked capitals."
+        "purpose": "\"AI INTERVIEW\" beside the emblem tile; one of the only two uses of capitals."
+      },
+      "watermark": {
+        "displayName": "Watermark",
+        "purpose": "\"CONFIDENTIAL • INTERVIEW SESSION\" on the camera picture."
       }
     },
     "shadows": [
       {
+        "name": "card",
+        "value": "0 1px 2px rgb(30 40 90 / 0.04), 0 20px 44px -24px rgb(60 70 140 / 0.22)",
+        "purpose": "Every stage card and the top bar."
+      },
+      {
+        "name": "tile",
+        "value": "0 1px 2px rgb(30 40 90 / 0.06), 0 6px 14px -8px rgb(60 70 140 / 0.3)",
+        "purpose": "The brand tile."
+      },
+      {
+        "name": "red-lift",
+        "value": "0 10px 22px -10px color-mix(in srgb, var(--danger-solid) 75%, transparent)",
+        "purpose": "End Interview only."
+      },
+      {
+        "name": "orb-glow",
+        "value": "inset 0 0 0 3px rgb(255 255 255 / 0.85), inset 0 0 26px rgb(255 255 255 / 0.3), 0 0 0 7px rgb(190 175 255 / 0.32), 0 20px 50px -12px rgb(90 80 255 / 0.5)",
+        "purpose": "The orb only."
+      },
+      {
         "name": "rest",
         "value": "0 1px 2px rgb(0 0 0 / 0.04)",
-        "purpose": "Panes on the stage, secondary buttons."
+        "purpose": "Secondary buttons and panes off the stage."
       },
       {
         "name": "lift",
         "value": "0 1px 2px rgb(0 0 0 / 0.04), 0 12px 32px rgb(0 0 0 / 0.07)",
-        "purpose": "Panels, camera tiles, floating pills."
+        "purpose": "Panels on the other screens, the jump-to-latest pill."
       },
       {
-        "name": "orb-glow",
-        "value": "inset 0 0 0 1px rgb(255 255 255 / 0.4), 0 26px 60px -30px color-mix(in srgb, var(--orb-a) 70%, transparent)",
-        "purpose": "The orb only."
-      },
-      {
-        "name": "bar-fade",
-        "value": "linear-gradient(color-mix(in srgb, var(--foreground) 5%, transparent), transparent) 12px",
-        "purpose": "The top bar's lower edge, in place of a ruled line."
+        "name": "card-glass",
+        "value": "backdrop-filter: blur(18px) saturate(140%)",
+        "purpose": "Stage cards and the top bar; solid surface under reduced transparency."
       }
     ],
     "motion": [
@@ -169,24 +277,34 @@
       {
         "name": "layout",
         "value": "420ms",
-        "purpose": "Grid columns and orb size when the coding area opens."
+        "purpose": "Grid columns and orb size when the coding card opens; the card slides in 16px from the left."
       },
       {
         "name": "entrance",
         "value": "320ms",
         "purpose": "Fade-in of screens and notices (6px rise)."
       },
-      { "name": "line-in", "value": "260ms", "purpose": "A new transcript line (6px rise)." },
+      { "name": "line-in", "value": "260ms", "purpose": "A new turn card (6px rise)." },
       { "name": "press", "value": "100-150ms, scale(0.97)", "purpose": "Button press feedback." },
       {
         "name": "orb-rim",
         "value": "2.6s linear infinite",
-        "purpose": "Thinking, connecting, reconnecting."
+        "purpose": "Thinking, connecting, reconnecting: light round the first ring."
+      },
+      {
+        "name": "level",
+        "value": "--level, per frame",
+        "purpose": "Orb core, rings and voice strip scale with measured audio."
+      },
+      {
+        "name": "tile-wait",
+        "value": "1.8s ease-in-out infinite",
+        "purpose": "A camera's empty state while it starts."
       },
       {
         "name": "colour-shift",
-        "value": "300-600ms ease",
-        "purpose": "Orb light, labels, active transcript line, clock tone."
+        "value": "300-500ms ease",
+        "purpose": "Orb state pill, orb filter, clock tone."
       }
     ],
     "breakpoints": [
@@ -225,9 +343,9 @@
       "name": "End Interview Button",
       "kind": "button",
       "refersTo": "button-end-interview",
-      "description": "The one solid red; always opens a confirmation.",
-      "html": "<button class=\"ds-btn-end\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10.1 13.9a14 14 0 0 0 3.732 2.668 1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2C10.059 22 2 13.941 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 .244.473\"/><path d=\"m2 2 20 20\"/><path d=\"M4.76 13.582A19.8 19.8 0 0 1 2 4\"/></svg>End interview</button>",
-      "css": ".ds-btn-end { display: inline-flex; align-items: center; gap: 0.5rem; height: 2.25rem; padding: 0 1rem; border: none; border-radius: 9999px; background: var(--danger-solid, #c9241c); color: var(--danger-solid-foreground, #fff); font: 600 0.9rem 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif; box-shadow: 0 1px 2px color-mix(in srgb, var(--danger-solid, #c9241c) 30%, transparent); cursor: pointer; transition: background-color 150ms ease, transform 100ms ease-out; } .ds-btn-end:hover { background: color-mix(in srgb, var(--danger-solid, #c9241c) 88%, black); } .ds-btn-end:active { transform: scale(0.97); } .ds-btn-end:focus-visible { outline: 2px solid var(--ring, #0068d6); outline-offset: 2px; }"
+      "description": "The one solid red, lit from above; always opens a confirmation.",
+      "html": "<button class=\"ds-btn-end\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\"><rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\"/></svg>End Interview</button>",
+      "css": ".ds-btn-end { display: inline-flex; align-items: center; gap: 0.6rem; height: 2.9rem; padding: 0 1.4rem; border: none; border-radius: 9999px; background: linear-gradient(180deg, #ef4040, var(--danger-solid, #c9241c)); color: var(--danger-solid-foreground, #fff); font: 600 1rem 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif; white-space: nowrap; box-shadow: 0 10px 22px -10px color-mix(in srgb, var(--danger-solid, #c9241c) 75%, transparent); cursor: pointer; transition: filter 150ms ease, transform 100ms ease-out; } .ds-btn-end:hover { filter: brightness(0.94); } .ds-btn-end:active { transform: scale(0.97); } .ds-btn-end:focus-visible { outline: 2px solid var(--ring, #0068d6); outline-offset: 3px; }"
     },
     {
       "name": "Text Field",
@@ -238,59 +356,66 @@
       "css": ".ds-field { height: 2.75rem; padding: 0 0.875rem; border: 1px solid var(--input, #c7c7cc); border-radius: 12px; background: var(--surface, #fff); color: var(--foreground, #1d1d1f); font: 400 0.95rem 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif; } .ds-field::placeholder { color: var(--muted-foreground, #63636a); } .ds-field:focus-visible { outline: 2px solid var(--ring, #0068d6); outline-offset: 2px; }"
     },
     {
-      "name": "Status Pill",
+      "name": "Clock Pill",
       "kind": "chip",
-      "refersTo": "status-pill",
-      "description": "A live state in a few words; the dot carries the colour, the words the meaning.",
-      "html": "<span class=\"ds-status\"><span class=\"ds-status-dot\"></span>Connected</span>",
-      "css": ".ds-status { display: inline-flex; align-items: center; gap: 0.5rem; height: 1.75rem; padding: 0 0.75rem; border-radius: 9999px; background: var(--success-subtle, #e7f6ec); color: var(--success, #1b7438); font: 500 0.8rem 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif; white-space: nowrap; } .ds-status-dot { width: 6px; height: 6px; border-radius: 9999px; background: currentColor; }"
+      "refersTo": "clock-pill",
+      "description": "The time left in the top bar; amber when low, red when critical.",
+      "html": "<p class=\"ds-clock\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 6v6h4\"/></svg><time>24:18</time></p>",
+      "css": ".ds-clock { display: inline-flex; align-items: center; gap: 0.6rem; margin: 0; height: 2.9rem; padding: 0 1.1rem; border: 1px solid var(--card-border, rgb(120 130 170 / 0.16)); border-radius: 9999px; background: var(--pill-bg, #eef1f7); color: var(--heading-ink, #14183a); font: 600 1.35rem 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; transition: color 400ms ease, background-color 400ms ease; }"
     },
     {
-      "name": "Pane",
+      "name": "Stage Card",
       "kind": "card",
-      "refersTo": "pane",
-      "description": "A white 20px pane on cool paper with a muted label header.",
-      "html": "<section class=\"ds-pane\"><header class=\"ds-pane-header\"><span class=\"ds-pane-title\">Transcript</span></header><p class=\"ds-pane-body\">The conversation appears here as it happens.</p></section>",
-      "css": ".ds-pane { border: 1px solid var(--border, #e1e5eb); border-radius: 20px; background: var(--surface, #fff); box-shadow: 0 1px 2px rgb(0 0 0 / 0.04); color: var(--foreground, #1d1d1f); font-family: 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif; } .ds-pane-header { padding: 0.9rem 1.25rem 0.5rem; } .ds-pane-title { font-size: 0.8rem; font-weight: 600; letter-spacing: 0.02em; color: var(--muted-foreground, #63636a); } .ds-pane-body { margin: 0; padding: 0 1.25rem 1.25rem; font-size: 0.9rem; color: var(--muted-foreground, #63636a); }"
+      "refersTo": "stage-card",
+      "description": "A 22px glass card on the stage ground with an icon, a title and a state pill.",
+      "html": "<div class=\"ds-stage\"><section class=\"ds-card\"><header class=\"ds-card-header\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m18 16 4-4-4-4\"/><path d=\"m6 8-4 4 4 4\"/><path d=\"m14.5 4-5 16\"/></svg><h2 class=\"ds-card-title\">Coding Question</h2><span class=\"ds-card-pill\">Waiting for question…</span></header><p class=\"ds-card-body\">Coding question will appear here</p></section></div>",
+      "css": ".ds-stage { padding: 1.5rem; background: radial-gradient(55% 38% at 50% -6%, var(--stage-glow-a, rgb(110 150 255 / 0.22)), transparent 70%), radial-gradient(40% 45% at 100% 105%, var(--stage-glow-b, rgb(170 140 255 / 0.16)), transparent 70%), var(--stage-bg, #f3f5fb); font-family: 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif; } .ds-card { max-width: 26rem; border: 1px solid var(--card-border, rgb(120 130 170 / 0.16)); border-radius: 22px; background: var(--card-bg, rgb(255 255 255 / 0.86)); box-shadow: var(--card-shadow, 0 1px 2px rgb(30 40 90 / 0.04), 0 20px 44px -24px rgb(60 70 140 / 0.22)); backdrop-filter: blur(18px) saturate(140%); } .ds-card-header { display: flex; align-items: center; gap: 0.75rem; min-height: 4rem; padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--card-rule, rgb(120 130 170 / 0.12)); color: var(--heading-ink, #14183a); } .ds-card-title { margin: 0; font-size: 1.15rem; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; } .ds-card-pill { margin-left: auto; display: inline-flex; align-items: center; height: 2rem; padding: 0 0.9rem; border-radius: 9999px; background: var(--pill-bg, #eef1f7); color: var(--muted-foreground, #63636a); font-size: 0.85rem; white-space: nowrap; } .ds-card-body { margin: 0; padding: 2.5rem 1.25rem; text-align: center; font-size: 1.3rem; font-weight: 600; letter-spacing: -0.01em; color: var(--heading-ink, #14183a); }"
     },
     {
-      "name": "Transcript Lines",
+      "name": "Turn Cards",
       "kind": "custom",
-      "refersTo": "transcript-line",
-      "description": "Interviewer left, You right; only the line being spoken carries its speaker's colour.",
-      "html": "<div class=\"ds-tx\"><div class=\"ds-tx-line\"><span class=\"ds-tx-who\">Interviewer</span><p>What problem were you solving?</p></div><div class=\"ds-tx-line ds-tx-you ds-tx-active\"><span class=\"ds-tx-who\">You</span><p>The monthly reports were locking the primary.</p></div></div>",
-      "css": ".ds-tx { display: grid; gap: 0.35rem; font-family: 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif; } .ds-tx-line { display: grid; justify-items: start; gap: 0.2rem; max-width: min(88%, 60ch); } .ds-tx-you { justify-self: end; justify-items: end; } .ds-tx-who { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em; color: var(--muted-foreground, #63636a); } .ds-tx-line p { margin: 0; padding: 0.5rem 0.8rem; border-radius: 14px; font-size: 0.95rem; line-height: 1.5; background: var(--surface-muted, #eef1f5); color: var(--foreground, #1d1d1f); transition: background-color 400ms ease; } .ds-tx-active p { background: var(--accent-subtle, #e6f1fd); } .ds-tx-active .ds-tx-who { color: var(--accent-subtle-foreground, #004a99); } .ds-tx-you.ds-tx-active p { background: var(--violet-subtle, #f1effd); } .ds-tx-you.ds-tx-active .ds-tx-who { color: var(--violet, #6e5ce6); }"
+      "refersTo": "turn-interviewer",
+      "description": "One tinted card per speaker's turn: AI Interviewer in blue, Candidate in violet.",
+      "html": "<ol class=\"ds-turns\"><li class=\"ds-turn\"><span class=\"ds-turn-avatar\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"#fff\" aria-hidden=\"true\"><rect x=\"3\" y=\"11\" width=\"2.4\" height=\"6\" rx=\"1.2\"/><rect x=\"6.9\" y=\"8.5\" width=\"2.4\" height=\"11\" rx=\"1.2\"/><rect x=\"10.8\" y=\"8\" width=\"2.4\" height=\"12\" rx=\"1.2\"/><rect x=\"14.7\" y=\"8.5\" width=\"2.4\" height=\"11\" rx=\"1.2\"/><rect x=\"18.6\" y=\"11\" width=\"2.4\" height=\"6\" rx=\"1.2\"/><circle cx=\"12\" cy=\"4.8\" r=\"1.6\"/></svg></span><div class=\"ds-turn-body\"><span class=\"ds-turn-who\">AI Interviewer</span><p>What problem were you solving?</p></div></li><li class=\"ds-turn ds-turn-you\"><span class=\"ds-turn-avatar\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"8\" r=\"5\"/><path d=\"M20 21a8 8 0 0 0-16 0\"/></svg></span><div class=\"ds-turn-body\"><span class=\"ds-turn-who\">Candidate</span><p>The monthly reports were locking the primary.</p></div></li></ol>",
+      "css": ".ds-turns { display: grid; gap: 0.85rem; margin: 0; padding: 0; list-style: none; font-family: 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif; } .ds-turn { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 1rem; align-items: start; padding: 1rem 1.15rem; border: 1px solid var(--ai-edge, #dce7ff); border-radius: 16px; background: var(--ai-tint, #edf3ff); } .ds-turn-you { border-color: var(--you-edge, #e8ddff); background: var(--you-tint, #f4eeff); } .ds-turn-avatar { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: 9999px; background: linear-gradient(135deg, var(--brand-from, #2f8bff), #3a5bff); box-shadow: 0 6px 14px -8px rgb(40 80 220 / 0.6); } .ds-turn-you .ds-turn-avatar { background: color-mix(in oklab, var(--you-ink, #6a3de0) 16%, var(--surface, #fff)); color: var(--you-ink, #6a3de0); box-shadow: none; } .ds-turn-body { display: grid; gap: 0.2rem; max-width: 62ch; } .ds-turn-who { font-size: 0.95rem; font-weight: 600; color: var(--ai-ink, #1d5bd8); } .ds-turn-you .ds-turn-who { color: var(--you-ink, #6a3de0); } .ds-turn-body p { margin: 0; font-size: 1.05rem; line-height: 1.45; color: var(--heading-ink, #14183a); }"
     },
     {
       "name": "Voice Orb",
       "kind": "custom",
-      "description": "The interviewer's presence: a pearl sphere lit from the upper left, rings widening with the voice.",
-      "html": "<div class=\"ds-orb\"><div class=\"ds-orb-core\"></div><div class=\"ds-orb-ring\"></div><div class=\"ds-orb-ring ds-orb-ring-outer\"></div></div>",
-      "css": ".ds-orb { --a: color-mix(in oklab, var(--orb-blue, #4f86e8) 55%, var(--orb-pearl, #eef3ff)); --b: color-mix(in oklab, var(--orb-violet, #7b6de0) 38%, var(--orb-pearl, #eef3ff)); position: relative; width: 9rem; height: 9rem; margin: 1.5rem; } .ds-orb-core { position: absolute; inset: 0; border-radius: 9999px; background: radial-gradient(120% 90% at 28% 22%, color-mix(in oklab, var(--orb-pearl, #eef3ff) 85%, transparent), transparent 58%), radial-gradient(90% 90% at 78% 82%, var(--b), transparent 70%), radial-gradient(circle at 50% 50%, var(--a), color-mix(in oklab, var(--a) 70%, var(--b))); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.4), 0 26px 60px -30px color-mix(in srgb, var(--a) 70%, transparent); } .ds-orb-ring { position: absolute; inset: 0; border-radius: 9999px; border: 1.5px solid color-mix(in srgb, var(--a) 55%, transparent); opacity: 0.5; transform: scale(1.08); } .ds-orb-ring-outer { border-width: 1px; border-color: color-mix(in srgb, var(--a) 35%, transparent); opacity: 0.26; transform: scale(1.18); }"
+      "refersTo": "orb-state-pill",
+      "description": "The interviewer's presence: a vivid sphere with the waveform glyph inside three soft rings, and its state in words beneath.",
+      "html": "<div class=\"ds-orb-wrap\"><div class=\"ds-orb\"><span class=\"ds-orb-ring ds-r3\"></span><span class=\"ds-orb-ring ds-r2\"></span><span class=\"ds-orb-ring ds-r1\"></span><span class=\"ds-orb-core\"><svg viewBox=\"0 0 24 24\" class=\"ds-orb-glyph\" aria-hidden=\"true\"><rect x=\"4\" y=\"8.5\" width=\"2\" height=\"7\" rx=\"1\"/><rect x=\"7.5\" y=\"6.5\" width=\"2\" height=\"11\" rx=\"1\"/><rect x=\"11\" y=\"4.5\" width=\"2\" height=\"15\" rx=\"1\"/><rect x=\"14.5\" y=\"6.5\" width=\"2\" height=\"11\" rx=\"1\"/><rect x=\"18\" y=\"8.5\" width=\"2\" height=\"7\" rx=\"1\"/></svg></span></div><p class=\"ds-orb-label\"><span class=\"ds-orb-dot\"></span>AI Interviewer is speaking…</p></div>",
+      "css": ".ds-orb-wrap { display: grid; justify-items: center; gap: 0.9rem; padding: 4rem 1rem 1.5rem; font-family: 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif; } .ds-orb { position: relative; width: 9rem; height: 9rem; margin-bottom: 2.7rem; } .ds-orb-core { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 9999px; background: radial-gradient(circle at 30% 26%, #9bf0ff 0%, #45a4ff 22%, #2c6bff 46%, #5a45f0 74%, #8d4dff 100%); box-shadow: inset 0 0 0 3px rgb(255 255 255 / 0.85), inset 0 0 26px rgb(255 255 255 / 0.3), 0 0 0 7px rgb(190 175 255 / 0.32), 0 20px 50px -12px rgb(90 80 255 / 0.5); } .ds-orb-glyph { width: 36%; height: 36%; fill: #fff; filter: drop-shadow(0 1px 2px rgb(20 30 120 / 0.35)); } .ds-orb-ring { position: absolute; border-radius: 9999px; pointer-events: none; } .ds-r1 { inset: -10%; border: 2px solid rgb(185 170 255 / 0.6); box-shadow: 0 0 26px rgb(140 120 255 / 0.32), inset 0 0 22px rgb(140 170 255 / 0.25); } .ds-r2 { inset: -24%; border: 1px solid rgb(175 170 255 / 0.32); background: radial-gradient(circle, transparent 62%, rgb(150 170 255 / 0.16) 100%); } .ds-r3 { inset: -40%; background: radial-gradient(circle, rgb(160 170 255 / 0.14), transparent 70%); } .ds-orb-label { display: inline-flex; align-items: center; gap: 0.55rem; margin: 0; height: 2.2rem; padding: 0 1rem; border-radius: 9999px; background: var(--ai-tint, #edf3ff); border: 1px solid var(--ai-edge, #dce7ff); color: var(--ai-ink, #1d5bd8); font-size: 0.95rem; font-weight: 500; } .ds-orb-dot { width: 0.5rem; height: 0.5rem; border-radius: 9999px; background: currentColor; }"
     },
     {
       "name": "Camera Tile",
       "kind": "custom",
-      "refersTo": "camera-tile",
-      "description": "A 4:3 feed with a name chip, a live chip and the faint confidential mark.",
-      "html": "<figure class=\"ds-cam\"><figcaption class=\"ds-cam-chip ds-cam-left\">Main camera</figcaption><span class=\"ds-cam-chip ds-cam-right\"><span class=\"ds-cam-dot\"></span>Live</span><span class=\"ds-cam-mark\">Confidential • Interview session</span></figure>",
-      "css": ".ds-cam { position: relative; margin: 0; width: 20rem; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 16px; background: radial-gradient(circle at 50% 35%, #2a2e38, #15171c 70%); box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 12px 32px rgb(0 0 0 / 0.07); font-family: 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif; } .ds-cam-chip { position: absolute; top: 0.6rem; display: inline-flex; align-items: center; gap: 0.4rem; height: 1.6rem; padding: 0 0.6rem; border-radius: 9999px; font-size: 0.72rem; font-weight: 600; color: #fff; background: rgb(18 20 26 / 0.5); backdrop-filter: blur(12px) saturate(160%); } .ds-cam-left { left: 0.6rem; } .ds-cam-right { right: 0.6rem; } .ds-cam-dot { width: 6px; height: 6px; border-radius: 9999px; background: var(--success, #1b7438); } .ds-cam-mark { position: absolute; inset: auto 0 0; padding: 1.4rem 0.75rem 0.55rem; text-align: center; font-size: 9.5px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: rgb(255 255 255 / 0.34); background: linear-gradient(transparent, rgb(0 0 0 / 0.22)); }"
+      "refersTo": "camera-frame",
+      "description": "A stage card per camera: name and live state, the picture inset, the confidential chip at its corner.",
+      "html": "<figure class=\"ds-cam\"><figcaption class=\"ds-cam-header\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5\"/><rect x=\"2\" y=\"6\" width=\"14\" height=\"12\" rx=\"2\"/></svg><span class=\"ds-cam-title\">Main Camera</span><span class=\"ds-cam-status\"><span class=\"ds-cam-dot\"></span>Live</span></figcaption><div class=\"ds-cam-frame\"><span class=\"ds-cam-mark\">Confidential • Interview session</span></div></figure>",
+      "css": ".ds-cam { margin: 0; width: 20rem; border: 1px solid var(--card-border, rgb(120 130 170 / 0.16)); border-radius: 22px; background: var(--card-bg, rgb(255 255 255 / 0.86)); box-shadow: var(--card-shadow, 0 1px 2px rgb(30 40 90 / 0.04), 0 20px 44px -24px rgb(60 70 140 / 0.22)); overflow: hidden; font-family: 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif; } .ds-cam-header { display: flex; align-items: center; gap: 0.75rem; min-height: 3.6rem; padding: 0.85rem 1.25rem 0.6rem; color: var(--heading-ink, #14183a); } .ds-cam-title { font-size: 1.15rem; font-weight: 600; letter-spacing: -0.01em; } .ds-cam-status { margin-left: auto; display: inline-flex; align-items: center; gap: 0.45rem; font-size: 1rem; font-weight: 500; color: var(--success, #1b7438); } .ds-cam-dot { width: 0.5rem; height: 0.5rem; border-radius: 9999px; background: currentColor; } .ds-cam-frame { position: relative; aspect-ratio: 4 / 3; margin: 0 0.85rem 0.85rem; overflow: hidden; border-radius: 14px; background: radial-gradient(circle at 50% 35%, #2a2e3a, #10121a 70%); } .ds-cam-mark { position: absolute; right: 0.6rem; bottom: 0.6rem; padding: 0.35rem 0.6rem; border-radius: 8px; background: rgb(12 14 22 / 0.72); color: #fff; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; white-space: nowrap; }"
     }
   ],
   "narrative": {
     "northStar": "The Quiet Stage",
-    "overview": "The candidate app is a calm room in which the conversation is the interface. A cool paper ground carries white panes on hairline borders, and almost everything is ink and grey. Colour is spent on meaning, not decoration: blue for the interviewer, a desaturated violet for the candidate's own voice, red only for ending, and green, amber and red dots for live state. The interviewer is not a face or an avatar but a pearl sphere of light that answers to the real sound, and both voices are written down beside it.\n\nThe system is Apple-inspired in its restraint (the owner's binding direction): the system font, soft radii, pill buttons that press in at once, shallow shadows, and motion on a single long-tail ease that settles rather than bounces. It is dense enough for a working interview on a 1280 by 720 laptop and never scrolls the window; a screen's own content scrolls when it must.\n\nIt refuses the video-call default: no grid of faces, no floating bar of round icon controls. Every state is said in words as well as colour.",
+    "overview": "The candidate app is a calm room in which the conversation is the interface. Outside the interview, a cool paper ground carries white panes on hairline borders and almost everything is ink and grey. The interview itself follows the product owner's reference image (2026-11-24): a soft blue-violet ground lit by faint glows, on which everything floats as a translucent white card, the top bar included. Colour is spent on meaning: blue for the AI Interviewer, violet for the candidate, one brand gradient for the mark, red only for ending, and green, amber and red for live state. The interviewer is not a face but a vivid sphere of light carrying the waveform mark, moving with the real sound, and both voices are written down beneath it as tinted turn cards.\n\nThe system stays Apple-inspired in its restraint (the owner's binding direction): the system font, soft radii, pill buttons that press in at once, soft shadows, translucent glass with a solid fallback, and motion on a single long-tail ease that settles rather than bounces. It is dense enough for a working interview on a 1280 by 720 laptop and never scrolls the window; a screen's own content scrolls when it must.\n\nIt refuses the video-call default: no grid of faces, no bar of round icon buttons. Every state that needs the candidate's attention is said in words as well as colour.",
     "keyCharacteristics": [
-      "Cool paper ground, white 20px panes, hairline borders, ink text.",
-      "Colour carries a speaker or a state, never decoration.",
-      "A light, breathing orb as the interviewer's only presence.",
-      "The system font, tabular figures for time, tracked capitals only in the mark.",
+      "On the stage: a blue-violet ground, 22px translucent cards, a floating top bar, heading ink.",
+      "Elsewhere: cool paper ground, white 20px panes, hairline borders, ink text.",
+      "Blue is the interviewer, violet the candidate, the gradient the mark; nothing is colour for decoration.",
+      "A vivid orb with the waveform mark as the interviewer's only presence, moving with live sound.",
+      "The system font, tabular figures for time, tracked capitals only in the mark and the watermark.",
       "Light and dark themes from one token set; every system preference is honoured."
     ],
     "rules": [
       {
         "name": "The Two Voices Rule",
-        "body": "Blue is the interviewer, violet is the candidate. Violet appears only where the candidate is speaking or has just spoken; it never marks a button, a link, a focus ring or a status.",
+        "body": "AI Blue is the interviewer, Candidate Violet is the candidate. Each speaker's turn cards, name and orb state carry its colour; the violet tokens never mark a button, a link, a focus ring or a status.",
+        "section": "colors"
+      },
+      {
+        "name": "The Gradient Is the Mark Rule",
+        "body": "Blue into violet belongs to the emblem and the things that carry its waveform: the brand tile, the orb, the voice strip and the interviewer's avatar. It is not a speaker signal and never fills a button, a card or text.",
         "section": "colors"
       },
       {
@@ -300,12 +425,12 @@
       },
       {
         "name": "The One Red Rule",
-        "body": "End interview is the only solid red on any screen. Danger text and washes say a problem; solid red says \"this ends it\".",
+        "body": "End Interview is the only solid red on any screen. Danger text and washes say a problem; solid red says \"this ends it\".",
         "section": "colors"
       },
       {
         "name": "The Words Too Rule",
-        "body": "Every status dot sits beside the words for its state. Colour is never the only signal.",
+        "body": "Any device or session that is starting or has a problem writes its state beside its icon and dot, in the state's colour. A working item may show its icon and green dot alone; its full state is in its tooltip and accessible name. Colour never carries a problem by itself.",
         "section": "colors"
       },
       {
@@ -315,32 +440,39 @@
       },
       {
         "name": "The Mark Owns the Caps Rule",
-        "body": "Uppercase tracking belongs to the wordmark and the confidential watermark. Section labels and captions are sentence case.",
+        "body": "Uppercase belongs to the wordmark and the confidential watermark. Card titles, section labels and captions are sentence or title case, never tracked capitals.",
         "section": "typography"
       },
       {
-        "name": "The Light Not Neon Rule",
-        "body": "The orb is lit pearl: colours mixed toward `orb-pearl`, a highlight from the upper left, rings that widen with real sound. No saturated glows, no pulsing on a timer when nobody speaks.",
+        "name": "The Floating Card Rule",
+        "body": "On the stage, everything sits on a 22px glass card with the Card shadow, including the top bar; there are no ruled bars or edge-to-edge chrome.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Real Sound Rule",
+        "body": "The orb, its rings and the voice strip scale only with the measured audio level; nothing pulses on a timer when nobody speaks. The one timed motion is the light travelling round the first ring (2.6s) while thinking, connecting or reconnecting, and the orb desaturates while not connected.",
         "section": "elevation"
       }
     ],
     "dos": [
-      "**Do** keep blue for the interviewer and focus, and violet for the candidate's voice only (The Two Voices Rule).",
+      "**Do** keep AI Blue for the interviewer, Candidate Violet for the candidate's voice only, and Interviewer Blue for focus (The Two Voices Rule).",
+      "**Do** keep the blue-to-violet gradient to the mark and what carries its waveform.",
       "**Do** make stage actions ink pills; keep End Red for ending alone.",
-      "**Do** write every state in words beside its dot or colour.",
-      "**Do** use 20px panes on cool paper with hairline borders and the Rest shadow.",
+      "**Do** write a state in words whenever it isn't working.",
+      "**Do** put stage content on 22px glass cards with the Card shadow over the stage ground, and use 20px white panes on cool paper elsewhere.",
       "**Do** move on `cubic-bezier(0.22, 1, 0.36, 1)`, 260 to 420ms, and stop keyframe motion under reduced motion.",
       "**Do** use tabular numerals for time and codes.",
+      "**Do** use lucide icons and the system font.",
       "**Do** honour reduced transparency, more contrast and forced colours with explicit fallbacks."
     ],
     "donts": [
-      "**Don't** show the interviewer as a face, avatar or video tile, or line the controls up as a bar of round icons.",
-      "**Don't** use violet on buttons, links, focus rings or status.",
+      "**Don't** show the interviewer as a face, photo or video tile; its presence is the orb and its avatar is the emblem. Don't line the controls up as a bar of round icon buttons.",
+      "**Don't** use the violet tokens on buttons, links, focus rings or status.",
       "**Don't** use a solid red anywhere but ending the interview.",
       "**Don't** put notices over the transcript's newest lines.",
-      "**Don't** set section labels or captions in tracked capitals; the caps belong to the mark.",
+      "**Don't** set card titles, section labels or captions in tracked capitals; the caps belong to the mark and the watermark.",
       "**Don't** load web fonts; the system stack is the type.",
-      "**Don't** add stock photography or illustration; the only pictures are the live camera feeds, and none may be invented."
+      "**Don't** add stock photography or invented imagery; the only pictures are the live camera feeds, and the only drawing is the coding placeholder. The synthetic people in the debug gallery are test data, not brand assets."
     ]
   }
 }
