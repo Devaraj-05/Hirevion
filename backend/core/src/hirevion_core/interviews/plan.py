@@ -37,7 +37,7 @@ from hirevion_core.ai.types import AiContext, ChatMessage, EmbeddingService, LLM
 from hirevion_core.db.session import Database
 from hirevion_core.engine import phrasing
 from hirevion_core.engine.context import ContextBuilder, InterviewContext, LibraryQuestion
-from hirevion_core.engine.guardrails import safe_question
+from hirevion_core.engine.guardrails import safe_question, safe_statement
 from hirevion_core.engine.orchestrator import build_state
 from hirevion_core.engine.planner import concept_key, library_order, said, seed_for
 from hirevion_core.engine.state import ResumeHook
@@ -55,6 +55,8 @@ from hirevion_core.outbox import publish_event
 log = logging.getLogger(__name__)
 
 PLAN_TOPIC = "interview.plan"
+CODING_PURPOSE = "questions.plan_coding"
+CODING_PROMPT_VERSION = "interview-coding-v1"
 PROMPT_VERSION = "interview-plan-v1"
 PURPOSE = "questions.plan"
 SIMILARITY_PURPOSE = "questions.plan_similarity"
@@ -87,6 +89,9 @@ QUESTION_TYPES = frozenset(
 _PROMPT = (files("hirevion_core.interviews") / "prompts" / f"{PROMPT_VERSION}.md").read_text(
     encoding="utf-8"
 )
+_CODING_PROMPT = (
+    files("hirevion_core.interviews") / "prompts" / f"{CODING_PROMPT_VERSION}.md"
+).read_text(encoding="utf-8")
 
 
 CLAUSES: dict[str, str] = {
@@ -113,6 +118,16 @@ class PlannedQuestion(BaseModel):
     type: str = Field(max_length=40)
     expected_concepts: list[str] = Field(default_factory=list, max_length=6)
     resume_quote: str | None = Field(None, max_length=300)
+
+
+class WrittenCoding(BaseModel):
+    """The coding question the plan writes when the template and the library have none (C8-11)."""
+
+    text: str = Field(max_length=2000)
+    skill: str = Field(max_length=100)
+    concept: str = Field(max_length=120)
+    expected_concepts: list[str] = Field(default_factory=list, max_length=6)
+    starter_code: dict[str, str] = Field(default_factory=dict)
 
 
 class PlannedQuestions(BaseModel):
@@ -228,6 +243,7 @@ def item(
     source_ref: dict[str, Any],
     rubric: Sequence[dict[str, Any]] = (),
     time_limit_seconds: int | None = None,
+    languages: Sequence[str] = (),
 ) -> dict[str, Any]:
     """One stored plan item, as the planner turns it into a pool question."""
     return {
@@ -240,6 +256,7 @@ def item(
         "expected_concepts": list(expected_concepts),
         "rubric": [dict(r) for r in rubric],
         "time_limit_seconds": time_limit_seconds,
+        "languages": list(languages),
         "source": source,
         "source_ref": {**source_ref, "plan": True, "concept": concept},
     }
@@ -386,6 +403,92 @@ def _mock_plan(messages: Sequence[ChatMessage]) -> dict[str, Any]:
 
 
 respond_with(PURPOSE, _mock_plan)
+
+
+def _mock_coding(messages: Sequence[ChatMessage]) -> dict[str, Any]:
+    body = messages[-1]["content"]
+    languages = re.search(r"<languages>\n(.*?)\n</languages>", body, re.DOTALL)
+    skills = re.search(r"<skills>\n(.*?)\n</skills>", body, re.DOTALL)
+    wanted = [lang.strip() for lang in (languages.group(1) if languages else "python").split(",")]
+    skill = (skills.group(1) if skills else "Python").split(",")[0].strip()
+    starters = {"python": "def merge_intervals(rows):\n    pass\n", "sql": "SELECT\n"}
+    return {
+        "text": "Write merge_intervals(rows) that merges overlapping [start, end] pairs and "
+        "returns them sorted. Example: [[1, 3], [2, 6], [8, 9]] gives [[1, 6], [8, 9]].",
+        "skill": skill,
+        "concept": "Merging intervals",
+        "expected_concepts": ["sort by start", "merge in one pass", "O(n log n) time"],
+        "starter_code": {lang: starters.get(lang, "") for lang in wanted},
+    }
+
+
+respond_with(CODING_PURPOSE, _mock_coding)
+
+
+async def coding_item(
+    ai: AiServices, interview: Interview, inputs: _Inputs, n: int
+) -> dict[str, Any] | None:
+    """The coding question the recruiter asked for, written from the job when neither the
+    template nor the library has one in its languages at its level (C8-11); None otherwise."""
+    coding = inputs.context.coding
+    if not coding.get("enabled"):
+        return None
+    languages = [str(lang).lower() for lang in coding.get("languages") or ["python"]]
+    level = str(coding.get("difficulty") or "medium")
+
+    def offered(question: LibraryQuestion) -> bool:
+        spoken = {str(lang).lower() for lang in (question.coding or {}).get("languages", [])}
+        return question.type == "coding" and (not spoken or bool(spoken & set(languages)))
+
+    if any(offered(q) for q in inputs.context.pinned):
+        return None
+    if any(offered(q) and q.difficulty == level for q in inputs.context.library):
+        return None
+    minutes = int(coding.get("minutes") or 20)
+    skills = [share.name for share in inputs.shares]
+    message = "\n\n".join(
+        [
+            prompt_block("job", inputs.job),
+            prompt_block("skills", ", ".join(skills)),
+            prompt_block("languages", ", ".join(languages)),
+            prompt_block("level", level),
+            prompt_block("minutes", str(minutes)),
+        ]
+    )
+    context = AiContext(
+        organization_id=interview.organization_id,
+        purpose=CODING_PURPOSE,
+        prompt_version=CODING_PROMPT_VERSION,
+        input_refs={"interview_id": str(interview.id)},
+    )
+    messages: list[ChatMessage] = [
+        {"role": "system", "content": _CODING_PROMPT},
+        {"role": "user", "content": message},
+    ]
+    written = (await ai.llm.complete(context, messages, WrittenCoding, tier="strong")).value
+    text = safe_statement(written.text)
+    if text is None:
+        log.warning("The written coding question for %s failed the guard", interview.id)
+        return None
+    skill = next((s for s in skills if s.casefold() == written.skill.casefold()), skills[0])
+    return item(
+        f"plan:{n}",
+        skill=skill,
+        difficulty=level,
+        type="coding",
+        text=text,
+        concept=written.concept,
+        expected_concepts=written.expected_concepts,
+        source="generated",
+        source_ref={
+            "from": "jd",
+            "starter_code": {
+                lang: code for lang, code in written.starter_code.items() if lang in languages
+            },
+        },
+        time_limit_seconds=minutes * 60,
+        languages=languages,
+    )
 
 
 # The worker
@@ -644,6 +747,9 @@ async def write_plan(
         # After the dedupe, so nothing it drops can take these away.
         fresh = with_resume(fresh, inputs.hooks, taken_quotes, next_number([*existing, *fresh]))
         fresh = with_every_required_skill(fresh, inputs.shares, next_number([*existing, *fresh]))
+        written_coding = await coding_item(ai, interview, inputs, next_number([*existing, *fresh]))
+        if written_coding is not None:
+            fresh.append(written_coding)
     plan.items = [*existing, *fresh]
     plan.status = "ready"
     plan.version = (plan.version or 0) + 1

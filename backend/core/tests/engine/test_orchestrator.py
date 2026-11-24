@@ -13,6 +13,7 @@ import pytest
 from hirevion_core.engine import phrasing
 from hirevion_core.engine.analysis import Analysed, heuristic
 from hirevion_core.engine.orchestrator import EngineError, Orchestrator, Turn
+from hirevion_core.engine.planner import pick_coding
 from hirevion_core.engine.state import InterviewState
 
 from .factory import NOW, PARTIAL, PROFILE, STRONG, WEAK, library, make_context, make_state
@@ -326,8 +327,9 @@ def test_the_ai_asks_for_typed_code_and_a_submission() -> None:
     question = state.current
     assert question is not None and question.workspace == "code"
     assert state.coding.status == "active" and state.coding.question_id == question.id
-    assert "text box" in phrasing.CODING_INTRO and "Submit" in phrasing.CODING_INTRO
-    assert "run" not in phrasing.CODING_INTRO.replace("won't be run", "")
+    intro = phrasing.coding_intro(10)
+    assert "text box" in intro and "Submit" in intro
+    assert "run" not in intro.replace("won't be run", "")
 
 
 def test_a_submission_closes_the_coding_question_and_the_interview_moves_on() -> None:
@@ -468,3 +470,21 @@ def test_a_design_question_mentions_the_notes_pad() -> None:
     assert hinted, "the design question never mentioned the notes pad"
     assert all(t.asked is not None and t.asked.workspace == "whiteboard" for t in hinted)
     assert all(t.asked is not None and t.asked.kind == "main" for t in hinted)
+
+
+def test_the_coding_question_follows_the_recruiters_level_and_says_where_it_is() -> None:
+    """C8-11: the level the recruiter chose when scheduling picks the coding question, and the
+    interviewer says where it is (the left of the screen) and how long it has."""
+    python = {"languages": ["python"]}
+    questions = [
+        library("Python", "easy", "Reverse a string.", type="coding", coding=python),
+        library("Python", "hard", "Design an LRU cache.", type="coding", coding=python),
+    ]
+    coding = {"enabled": True, "languages": ["python"], "minutes": 12, "difficulty": "hard"}
+    state = make_state(make_context(coding=coding, questions=questions))
+    assert state.coding.difficulty == "hard"
+    chosen = pick_coding(state)
+    assert chosen is not None and chosen.text == "Design an LRU cache."
+    intro = phrasing.coding_intro(12)
+    assert "left of your screen" in intro and "12 minutes" in intro
+    assert "won't be run" in intro

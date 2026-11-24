@@ -171,6 +171,8 @@ class CodingState(_Model):
     status: Literal["none", "pending", "active", "done", "skipped"] = "none"
     languages: list[str] = Field(default_factory=list)
     minutes: int = 0
+    difficulty: str | None = None
+    """The level the recruiter chose when scheduling (C8-11); None: any."""
     question_key: str | None = None
     question_id: str | None = None
     """The asked coding question's id, once asked."""

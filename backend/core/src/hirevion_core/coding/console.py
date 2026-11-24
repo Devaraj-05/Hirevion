@@ -89,6 +89,8 @@ async def _starter_code(
     session: AsyncSession, question: AskedQuestion, languages: Sequence[str]
 ) -> dict[str, str]:
     ref = question.source_ref or {}
+    if isinstance(ref.get("starter_code"), dict):  # a question the plan wrote (C8-11)
+        return {lang: str(code) for lang, code in ref["starter_code"].items() if lang in languages}
     if "question_id" not in ref or "version" not in ref:
         return {}
     version = await session.scalar(

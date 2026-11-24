@@ -92,6 +92,7 @@ def pool_question(item: dict[str, Any]) -> PoolQuestion:
         rubric=[dict(r) for r in item.get("rubric") or []],
         time_limit_seconds=item.get("time_limit_seconds"),
         workspace=WORKSPACES.get(kind, "none"),
+        languages=[str(lang) for lang in item.get("languages") or []],
         concept=item.get("concept"),
     )
 
@@ -339,9 +340,16 @@ def pick(state: InterviewState, skill: SkillState, rung: str) -> PoolQuestion | 
 
 
 def pick_coding(state: InterviewState) -> PoolQuestion | None:
-    """The coding question (pinned first), or None when the library has none to offer."""
+    """The coding question, or None when there is none to offer: the template's pinned one, then
+    one at the level the recruiter chose when scheduling (C8-11; the plan's written one is at that
+    level), then any."""
     coding = [q for q in state.pool if q.type == "coding" and not q.used]
-    choice = next((q for q in coding if q.source == "pinned"), None) or next(iter(coding), None)
+    level = state.coding.difficulty
+    choice = (
+        next((q for q in coding if q.source == "pinned"), None)
+        or next((q for q in coding if level and q.difficulty == level), None)
+        or next(iter(coding), None)
+    )
     if choice is not None:
         choice.used = True
         if not choice.languages:

@@ -112,6 +112,7 @@ def build_state(
             status="pending" if coding.get("enabled") else "none",
             languages=[str(lang) for lang in coding.get("languages") or []],
             minutes=int(coding.get("minutes") or 0),
+            difficulty=str(coding["difficulty"]) if coding.get("difficulty") else None,
         ),
         faq=[{"question": e.question, "answer": e.answer} for e in context.faq],
         stages=[StageMark(stage="start", at=now)],
@@ -610,7 +611,7 @@ class Orchestrator:
             coding = self.coding.start(state) if limit is not None else None
             if coding is not None and limit is not None:
                 state.current_topic = coding.skill
-                turn.say.append(phrasing.CODING_INTRO)
+                turn.say.append(phrasing.coding_intro(max(1, round(limit / 60))))
                 asked = self._ask(
                     state,
                     turn,

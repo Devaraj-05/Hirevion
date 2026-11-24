@@ -1105,3 +1105,45 @@ async def test_a_plan_that_couldnt_be_prepared_says_so(
     async with app_db.tenant(scene.organization_id) as session:
         plan = await session.get_one(InterviewQuestionPlan, scene.interview_id)
     assert plan.status == "failed" and plan.items == []
+
+
+async def test_the_plan_writes_the_coding_question_when_the_library_has_none(
+    app_db: Database,
+    admin_engine: AsyncEngine,
+    valkey: Redis,
+    make_organization: MakeOrganization,
+    make_hiring: Any,
+) -> None:
+    """C8-11: the recruiter turned coding on when scheduling (Python and SQL, 10 minutes, hard)
+    and the library holds no such question: the plan writes one from the job, with starter code,
+    and the interview asks it with its console."""
+    scene = await invited(app_db, make_hiring, await make_organization("Acme"))
+    coding = {
+        "enabled": True,
+        "languages": ["python", "sql"],
+        "minutes": 10,
+        "difficulty": "hard",
+        "source": "scheduling",
+    }
+    async with admin_engine.begin() as conn:
+        await conn.execute(
+            text(
+                "UPDATE interviews SET policy = jsonb_set(policy, '{coding}', CAST(:c AS jsonb)) "
+                "WHERE id = :id"
+            ),
+            {"c": json.dumps(coding), "id": scene.interview_id},
+        )
+    ai = build_ai(AiSettings(profile="mock"), app_db)
+    async with app_db.tenant(scene.organization_id) as session:
+        interview = await session.get_one(Interview, scene.interview_id)
+        plan = await write_plan(session, ai, interview)
+        [written] = [i for i in plan.items if i["type"] == "coding"]
+    assert written["difficulty"] == "hard" and written["languages"] == ["python", "sql"]
+    assert written["time_limit_seconds"] == 600
+    assert set(written["source_ref"]["starter_code"]) == {"python", "sql"}
+    check, consent = await prepare(app_db, scene)
+    await start(conductor(app_db, valkey), scene, check, consent)
+    async with app_db.tenant(scene.organization_id) as session:
+        row = await session.get_one(InterviewSession, scene.interview_id)
+    [pooled] = [q for q in row.state["pool"] if q["type"] == "coding"]
+    assert pooled["workspace"] == "code" and pooled["key"] == written["key"]

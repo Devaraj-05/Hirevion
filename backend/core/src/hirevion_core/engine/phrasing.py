@@ -203,11 +203,18 @@ MANIPULATION = (
     "the questions. Let's continue."
 )
 SKIP_SKILL = "Let's leave that topic there."
-CODING_INTRO = (
-    "Next is a coding question. Type your answer in the text box on your screen, choose its "
-    "language, and press Submit when you're done. Your code won't be run; it's reviewed after "
-    "the interview."
-)
+
+
+def coding_intro(minutes: int) -> str:
+    """How the coding question is introduced (C8-11): where it is on the screen and how long it
+    has; the code is never run (ADR-0033)."""
+    return (
+        "Next is a coding question. It's on the left of your screen: type your answer in the text "
+        "box there, choose its language, and press Submit when you're done. You have "
+        f"{minutes} minutes. Your code won't be run; it's reviewed after the interview."
+    )
+
+
 CODING_RECEIVED = "Thanks, I have your code."
 # A design question's notes pad (ADR-0041): said once, after the question.
 DESIGN_NOTES = (

@@ -22,7 +22,7 @@ from hirevion_core.identity.permissions import permissions_for
 from hirevion_core.identity.settings import IdentitySettings
 from hirevion_core.ids import uuid7
 from hirevion_core.interviews import assignment, scheduler, templates
-from hirevion_core.interviews.assignment import Assignment, InterviewFilters
+from hirevion_core.interviews.assignment import Assignment, CodingChoice, InterviewFilters
 from hirevion_core.interviews.templates import TemplateFields
 from hirevion_core.mail.consumer import MailConsumer
 from hirevion_core.mail.sender import SmtpSender
@@ -562,3 +562,40 @@ async def test_a_removed_email_doesnt_block_cancelling_or_the_scheduler(
             )
         ).all()
         assert "reminder.skipped" in actions
+
+
+async def test_the_recruiter_decides_the_coding_question_when_scheduling(
+    app_db: Database, make_organization: MakeOrganization, make_hiring
+) -> None:
+    """C8-11 (owner, 2026-11-22): "asking the coding question will be decide by the recruiter at
+    interview scheduling time"."""
+    org = await make_organization("Acme")
+    chosen = await make_hiring(org)
+    result = await assign(
+        app_db,
+        chosen,
+        coding=CodingChoice(
+            enabled=True, languages=("python", "sql"), minutes=15, difficulty="hard"
+        ),
+    )
+    [created] = result.created
+    templated = await make_hiring(org)
+    [plain] = (await assign(app_db, templated)).created
+    async with app_db.tenant(org) as session:
+        with_coding = await session.get_one(Interview, created.id)
+        as_template = await session.get_one(Interview, plain.id)
+    assert with_coding.policy["coding"] == {
+        "enabled": True,
+        "languages": ["python", "sql"],
+        "minutes": 15,
+        "difficulty": "hard",
+        "source": "scheduling",
+    }
+    assert as_template.policy["coding"]["source"] == "template"
+    # The coding question must leave time for the other questions.
+    third = await make_hiring(org)
+    too_long = await assign(
+        app_db, third, coding=CodingChoice(enabled=True, languages=("python",), minutes=40)
+    )
+    assert [s.code for s in too_long.skipped] == ["coding-too-long"]
+    assert "coding-too-long" in assignment.INPUT_CODES

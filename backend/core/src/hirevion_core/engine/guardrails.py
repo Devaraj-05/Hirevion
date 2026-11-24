@@ -114,6 +114,24 @@ def safe_question(text: str | None) -> str | None:
     return cleaned
 
 
+STATEMENT_MAX = 1600
+
+
+def safe_statement(text: str | None) -> str | None:
+    """A coding question's statement, when it is fit to show (C8-11): longer than a spoken
+    question and free to carry an example on its own line, but never markdown, a forbidden topic
+    or an instruction to the model."""
+    if not text:
+        return None
+    cleaned = text.strip()
+    if not 40 <= len(cleaned) <= STATEMENT_MAX or "```" in cleaned:
+        return None
+    flat = " ".join(cleaned.split())
+    if _FORBIDDEN.search(flat) or mentions_manipulation(flat):
+        return None
+    return cleaned
+
+
 _AI_TELLS = re.compile(
     r"\b(as an ai(\s+language)?\s+model|as a large language model|i (cannot|can't) browse|"
     r"chatgpt|openai|my training data|knowledge cutoff|certainly!? here(?:'s| is))\b",

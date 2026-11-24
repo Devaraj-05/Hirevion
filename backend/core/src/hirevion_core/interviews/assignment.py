@@ -86,7 +86,21 @@ RESUME_POLICY = {
 }
 UNASSIGNABLE_STAGES = ("uploaded", "rejected")
 # Skip codes that mean the request's own input was wrong (a single assignment answers 422).
-INPUT_CODES = frozenset({"invalid-window", "window-past", "window-too-short", "window-too-long"})
+INPUT_CODES = frozenset(
+    {"invalid-window", "window-past", "window-too-short", "window-too-long", "coding-too-long"}
+)
+CODING_ROOM_MINUTES = 10
+"""The least time a coding question leaves for the other questions (C8-11)."""
+
+
+@dataclass(frozen=True, slots=True)
+class CodingChoice:
+    """The coding question as the recruiter set it when scheduling (C8-11, owner 2026-11-22)."""
+
+    enabled: bool
+    languages: Sequence[str] = ("python",)
+    minutes: int = 20
+    difficulty: str = "medium"
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,6 +115,8 @@ class Assignment:
     timezone: str | None = None
     reviewer_ids: Sequence[UUID] = ()
     invite: bool = True
+    coding: CodingChoice | None = None
+    """None: the template's coding setting."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -141,7 +157,23 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
-def policy_snapshot(version: InterviewTemplateVersion) -> dict[str, Any]:
+def coding_policy(version: InterviewTemplateVersion, choice: CodingChoice | None) -> dict[str, Any]:
+    """The interview's coding question: the recruiter's choice when scheduling, else the
+    template's (C8-11)."""
+    if choice is None:
+        return {**dict(version.coding), "source": "template"}
+    return {
+        "enabled": choice.enabled,
+        "languages": list(choice.languages),
+        "minutes": choice.minutes,
+        "difficulty": choice.difficulty,
+        "source": "scheduling",
+    }
+
+
+def policy_snapshot(
+    version: InterviewTemplateVersion, coding: CodingChoice | None = None
+) -> dict[str, Any]:
     """The interview's operating rules, copied once from its template version: they never change
     afterwards, whatever happens to the template (PRD §80)."""
     level = version.proctoring_level
@@ -154,7 +186,7 @@ def policy_snapshot(version: InterviewTemplateVersion) -> dict[str, Any]:
         "checks": list(PROCTORING_PRESETS[level]),
         "third_eye": version.third_eye,
         "recording": dict(version.recording),
-        "coding": dict(version.coding),
+        "coding": coding_policy(version, coding),
         "question_count": version.question_count,
         "question_types": list(version.question_types),
         "difficulty": dict(version.difficulty),
@@ -350,6 +382,15 @@ async def _assign_one(
         check_window(assignment.starts_at, assignment.expires_at, version.duration_minutes, now=now)
     except Invalid as error:
         return skip(error.code, error.title)
+    choice = assignment.coding
+    if choice is not None and choice.enabled:
+        room = version.duration_minutes - CODING_ROOM_MINUTES
+        if choice.minutes > room:
+            return skip(
+                "coding-too-long",
+                f"The coding question can take at most {max(room, 0)} of the "
+                f"{version.duration_minutes} minutes",
+            )
     timezone = _timezone(assignment.timezone, organization.timezone)
     interview = Interview(
         organization_id=application.organization_id,
@@ -365,7 +406,7 @@ async def _assign_one(
         timezone=timezone,
         locale=organization.default_locale,
         duration_minutes=version.duration_minutes,
-        policy=policy_snapshot(version),
+        policy=policy_snapshot(version, assignment.coding),
         questions=[dict(item) for item in version.questions],
         team_id=job.team_id,
         recruiter_id=job.recruiter_id or actor.user_id,
