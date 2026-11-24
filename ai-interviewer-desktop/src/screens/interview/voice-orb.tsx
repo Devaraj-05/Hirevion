@@ -1,24 +1,28 @@
-import { memo, useEffect, useRef } from "react";
+import { memo, type RefObject, useEffect, useRef } from "react";
 import { follow, level, voiced } from "../../interview/levels";
 import type { OrbState } from "../../interview/orb-state";
 
 /**
- * The interviewer's presence (C8-12): a pearl sphere that moves with the real sound, the
- * interviewer's voice while it speaks and the candidate's microphone while they answer. The
- * levels are read every frame from Web Audio analysers and written to the `--level` CSS
- * variable, outside React's render: nothing re-renders per frame. `onVoiced` reports when the
- * candidate starts and stops speaking.
+ * The interviewer's presence (C8-12, owner's reference 2026-11-24): a glowing sphere, blue into
+ * violet, inside soft concentric rings, with the waveform mark at its centre. It moves with the
+ * real sound, the interviewer's voice while it speaks and the candidate's microphone while they
+ * answer. The levels are read every frame from Web Audio analysers and written to the `--level`
+ * CSS variable on `levelTarget` (the centre card, so its waveform strip moves too), outside
+ * React's render: nothing re-renders per frame. `onVoiced` reports when the candidate starts and
+ * stops speaking.
  */
 export const VoiceOrb = memo(function VoiceOrb({
   state,
   interviewer,
   microphone,
   onVoiced,
+  levelTarget,
 }: {
   state: OrbState;
   interviewer: MediaStreamTrack | null;
   microphone: MediaStreamTrack | null;
   onVoiced: (speaking: boolean) => void;
+  levelTarget?: RefObject<HTMLElement | null>;
 }) {
   const orb = useRef<HTMLDivElement>(null);
   const current = useRef(state);
@@ -27,7 +31,7 @@ export const VoiceOrb = memo(function VoiceOrb({
   report.current = onVoiced;
 
   useEffect(() => {
-    const element = orb.current;
+    const element = levelTarget?.current ?? orb.current;
     if (!element || (!interviewer && !microphone) || typeof AudioContext === "undefined") return;
     const context = new AudioContext();
     void context.resume().catch(() => undefined);
@@ -80,13 +84,50 @@ export const VoiceOrb = memo(function VoiceOrb({
       if (speaking) report.current(false);
       void context.close().catch(() => undefined);
     };
-  }, [interviewer, microphone]);
+  }, [interviewer, microphone, levelTarget]);
 
   return (
     <div ref={orb} className="orb" data-state={state} aria-hidden>
-      <span className="orb-ring" />
-      <span className="orb-ring orb-ring-outer" />
-      <span className="orb-core" />
+      <span className="orb-ring orb-ring-3" />
+      <span className="orb-ring orb-ring-2" />
+      <span className="orb-ring orb-ring-1" />
+      <span className="orb-core">
+        <svg viewBox="0 0 24 24" className="orb-glyph" aria-hidden focusable="false">
+          {[
+            [5, 7],
+            [8.5, 11],
+            [12, 15],
+            [15.5, 11],
+            [19, 7],
+          ].map(([x, height]) => (
+            <rect
+              key={x}
+              x={(x as number) - 1}
+              y={12 - (height as number) / 2}
+              width={2}
+              height={height}
+              rx={1}
+            />
+          ))}
+        </svg>
+      </span>
+    </div>
+  );
+});
+
+/** Bars along the bottom of the centre card that rise and fall with the same level. */
+const STRIP = [
+  0.18, 0.26, 0.34, 0.3, 0.46, 0.38, 0.56, 0.48, 0.7, 0.58, 0.82, 0.66, 1, 0.66, 0.82, 0.58, 0.7,
+  0.48, 0.56, 0.38, 0.46, 0.3, 0.34, 0.26, 0.18,
+];
+
+export const VoiceStrip = memo(function VoiceStrip() {
+  return (
+    <div className="voice-strip" aria-hidden>
+      {STRIP.map((height, index) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: a fixed decorative pattern.
+        <span key={index} style={{ "--h": height } as React.CSSProperties} />
+      ))}
     </div>
   );
 });

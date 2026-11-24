@@ -3,7 +3,6 @@ import { Smartphone, Video } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useTranslations } from "use-intl";
 import type { Health } from "../../interview/health";
-import { Emblem } from "../../ui/emblem";
 
 /** Anything that can show itself in a `<video>`: a LiveKit track, or a plain camera track. */
 export interface VideoSource {
@@ -25,17 +24,18 @@ export function mediaSource(track: MediaStreamTrack): VideoSource {
 
 export type TileStatus = Health | "off";
 
-const DOTS: Record<TileStatus, string> = {
-  starting: "bg-warning",
-  ok: "bg-success",
-  problem: "bg-danger",
-  off: "bg-muted-foreground",
+const TONES: Record<TileStatus, string> = {
+  starting: "text-warning",
+  ok: "text-success",
+  problem: "text-danger",
+  off: "text-muted-foreground",
 };
 
 /**
- * One camera (C8-12): the candidate's webcam (mirrored, as in a mirror) or the phone beside the
- * laptop. A label, a live dot with its words, and a "CONFIDENTIAL • INTERVIEW SESSION" mark
- * along the bottom edge, drawn over the picture only: the recorded tracks stay clean.
+ * One camera (C8-12, owner's reference 2026-11-24): a card with the camera's name and whether it
+ * is live, then the picture, the candidate's webcam mirrored as in a mirror, or the phone beside
+ * the laptop. A "CONFIDENTIAL • INTERVIEW SESSION" mark sits on the picture's corner, drawn over
+ * the picture only: the recorded tracks stay clean.
  */
 export function CameraTile({
   kind,
@@ -62,31 +62,35 @@ export function CameraTile({
 
   const Icon = kind === "main" ? Video : Smartphone;
   return (
-    <figure className="camera-tile" data-kind={kind} data-status={status}>
-      {source ? (
-        <video
-          ref={video}
-          className={cn("camera-video", kind === "main" && "camera-mirrored")}
-          autoPlay
-          muted
-          playsInline
-          aria-label={t(`${kind}.video`)}
-        />
-      ) : (
-        <div className="camera-empty">
-          <Icon aria-hidden className="size-5" strokeWidth={1.75} />
-          <p>{note}</p>
-        </div>
-      )}
-      <figcaption className="camera-chip">{t(`${kind}.label`)}</figcaption>
-      <span className="camera-status">
-        <span aria-hidden className={cn("size-1.5 rounded-full", DOTS[status])} />
-        {t(`status.${status}`)}
-      </span>
-      <span className="camera-watermark" aria-hidden>
-        <Emblem tone="light" className="size-3.5" />
-        {t("watermark")}
-      </span>
+    <figure className="card camera-tile" data-kind={kind} data-status={status}>
+      <figcaption className="card-header camera-header">
+        <Icon aria-hidden className="size-5 text-foreground" strokeWidth={2} />
+        <span className="card-title">{t(`${kind}.label`)}</span>
+        <span className={cn("camera-status", TONES[status])}>
+          <span aria-hidden className="status-dot bg-current" />
+          {t(`status.${status}`)}
+        </span>
+      </figcaption>
+      <div className="camera-frame">
+        {source ? (
+          <video
+            ref={video}
+            className={cn("camera-video", kind === "main" && "camera-mirrored")}
+            autoPlay
+            muted
+            playsInline
+            aria-label={t(`${kind}.video`)}
+          />
+        ) : (
+          <div className="camera-empty">
+            <Icon aria-hidden className="size-6" strokeWidth={1.5} />
+            <p>{note}</p>
+          </div>
+        )}
+        <span className="camera-watermark" aria-hidden>
+          {t("watermark")}
+        </span>
+      </div>
     </figure>
   );
 }

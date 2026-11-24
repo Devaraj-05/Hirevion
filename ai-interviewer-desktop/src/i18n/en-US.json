@@ -290,41 +290,46 @@
     "wordmark": "AI Interview",
     "left": "left",
     "minutesLeft": "{minutes, plural, one {One minute left} other {# minutes left}}",
-    "end": "End interview",
+    "end": "End Interview",
     "interviewer": "Interviewer",
     "orb": {
-      "speaking": "Interviewer is speaking",
-      "listening": "Listening",
-      "candidate": "You're speaking",
-      "thinking": "Thinking",
-      "connecting": "Connecting",
+      "speaking": "AI Interviewer is speaking…",
+      "listening": "Listening…",
+      "candidate": "You're speaking…",
+      "thinking": "Thinking…",
+      "connecting": "Connecting…",
+      "reconnecting": "Reconnecting. Stay on this screen.",
       "off": "Voice is off: type your answers",
-      "resting": "Waiting",
-      "reconnecting": "Reconnecting. Stay on this screen."
+      "resting": "Waiting…"
     },
     "transcript": {
       "title": "Transcript",
       "live": "Live",
-      "interviewer": "Interviewer",
-      "you": "You",
-      "empty": "The conversation appears here: what's said, and what you type.",
+      "interviewer": "AI Interviewer",
+      "you": "Candidate",
+      "empty": "The conversation appears here as it's spoken.",
       "latest": "Jump to latest"
     },
     "workspace": {
-      "label": "Coding area",
+      "label": "Coding question",
+      "title": "Coding Question",
+      "waiting": "Waiting for question…",
+      "inProgress": "In progress",
+      "emptyTitle": "Coding question will appear here",
+      "emptyBody": "Only when the AI asks a coding question.",
       "empty": "Empty until a coding question is asked."
     },
     "cameras": {
       "title": "Cameras",
       "watermark": "Confidential • Interview session",
       "main": {
-        "label": "Main camera",
+        "label": "Main Camera",
         "video": "Your camera",
         "empty": "Starting your camera",
         "problem": "We can't see your camera. Check it's connected and allowed."
       },
       "side": {
-        "label": "Side camera · Third eye",
+        "label": "Side Camera - Third-Eye",
         "video": "Your phone's camera",
         "connecting": "Connecting to your phone",
         "lost": "Your phone isn't connected. Keep its page open.",
@@ -343,7 +348,8 @@
       "continue": "Continue interview",
       "end": "End interview"
     },
-    "reconnectingNotice": "Your connection dropped. We're reconnecting you, and the interview carries on once it's back."
+    "reconnectingNotice": "Your connection dropped. We're reconnecting you, and the interview carries on once it's back.",
+    "interviewWord": "Interview"
   },
   "coding": {
     "title": "Your code",

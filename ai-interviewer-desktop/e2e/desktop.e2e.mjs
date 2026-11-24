@@ -142,15 +142,15 @@ test("the coding console and the design notes pad keep the candidate's work", as
     await session.click(button("Start interview"));
     // The interview fills the window (C8-12): the bar names the interview and keeps the time and
     // End interview at the top right.
-    await session.waitFor(button("End interview"), 60_000);
+    await session.waitFor(button("End Interview"), 60_000);
     await session.waitFor(`//h1[contains(normalize-space(), "– Interview")]`);
     assert.match(await (await session.find("header time")).text(), /^\d\d:\d\d$/);
 
     // End interview asks first; Continue keeps the interview going.
-    await session.click(button("End interview"));
+    await session.click(button("End Interview"));
     await session.waitFor(`//h2[normalize-space()="End the interview?"]`);
     await session.click(button("Continue interview"));
-    await session.waitFor(button("End interview"));
+    await session.waitFor(button("End Interview"));
 
     // The cameras: the main one and the phone set up before the start, each with the mark.
     await session.waitFor(`//figure[@data-kind="main"]`);
@@ -163,7 +163,7 @@ test("the coding console and the design notes pad keep the candidate's work", as
 
     // A spoken-style question leaves the coding area empty (owner: "completely empty").
     await session.waitFor(
-      `//section[@aria-label="Coding area"][contains(@class, "workspace-idle")]`,
+      `//section[@aria-label="Coding question"][contains(@class, "workspace-idle")]`,
     );
 
     // Question 1 is spoken-style: answer it in the text box.

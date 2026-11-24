@@ -270,6 +270,8 @@ export function Gallery() {
     <div className="h-full bg-background text-foreground">
       <InterviewStage
         title={TITLE}
+        candidateName="Meera Iyer"
+        jobTitle="Backend Engineer"
         connection={look.connection}
         indicators={{
           camera: look.services?.camera ?? "ok",

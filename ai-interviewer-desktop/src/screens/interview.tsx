@@ -446,6 +446,8 @@ export function InterviewScreen({
     <>
       <InterviewStage
         title={title}
+        candidateName={candidateName}
+        jobTitle={jobTitle}
         connection={connection}
         indicators={indicators(problems, phone)}
         remaining={remaining}

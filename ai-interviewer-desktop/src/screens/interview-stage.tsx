@@ -1,6 +1,4 @@
-import { cn } from "@hirevion/ui";
-import { Lock, Mic, MonitorUp } from "lucide-react";
-import { type ReactNode, useCallback, useId, useState } from "react";
+import { type ReactNode, useCallback, useId, useRef, useState } from "react";
 import { useTranslations } from "use-intl";
 import type { Health, Indicators } from "../interview/health";
 import { type Connection, orbState } from "../interview/orb-state";
@@ -8,18 +6,12 @@ import type { Line } from "../interview/transcript";
 import type { VoiceState } from "../native/commands";
 import { Notice } from "../ui/kit";
 import { CameraTile, type TileStatus, type VideoSource } from "./interview/camera-tile";
-import { TopBar } from "./interview/top-bar";
+import { type StatusItem, TopBar } from "./interview/top-bar";
 import { TranscriptPanel } from "./interview/transcript-panel";
-import { VoiceOrb } from "./interview/voice-orb";
-import { WorkspaceColumn } from "./interview/workspace-column";
+import { VoiceOrb, VoiceStrip } from "./interview/voice-orb";
+import { Waves, WorkspaceColumn } from "./interview/workspace-column";
 
 export type { Connection } from "../interview/orb-state";
-
-const DOTS: Record<Health, string> = {
-  starting: "bg-warning",
-  ok: "bg-success",
-  problem: "bg-danger",
-};
 
 const SESSION: Record<Connection, Health> = {
   connecting: "starting",
@@ -29,14 +21,17 @@ const SESSION: Record<Connection, Health> = {
 };
 
 /**
- * What the candidate sees during the interview (C8-12, product owner 2026-11-22): a bar with the
- * interview's name, the time left and End interview; then three columns. The left one is the
- * coding area, empty until a coding or design question opens. The centre is the interviewer, a
- * sphere that moves with the voice, and the live transcript of both speakers. The right one is the
- * main camera, the phone's camera, and the status of the microphone, the screen and the session.
+ * What the candidate sees during the interview (C8-12; product owner 2026-11-22, reference image
+ * 2026-11-24): a floating bar with the interview's name, the microphone, screen and session, the
+ * time left and End Interview; then three cards. The left one is the coding question, waiting
+ * until the AI asks one. The centre is the interviewer, a glowing sphere that moves with the
+ * voice, its state, the live transcript of both speakers and a waveform. The right one holds the
+ * main camera and the phone's camera.
  */
 export function InterviewStage({
   title,
+  candidateName,
+  jobTitle,
   connection,
   indicators,
   remaining,
@@ -55,6 +50,8 @@ export function InterviewStage({
   candidateSpeaking: shownSpeaking,
 }: {
   title: string;
+  candidateName?: string | undefined;
+  jobTitle?: string | undefined;
   connection: Connection;
   indicators: Indicators;
   remaining: number;
@@ -87,19 +84,41 @@ export function InterviewStage({
   const cameraStatus: TileStatus = indicators.camera;
   const phoneStatus: TileStatus = indicators.phone ?? "off";
 
-  const status = [
-    { key: "microphone", icon: Mic, health: indicators.microphone },
-    { key: "screen", icon: MonitorUp, health: indicators.screen },
+  const centre = useRef<HTMLElement>(null);
+  const sessionHealth: Health = voiceFailed ? "problem" : SESSION[connection];
+  const status: StatusItem[] = [
+    {
+      key: "microphone",
+      health: indicators.microphone,
+      label: `${t("health.microphone")}: ${t(`health.${indicators.microphone}`)}`,
+    },
+    {
+      key: "screen",
+      health: indicators.screen,
+      label: `${t("health.screen")}: ${t(`health.${indicators.screen}`)}`,
+    },
     {
       key: "session",
-      icon: Lock,
-      health: voiceFailed ? ("problem" as const) : SESSION[connection],
+      health: sessionHealth,
+      label: `${t("health.session")}: ${
+        voiceFailed
+          ? t("health.voiceUnavailable")
+          : t(`connection.${connection === "off" ? "connected" : connection}`)
+      }`,
     },
-  ] as const;
+  ];
 
   return (
-    <div className="stage grid h-full grid-rows-[auto_minmax(0,1fr)]">
-      <TopBar titleId={`${id}-title`} title={title} remaining={remaining} onEnd={onEnd} />
+    <div className="stage">
+      <TopBar
+        titleId={`${id}-title`}
+        title={title}
+        name={candidateName}
+        job={jobTitle}
+        status={status}
+        remaining={remaining}
+        onEnd={onEnd}
+      />
 
       <main
         aria-labelledby={`${id}-title`}
@@ -108,15 +127,17 @@ export function InterviewStage({
       >
         <WorkspaceColumn>{workspace}</WorkspaceColumn>
 
-        <section className="centre-column" aria-label={t("interviewer")}>
+        <section ref={centre} className="card centre-column" aria-label={t("interviewer")}>
           <div className="orb-stage">
             <VoiceOrb
               state={orb}
               interviewer={interviewerAudio}
               microphone={microphone}
               onVoiced={onVoiced}
+              levelTarget={centre}
             />
             <p className="orb-label" data-state={orb} aria-live="polite">
+              <span aria-hidden className="status-dot" />
               {t(`orb.${orb}`)}
             </p>
             {/* What needs the candidate's attention, said once, never over the transcript. */}
@@ -127,8 +148,10 @@ export function InterviewStage({
               {notices}
             </div>
           </div>
-          <TranscriptPanel lines={lines} live={connection === "connected"} />
-          {answerBox ? <div className="pane answer-pane">{answerBox}</div> : null}
+          <TranscriptPanel lines={lines} />
+          {answerBox ? <div className="answer-pane">{answerBox}</div> : null}
+          <VoiceStrip />
+          <Waves />
         </section>
 
         <section className="camera-column" aria-label={t("cameras.title")}>
@@ -141,26 +164,6 @@ export function InterviewStage({
           {phone !== undefined ? (
             <CameraTile kind="side" source={phone} status={phoneStatus} note={phoneNote} />
           ) : null}
-          <ul className="status-row" aria-label={t("health.title")}>
-            {status.map(({ key, icon: Icon, health }) => (
-              <li
-                key={key}
-                className="status-item"
-                title={`${t(`health.${key}`)}: ${t(`health.${health}`)}`}
-              >
-                <Icon aria-hidden className="size-4 text-muted-foreground" strokeWidth={1.75} />
-                <span className="status-name">{t(`health.${key}`)}</span>
-                <span className="status-state">
-                  <span aria-hidden className={cn("size-1.5 rounded-full", DOTS[health])} />
-                  {key !== "session"
-                    ? t(`health.${health}`)
-                    : voiceFailed
-                      ? t("health.voiceUnavailable")
-                      : t(`connection.${connection === "off" ? "connected" : connection}`)}
-                </span>
-              </li>
-            ))}
-          </ul>
         </section>
       </main>
     </div>
