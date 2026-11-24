@@ -1,7 +1,7 @@
 import { ArrowDown } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslations } from "use-intl";
-import type { Line } from "../../interview/transcript";
+import { activeLine, type Line } from "../../interview/transcript";
 
 /** How close to the bottom still counts as reading the latest line. */
 const PINNED_PX = 32;
@@ -31,6 +31,7 @@ export function TranscriptPanel({ lines, live }: { lines: Line[]; live: boolean 
   };
 
   const lastFinal = lines.findLast((line) => line.final);
+  const active = activeLine(lines);
   const who = (line: Line) => (line.speaker === "interviewer" ? t("interviewer") : t("you"));
 
   return (
@@ -67,6 +68,7 @@ export function TranscriptPanel({ lines, live }: { lines: Line[]; live: boolean 
                   data-speaker={line.speaker}
                   data-final={line.final}
                   data-first={first}
+                  data-active={line.id === active}
                 >
                   {first ? <span className="transcript-who">{who(line)}</span> : null}
                   <p>{line.text}</p>

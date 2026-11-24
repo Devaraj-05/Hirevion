@@ -298,19 +298,20 @@
       "thinking": "Thinking",
       "connecting": "Connecting",
       "off": "Voice is off: type your answers",
-      "resting": "Waiting"
+      "resting": "Waiting",
+      "reconnecting": "Reconnecting. Stay on this screen."
     },
     "transcript": {
       "title": "Transcript",
       "live": "Live",
       "interviewer": "Interviewer",
       "you": "You",
-      "empty": "The conversation is written here as it's spoken.",
+      "empty": "The conversation appears here: what's said, and what you type.",
       "latest": "Jump to latest"
     },
     "workspace": {
       "label": "Coding area",
-      "empty": "When a coding question is asked, it opens here."
+      "empty": "Empty until a coding question is asked."
     },
     "cameras": {
       "title": "Cameras",
@@ -339,7 +340,8 @@
       "body": "You can't come back to it. What you've answered so far will be submitted.",
       "continue": "Continue interview",
       "end": "End interview"
-    }
+    },
+    "reconnectingNotice": "Your connection dropped. We're reconnecting you, and the interview carries on once it's back."
   },
   "coding": {
     "title": "Your code",

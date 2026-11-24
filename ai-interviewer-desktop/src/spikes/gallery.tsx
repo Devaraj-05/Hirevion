@@ -293,6 +293,7 @@ export function Gallery() {
         microphone={null}
         notices={look.notice ? <Notice role="alert">{look.notice}</Notice> : null}
         onEnd={() => setDialog(true)}
+        candidateSpeaking={name === "candidate"}
       />
       <EndDialog open={dialog} onOpenChange={setDialog} onEnd={() => setDialog(false)} />
     </div>

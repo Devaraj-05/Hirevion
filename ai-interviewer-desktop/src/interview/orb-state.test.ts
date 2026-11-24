@@ -16,7 +16,8 @@ describe("the interviewer's orb (C8-12)", () => {
 
   it("rests while connecting, paused, ended or without voice", () => {
     expect(orbState("listening", "connecting", false)).toBe("connecting");
-    expect(orbState("speaking", "reconnecting", false)).toBe("connecting");
+    // A dropped connection mid-interview says so, rather than looking like the start.
+    expect(orbState("speaking", "reconnecting", false)).toBe("reconnecting");
     expect(orbState("listening", "off", true)).toBe("off");
     for (const voice of ["waiting", "paused", "ended", "error"] as const) {
       expect(orbState(voice, "connected", false)).toBe("resting");

@@ -6,6 +6,7 @@ import type { Health, Indicators } from "../interview/health";
 import { type Connection, orbState } from "../interview/orb-state";
 import type { Line } from "../interview/transcript";
 import type { VoiceState } from "../native/commands";
+import { Notice } from "../ui/kit";
 import { CameraTile, type TileStatus, type VideoSource } from "./interview/camera-tile";
 import { TopBar } from "./interview/top-bar";
 import { TranscriptPanel } from "./interview/transcript-panel";
@@ -50,6 +51,7 @@ export function InterviewStage({
   microphone,
   notices,
   onEnd,
+  candidateSpeaking: shownSpeaking,
 }: {
   title: string;
   connection: Connection;
@@ -70,12 +72,14 @@ export function InterviewStage({
   microphone: MediaStreamTrack | null;
   notices: ReactNode;
   onEnd: () => void;
+  /** The gallery's way to show the candidate speaking without a microphone. */
+  candidateSpeaking?: boolean;
 }) {
   const t = useTranslations("interview");
   const id = useId();
   const [candidateSpeaking, setCandidateSpeaking] = useState(false);
   const onVoiced = useCallback((speaking: boolean) => setCandidateSpeaking(speaking), []);
-  const orb = orbState(voice, connection, candidateSpeaking);
+  const orb = orbState(voice, connection, shownSpeaking ?? candidateSpeaking);
   const open = workspace !== null;
   const cameraStatus: TileStatus = indicators.camera;
   const phoneStatus: TileStatus = indicators.phone ?? "off";
@@ -110,7 +114,12 @@ export function InterviewStage({
             </p>
           </div>
           {/* What needs the candidate's attention, said once, never over the transcript. */}
-          <div className="notices">{notices}</div>
+          <div className="notices">
+            {connection === "reconnecting" ? (
+              <Notice role="status">{t("reconnectingNotice")}</Notice>
+            ) : null}
+            {notices}
+          </div>
           <TranscriptPanel lines={lines} live={connection === "connected"} />
           {answerBox ? <div className="pane answer-pane">{answerBox}</div> : null}
         </section>
@@ -136,7 +145,9 @@ export function InterviewStage({
                 <span className="status-name">{t(`health.${key}`)}</span>
                 <span className="status-state">
                   <span aria-hidden className={cn("size-1.5 rounded-full", DOTS[health])} />
-                  {key === "session" ? t(`connection.${connection}`) : t(`health.${health}`)}
+                  {key === "session"
+                    ? t(`connection.${connection === "off" ? "connected" : connection}`)
+                    : t(`health.${health}`)}
                 </span>
               </li>
             ))}

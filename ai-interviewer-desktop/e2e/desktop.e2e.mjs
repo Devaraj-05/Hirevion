@@ -148,7 +148,7 @@ test("the coding console and the design notes pad keep the candidate's work", as
 
     // End interview asks first; Continue keeps the interview going.
     await session.click(button("End interview"));
-    await session.waitFor(heading("End the interview?"));
+    await session.waitFor(`//h2[normalize-space()="End the interview?"]`);
     await session.click(button("Continue interview"));
     await session.waitFor(button("End interview"));
 
@@ -161,8 +161,10 @@ test("the coding console and the design notes pad keep the candidate's work", as
       2,
     );
 
-    // A spoken-style question leaves the coding area empty.
-    await session.waitFor(`//p[normalize-space()="When a coding question is asked, it opens here."]`);
+    // A spoken-style question leaves the coding area empty (owner: "completely empty").
+    await session.waitFor(
+      `//section[@aria-label="Coding area"][contains(@class, "workspace-idle")]`,
+    );
 
     // Question 1 is spoken-style: answer it in the text box.
     await (await session.waitFor(field("Your answer"))).type(

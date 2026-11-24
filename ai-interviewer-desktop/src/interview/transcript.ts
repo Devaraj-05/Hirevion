@@ -61,6 +61,11 @@ export function speakerOf(
   return "interviewer";
 }
 
+/** The line being spoken now (the newest), the only one that carries its speaker's colour. */
+export function activeLine(lines: readonly Line[]): string | null {
+  return lines.at(-1)?.id ?? null;
+}
+
 export function isFinalSegment(attributes: Record<string, string> | undefined): boolean {
   return attributes?.[SEGMENT_FINAL] === "true";
 }

@@ -60,6 +60,6 @@ ai-interviewer-desktop/e2e/output/
 infrastructure/local/egress/
 
 # Impeccable working material (screenshots, comps); briefs under .impeccable/surfaces stay tracked.
-.impeccable/review/
-.impeccable/mocks/
-.impeccable/build/
+**/.impeccable/review/
+**/.impeccable/mocks/
+**/.impeccable/build/

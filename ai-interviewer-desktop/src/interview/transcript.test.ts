@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { isFinalSegment, type Line, speakerOf, TRANSCRIPT_MAX, upsert } from "./transcript";
+import {
+  activeLine,
+  isFinalSegment,
+  type Line,
+  speakerOf,
+  TRANSCRIPT_MAX,
+  upsert,
+} from "./transcript";
 
 const line = (
   id: string,
@@ -57,5 +64,15 @@ describe("the live transcript (C8-12)", () => {
     expect(isFinalSegment({ "lk.transcription_final": "true" })).toBe(true);
     expect(isFinalSegment({ "lk.transcription_final": "false" })).toBe(false);
     expect(isFinalSegment(undefined)).toBe(false);
+  });
+
+  it("marks only the newest line as the one being spoken", () => {
+    // Colour belongs to the voice talking now (owner, 2026-11-24): earlier lines stay neutral.
+    const lines = [
+      line("a", "Tell me about Redis."),
+      line("b", "Sure, we used it", false, "candidate"),
+    ];
+    expect(activeLine(lines)).toBe("b");
+    expect(activeLine([])).toBeNull();
   });
 });

@@ -14,6 +14,7 @@ export type OrbState =
   | "candidate"
   | "thinking"
   | "connecting"
+  | "reconnecting"
   | "off"
   | "resting";
 
@@ -23,6 +24,7 @@ export function orbState(
   candidateSpeaking: boolean,
 ): OrbState {
   if (connection === "off") return "off";
+  if (connection === "reconnecting") return "reconnecting";
   if (connection !== "connected") return "connecting";
   if (voice === "speaking") return "speaking";
   if (voice === "thinking") return "thinking";

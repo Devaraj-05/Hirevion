@@ -335,10 +335,30 @@ export function InterviewScreen({
     }
   }, [interviewId, onError]);
 
+  // Text mode has no voice transcript: its questions and typed answers are written there instead.
+  const typedMode = connection === "off";
+  const asked = state.question;
+  useEffect(() => {
+    if (!typedMode || !asked?.text) return;
+    setLines((now) =>
+      upsert(now, { id: `q-${asked.id}`, speaker: "interviewer", text: asked.text, final: true }),
+    );
+  }, [typedMode, asked?.id, asked?.text]);
+
   async function sendAnswer() {
     if (!state.question || !answer.trim()) return;
+    const question = state.question;
+    const typedAnswer = answer.trim();
     try {
-      const next = await commands.answer(interviewId, state.question.id, answer.trim());
+      const next = await commands.answer(interviewId, question.id, typedAnswer);
+      setLines((now) =>
+        upsert(now, {
+          id: `a-${question.id}`,
+          speaker: "candidate",
+          text: typedAnswer,
+          final: true,
+        }),
+      );
       setAnswer("");
       setState(next.state);
     } catch (failure) {
@@ -386,13 +406,10 @@ export function InterviewScreen({
       </>
     ) : null;
 
+  // The question itself is in the transcript; the box only takes the answer.
   const answerBox = typed ? (
     <div className="grid gap-2">
-      {question && !workspace ? (
-        <p className="text-[1rem] leading-relaxed">{question.text}</p>
-      ) : !question ? (
-        <p className="text-muted-foreground">{t("waitingForQuestion")}</p>
-      ) : null}
+      {!question ? <p className="text-muted-foreground">{t("waitingForQuestion")}</p> : null}
       <Label htmlFor={`${id}-answer`}>{t("answerLabel")}</Label>
       <Textarea
         id={`${id}-answer`}
