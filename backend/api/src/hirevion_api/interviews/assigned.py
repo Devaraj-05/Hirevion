@@ -39,7 +39,12 @@ from hirevion_api.routing import api_router
 from hirevion_core.access.scope import ResourceScope, resource_scope
 from hirevion_core.identity.settings import IdentitySettings
 from hirevion_core.interviews import assignment
-from hirevion_core.interviews.assignment import Assignment, InterviewDetail, InterviewFilters
+from hirevion_core.interviews.assignment import (
+    Assignment,
+    CodingChoice,
+    InterviewDetail,
+    InterviewFilters,
+)
 from hirevion_core.interviews.lifecycle import reference
 from hirevion_core.models import Candidate, Interview, InterviewQuestionPlan, Job
 
@@ -66,6 +71,14 @@ def _assignment(body: AssignBody, application_ids: list[UUID]) -> Assignment:
         timezone=body.timezone,
         reviewer_ids=body.reviewer_ids,
         invite=body.invite,
+        coding=CodingChoice(
+            enabled=body.coding.enabled,
+            languages=tuple(body.coding.languages),
+            minutes=body.coding.minutes,
+            difficulty=body.coding.difficulty,
+        )
+        if body.coding is not None
+        else None,
     )
 
 

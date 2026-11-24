@@ -4194,6 +4194,8 @@ export interface components {
         BulkInterviewCreate: {
             /** Application Ids */
             application_ids: string[];
+            /** @description The coding question as the recruiter sets it; None: the template's. */
+            coding?: components["schemas"]["CodingChoiceBody"] | null;
             /**
              * Expires At
              * Format: date-time
@@ -4727,6 +4729,27 @@ export interface components {
             status: "not_asked" | "pending" | "scored" | "no_code";
             /** Submissions */
             submissions: number;
+        };
+        /**
+         * CodingChoiceBody
+         * @description The coding question, decided when scheduling (C8-11): it replaces the template's.
+         */
+        CodingChoiceBody: {
+            /**
+             * Difficulty
+             * @default medium
+             * @enum {string}
+             */
+            difficulty: "easy" | "medium" | "hard";
+            /** Enabled */
+            enabled: boolean;
+            /** Languages */
+            languages?: ("python" | "javascript" | "typescript" | "sql")[];
+            /**
+             * Minutes
+             * @default 20
+             */
+            minutes: number;
         };
         /** CodingCriterion */
         CodingCriterion: {
@@ -5861,6 +5884,8 @@ export interface components {
              * Format: uuid
              */
             application_id: string;
+            /** @description The coding question as the recruiter sets it; None: the template's. */
+            coding?: components["schemas"]["CodingChoiceBody"] | null;
             /**
              * Expires At
              * Format: date-time
@@ -9659,6 +9684,10 @@ export interface components {
         TemplateResponse: {
             /** Coding */
             coding: boolean;
+            /** Coding Languages */
+            coding_languages: string[];
+            /** Coding Minutes */
+            coding_minutes: number;
             current: components["schemas"]["TemplateVersionResponse"];
             /** Description */
             description: string;
@@ -9700,6 +9729,10 @@ export interface components {
         TemplateSummary: {
             /** Coding */
             coding: boolean;
+            /** Coding Languages */
+            coding_languages: string[];
+            /** Coding Minutes */
+            coding_minutes: number;
             /** Description */
             description: string;
             /** Duration Minutes */

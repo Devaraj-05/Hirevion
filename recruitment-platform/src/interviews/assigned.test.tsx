@@ -174,6 +174,25 @@ describe("InterviewPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows the coding question the recruiter set", async () => {
+    vi.mocked(api.getInterview).mockResolvedValue(
+      interview({
+        policy: {
+          ...interview().policy,
+          coding: {
+            enabled: true,
+            languages: ["python", "sql"],
+            minutes: 15,
+            difficulty: "hard",
+            source: "scheduling",
+          },
+        },
+      }),
+    );
+    renderAdmin(<InterviewPage id="iv-1" canManage />);
+    expect(await screen.findByText("Python, SQL · 15 min · Hard")).toBeInTheDocument();
+  });
+
   it("lists the questions prepared from the job and the resume, read-only", async () => {
     vi.mocked(api.getInterview).mockResolvedValue(interview({ status: "invited" }));
     vi.mocked(api.getQuestionPlan).mockResolvedValue({
@@ -294,6 +313,63 @@ describe("AssignDialog", () => {
     ).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onDone).toHaveBeenCalled();
+  });
+
+  it("lets the recruiter decide the coding question when scheduling", async () => {
+    vi.mocked(templatesApi.listTemplates).mockResolvedValue({ items: [], next_cursor: null });
+    vi.mocked(api.assignInterviews).mockResolvedValue({ created: [summary()], skipped: [] });
+    renderAdmin(
+      <AssignDialog
+        applicationIds={["a-1"]}
+        defaultTemplateId={null}
+        onDone={() => {}}
+        onCancel={() => {}}
+      />,
+    );
+    // As the template says, unless the recruiter chooses otherwise.
+    const coding = await screen.findByLabelText("Coding question");
+    expect(screen.queryByLabelText("Minutes")).toBeNull();
+    await userEvent.selectOptions(coding, "on");
+    await userEvent.click(screen.getByLabelText("SQL"));
+    const minutes = screen.getByLabelText("Minutes");
+    await userEvent.clear(minutes);
+    await userEvent.type(minutes, "15");
+    await userEvent.selectOptions(screen.getByLabelText("Level"), "hard");
+    await userEvent.click(screen.getByRole("button", { name: "Create and invite" }));
+    await waitFor(() =>
+      expect(api.assignInterviews).toHaveBeenCalledWith(
+        expect.objectContaining({
+          coding: { enabled: true, languages: ["python", "sql"], minutes: 15, difficulty: "hard" },
+        }),
+      ),
+    );
+  });
+
+  it("says why a candidate was skipped for the window or the coding time", async () => {
+    vi.mocked(templatesApi.listTemplates).mockResolvedValue({ items: [], next_cursor: null });
+    vi.mocked(api.assignInterviews).mockResolvedValue({
+      created: [],
+      skipped: [
+        { application_id: "a-1", code: "window-too-short", reason: "x" },
+        { application_id: "a-2", code: "coding-too-long", reason: "x" },
+      ],
+    });
+    renderAdmin(
+      <AssignDialog
+        applicationIds={["a-1", "a-2"]}
+        names={{ "a-1": "Asha Rao", "a-2": "Kabir Shah" }}
+        defaultTemplateId={null}
+        onDone={() => {}}
+        onCancel={() => {}}
+      />,
+    );
+    await userEvent.click(await screen.findByRole("button", { name: "Create and invite" }));
+    expect(
+      await screen.findByText("Asha Rao: the window is shorter than the interview"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Kabir Shah: the coding question leaves too little time for the rest"),
+    ).toBeInTheDocument();
   });
 });
 

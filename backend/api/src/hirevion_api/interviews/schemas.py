@@ -219,6 +219,9 @@ class TemplateSummary(BaseModel):
     proctoring_level: ProctoringLevel
     third_eye: ThirdEye
     coding: bool
+    coding_languages: list[str]
+    """The template's coding languages: the scheduling dialog's default (C8-11)."""
+    coding_minutes: int
     updated_at: datetime
 
 

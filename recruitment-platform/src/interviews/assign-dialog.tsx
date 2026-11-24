@@ -18,10 +18,16 @@ import { listTemplates } from "./api";
 import {
   assignInterviews,
   type BulkResult,
+  CODING_LANGUAGES,
+  type CodingChoice,
+  type CodingLanguage,
   interviewKeys,
   isoToLocal,
   localToIso,
 } from "./assigned-api";
+
+type CodingMode = "template" | "on" | "off";
+const LEVELS = ["easy", "medium", "hard"] as const;
 
 const DAY_MS = 86_400_000;
 
@@ -51,6 +57,12 @@ export function AssignDialog({
   const [startsAt, setStartsAt] = useState(isoToLocal(tomorrow));
   const [expiresAt, setExpiresAt] = useState(isoToLocal(new Date(tomorrow.getTime() + 2 * DAY_MS)));
   const [invite, setInvite] = useState(true);
+  // The coding question (C8-11, owner 2026-11-22: "decide by the recruiter at interview
+  // scheduling time"): the template's unless the recruiter chooses.
+  const [codingMode, setCodingMode] = useState<CodingMode>("template");
+  const [languages, setLanguages] = useState<CodingLanguage[]>(["python"]);
+  const [minutes, setMinutes] = useState("20");
+  const [level, setLevel] = useState<CodingChoice["difficulty"]>("medium");
   const [skipped, setSkipped] = useState<BulkResult["skipped"]>([]);
   const templates = useQuery({
     queryKey: ["interview-templates", "choices"],
@@ -65,6 +77,7 @@ export function AssignDialog({
         starts_at: localToIso(startsAt),
         expires_at: localToIso(expiresAt),
         invite,
+        coding: codingChoice(),
       }),
     onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: interviewKeys.list });
@@ -76,6 +89,18 @@ export function AssignDialog({
     },
     onError: problems.show,
   });
+
+  function codingChoice(): CodingChoice | null {
+    if (codingMode === "template") return null;
+    return {
+      enabled: codingMode === "on",
+      languages: languages.length > 0 ? languages : ["python"],
+      minutes: Number(minutes) || 20,
+      difficulty: level,
+    };
+  }
+
+  const chosen = templates.data?.items.find((template) => template.id === templateId);
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -161,6 +186,91 @@ export function AssignDialog({
                 />
               </div>
             </div>
+            <fieldset className="grid gap-3 rounded-md border p-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor={`${id}-coding`}>{t("coding.label")}</Label>
+                <NativeSelect
+                  id={`${id}-coding`}
+                  value={codingMode}
+                  onChange={(event) => setCodingMode(event.target.value as CodingMode)}
+                  options={[
+                    {
+                      value: "template",
+                      label: chosen
+                        ? chosen.coding
+                          ? t("coding.templateOn", {
+                              languages: chosen.coding_languages
+                                .map((lang) => t(`coding.languages.${lang as CodingLanguage}`))
+                                .join(", "),
+                              minutes: chosen.coding_minutes,
+                            })
+                          : t("coding.templateOff")
+                        : t("coding.asTemplate"),
+                    },
+                    { value: "on", label: t("coding.on") },
+                    { value: "off", label: t("coding.off") },
+                  ]}
+                />
+              </div>
+              {codingMode === "on" ? (
+                <>
+                  <div
+                    className="flex flex-wrap gap-x-4 gap-y-2"
+                    role="group"
+                    aria-label={t("coding.languagesLabel")}
+                  >
+                    {CODING_LANGUAGES.map((lang) => (
+                      <div key={lang} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`${id}-lang-${lang}`}
+                          checked={languages.includes(lang)}
+                          onCheckedChange={(checked) =>
+                            setLanguages((now) =>
+                              checked === true
+                                ? CODING_LANGUAGES.filter(
+                                    (one) => one === lang || now.includes(one),
+                                  )
+                                : now.filter((one) => one !== lang),
+                            )
+                          }
+                        />
+                        <Label htmlFor={`${id}-lang-${lang}`}>
+                          {t(`coding.languages.${lang}`)}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-1.5">
+                      <Label htmlFor={`${id}-minutes`}>{t("coding.minutes")}</Label>
+                      <Input
+                        id={`${id}-minutes`}
+                        type="number"
+                        min={5}
+                        max={45}
+                        value={minutes}
+                        onChange={(event) => setMinutes(event.target.value)}
+                      />
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor={`${id}-level`}>{t("coding.level")}</Label>
+                      <NativeSelect
+                        id={`${id}-level`}
+                        value={level}
+                        onChange={(event) =>
+                          setLevel(event.target.value as CodingChoice["difficulty"])
+                        }
+                        options={LEVELS.map((one) => ({
+                          value: one,
+                          label: t(`coding.levels.${one}`),
+                        }))}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-muted-foreground text-xs">{t("coding.hint")}</p>
+                </>
+              ) : null}
+            </fieldset>
             <div className="flex items-center gap-2">
               <Checkbox
                 id={`${id}-invite`}
@@ -192,6 +302,11 @@ const KNOWN = [
   "no-template",
   "template-unavailable",
   "application-not-found",
+  "invalid-window",
+  "window-past",
+  "window-too-short",
+  "window-too-long",
+  "coding-too-long",
 ] as const;
 
 /** The message key for a skip code; anything new reads as "couldn't be assigned". */

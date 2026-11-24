@@ -133,6 +133,8 @@ def _summary(detail: TemplateDetail) -> TemplateSummary:
         proctoring_level=v.proctoring_level,  # type: ignore[arg-type]
         third_eye=v.third_eye,  # type: ignore[arg-type]
         coding=bool(v.coding.get("enabled")),
+        coding_languages=[str(lang) for lang in v.coding.get("languages") or ["python"]],
+        coding_minutes=int(v.coding.get("minutes") or 20),
         updated_at=t.updated_at,
     )
 

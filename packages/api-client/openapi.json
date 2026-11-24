@@ -1348,6 +1348,17 @@
             "title": "Application Ids",
             "type": "array"
           },
+          "coding": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CodingChoiceBody"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The coding question as the recruiter sets it; None: the template's."
+          },
           "expires_at": {
             "format": "date-time",
             "title": "Expires At",
@@ -2732,6 +2743,52 @@
           "notable_signals"
         ],
         "title": "CodingBrief",
+        "type": "object"
+      },
+      "CodingChoiceBody": {
+        "additionalProperties": false,
+        "description": "The coding question, decided when scheduling (C8-11): it replaces the template's.",
+        "properties": {
+          "difficulty": {
+            "default": "medium",
+            "enum": [
+              "easy",
+              "medium",
+              "hard"
+            ],
+            "title": "Difficulty",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "languages": {
+            "items": {
+              "enum": [
+                "python",
+                "javascript",
+                "typescript",
+                "sql"
+              ],
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Languages",
+            "type": "array"
+          },
+          "minutes": {
+            "default": 20,
+            "maximum": 45.0,
+            "minimum": 5.0,
+            "title": "Minutes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "CodingChoiceBody",
         "type": "object"
       },
       "CodingCriterion": {
@@ -6024,6 +6081,17 @@
             "format": "uuid",
             "title": "Application Id",
             "type": "string"
+          },
+          "coding": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CodingChoiceBody"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The coding question as the recruiter sets it; None: the template's."
           },
           "expires_at": {
             "format": "date-time",
@@ -16993,6 +17061,17 @@
             "title": "Coding",
             "type": "boolean"
           },
+          "coding_languages": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Coding Languages",
+            "type": "array"
+          },
+          "coding_minutes": {
+            "title": "Coding Minutes",
+            "type": "integer"
+          },
           "current": {
             "$ref": "#/components/schemas/TemplateVersionResponse"
           },
@@ -17065,6 +17144,8 @@
           "proctoring_level",
           "third_eye",
           "coding",
+          "coding_languages",
+          "coding_minutes",
           "updated_at",
           "current"
         ],
@@ -17076,6 +17157,17 @@
           "coding": {
             "title": "Coding",
             "type": "boolean"
+          },
+          "coding_languages": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Coding Languages",
+            "type": "array"
+          },
+          "coding_minutes": {
+            "title": "Coding Minutes",
+            "type": "integer"
           },
           "description": {
             "title": "Description",
@@ -17146,6 +17238,8 @@
           "proctoring_level",
           "third_eye",
           "coding",
+          "coding_languages",
+          "coding_minutes",
           "updated_at"
         ],
         "title": "TemplateSummary",

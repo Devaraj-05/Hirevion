@@ -312,3 +312,30 @@ async def test_the_prepared_questions_are_read_only_for_the_hiring_team(
     assert {q["difficulty"] for q in ready["questions"]} == {"easy", "medium", "hard"}
     other = await recruiter.get(f"/api/v1/interviews/{uuid7()}/question-plan")
     assert other.status_code == 404
+
+
+async def test_the_coding_question_is_set_when_scheduling(
+    recruiter: AsyncClient, acme: UUID, recruiter_id: UUID, make_hiring: Any
+) -> None:
+    """C8-11 (owner, 2026-11-22): the recruiter decides the coding question when scheduling."""
+    hiring = await make_hiring(acme, recruiter_id=recruiter_id)
+    choice = {"enabled": True, "languages": ["python", "sql"], "minutes": 15, "difficulty": "hard"}
+    body = await create(recruiter, hiring, coding=choice)
+    assert body["policy"]["coding"] == {**choice, "source": "scheduling"}
+    other = await make_hiring(acme, recruiter_id=recruiter_id)
+    base = {"application_id": str(other.application_id), "template_id": str(other.template_id)}
+    too_long = await recruiter.post(
+        "/api/v1/interviews",
+        json={**base, **window(), "coding": {**choice, "minutes": 40}},
+    )
+    assert too_long.status_code == 422 and too_long.json()["code"] == "coding-too-long"
+    unknown = await recruiter.post(
+        "/api/v1/interviews",
+        json={**base, **window(), "coding": {**choice, "languages": ["cobol"]}},
+    )
+    assert unknown.status_code == 422
+    listed = (
+        await recruiter.get("/api/v1/interview-templates", params={"status": "active"})
+    ).json()
+    template = next(t for t in listed["items"] if t["id"] == str(other.template_id))
+    assert template["coding_languages"] and template["coding_minutes"] >= 5

@@ -86,6 +86,17 @@ export interface AssignInput {
   expires_at: string;
   reviewer_ids?: string[];
   invite: boolean;
+  /** The coding question as the recruiter set it (C8-11); null: the template's. */
+  coding?: CodingChoice | null;
+}
+
+export const CODING_LANGUAGES = ["python", "javascript", "typescript", "sql"] as const;
+export type CodingLanguage = (typeof CODING_LANGUAGES)[number];
+export interface CodingChoice {
+  enabled: boolean;
+  languages: CodingLanguage[];
+  minutes: number;
+  difficulty: "easy" | "medium" | "hard";
 }
 
 /** Assigns the same interview to every chosen application; the answer lists what it skipped. */

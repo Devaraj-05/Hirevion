@@ -67,6 +67,8 @@ function template(overrides: Partial<api.Template> = {}): api.Template {
     proctoring_level: "standard",
     third_eye: "optional",
     coding: false,
+    coding_languages: ["python"],
+    coding_minutes: 20,
     updated_at: "2026-10-05T00:00:00Z",
     current: {
       ...settings,

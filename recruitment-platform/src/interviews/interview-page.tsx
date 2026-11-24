@@ -29,6 +29,8 @@ import { PageHeader } from "@/page/page-header";
 import { AccommodationsCard } from "./accommodations-card";
 import { InterviewAnalyticsPanel } from "./analytics-panel";
 import {
+  CODING_LANGUAGES,
+  type CodingLanguage,
   cancelInterview,
   getInterview,
   type Interview,
@@ -138,7 +140,15 @@ export function InterviewPage({
     third_eye?: string;
     recording?: Record<string, boolean>;
     resume?: { grace_seconds?: number; max_interruptions?: number; same_device?: boolean };
+    coding?: { enabled?: boolean; languages?: string[]; minutes?: number; difficulty?: string };
   };
+  const coding = policy.coding;
+  const languageName = (lang: string) =>
+    (CODING_LANGUAGES as readonly string[]).includes(lang)
+      ? t(`codingLanguages.${lang as CodingLanguage}`)
+      : lang;
+  const codingLevel = (level: string | undefined) =>
+    level === "easy" || level === "medium" || level === "hard" ? t(`codingLevels.${level}`) : null;
   const reconnectMinutes = Math.max(1, Math.round((policy.resume?.grace_seconds ?? 300) / 60));
   const reason = (value: string) => (isEndReason(value) ? t(`endReasons.${value}`) : value);
 
@@ -257,6 +267,18 @@ export function InterviewPage({
                   .filter(([, on]) => on)
                   .map(([what]) => what)
                   .join(", ") || "—"}
+              </dd>
+              <dt className="text-muted-foreground">{t("codingRow")}</dt>
+              <dd>
+                {coding?.enabled
+                  ? [
+                      (coding.languages ?? []).map(languageName).join(", "),
+                      t("codingMinutes", { minutes: coding.minutes ?? 20 }),
+                      codingLevel(coding.difficulty),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")
+                  : t("codingNone")}
               </dd>
               <dt className="text-muted-foreground">{t("attempts")}</dt>
               <dd>

@@ -9,6 +9,8 @@ from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
+from hirevion_api.interviews.schemas import CodingLanguage, _python
+
 InterviewStatus = Literal[
     "scheduled",
     "invited",
@@ -22,6 +24,17 @@ InterviewStatus = Literal[
     "abandoned",
 ]
 StatusGroup = Literal["upcoming", "live", "completed"]
+
+
+class CodingChoiceBody(BaseModel):
+    """The coding question, decided when scheduling (C8-11): it replaces the template's."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool
+    languages: list[CodingLanguage] = Field(default_factory=_python, min_length=1)
+    minutes: int = Field(20, ge=5, le=45)
+    difficulty: Literal["easy", "medium", "hard"] = "medium"
 
 
 class AssignBody(BaseModel):
@@ -42,6 +55,9 @@ class AssignBody(BaseModel):
     )
     reviewer_ids: list[UUID] = Field(default_factory=list, max_length=10)
     invite: bool = Field(True, description="Send the invitation now (otherwise it's scheduled).")
+    coding: CodingChoiceBody | None = Field(
+        None, description="The coding question as the recruiter sets it; None: the template's."
+    )
 
 
 class InterviewCreate(AssignBody):

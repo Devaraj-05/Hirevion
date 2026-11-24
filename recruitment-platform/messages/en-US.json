@@ -1890,6 +1890,20 @@
           "medium": "Medium",
           "hard": "Hard"
         }
+      },
+      "codingRow": "Coding",
+      "codingNone": "No coding question",
+      "codingMinutes": "{minutes} min",
+      "codingLanguages": {
+        "python": "Python",
+        "javascript": "JavaScript",
+        "typescript": "TypeScript",
+        "sql": "SQL"
+      },
+      "codingLevels": {
+        "easy": "Easy",
+        "medium": "Medium",
+        "hard": "Hard"
       }
     },
     "assign": {
@@ -1917,7 +1931,35 @@
         "no-template": "applied to a job with no interview template",
         "template-unavailable": "the template is archived",
         "application-not-found": "isn't a candidate you can reach",
-        "other": "couldn't be given an interview"
+        "other": "couldn't be given an interview",
+        "invalid-window": "the window's times aren't valid",
+        "window-past": "the window has already closed",
+        "window-too-short": "the window is shorter than the interview",
+        "window-too-long": "the window is longer than allowed",
+        "coding-too-long": "the coding question leaves too little time for the rest"
+      },
+      "coding": {
+        "label": "Coding question",
+        "asTemplate": "As each job's template says",
+        "templateOn": "As the template says: yes ({languages}, {minutes} min)",
+        "templateOff": "As the template says: none",
+        "on": "Ask a coding question",
+        "off": "No coding question",
+        "languagesLabel": "Languages the candidate may answer in",
+        "languages": {
+          "python": "Python",
+          "javascript": "JavaScript",
+          "typescript": "TypeScript",
+          "sql": "SQL"
+        },
+        "minutes": "Minutes",
+        "level": "Level",
+        "levels": {
+          "easy": "Easy",
+          "medium": "Medium",
+          "hard": "Hard"
+        },
+        "hint": "From the question library at this level, or written from the job when the library has none. The code is typed in a text box and reviewed after the interview; it's never run."
       }
     },
     "evaluation": {
