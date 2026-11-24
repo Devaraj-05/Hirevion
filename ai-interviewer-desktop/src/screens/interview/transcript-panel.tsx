@@ -35,6 +35,13 @@ export function TranscriptPanel({ lines }: { lines: Line[] }) {
 
   const lastFinal = lines.findLast((line) => line.final);
   const active = activeLine(lines);
+  // LiveKit sends a turn as several segments: one card per run of the same speaker.
+  const turns: Line[][] = [];
+  for (const line of lines) {
+    const run = turns.at(-1);
+    if (run && run[0]?.speaker === line.speaker) run.push(line);
+    else turns.push([line]);
+  }
   const who = (line: Line) => (line.speaker === "interviewer" ? t("interviewer") : t("you"));
 
   return (
@@ -54,27 +61,33 @@ export function TranscriptPanel({ lines }: { lines: Line[] }) {
           <p className="transcript-empty">{t("empty")}</p>
         ) : (
           <ol className="transcript-lines">
-            {lines.map((line) => (
-              <li
-                key={line.id}
-                className="turn"
-                data-speaker={line.speaker}
-                data-final={line.final}
-                data-active={line.id === active}
-              >
-                <span aria-hidden className="turn-avatar">
-                  {line.speaker === "interviewer" ? (
-                    <Emblem tone="light" className="size-5" />
-                  ) : (
-                    <UserRound className="size-5" strokeWidth={2} />
-                  )}
-                </span>
-                <div className="turn-body">
-                  <span className="turn-who">{who(line)}</span>
-                  <p>{line.text}</p>
-                </div>
-              </li>
-            ))}
+            {turns.map((run) => {
+              const first = run[0] as Line;
+              return (
+                <li
+                  key={first.id}
+                  className="turn"
+                  data-speaker={first.speaker}
+                  data-active={run.some((line) => line.id === active)}
+                >
+                  <span aria-hidden className="turn-avatar">
+                    {first.speaker === "interviewer" ? (
+                      <Emblem tone="light" className="size-5" />
+                    ) : (
+                      <UserRound className="size-5" strokeWidth={2} />
+                    )}
+                  </span>
+                  <div className="turn-body">
+                    <span className="turn-who">{who(first)}</span>
+                    {run.map((line) => (
+                      <p key={line.id} data-final={line.final}>
+                        {line.text}
+                      </p>
+                    ))}
+                  </div>
+                </li>
+              );
+            })}
           </ol>
         )}
       </div>

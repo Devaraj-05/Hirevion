@@ -24,6 +24,8 @@ export interface StatusItem {
   health: Health;
   /** What the item says, e.g. "Microphone: working". */
   label: string;
+  /** Its state in a word or two, shown whenever it isn't working (never colour alone). */
+  state: string;
 }
 
 const ICONS = { microphone: Mic, screen: MonitorUp, session: Lock } as const;
@@ -67,23 +69,31 @@ export function TopBar({
       <Wordmark label={t("wordmark")} className="max-md:[&>.wordmark]:sr-only" />
       <span aria-hidden className="top-bar-rule" />
       <h1 id={titleId} title={title} className="top-bar-title">
-        {name && job ? (
-          <>
-            <span className="font-semibold">{name}</span>
-            {` – ${job} – ${t("interviewWord")}`}
-          </>
-        ) : (
-          title
-        )}
+        {name && job
+          ? t.rich("barTitleRich", {
+              name,
+              job,
+              b: (chunks) => <span className="font-semibold">{chunks}</span>,
+            })
+          : title}
       </h1>
       <ul className="top-bar-status" aria-label={t("health.title")}>
-        {status.map(({ key, health, label }) => {
+        {status.map(({ key, health, label, state }) => {
           const Icon = ICONS[key];
           return (
-            <li key={key} title={label}>
-              <Icon aria-hidden className="size-4" strokeWidth={1.75} />
-              <span aria-hidden className={cn("status-dot", DOTS[health])} />
-              <span className="sr-only">{label}</span>
+            <li key={key} title={label} data-health={health}>
+              <span className="status-icon">
+                <Icon aria-hidden className="size-4" strokeWidth={1.75} />
+                <span aria-hidden className={cn("status-dot", DOTS[health])} />
+              </span>
+              {health === "ok" ? (
+                <span className="sr-only">{label}</span>
+              ) : (
+                <span className="status-word">
+                  <span className="sr-only">{label}</span>
+                  <span aria-hidden>{state}</span>
+                </span>
+              )}
             </li>
           );
         })}

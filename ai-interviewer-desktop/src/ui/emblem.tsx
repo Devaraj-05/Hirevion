@@ -36,8 +36,8 @@ export function Emblem({
       {tone === "gradient" ? (
         <defs>
           <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="var(--brand-from)" />
-            <stop offset="1" stopColor="var(--brand-to)" />
+            <stop offset="0" style={{ stopColor: "var(--brand-from)" }} />
+            <stop offset="1" style={{ stopColor: "var(--brand-to)" }} />
           </linearGradient>
         </defs>
       ) : null}

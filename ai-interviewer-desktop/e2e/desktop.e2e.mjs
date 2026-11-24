@@ -161,7 +161,7 @@ test("the coding console and the design notes pad keep the candidate's work", as
       2,
     );
 
-    // A spoken-style question leaves the coding area empty (owner: "completely empty").
+    // A spoken-style question leaves the coding card waiting (owner's reference, 2026-11-24).
     await session.waitFor(
       `//section[@aria-label="Coding question"][contains(@class, "workspace-idle")]`,
     );

@@ -291,8 +291,25 @@
     color: var(--muted-foreground);
   }
   .top-bar-status li {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .status-icon {
     position: relative;
     display: grid;
+  }
+  /* A status that isn't working is also written: never colour alone. */
+  .status-word {
+    font-size: 0.85rem;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .top-bar-status li[data-health="problem"] {
+    color: var(--danger);
+  }
+  .top-bar-status li[data-health="starting"] {
+    color: var(--warning);
   }
   .top-bar-status .status-dot {
     position: absolute;
@@ -705,7 +722,7 @@
     color: var(--heading-ink);
   }
   /* Words still being heard are lighter until they're final. */
-  .turn[data-final="false"] .turn-body p {
+  .turn-body p[data-final="false"] {
     color: var(--muted-foreground);
   }
   .jump-latest {
@@ -866,10 +883,16 @@
       padding: 0.9rem;
     }
     .wordmark {
-      font-size: 1.1rem;
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
     }
     .top-bar-status {
-      display: none;
+      gap: 0.6rem;
+      padding: 0 0.4rem;
     }
   }
   @media (max-width: 1023px) {
@@ -1006,8 +1029,11 @@
   .turn {
     border-color: var(--foreground);
   }
-  .turn[data-final="false"] .turn-body p {
+  .turn-body p[data-final="false"] {
     color: var(--foreground);
+  }
+  .camera-watermark {
+    background: rgb(0 0 0 / 0.92);
   }
 }
 
@@ -1032,6 +1058,9 @@
   }
   .end-button {
     border: 2px solid ButtonText;
+  }
+  .status-dot {
+    forced-color-adjust: none;
   }
 }
 
