@@ -26,7 +26,8 @@ export function TranscriptPanel({ lines, live }: { lines: Line[]; live: boolean 
   const latest = () => {
     const element = scroller.current;
     if (!element) return;
-    element.scrollTo({ top: element.scrollHeight, behavior: "smooth" });
+    // At once: a smooth scroll's own scroll events would turn following off again.
+    element.scrollTop = element.scrollHeight;
     setFollowing(true);
   };
 

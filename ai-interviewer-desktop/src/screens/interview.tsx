@@ -147,9 +147,17 @@ export function InterviewScreen({
   }, []);
 
   // The clock counts down locally; the agent's time moves it only when they disagree (C8-12).
+  // Every server message that carries the time resyncs it, even an unchanged value (a paused
+  // clock repeats itself).
+  const [clockSync, setClockSync] = useState(0);
+  const adopt = useCallback((next: InterviewState) => {
+    setState(next);
+    setClockSync((count) => count + 1);
+  }, []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: clockSync marks each server message.
   useEffect(
     () => setRemaining((local) => reconcile(local, state.remaining_seconds)),
-    [state.remaining_seconds],
+    [state.remaining_seconds, clockSync],
   );
   useEffect(() => {
     const timer = window.setInterval(
@@ -172,7 +180,7 @@ export function InterviewScreen({
     const timer = window.setTimeout(async () => {
       const now = await commands.session(interviewId).catch(() => null);
       if (now && now.state.status === "in_progress" && now.state.remaining_seconds > 0) {
-        setState(now.state);
+        adopt(now.state);
         return;
       }
       void finish("finished");
@@ -210,7 +218,9 @@ export function InterviewScreen({
   // phone's camera at its low layer (C8-12).
   useEffect(() => {
     if (!start.livekit_url || !start.participant_token) return;
-    const next = new Room({ adaptiveStream: true, dynacast: true });
+    // No adaptive stream: the only video taken is the phone's, at the layer asked for (with
+    // adaptive stream on, LiveKit ignores a requested quality).
+    const next = new Room({ adaptiveStream: false, dynacast: true });
     room.current = next;
     const stopAudio = speaker.current
       ? playInterviewerAudio(next as unknown as AudioRoom, speaker.current, (track) =>
@@ -233,7 +243,9 @@ export function InterviewScreen({
     next.on(RoomEvent.DataReceived, (payload, _participant, _kind, topic) => {
       if (topic !== STATE_TOPIC) return;
       const patch = parseStateMessage(payload);
-      if (patch) setState((current) => mergeState(current, patch));
+      if (!patch) return;
+      setState((current) => mergeState(current, patch));
+      if (patch.remaining_seconds !== undefined) setClockSync((count) => count + 1);
     });
     next.on(RoomEvent.Reconnecting, () => setConnection("reconnecting"));
     next.on(RoomEvent.Reconnected, () => setConnection("connected"));
@@ -256,8 +268,10 @@ export function InterviewScreen({
         const text = spoken;
         setLines((now) => upsert(now, { id: segment, speaker, text, final }));
       }
-      // The interviewer's words are complete when its stream ends.
-      if (!final && speaker === "interviewer") {
+      // The final flag may come as the stream's trailer; the interviewer's words are complete
+      // when its stream ends.
+      const ended = isFinalSegment(reader.info.attributes) || speaker === "interviewer";
+      if (ended && !final) {
         setLines((now) => upsert(now, { id: segment, speaker, text: spoken, final: true }));
       }
     });
@@ -328,7 +342,7 @@ export function InterviewScreen({
   // A coding question closed elsewhere (answered, or its time ran out): fetch the state.
   const refresh = useCallback(async () => {
     try {
-      setState((await commands.session(interviewId)).state);
+      adopt((await commands.session(interviewId)).state);
     } catch (failure) {
       onError(failure);
       setError(errorKey(failure));
@@ -360,7 +374,7 @@ export function InterviewScreen({
         }),
       );
       setAnswer("");
-      setState(next.state);
+      adopt(next.state);
     } catch (failure) {
       onError(failure);
       setError(errorKey(failure));
@@ -391,7 +405,7 @@ export function InterviewScreen({
             key={question.id}
             interviewId={interviewId}
             questionId={question.id}
-            onSubmitted={setState}
+            onSubmitted={adopt}
             registerFlush={registerFlush}
             onClosed={() => void refresh()}
           />
@@ -445,6 +459,7 @@ export function InterviewScreen({
         interviewerAudio={interviewerAudio}
         microphone={microphone}
         onEnd={() => setConfirmEnd(true)}
+        voiceFailed={connection === "off" && state.answer_mode === "voice"}
         notices={
           <>
             {soundBlocked ? (

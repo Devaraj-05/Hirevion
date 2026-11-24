@@ -16,6 +16,8 @@ describe("the countdown (C8-12)", () => {
     expect(reconcile(1712, 1710)).toBe(1712);
     expect(reconcile(1712, 1700)).toBe(1700);
     expect(reconcile(40, 160)).toBe(160);
+    // A clock that ran out while the server still has time takes the server's word.
+    expect(reconcile(0, 1)).toBe(1);
   });
 
   it("announces five minutes and one minute left, once each", () => {
@@ -25,5 +27,7 @@ describe("the countdown (C8-12)", () => {
     expect(announcement(1712, 1711)).toBeNull();
     // A jump across the mark (the server's time) still announces it.
     expect(announcement(320, 290)).toBe(5);
+    // A jump past both marks announces the nearer one: one minute, never five.
+    expect(announcement(320, 50)).toBe(1);
   });
 });

@@ -283,7 +283,8 @@
       "starting": "starting",
       "ok": "working",
       "problem": "needs attention",
-      "session": "Secure session"
+      "session": "Secure session",
+      "voiceUnavailable": "Voice unavailable"
     },
     "barTitle": "{name} – {job} – Interview",
     "wordmark": "AI Interview",
@@ -319,7 +320,8 @@
       "main": {
         "label": "Main camera",
         "video": "Your camera",
-        "empty": "Starting your camera"
+        "empty": "Starting your camera",
+        "problem": "We can't see your camera. Check it's connected and allowed."
       },
       "side": {
         "label": "Side camera · Third eye",

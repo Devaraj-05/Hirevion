@@ -51,6 +51,7 @@ export function InterviewStage({
   microphone,
   notices,
   onEnd,
+  voiceFailed = false,
   candidateSpeaking: shownSpeaking,
 }: {
   title: string;
@@ -72,6 +73,8 @@ export function InterviewStage({
   microphone: MediaStreamTrack | null;
   notices: ReactNode;
   onEnd: () => void;
+  /** The voice room failed (not an approved text mode): the session row says so. */
+  voiceFailed?: boolean;
   /** The gallery's way to show the candidate speaking without a microphone. */
   candidateSpeaking?: boolean;
 }) {
@@ -87,7 +90,11 @@ export function InterviewStage({
   const status = [
     { key: "microphone", icon: Mic, health: indicators.microphone },
     { key: "screen", icon: MonitorUp, health: indicators.screen },
-    { key: "session", icon: Lock, health: SESSION[connection] },
+    {
+      key: "session",
+      icon: Lock,
+      health: voiceFailed ? ("problem" as const) : SESSION[connection],
+    },
   ] as const;
 
   return (
@@ -109,7 +116,7 @@ export function InterviewStage({
               microphone={microphone}
               onVoiced={onVoiced}
             />
-            <p className="orb-label" data-state={orb}>
+            <p className="orb-label" data-state={orb} aria-live="polite">
               {t(`orb.${orb}`)}
             </p>
             {/* What needs the candidate's attention, said once, never over the transcript. */}
@@ -129,7 +136,7 @@ export function InterviewStage({
             kind="main"
             source={camera}
             status={cameraStatus}
-            note={t("cameras.main.empty")}
+            note={cameraStatus === "problem" ? t("cameras.main.problem") : t("cameras.main.empty")}
           />
           {phone !== undefined ? (
             <CameraTile kind="side" source={phone} status={phoneStatus} note={phoneNote} />
@@ -145,9 +152,11 @@ export function InterviewStage({
                 <span className="status-name">{t(`health.${key}`)}</span>
                 <span className="status-state">
                   <span aria-hidden className={cn("size-1.5 rounded-full", DOTS[health])} />
-                  {key === "session"
-                    ? t(`connection.${connection === "off" ? "connected" : connection}`)
-                    : t(`health.${health}`)}
+                  {key !== "session"
+                    ? t(`health.${health}`)
+                    : voiceFailed
+                      ? t("health.voiceUnavailable")
+                      : t(`connection.${connection === "off" ? "connected" : connection}`)}
                 </span>
               </li>
             ))}

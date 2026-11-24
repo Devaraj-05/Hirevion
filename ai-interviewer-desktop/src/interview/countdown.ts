@@ -18,12 +18,15 @@ export function clockTone(seconds: number): ClockTone {
 
 /** The clock after the server's word: the local tick unless it has drifted. */
 export function reconcile(local: number, server: number, slack: number = SLACK_SECONDS): number {
+  // A clock that ran out while the server still has time takes the server's word.
+  if (local <= 0 && server > 0) return server;
   return Math.abs(local - server) <= slack ? local : server;
 }
 
 /** The minutes to announce as the clock goes from `previous` to `next`, or null. */
 export function announcement(previous: number, next: number): 5 | 1 | null {
-  if (previous > LOW_SECONDS && next <= LOW_SECONDS) return 5;
+  // A jump past both marks announces the nearer one.
   if (previous > 60 && next <= 60) return 1;
+  if (previous > LOW_SECONDS && next <= LOW_SECONDS) return 5;
   return null;
 }
