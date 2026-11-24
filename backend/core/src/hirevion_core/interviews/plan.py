@@ -653,6 +653,16 @@ async def _distinct_items(
     return [candidates[i - len(fixed)] for i in kept if i >= len(fixed)]
 
 
+@dataclass(slots=True)
+class _Draft:
+    """What the AI writes from, read in one short transaction (perf, 2026-11-24)."""
+
+    inputs: _Inputs
+    existing: list[dict[str, Any]]
+    asked: list[str]
+    base_version: int
+
+
 async def write_plan(
     session: AsyncSession,
     ai: AiServices,
@@ -660,8 +670,19 @@ async def write_plan(
     *,
     top_up: bool = False,
 ) -> InterviewQuestionPlan:
-    """Prepares (or tops up) `interview`'s questions and stores them, in the caller's tenant
-    session."""
+    """Prepares (or tops up) `interview`'s questions and stores them, in the caller's session.
+    The worker (`handle_plan_event`) runs the same steps in separate transactions instead."""
+    draft = await _read_draft(session, interview, top_up=top_up)
+    if isinstance(draft, InterviewQuestionPlan):
+        return draft
+    fresh, model = await _compose(ai, interview, draft, top_up=top_up)
+    return await _store(session, interview, draft, fresh, model, top_up=top_up)
+
+
+async def _read_draft(
+    session: AsyncSession, interview: Interview, *, top_up: bool
+) -> _Draft | InterviewQuestionPlan:
+    """Everything the AI writes from; the plan itself when it is already done (a duplicate)."""
     plan = await session.get(InterviewQuestionPlan, interview.id, with_for_update=True)
     if plan is None:
         plan = InterviewQuestionPlan(
@@ -671,9 +692,6 @@ async def write_plan(
         await session.flush()
     if plan.status == "ready" and not top_up:
         return plan  # a duplicate event
-    inputs = await _inputs(session, interview)
-    context = inputs.context
-    existing = list(plan.items) if top_up else []
     asked = (
         (
             await session.scalars(
@@ -683,6 +701,21 @@ async def write_plan(
         if top_up
         else []
     )
+    return _Draft(
+        inputs=await _inputs(session, interview),
+        existing=list(plan.items) if top_up else [],
+        asked=list(asked),
+        base_version=plan.version or 0,
+    )
+
+
+async def _compose(
+    ai: AiServices, interview: Interview, draft: _Draft, *, top_up: bool
+) -> tuple[list[dict[str, Any]], str | None]:
+    """The new questions and the model that wrote them. No database work: it runs between the
+    worker's transactions, so a minute of AI calls never holds a lock."""
+    inputs, existing, asked = draft.inputs, draft.existing, draft.asked
+    context = inputs.context
     taken_texts = {said(q.text) for q in context.pinned}
     taken_texts |= {said(i["text"]) for i in existing} | {said(text) for text in asked}
     taken_concepts = {key for i in existing if (key := concept_key(i.get("concept")))}
@@ -742,7 +775,7 @@ async def write_plan(
 
     answers = await asyncio.gather(*(write_skill(skill, left) for skill, left in asks))
     written: list[dict[str, Any]] = []
-    model = models[-1] if models else plan.model
+    model = models[-1] if models else None
     start = next_number(existing)
     for (skill, _), kept in zip(asks, answers, strict=True):
         written.extend(_model_items(kept, skill, start))
@@ -762,10 +795,45 @@ async def write_plan(
         written_coding = await coding_item(ai, interview, inputs, next_number([*existing, *fresh]))
         if written_coding is not None:
             fresh.append(written_coding)
+    return fresh, model
+
+
+async def _store(
+    session: AsyncSession,
+    interview: Interview,
+    draft: _Draft,
+    fresh: list[dict[str, Any]],
+    model: str | None,
+    *,
+    top_up: bool,
+) -> InterviewQuestionPlan:
+    """Writes the new questions, unless another worker finished the plan first; a top-up that
+    raced another keeps the other's questions and adds only what is still new."""
+    plan = await session.get(InterviewQuestionPlan, interview.id, with_for_update=True)
+    if plan is None:
+        plan = InterviewQuestionPlan(
+            organization_id=interview.organization_id, interview_id=interview.id, items=[]
+        )
+        session.add(plan)
+    if plan.status == "ready" and not top_up:
+        return plan
+    existing = draft.existing
+    if top_up and (plan.version or 0) != draft.base_version:
+        existing = list(plan.items)
+        texts = {said(entry["text"]) for entry in existing}
+        concepts = {key for entry in existing if (key := concept_key(entry.get("concept")))}
+        fresh = [
+            entry
+            for entry in fresh
+            if said(entry["text"]) not in texts
+            and concept_key(entry.get("concept")) not in concepts
+        ]
+        for n, entry in enumerate(fresh, start=next_number(existing)):
+            entry["key"] = f"plan:{n}"
     plan.items = [*existing, *fresh]
     plan.status = "ready"
     plan.version = (plan.version or 0) + 1
-    plan.model = model
+    plan.model = model or plan.model
     plan.prompt_version = PROMPT_VERSION
     plan.error = None
     await session.flush()
@@ -796,14 +864,21 @@ async def handle_plan_event(
     db: Database, ai: AiServices, organization_id: UUID, payload: dict[str, Any]
 ) -> None:
     interview_id = UUID(str(payload["interview_id"]))
+    top_up = payload.get("action") == "top_up"
     async with db.tenant(organization_id) as session:
         interview = await session.get(Interview, interview_id)
-        top_up = payload.get("action") == "top_up"
         if interview is None or interview.status not in ("scheduled", "invited", "in_progress"):
             return  # over, cancelled or expired: nobody will be asked
         if top_up and interview.status != "in_progress":
             return
-        await write_plan(session, ai, interview, top_up=top_up)
+        draft = await _read_draft(session, interview, top_up=top_up)
+    if isinstance(draft, InterviewQuestionPlan):
+        return
+    # No transaction is open while the AI writes (perf, 2026-11-24): one held through these
+    # calls kept the new plan row's foreign-key lock on the interview, and a start waited for it.
+    fresh, model = await _compose(ai, interview, draft, top_up=top_up)
+    async with db.tenant(organization_id) as session:
+        await _store(session, interview, draft, fresh, model, top_up=top_up)
 
 
 async def give_up_plan(db: Database, organization_id: UUID, payload: dict[str, Any]) -> None:

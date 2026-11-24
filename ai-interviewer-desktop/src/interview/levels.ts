@@ -35,3 +35,23 @@ export const CLOSE = 0.05;
 export function voiced(current: number, wasVoiced: boolean): boolean {
   return wasVoiced ? current >= CLOSE : current >= OPEN;
 }
+
+export interface Scales {
+  core: number;
+  rings: [number, number, number];
+  strip: number;
+}
+
+/**
+ * What the level moves (perf, 2026-11-24): the sphere a little, its three rings more the farther
+ * out they are, and the waveform strip as one piece. Set straight on each element's transform:
+ * a CSS variable on the card made the browser restyle the transcript every frame.
+ */
+export function scales(value: number): Scales {
+  const round = (n: number) => Math.round(n * 1000) / 1000;
+  return {
+    core: round(1 + value * 0.04),
+    rings: [round(1 + value * 0.05), round(1 + value * 0.09), round(1 + value * 0.14)],
+    strip: round(0.6 + value * 0.4),
+  };
+}

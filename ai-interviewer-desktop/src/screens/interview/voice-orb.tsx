@@ -1,14 +1,15 @@
-import { memo, type RefObject, useEffect, useRef } from "react";
-import { follow, level, voiced } from "../../interview/levels";
+import { memo, type Ref, type RefObject, useEffect, useRef } from "react";
+import { follow, level, type Scales, scales, voiced } from "../../interview/levels";
 import type { OrbState } from "../../interview/orb-state";
 
 /**
  * The interviewer's presence (C8-12, owner's reference 2026-11-24): a glowing sphere, blue into
  * violet, inside soft concentric rings, with the waveform mark at its centre. It moves with the
  * real sound, the interviewer's voice while it speaks and the candidate's microphone while they
- * answer. The levels are read every frame from Web Audio analysers and written to the `--level`
- * CSS variable on `levelTarget` (the centre card, so its waveform strip moves too), outside
- * React's render: nothing re-renders per frame. `onVoiced` reports when the candidate starts and
+ * answer. The levels are read every frame from Web Audio analysers and set straight on five
+ * transforms (the sphere, its three rings and `strip`), only when they change, outside React's
+ * render. Each of those has its own compositor layer, so a frame is a GPU scale, never a repaint
+ * or a restyle of the card (perf, 2026-11-24). `onVoiced` reports when the candidate starts and
  * stops speaking.
  */
 export const VoiceOrb = memo(function VoiceOrb({
@@ -16,13 +17,14 @@ export const VoiceOrb = memo(function VoiceOrb({
   interviewer,
   microphone,
   onVoiced,
-  levelTarget,
+  strip,
 }: {
   state: OrbState;
   interviewer: MediaStreamTrack | null;
   microphone: MediaStreamTrack | null;
   onVoiced: (speaking: boolean) => void;
-  levelTarget?: RefObject<HTMLElement | null>;
+  /** The waveform strip, which moves with the same level. */
+  strip?: RefObject<HTMLElement | null>;
 }) {
   const orb = useRef<HTMLDivElement>(null);
   const current = useRef(state);
@@ -31,8 +33,21 @@ export const VoiceOrb = memo(function VoiceOrb({
   report.current = onVoiced;
 
   useEffect(() => {
-    const element = levelTarget?.current ?? orb.current;
-    if (!element || (!interviewer && !microphone) || typeof AudioContext === "undefined") return;
+    const element = orb.current;
+    const sphere = element?.querySelector<HTMLElement>(".orb-core");
+    const [one, two, three] = [1, 2, 3].map((n) =>
+      element?.querySelector<HTMLElement>(`.orb-ring-${n}`),
+    );
+    if (
+      !element ||
+      !sphere ||
+      !one ||
+      !two ||
+      !three ||
+      (!interviewer && !microphone) ||
+      typeof AudioContext === "undefined"
+    )
+      return;
     const context = new AudioContext();
     void context.resume().catch(() => undefined);
     const meter = (track: MediaStreamTrack | null) => {
@@ -52,7 +67,15 @@ export const VoiceOrb = memo(function VoiceOrb({
       return level(from.data);
     };
     const still = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const apply = (to: Scales) => {
+      sphere.style.transform = `scale(${to.core})`;
+      one.style.transform = `scale(${to.rings[0]})`;
+      two.style.transform = `scale(${to.rings[1]})`;
+      three.style.transform = `scale(${to.rings[2]})`;
+      if (strip?.current) strip.current.style.transform = `scaleY(${to.strip})`;
+    };
     let shown = 0;
+    let written = "";
     let heard = 0;
     let speaking = false;
     let last = performance.now();
@@ -73,18 +96,23 @@ export const VoiceOrb = memo(function VoiceOrb({
             ? fromMic
             : 0;
       shown = follow(shown, still.matches ? 0 : target, elapsed);
-      element.style.setProperty("--level", shown.toFixed(3));
+      // Only a visible change is written: an unchanged value still costs a style pass.
+      const value = shown.toFixed(2);
+      if (value !== written) {
+        written = value;
+        apply(scales(Number(value)));
+      }
       frame = requestAnimationFrame(tick);
     });
     return () => {
       cancelAnimationFrame(frame);
       voice?.source.disconnect();
       mic?.source.disconnect();
-      element.style.setProperty("--level", "0");
+      apply(scales(0));
       if (speaking) report.current(false);
       void context.close().catch(() => undefined);
     };
-  }, [interviewer, microphone, levelTarget]);
+  }, [interviewer, microphone, strip]);
 
   return (
     <div ref={orb} className="orb" data-state={state} aria-hidden>
@@ -121,9 +149,9 @@ const STRIP = [
   0.48, 0.56, 0.38, 0.46, 0.3, 0.34, 0.26, 0.18,
 ];
 
-export const VoiceStrip = memo(function VoiceStrip() {
+export const VoiceStrip = memo(function VoiceStrip({ ref }: { ref?: Ref<HTMLDivElement> }) {
   return (
-    <div className="voice-strip" aria-hidden>
+    <div ref={ref} className="voice-strip" aria-hidden>
       {STRIP.map((height, index) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: a fixed decorative pattern.
         <span key={index} style={{ "--h": height } as React.CSSProperties} />

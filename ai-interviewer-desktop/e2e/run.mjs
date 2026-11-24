@@ -72,11 +72,14 @@ async function main() {
       ready: driverIsUp,
     },
     async () =>
-      spawnSync(process.execPath, ["--test", join(appRoot, "e2e", "desktop.e2e.mjs")], {
-        cwd: appRoot,
-        env,
-        stdio: "inherit",
-      }).status ?? 1,
+      spawnSync(
+        process.execPath,
+        // `--probe`: measure the interview screen's CPU instead of running the test.
+        process.argv.includes("--probe")
+          ? [join(appRoot, "e2e", "cpu-probe.mjs")]
+          : ["--test", join(appRoot, "e2e", "desktop.e2e.mjs")],
+        { cwd: appRoot, env, stdio: "inherit" },
+      ).status ?? 1,
   );
 }
 

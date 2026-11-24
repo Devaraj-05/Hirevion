@@ -84,7 +84,7 @@ export function InterviewStage({
   const cameraStatus: TileStatus = indicators.camera;
   const phoneStatus: TileStatus = indicators.phone ?? "off";
 
-  const centre = useRef<HTMLElement>(null);
+  const strip = useRef<HTMLDivElement>(null);
   const sessionHealth: Health = voiceFailed ? "problem" : SESSION[connection];
   const sessionWord = voiceFailed
     ? t("health.voiceUnavailable")
@@ -129,14 +129,14 @@ export function InterviewStage({
       >
         <WorkspaceColumn>{workspace}</WorkspaceColumn>
 
-        <section ref={centre} className="card centre-column" aria-label={t("interviewer")}>
+        <section className="card centre-column" aria-label={t("interviewer")}>
           <div className="orb-stage">
             <VoiceOrb
               state={orb}
               interviewer={interviewerAudio}
               microphone={microphone}
               onVoiced={onVoiced}
-              levelTarget={centre}
+              strip={strip}
             />
             <p className="orb-label" data-state={orb} aria-live="polite">
               <span aria-hidden className="status-dot" />
@@ -152,7 +152,7 @@ export function InterviewStage({
           </div>
           <TranscriptPanel lines={lines} />
           {answerBox ? <div className="answer-pane">{answerBox}</div> : null}
-          <VoiceStrip />
+          <VoiceStrip ref={strip} />
           <Waves />
         </section>
 

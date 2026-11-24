@@ -18,6 +18,8 @@ from livekit.agents.utils.hw import get_cpu_monitor
 from livekit.agents.worker import ServerEnvOption
 from livekit.plugins import silero
 
+from .priority import favour_live_audio
+
 # One runner waits ready in dev mode too (LiveKit keeps none); production keeps LiveKit's own
 # default, one per CPU.
 IDLE_RUNNERS = ServerEnvOption(dev_default=1, prod_default=math.ceil(get_cpu_monitor().cpu_count()))
@@ -41,5 +43,7 @@ def warm_up() -> None:
 
 
 def prewarm(process: JobProcess) -> None:
+    # A job process in production: live audio runs before background work (perf, 2026-11-24).
+    favour_live_audio()
     process.userdata["vad"] = silero.VAD.load()
     warm_up()

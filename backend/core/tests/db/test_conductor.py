@@ -4,6 +4,7 @@ the transcript's artifacts."""
 
 from __future__ import annotations
 
+import asyncio
 import json
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
@@ -35,7 +36,7 @@ from hirevion_core.interview_session.transcripts import render_vtt, write_artifa
 from hirevion_core.interviews import assignment
 from hirevion_core.interviews.assignment import Assignment
 from hirevion_core.interviews.lifecycle import By
-from hirevion_core.interviews.plan import give_up_plan, write_plan
+from hirevion_core.interviews.plan import PURPOSE, give_up_plan, handle_plan_event, write_plan
 from hirevion_core.interviews.scheduler import run_due
 from hirevion_core.models import (
     Application,
@@ -1095,6 +1096,46 @@ async def test_the_worker_prepares_distinct_questions_at_every_level(
     _, _, state = await cond._checkpoint(scene.organization_id, scene.interview_id)
     assert state.plan_version == 2
     assert {i["key"] for i in added} <= {q.key for q in state.pool}
+
+
+async def test_starting_isnt_held_up_while_the_questions_are_written(
+    app_db: Database,
+    admin_engine: AsyncEngine,
+    make_organization: MakeOrganization,
+    make_hiring: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Perf, 2026-11-24: the plan worker held one transaction through its AI calls, and its new
+    plan row's foreign key share-locked the interview, so a start right after scheduling waited
+    a minute (seen in pg_stat_activity). The interview row is free while the AI writes."""
+    scene = await invited(app_db, make_hiring, await make_organization("Acme"))
+    ai = build_ai(AiSettings(profile="mock"), app_db)
+    writing, release = asyncio.Event(), asyncio.Event()
+    real = ai.llm.complete
+
+    async def slow(context: Any, messages: Any, schema: Any, **kwargs: Any) -> Any:
+        if context.purpose == PURPOSE:
+            writing.set()
+            await release.wait()
+        return await real(context, messages, schema, **kwargs)
+
+    monkeypatch.setattr(ai.llm, "complete", slow)
+    event = {"interview_id": str(scene.interview_id)}
+    worker = asyncio.create_task(handle_plan_event(app_db, ai, scene.organization_id, event))
+    await asyncio.wait_for(writing.wait(), timeout=20)
+    try:
+        async with admin_engine.begin() as conn:
+            await conn.execute(text("SET LOCAL lock_timeout = '1s'"))
+            await conn.execute(
+                text("SELECT id FROM interviews WHERE id = :id FOR UPDATE"),
+                {"id": scene.interview_id},
+            )
+    finally:
+        release.set()
+        await worker
+    async with app_db.tenant(scene.organization_id) as session:
+        plan = await session.get_one(InterviewQuestionPlan, scene.interview_id)
+    assert plan.status == "ready" and plan.items
 
 
 async def test_a_plan_that_couldnt_be_prepared_says_so(

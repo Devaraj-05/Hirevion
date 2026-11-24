@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { follow, level, voiced } from "./levels";
+import { follow, level, scales, voiced } from "./levels";
 
 describe("sound levels for the orb (C8-12)", () => {
   it("is zero for silence and grows with loudness, capped at one", () => {
@@ -29,5 +29,15 @@ describe("sound levels for the orb (C8-12)", () => {
     expect(voiced(0.08, true)).toBe(true);
     expect(voiced(0.08, false)).toBe(false);
     expect(voiced(0.02, true)).toBe(false);
+  });
+});
+
+describe("what the level moves (perf, 2026-11-24)", () => {
+  it("scales the sphere, the three rings and the waveform, resting at silence", () => {
+    expect(scales(0)).toEqual({ core: 1, rings: [1, 1, 1], strip: 0.6 });
+    expect(scales(1)).toEqual({ core: 1.04, rings: [1.05, 1.09, 1.14], strip: 1 });
+    const half = scales(0.5);
+    expect(half.core).toBeCloseTo(1.02);
+    expect(half.strip).toBeCloseTo(0.8);
   });
 });

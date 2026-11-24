@@ -256,9 +256,36 @@ function Workspace({ kind }: { kind: "code" | "notes" }) {
   );
 }
 
+/** `?audio=1`: a synthetic voice (a tone that rises and falls like speech) drives the orb, to
+ * measure the screen's cost while the interviewer speaks (perf, 2026-11-24). */
+function useSyntheticVoice(on: boolean): MediaStreamTrack | null {
+  const [track, setTrack] = useState<MediaStreamTrack | null>(null);
+  useEffect(() => {
+    if (!on) return;
+    const context = new AudioContext();
+    const tone = context.createOscillator();
+    const swell = context.createOscillator();
+    const depth = context.createGain();
+    const gain = context.createGain();
+    tone.frequency.value = 180;
+    swell.frequency.value = 3;
+    depth.gain.value = 0.4;
+    gain.gain.value = 0.5;
+    swell.connect(depth).connect(gain.gain);
+    const out = context.createMediaStreamDestination();
+    tone.connect(gain).connect(out);
+    tone.start();
+    swell.start();
+    setTrack(out.stream.getAudioTracks()[0] ?? null);
+    return () => void context.close();
+  }, [on]);
+  return track;
+}
+
 export function Gallery() {
   const params = new URLSearchParams(window.location.hash.split("?")[1] ?? "");
   const name = params.get("state") ?? "speaking";
+  const voice = useSyntheticVoice(params.get("audio") === "1");
   const look = LOOKS[name] ?? LOOKS.speaking;
   const camera = useFakeCamera(0, look?.connection !== "connecting");
   const side = useFakeCamera(1, look?.phone === undefined || look.phone === "live");
@@ -295,7 +322,7 @@ export function Gallery() {
         camera={camera}
         phone={look.phone === "none" ? undefined : look.phone === "missing" ? null : side}
         phoneNote="Your phone isn't connected. Keep its page open."
-        interviewerAudio={null}
+        interviewerAudio={voice}
         microphone={null}
         notices={look.notice ? <Notice role="alert">{look.notice}</Notice> : null}
         onEnd={() => setDialog(true)}

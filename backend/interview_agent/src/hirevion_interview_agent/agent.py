@@ -69,6 +69,7 @@ from .bridge import (
 from .latency import LatencyCollector, TurnLatency
 from .load import session_load
 from .lock import AgentLock
+from .priority import favour_live_audio
 from .settings import AgentSettings
 from .turns import SpeechWindow
 from .warm import IDLE_RUNNERS, INITIALIZE_TIMEOUT_SECONDS, prewarm
@@ -408,6 +409,8 @@ async def entrypoint(ctx: JobContext) -> None:
 
 
 def main() -> None:
+    # The worker runs jobs in threads in development: live audio runs before background work.
+    favour_live_audio()
     settings = load_settings()
     if settings.hv_turn_detection == "multilingual":
         # The model runs in an inference process that the worker only starts for plugins
