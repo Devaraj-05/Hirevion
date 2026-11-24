@@ -679,10 +679,21 @@ async def write_plan(
     return await _store(session, interview, draft, fresh, model, top_up=top_up)
 
 
+# A pending plan is a worker's claim while it writes, for as long as the queue waits before
+# redelivering a slow event (`SLOW_RETRY_IDLE_MS` in documents/consumer.py).
+CLAIM = timedelta(minutes=10)
+
+
+def _claimed(plan: InterviewQuestionPlan) -> bool:
+    """Another worker is writing this plan now (a pending plan whose claim hasn't gone stale)."""
+    return plan.status == "pending" and plan.updated_at > datetime.now(UTC) - CLAIM
+
+
 async def _read_draft(
     session: AsyncSession, interview: Interview, *, top_up: bool
 ) -> _Draft | InterviewQuestionPlan:
-    """Everything the AI writes from; the plan itself when it is already done (a duplicate)."""
+    """Everything the AI writes from, with the plan claimed; the plan itself when it is done or
+    another worker holds a fresh claim (a duplicate or redelivered event)."""
     plan = await session.get(InterviewQuestionPlan, interview.id, with_for_update=True)
     if plan is None:
         plan = InterviewQuestionPlan(
@@ -690,8 +701,12 @@ async def _read_draft(
         )
         session.add(plan)
         await session.flush()
-    if plan.status == "ready" and not top_up:
-        return plan  # a duplicate event
+    elif not top_up:
+        if plan.status == "ready" or _claimed(plan):
+            return plan
+        # A failed plan, or a stale claim (its writer died): this worker takes it over.
+        plan.status = "pending"
+        plan.updated_at = datetime.now(UTC)
     asked = (
         (
             await session.scalars(
@@ -817,6 +832,10 @@ async def _store(
         session.add(plan)
     if plan.status == "ready" and not top_up:
         return plan
+    # The interview may have ended or been cancelled during the AI calls (no lock was held).
+    status = await session.scalar(select(Interview.status).where(Interview.id == interview.id))
+    if status not in (("in_progress",) if top_up else ("scheduled", "invited", "in_progress")):
+        return plan
     existing = draft.existing
     if top_up and (plan.version or 0) != draft.base_version:
         existing = list(plan.items)
@@ -856,7 +875,7 @@ async def queue_plan(
 async def ensure_plan(session: AsyncSession, interview: Interview) -> None:
     """Asks for the plan once more when it isn't ready (lost, failed, or never asked for)."""
     plan = await session.get(InterviewQuestionPlan, interview.id)
-    if plan is None or plan.status == "failed":
+    if plan is None or plan.status == "failed" or (plan.status == "pending" and not _claimed(plan)):
         await queue_plan(session, interview)
 
 

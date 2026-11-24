@@ -766,6 +766,7 @@
     position: relative;
     /* Its own layer, scaled as one piece by the level (perf, 2026-11-24). */
     transform: scaleY(0.6);
+    transform-origin: center calc((100% - 0.9rem) / 2);
     will-change: transform;
     z-index: 1;
     display: flex;

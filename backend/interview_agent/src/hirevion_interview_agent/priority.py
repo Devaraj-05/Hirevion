@@ -53,7 +53,10 @@ def favour_live_audio() -> bool:
         if sys.platform == "win32":
             raised = _set_windows_priority(ABOVE_NORMAL_PRIORITY_CLASS)
         else:
-            os.nice(NICE)
+            # Set, never add (`os.nice` adds): main() and each job's prewarm both call this.
+            prio_process = getattr(os, "PRIO_PROCESS", 0)
+            if os.getpriority(prio_process, 0) > NICE:
+                os.setpriority(prio_process, 0, NICE)
             raised = True
     except OSError:
         raised = False

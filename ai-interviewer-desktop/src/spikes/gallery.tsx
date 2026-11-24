@@ -276,8 +276,12 @@ function useSyntheticVoice(on: boolean): MediaStreamTrack | null {
     tone.connect(gain).connect(out);
     tone.start();
     swell.start();
+    void context.resume().catch(() => undefined);
     setTrack(out.stream.getAudioTracks()[0] ?? null);
-    return () => void context.close();
+    return () => {
+      setTrack(null);
+      void context.close();
+    };
   }, [on]);
   return track;
 }

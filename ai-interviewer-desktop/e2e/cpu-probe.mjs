@@ -3,7 +3,8 @@
 // How much CPU the app takes on the interview screen (perf investigation, 2026-11-24). It walks
 // the stub backend to the interview, like desktop.e2e.mjs, then samples every process's CPU for
 // HV_PROBE_SECONDS (default 20) and prints the app's processes (the Rust app and its WebView2
-// processes) and the whole machine, as % of one core. Run it on a quiet PC.
+// processes) and the whole machine (all processes but Idle), as % of one core. Run it on a quiet
+// PC. It reads Windows' English counter names, so it needs an English Windows.
 import { spawnSync } from "node:child_process";
 import { Session } from "./webdriver.mjs";
 
@@ -20,11 +21,11 @@ $samples = Get-Counter '\\Process(*)\\% Processor Time' -SampleInterval 1 -MaxSa
 $rows = @{}
 foreach ($set in $samples) { foreach ($s in $set.CounterSamples) {
   $name = ($s.InstanceName -replace '#\\d+$','')
-  if ($name -in @('idle')) { continue }
   if (-not $rows.ContainsKey($name)) { $rows[$name] = 0.0 }
   $rows[$name] += $s.CookedValue
 } }
-$rows.GetEnumerator() | ForEach-Object { '{0}\t{1:N1}' -f $_.Key, ($_.Value / ${seconds}) }`;
+$invariant = [cultureinfo]::InvariantCulture
+$rows.GetEnumerator() | ForEach-Object { $_.Key + "\t" + ($_.Value / ${seconds}).ToString('F1', $invariant) }`;
   const run = spawnSync("powershell.exe", ["-NoProfile", "-Command", script], {
     encoding: "utf8",
     maxBuffer: 16 * 1024 * 1024,
@@ -34,7 +35,7 @@ $rows.GetEnumerator() | ForEach-Object { '{0}\t{1:N1}' -f $_.Key, ($_.Value / ${
     .filter(Boolean)
     .map((line) => {
       const [name, value] = line.split("\t");
-      return { name, cpu: Number(String(value).replace(/,/g, "")) };
+      return { name, cpu: Number(value) };
     })
     .sort((a, b) => b.cpu - a.cpu);
 }
@@ -70,14 +71,18 @@ try {
   // Let the services start (recording, face module, monitoring) before measuring.
   await new Promise((resolve) => setTimeout(resolve, 8_000));
   const rows = sampleCpu(SECONDS);
-  const total = rows.find((row) => row.name === "_total")?.cpu ?? 0;
+  // `_total` counts the Idle process too: the machine's work is the rest.
+  const cpuOf = (name) => rows.find((row) => row.name === name)?.cpu ?? 0;
+  const total = cpuOf("_total") - cpuOf("idle");
   const app = rows.filter((row) => /^(ai-interview|msedgewebview2)$/i.test(row.name));
   console.log(`\nInterview screen, ${SECONDS} s, % of one core (8 logical CPUs = 800%):`);
   for (const row of app) console.log(`  ${row.name.padEnd(18)} ${row.cpu.toFixed(1)}`);
-  console.log(`  ${"app total".padEnd(18)} ${app.reduce((sum, row) => sum + row.cpu, 0).toFixed(1)}`);
+  console.log(
+    `  ${"app total".padEnd(18)} ${app.reduce((sum, row) => sum + row.cpu, 0).toFixed(1)}`,
+  );
   console.log(`  ${"machine".padEnd(18)} ${total.toFixed(1)}`);
   console.log("\nTop processes:");
-  for (const row of rows.filter((row) => row.name !== "_total").slice(0, 8)) {
+  for (const row of rows.filter((row) => !["_total", "idle"].includes(row.name)).slice(0, 8)) {
     console.log(`  ${row.name.padEnd(24)} ${row.cpu.toFixed(1)}`);
   }
 } finally {

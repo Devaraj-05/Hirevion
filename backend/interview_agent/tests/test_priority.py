@@ -26,11 +26,29 @@ def test_elsewhere_it_asks_for_a_little_more_and_carries_on_when_refused(
 ) -> None:
     monkeypatch.setattr(priority.sys, "platform", "linux")
 
-    def refuse(_: int) -> int:
+    def refuse(*_: int) -> None:
         raise PermissionError("needs CAP_SYS_NICE")
 
-    monkeypatch.setattr(priority.os, "nice", refuse, raising=False)
+    monkeypatch.setattr(priority.os, "getpriority", lambda *_: 0, raising=False)
+    monkeypatch.setattr(priority.os, "setpriority", refuse, raising=False)
     assert priority.favour_live_audio() is False
+
+
+def test_elsewhere_it_sets_the_value_once_however_often_it_is_called(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """main() and every job's prewarm call it: the value must not stack to -10, -15..."""
+    niceness = [0]
+    monkeypatch.setattr(priority.sys, "platform", "linux")
+    monkeypatch.setattr(priority.os, "getpriority", lambda *_: niceness[0], raising=False)
+    monkeypatch.setattr(
+        priority.os,
+        "setpriority",
+        lambda _w, _p, value: niceness.__setitem__(0, value),
+        raising=False,
+    )
+    assert priority.favour_live_audio() and priority.favour_live_audio()
+    assert niceness == [priority.NICE]
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="the Windows priority class")

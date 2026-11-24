@@ -36,7 +36,14 @@ from hirevion_core.interview_session.transcripts import render_vtt, write_artifa
 from hirevion_core.interviews import assignment
 from hirevion_core.interviews.assignment import Assignment
 from hirevion_core.interviews.lifecycle import By
-from hirevion_core.interviews.plan import PURPOSE, give_up_plan, handle_plan_event, write_plan
+from hirevion_core.interviews.plan import (
+    PLAN_TOPIC,
+    PURPOSE,
+    ensure_plan,
+    give_up_plan,
+    handle_plan_event,
+    write_plan,
+)
 from hirevion_core.interviews.scheduler import run_due
 from hirevion_core.models import (
     Application,
@@ -1136,6 +1143,98 @@ async def test_starting_isnt_held_up_while_the_questions_are_written(
     async with app_db.tenant(scene.organization_id) as session:
         plan = await session.get_one(InterviewQuestionPlan, scene.interview_id)
     assert plan.status == "ready" and plan.items
+
+
+def _held_ai(app_db: Database, monkeypatch: pytest.MonkeyPatch) -> tuple[Any, Any, Any, list[str]]:
+    """The mock AI, holding the plan's question calls until `release` is set."""
+    ai = build_ai(AiSettings(profile="mock"), app_db)
+    writing, release = asyncio.Event(), asyncio.Event()
+    asked: list[str] = []
+    real = ai.llm.complete
+
+    async def held(context: Any, messages: Any, schema: Any, **kwargs: Any) -> Any:
+        if context.purpose == PURPOSE:
+            asked.append(context.purpose)
+            writing.set()
+            await release.wait()
+        return await real(context, messages, schema, **kwargs)
+
+    monkeypatch.setattr(ai.llm, "complete", held)
+    return ai, writing, release, asked
+
+
+async def test_a_second_worker_leaves_a_plan_another_is_writing(
+    app_db: Database,
+    make_organization: MakeOrganization,
+    make_hiring: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A redelivered event mustn't pay for the same minute of AI calls twice."""
+    scene = await invited(app_db, make_hiring, await make_organization("Acme"))
+    ai, writing, release, asked = _held_ai(app_db, monkeypatch)
+    event = {"interview_id": str(scene.interview_id)}
+    first = asyncio.create_task(handle_plan_event(app_db, ai, scene.organization_id, event))
+    await asyncio.wait_for(writing.wait(), timeout=20)
+    calls = len(asked)
+    await asyncio.wait_for(handle_plan_event(app_db, ai, scene.organization_id, event), timeout=20)
+    assert len(asked) == calls  # the second worker saw the claim and stopped
+    release.set()
+    await first
+    async with app_db.tenant(scene.organization_id) as session:
+        plan = await session.get_one(InterviewQuestionPlan, scene.interview_id)
+    assert plan.status == "ready"
+
+
+async def test_a_plan_whose_writer_died_is_asked_for_again(
+    app_db: Database,
+    admin_engine: AsyncEngine,
+    make_organization: MakeOrganization,
+    make_hiring: Any,
+) -> None:
+    scene = await invited(app_db, make_hiring, await make_organization("Acme"))
+    async with admin_engine.begin() as conn:
+        await conn.execute(
+            text(
+                "INSERT INTO interview_question_plans (organization_id, interview_id, status, "
+                "updated_at) VALUES (:org, :id, 'pending', now() - interval '1 hour')"
+            ),
+            {"org": scene.organization_id, "id": scene.interview_id},
+        )
+        asked_before = await conn.scalar(
+            text("SELECT count(*) FROM outbox_events WHERE topic = :topic"), {"topic": PLAN_TOPIC}
+        )
+    async with app_db.tenant(scene.organization_id) as session:
+        interview = await session.get_one(Interview, scene.interview_id)
+        await ensure_plan(session, interview)
+    async with admin_engine.begin() as conn:
+        asked_after = await conn.scalar(
+            text("SELECT count(*) FROM outbox_events WHERE topic = :topic"), {"topic": PLAN_TOPIC}
+        )
+    assert asked_after == asked_before + 1
+
+
+async def test_a_plan_isnt_stored_for_an_interview_cancelled_meanwhile(
+    app_db: Database,
+    admin_engine: AsyncEngine,
+    make_organization: MakeOrganization,
+    make_hiring: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    scene = await invited(app_db, make_hiring, await make_organization("Acme"))
+    ai, writing, release, _ = _held_ai(app_db, monkeypatch)
+    event = {"interview_id": str(scene.interview_id)}
+    worker = asyncio.create_task(handle_plan_event(app_db, ai, scene.organization_id, event))
+    await asyncio.wait_for(writing.wait(), timeout=20)
+    async with admin_engine.begin() as conn:
+        await conn.execute(
+            text("UPDATE interviews SET status = 'cancelled' WHERE id = :id"),
+            {"id": scene.interview_id},
+        )
+    release.set()
+    await worker
+    async with app_db.tenant(scene.organization_id) as session:
+        plan = await session.get_one(InterviewQuestionPlan, scene.interview_id)
+    assert plan.status != "ready" and plan.items == []
 
 
 async def test_a_plan_that_couldnt_be_prepared_says_so(
