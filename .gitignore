@@ -58,3 +58,8 @@ ai-interviewer-desktop/e2e/output/
 
 # LiveKit Egress output, shared with the media worker (SP-13)
 infrastructure/local/egress/
+
+# Impeccable working material (screenshots, comps); briefs under .impeccable/surfaces stay tracked.
+.impeccable/review/
+.impeccable/mocks/
+.impeccable/build/

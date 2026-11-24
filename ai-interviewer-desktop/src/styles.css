@@ -480,12 +480,16 @@
   }
 
   /* The cameras. */
+  /* A column, not a grid: tiles keep their 4:3 shape instead of being squeezed together. */
   .camera-column {
-    display: grid;
-    align-content: start;
+    display: flex;
+    flex-direction: column;
     gap: 0.9rem;
     min-height: 0;
     overflow-y: auto;
+  }
+  .camera-column > * {
+    flex: none;
   }
   .camera-tile {
     position: relative;
@@ -605,7 +609,8 @@
     .stage-grid,
     .stage-grid[data-workspace="open"] {
       grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
-      grid-auto-rows: minmax(0, 1fr);
+      grid-auto-rows: auto;
+      align-content: start;
       overflow-y: auto;
     }
     .stage-grid[data-workspace="closed"] .workspace-pane {
@@ -613,7 +618,13 @@
     }
     .stage-grid[data-workspace="open"] .workspace-pane {
       grid-column: 1 / -1;
-      min-height: 22rem;
+      height: min(30rem, 72vh);
+    }
+    .centre-column {
+      min-height: max(26rem, calc(100dvh - 6.5rem));
+    }
+    .camera-column {
+      overflow: visible;
     }
   }
   @media (max-width: 767px) {
@@ -626,7 +637,9 @@
       min-height: 26rem;
     }
     .camera-column {
+      display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: start;
       overflow: visible;
     }
     .status-row {
