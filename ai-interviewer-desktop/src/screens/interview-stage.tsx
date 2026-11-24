@@ -112,13 +112,13 @@ export function InterviewStage({
             <p className="orb-label" data-state={orb}>
               {t(`orb.${orb}`)}
             </p>
-          </div>
-          {/* What needs the candidate's attention, said once, never over the transcript. */}
-          <div className="notices">
-            {connection === "reconnecting" ? (
-              <Notice role="status">{t("reconnectingNotice")}</Notice>
-            ) : null}
-            {notices}
+            {/* What needs the candidate's attention, said once, never over the transcript. */}
+            <div className="notices">
+              {connection === "reconnecting" ? (
+                <Notice role="status">{t("reconnectingNotice")}</Notice>
+              ) : null}
+              {notices}
+            </div>
           </div>
           <TranscriptPanel lines={lines} live={connection === "connected"} />
           {answerBox ? <div className="pane answer-pane">{answerBox}</div> : null}

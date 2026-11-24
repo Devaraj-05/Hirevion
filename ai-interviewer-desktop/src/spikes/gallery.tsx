@@ -127,7 +127,14 @@ const LOOKS: Record<string, Look> = {
     voice: "listening",
     connection: "off",
     remaining: 1400,
-    lines: [],
+    lines: [
+      {
+        id: "q-1",
+        speaker: "interviewer",
+        final: true,
+        text: "Tell me about a time a database migration went wrong. What did you change after?",
+      },
+    ],
     typed: true,
     phone: "none",
   },
@@ -277,9 +284,6 @@ export function Gallery() {
         answerBox={
           look.typed ? (
             <div className="grid gap-2">
-              <p className="text-[1rem] leading-relaxed">
-                Tell me about a time a database migration went wrong. What did you change after?
-              </p>
               <Label htmlFor="gallery-answer">Your answer</Label>
               <Textarea id="gallery-answer" rows={4} className="rounded-xl" />
               <PillButton className="w-fit">Send answer</PillButton>

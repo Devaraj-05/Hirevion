@@ -266,11 +266,16 @@
   .centre-column {
     position: relative;
     display: grid;
-    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr);
     gap: 1rem;
     min-height: 0;
   }
+  /* Typed answers add a row the transcript gives up space to. */
+  .centre-column:has(> .answer-pane) {
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
   .orb-stage {
+    grid-row: 1;
     display: grid;
     justify-items: center;
     gap: 0.9rem;
@@ -406,6 +411,8 @@
   }
 
   .transcript-pane {
+    grid-row: 2;
+    align-self: stretch;
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
     overflow: hidden;
@@ -427,8 +434,9 @@
   .transcript-scroll {
     min-height: 0;
     overflow-y: auto;
-    padding: 0.25rem 1.25rem 1.25rem;
-    mask: linear-gradient(transparent, black 1.25rem);
+    padding: 0.5rem 1.25rem 1.25rem;
+    scroll-padding-top: 0.5rem;
+    mask: linear-gradient(transparent, black 0.5rem);
   }
   .transcript-empty {
     padding: 1.5rem 0.25rem;
@@ -510,7 +518,8 @@
   }
 
   .answer-pane {
-    padding: 1rem 1.25rem;
+    grid-row: 3;
+    padding: 1rem 1.25rem 1.25rem;
   }
 
   /* Notices sit between the orb and the transcript, never over the newest words. */
@@ -539,12 +548,6 @@
   .camera-column > * {
     flex: none;
   }
-  /* On a short window the tiles give up height first (the picture is cropped, never squashed);
-     the status row always shows. */
-  .camera-column > .camera-tile {
-    flex: 0 1 auto;
-    min-height: 7.5rem;
-  }
   .camera-tile {
     position: relative;
     container-type: inline-size;
@@ -553,6 +556,12 @@
     border-radius: 16px;
     background: #15171c;
     box-shadow: var(--shadow-md);
+  }
+  /* On a short window the tiles give up height first (the picture is cropped, never squashed);
+     the status row always shows. */
+  .camera-column > .camera-tile {
+    flex: 0 1 auto;
+    min-height: 7.5rem;
   }
   .camera-video {
     width: 100%;
@@ -685,10 +694,9 @@
       grid-template-areas:
         "work orb"
         "work cameras"
-        "notices notices"
         "transcript transcript"
         "answer answer";
-      grid-template-rows: auto calc(100dvh - 12.5rem) auto auto auto;
+      grid-template-rows: auto calc(100dvh - 12.5rem) auto auto;
       --orb-size: 4.5rem;
     }
     .stage-grid[data-workspace="open"] .centre-column {
@@ -701,17 +709,17 @@
     }
     .stage-grid[data-workspace="open"] .orb-stage {
       grid-area: orb;
-      grid-auto-flow: column;
-      justify-content: start;
+      grid-template-columns: auto 1fr;
+      justify-items: start;
       align-items: center;
       padding: 0;
+    }
+    .stage-grid[data-workspace="open"] .notices {
+      grid-column: 1 / -1;
     }
     .stage-grid[data-workspace="open"] .camera-column {
       grid-area: cameras;
       overflow-y: auto;
-    }
-    .stage-grid[data-workspace="open"] .notices {
-      grid-area: notices;
     }
     .stage-grid[data-workspace="open"] .transcript-pane {
       grid-area: transcript;
