@@ -14,7 +14,8 @@ const TONES = {
 
 /**
  * The bar across the top (C8-12): the mark, who and what this interview is, the time left, and
- * End interview, the screen's one destructive action. It floats as a translucent material.
+ * End interview, the screen's one destructive action. It is a solid surface: nothing scrolls
+ * under it (finish review, 2026-11-24).
  */
 export function TopBar({
   titleId,
@@ -39,7 +40,7 @@ export function TopBar({
   }, [remaining, t]);
 
   return (
-    <header className="chrome top-bar z-20 flex h-14 items-center gap-4 px-5">
+    <header className="top-bar z-20 flex h-14 items-center gap-4 px-5">
       <Wordmark label={t("wordmark")} className="max-md:[&>.wordmark]:sr-only" />
       <span aria-hidden className="h-5 w-px shrink-0 bg-border" />
       <h1

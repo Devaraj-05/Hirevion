@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-24T00:00:00Z",
+  "title": "Design System: Hirevion Candidate App",
+  "extensions": {
+    "colorMeta": {
+      "cool-paper": { "role": "neutral", "displayName": "Cool Paper", "canonical": "#f4f6f9", "tonalRamp": ["#1a1d22", "#33373e", "#50555e", "#717782", "#959ba6", "#bcc1ca", "#e1e5eb", "#f4f6f9"] },
+      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "#1d1d1f", "tonalRamp": ["#1d1d1f", "#38383b", "#505054", "#63636a", "#8e8e93", "#c7c7cc", "#e6e9ef", "#f5f5f7"] },
+      "surface": { "role": "neutral", "displayName": "Surface White", "canonical": "#ffffff", "tonalRamp": ["#1c1c1e", "#2a2a2d", "#38383b", "#63636a", "#c7c7cc", "#e1e5eb", "#eef1f5", "#ffffff"] },
+      "hairline": { "role": "neutral", "displayName": "Hairline", "canonical": "#e1e5eb" },
+      "muted-ink": { "role": "neutral", "displayName": "Muted Ink", "canonical": "#63636a" },
+      "interviewer-blue": { "role": "primary", "displayName": "Interviewer Blue", "canonical": "#0068d6", "tonalRamp": ["#001a33", "#004a99", "#0058b8", "#0068d6", "#409cff", "#6ab2ff", "#a8d1ff", "#e6f1fd"] },
+      "candidate-violet": { "role": "secondary", "displayName": "Candidate Violet", "canonical": "#6e5ce6", "tonalRamp": ["#1a1438", "#221d3d", "#3f3393", "#5a48c9", "#6e5ce6", "#a598ff", "#cfc7ff", "#f1effd"] },
+      "orb-blue": { "role": "tertiary", "displayName": "Orb Blue Light", "canonical": "#4f86e8" },
+      "orb-violet": { "role": "tertiary", "displayName": "Orb Violet Light", "canonical": "#7b6de0" },
+      "orb-pearl": { "role": "tertiary", "displayName": "Orb Pearl", "canonical": "#eef3ff" },
+      "end-red": { "role": "tertiary", "displayName": "End Red", "canonical": "#c9241c", "tonalRamp": ["#3a1512", "#6e1410", "#b3261e", "#c9241c", "#d93a31", "#ff8a80", "#f8c4bf", "#fdecea"] },
+      "success": { "role": "neutral", "displayName": "Live Green", "canonical": "#1b7438" },
+      "warning": { "role": "neutral", "displayName": "Low-Time Amber", "canonical": "#8a5300" },
+      "danger": { "role": "neutral", "displayName": "Problem Red", "canonical": "#b3261e" },
+      "camera-black": { "role": "neutral", "displayName": "Camera Black", "canonical": "#15171c" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Page headings on the interviews list and preparation screen." },
+      "headline": { "displayName": "Headline", "purpose": "A screen title with its one line of lead." },
+      "title": { "displayName": "Title", "purpose": "Step headings and interview cards." },
+      "bar-title": { "displayName": "Bar Title", "purpose": "The interview's name in the top bar, one truncated line." },
+      "body": { "displayName": "Body", "purpose": "Prose and leads." },
+      "transcript": { "displayName": "Transcript", "purpose": "Transcript bubbles, capped at 60ch." },
+      "question": { "displayName": "Question", "purpose": "The coding or notes prompt, max 70ch." },
+      "label": { "displayName": "Label", "purpose": "Pane titles, speaker names, chips; sentence case, muted." },
+      "clock": { "displayName": "Clock", "purpose": "The countdown, tabular figures." },
+      "wordmark": { "displayName": "Wordmark", "purpose": "\"AI INTERVIEW\" and the camera watermark; the only tracked capitals." }
+    },
+    "shadows": [
+      { "name": "rest", "value": "0 1px 2px rgb(0 0 0 / 0.04)", "purpose": "Panes on the stage, secondary buttons." },
+      { "name": "lift", "value": "0 1px 2px rgb(0 0 0 / 0.04), 0 12px 32px rgb(0 0 0 / 0.07)", "purpose": "Panels, camera tiles, floating pills." },
+      { "name": "orb-glow", "value": "inset 0 0 0 1px rgb(255 255 255 / 0.4), 0 26px 60px -30px color-mix(in srgb, var(--orb-a) 70%, transparent)", "purpose": "The orb only." },
+      { "name": "bar-fade", "value": "linear-gradient(color-mix(in srgb, var(--foreground) 5%, transparent), transparent) 12px", "purpose": "The top bar's lower edge, in place of a ruled line." }
+    ],
+    "motion": [
+      { "name": "ease-settle", "value": "cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "Every entrance and layout change." },
+      { "name": "layout", "value": "420ms", "purpose": "Grid columns and orb size when the coding area opens." },
+      { "name": "entrance", "value": "320ms", "purpose": "Fade-in of screens and notices (6px rise)." },
+      { "name": "line-in", "value": "260ms", "purpose": "A new transcript line (6px rise)." },
+      { "name": "press", "value": "100-150ms, scale(0.97)", "purpose": "Button press feedback." },
+      { "name": "orb-rim", "value": "2.6s linear infinite", "purpose": "Thinking, connecting, reconnecting." },
+      { "name": "colour-shift", "value": "300-600ms ease", "purpose": "Orb light, labels, active transcript line, clock tone." }
+    ],
+    "breakpoints": [
+      { "name": "compact", "value": "1279px" },
+      { "name": "two-column", "value": "1023px" },
+      { "name": "one-column", "value": "767px" },
+      { "name": "window-min", "value": "800x600" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Pill Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The main action outside the interview stage.",
+      "html": "<button class=\"ds-btn-primary\">Continue</button>",
+      "css": ".ds-btn-primary { height: 2.5rem; padding: 0 1.25rem; border: none; border-radius: 9999px; background: var(--accent, #0068d6); color: var(--accent-foreground, #fff); font: 500 0.95rem 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif; cursor: pointer; transition: transform 150ms, background-color 150ms; } .ds-btn-primary:hover { background: var(--accent-hover, #0058b8); } .ds-btn-primary:active { transform: scale(0.97); } .ds-btn-primary:focus-visible { outline: 2px solid var(--ring, #0068d6); outline-offset: 2px; }"
+    },
+    {
+      "name": "Stage Ink Button",
+      "kind": "button",
+      "refersTo": "button-primary-stage",
+      "description": "The same pill inside the interview stage: ink, so blue keeps meaning the interviewer.",
+      "html": "<button class=\"ds-btn-ink\">Submit code</button>",
+      "css": ".ds-btn-ink { height: 2.5rem; padding: 0 1.25rem; border: none; border-radius: 9999px; background: var(--foreground, #1d1d1f); color: var(--background, #f4f6f9); font: 500 0.95rem 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif; cursor: pointer; transition: transform 150ms, background-color 150ms; } .ds-btn-ink:hover { background: color-mix(in srgb, var(--foreground, #1d1d1f) 84%, var(--background, #f4f6f9)); } .ds-btn-ink:active { transform: scale(0.97); } .ds-btn-ink:focus-visible { outline: 2px solid var(--ring, #0068d6); outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Pill Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "The safe or alternative choice; Continue in the end dialog.",
+      "html": "<button class=\"ds-btn-secondary\">Continue interview</button>",
+      "css": ".ds-btn-secondary { height: 2.5rem; padding: 0 1.25rem; border: 1px solid var(--border, #e1e5eb); border-radius: 9999px; background: var(--surface, #fff); color: var(--foreground, #1d1d1f); box-shadow: 0 1px 2px rgb(0 0 0 / 0.04); font: 500 0.95rem 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif; cursor: pointer; transition: transform 150ms, background-color 150ms; } .ds-btn-secondary:hover { background: var(--surface-muted, #eef1f5); } .ds-btn-secondary:active { transform: scale(0.97); } .ds-btn-secondary:focus-visible { outline: 2px solid var(--ring, #0068d6); outline-offset: 2px; }"
+    },
+    {
+      "name": "End Interview Button",
+      "kind": "button",
+      "refersTo": "button-end-interview",
+      "description": "The one solid red; always opens a confirmation.",
+      "html": "<button class=\"ds-btn-end\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10.1 13.9a14 14 0 0 0 3.732 2.668 1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2C10.059 22 2 13.941 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 .244.473\"/><path d=\"m2 2 20 20\"/><path d=\"M4.76 13.582A19.8 19.8 0 0 1 2 4\"/></svg>End interview</button>",
+      "css": ".ds-btn-end { display: inline-flex; align-items: center; gap: 0.5rem; height: 2.25rem; padding: 0 1rem; border: none; border-radius: 9999px; background: var(--danger-solid, #c9241c); color: var(--danger-solid-foreground, #fff); font: 600 0.9rem 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif; box-shadow: 0 1px 2px color-mix(in srgb, var(--danger-solid, #c9241c) 30%, transparent); cursor: pointer; transition: background-color 150ms ease, transform 100ms ease-out; } .ds-btn-end:hover { background: color-mix(in srgb, var(--danger-solid, #c9241c) 88%, black); } .ds-btn-end:active { transform: scale(0.97); } .ds-btn-end:focus-visible { outline: 2px solid var(--ring, #0068d6); outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "A white field with a soft stroke and 12px corners.",
+      "html": "<input class=\"ds-field\" placeholder=\"Interview code\" />",
+      "css": ".ds-field { height: 2.75rem; padding: 0 0.875rem; border: 1px solid var(--input, #c7c7cc); border-radius: 12px; background: var(--surface, #fff); color: var(--foreground, #1d1d1f); font: 400 0.95rem 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif; } .ds-field::placeholder { color: var(--muted-foreground, #63636a); } .ds-field:focus-visible { outline: 2px solid var(--ring, #0068d6); outline-offset: 2px; }"
+    },
+    {
+      "name": "Status Pill",
+      "kind": "chip",
+      "refersTo": "status-pill",
+      "description": "A live state in a few words; the dot carries the colour, the words the meaning.",
+      "html": "<span class=\"ds-status\"><span class=\"ds-status-dot\"></span>Connected</span>",
+      "css": ".ds-status { display: inline-flex; align-items: center; gap: 0.5rem; height: 1.75rem; padding: 0 0.75rem; border-radius: 9999px; background: var(--success-subtle, #e7f6ec); color: var(--success, #1b7438); font: 500 0.8rem 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif; white-space: nowrap; } .ds-status-dot { width: 6px; height: 6px; border-radius: 9999px; background: currentColor; }"
+    },
+    {
+      "name": "Pane",
+      "kind": "card",
+      "refersTo": "pane",
+      "description": "A white 20px pane on cool paper with a muted label header.",
+      "html": "<section class=\"ds-pane\"><header class=\"ds-pane-header\"><span class=\"ds-pane-title\">Transcript</span></header><p class=\"ds-pane-body\">The conversation appears here as it happens.</p></section>",
+      "css": ".ds-pane { border: 1px solid var(--border, #e1e5eb); border-radius: 20px; background: var(--surface, #fff); box-shadow: 0 1px 2px rgb(0 0 0 / 0.04); color: var(--foreground, #1d1d1f); font-family: 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif; } .ds-pane-header { padding: 0.9rem 1.25rem 0.5rem; } .ds-pane-title { font-size: 0.8rem; font-weight: 600; letter-spacing: 0.02em; color: var(--muted-foreground, #63636a); } .ds-pane-body { margin: 0; padding: 0 1.25rem 1.25rem; font-size: 0.9rem; color: var(--muted-foreground, #63636a); }"
+    },
+    {
+      "name": "Transcript Lines",
+      "kind": "custom",
+      "refersTo": "transcript-line",
+      "description": "Interviewer left, You right; only the line being spoken carries its speaker's colour.",
+      "html": "<div class=\"ds-tx\"><div class=\"ds-tx-line\"><span class=\"ds-tx-who\">Interviewer</span><p>What problem were you solving?</p></div><div class=\"ds-tx-line ds-tx-you ds-tx-active\"><span class=\"ds-tx-who\">You</span><p>The monthly reports were locking the primary.</p></div></div>",
+      "css": ".ds-tx { display: grid; gap: 0.35rem; font-family: 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif; } .ds-tx-line { display: grid; justify-items: start; gap: 0.2rem; max-width: min(88%, 60ch); } .ds-tx-you { justify-self: end; justify-items: end; } .ds-tx-who { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em; color: var(--muted-foreground, #63636a); } .ds-tx-line p { margin: 0; padding: 0.5rem 0.8rem; border-radius: 14px; font-size: 0.95rem; line-height: 1.5; background: var(--surface-muted, #eef1f5); color: var(--foreground, #1d1d1f); transition: background-color 400ms ease; } .ds-tx-active p { background: var(--accent-subtle, #e6f1fd); } .ds-tx-active .ds-tx-who { color: var(--accent-subtle-foreground, #004a99); } .ds-tx-you.ds-tx-active p { background: var(--violet-subtle, #f1effd); } .ds-tx-you.ds-tx-active .ds-tx-who { color: var(--violet, #6e5ce6); }"
+    },
+    {
+      "name": "Voice Orb",
+      "kind": "custom",
+      "description": "The interviewer's presence: a pearl sphere lit from the upper left, rings widening with the voice.",
+      "html": "<div class=\"ds-orb\"><div class=\"ds-orb-core\"></div><div class=\"ds-orb-ring\"></div><div class=\"ds-orb-ring ds-orb-ring-outer\"></div></div>",
+      "css": ".ds-orb { --a: color-mix(in oklab, var(--orb-blue, #4f86e8) 55%, var(--orb-pearl, #eef3ff)); --b: color-mix(in oklab, var(--orb-violet, #7b6de0) 38%, var(--orb-pearl, #eef3ff)); position: relative; width: 9rem; height: 9rem; margin: 1.5rem; } .ds-orb-core { position: absolute; inset: 0; border-radius: 9999px; background: radial-gradient(120% 90% at 28% 22%, color-mix(in oklab, var(--orb-pearl, #eef3ff) 85%, transparent), transparent 58%), radial-gradient(90% 90% at 78% 82%, var(--b), transparent 70%), radial-gradient(circle at 50% 50%, var(--a), color-mix(in oklab, var(--a) 70%, var(--b))); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.4), 0 26px 60px -30px color-mix(in srgb, var(--a) 70%, transparent); } .ds-orb-ring { position: absolute; inset: 0; border-radius: 9999px; border: 1.5px solid color-mix(in srgb, var(--a) 55%, transparent); opacity: 0.5; transform: scale(1.08); } .ds-orb-ring-outer { border-width: 1px; border-color: color-mix(in srgb, var(--a) 35%, transparent); opacity: 0.26; transform: scale(1.18); }"
+    },
+    {
+      "name": "Camera Tile",
+      "kind": "custom",
+      "refersTo": "camera-tile",
+      "description": "A 4:3 feed with a name chip, a live chip and the faint confidential mark.",
+      "html": "<figure class=\"ds-cam\"><figcaption class=\"ds-cam-chip ds-cam-left\">Main camera</figcaption><span class=\"ds-cam-chip ds-cam-right\"><span class=\"ds-cam-dot\"></span>Live</span><span class=\"ds-cam-mark\">Confidential • Interview session</span></figure>",
+      "css": ".ds-cam { position: relative; margin: 0; width: 20rem; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 16px; background: radial-gradient(circle at 50% 35%, #2a2e38, #15171c 70%); box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 12px 32px rgb(0 0 0 / 0.07); font-family: 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif; } .ds-cam-chip { position: absolute; top: 0.6rem; display: inline-flex; align-items: center; gap: 0.4rem; height: 1.6rem; padding: 0 0.6rem; border-radius: 9999px; font-size: 0.72rem; font-weight: 600; color: #fff; background: rgb(18 20 26 / 0.5); backdrop-filter: blur(12px) saturate(160%); } .ds-cam-left { left: 0.6rem; } .ds-cam-right { right: 0.6rem; } .ds-cam-dot { width: 6px; height: 6px; border-radius: 9999px; background: var(--success, #1b7438); } .ds-cam-mark { position: absolute; inset: auto 0 0; padding: 1.4rem 0.75rem 0.55rem; text-align: center; font-size: 9.5px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: rgb(255 255 255 / 0.34); background: linear-gradient(transparent, rgb(0 0 0 / 0.22)); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Stage",
+    "overview": "The candidate app is a calm room in which the conversation is the interface. A cool paper ground carries white panes on hairline borders, and almost everything is ink and grey. Colour is spent on meaning, not decoration: blue for the interviewer, a desaturated violet for the candidate's own voice, red only for ending, and green, amber and red dots for live state. The interviewer is not a face or an avatar but a pearl sphere of light that answers to the real sound, and both voices are written down beside it.\n\nThe system is Apple-inspired in its restraint (the owner's binding direction): the system font, soft radii, pill buttons that press in at once, shallow shadows, and motion on a single long-tail ease that settles rather than bounces. It is dense enough for a working interview on a 1280 by 720 laptop and never scrolls the window; a screen's own content scrolls when it must.\n\nIt refuses the video-call default: no grid of faces, no floating bar of round icon controls. Every state is said in words as well as colour.",
+    "keyCharacteristics": [
+      "Cool paper ground, white 20px panes, hairline borders, ink text.",
+      "Colour carries a speaker or a state, never decoration.",
+      "A light, breathing orb as the interviewer's only presence.",
+      "The system font, tabular figures for time, tracked capitals only in the mark.",
+      "Light and dark themes from one token set; every system preference is honoured."
+    ],
+    "rules": [
+      { "name": "The Two Voices Rule", "body": "Blue is the interviewer, violet is the candidate. Violet appears only where the candidate is speaking or has just spoken; it never marks a button, a link, a focus ring or a status.", "section": "colors" },
+      { "name": "The Ink Action Rule", "body": "Inside the interview stage, action buttons are ink on paper, never blue, so blue keeps meaning \"the interviewer\". Outside the stage, the primary button is Interviewer Blue.", "section": "colors" },
+      { "name": "The One Red Rule", "body": "End interview is the only solid red on any screen. Danger text and washes say a problem; solid red says \"this ends it\".", "section": "colors" },
+      { "name": "The Words Too Rule", "body": "Every status dot sits beside the words for its state. Colour is never the only signal.", "section": "colors" },
+      { "name": "The Figures Hold Still Rule", "body": "Time and codes use tabular numerals so a ticking clock never shifts its neighbours.", "section": "typography" },
+      { "name": "The Mark Owns the Caps Rule", "body": "Uppercase tracking belongs to the wordmark and the confidential watermark. Section labels and captions are sentence case.", "section": "typography" },
+      { "name": "The Light Not Neon Rule", "body": "The orb is lit pearl: colours mixed toward `orb-pearl`, a highlight from the upper left, rings that widen with real sound. No saturated glows, no pulsing on a timer when nobody speaks.", "section": "elevation" }
+    ],
+    "dos": [
+      "**Do** keep blue for the interviewer and focus, and violet for the candidate's voice only (The Two Voices Rule).",
+      "**Do** make stage actions ink pills; keep End Red for ending alone.",
+      "**Do** write every state in words beside its dot or colour.",
+      "**Do** use 20px panes on cool paper with hairline borders and the Rest shadow.",
+      "**Do** move on `cubic-bezier(0.22, 1, 0.36, 1)`, 260 to 420ms, and stop keyframe motion under reduced motion.",
+      "**Do** use tabular numerals for time and codes.",
+      "**Do** honour reduced transparency, more contrast and forced colours with explicit fallbacks."
+    ],
+    "donts": [
+      "**Don't** show the interviewer as a face, avatar or video tile, or line the controls up as a bar of round icons.",
+      "**Don't** use violet on buttons, links, focus rings or status.",
+      "**Don't** use a solid red anywhere but ending the interview.",
+      "**Don't** put notices over the transcript's newest lines.",
+      "**Don't** set section labels or captions in tracked capitals; the caps belong to the mark.",
+      "**Don't** load web fonts; the system stack is the type.",
+      "**Don't** add stock photography or illustration; the only pictures are the live camera feeds, and none may be invented."
+    ]
+  }
+}
