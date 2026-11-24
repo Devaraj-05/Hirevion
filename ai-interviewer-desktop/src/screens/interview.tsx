@@ -186,7 +186,7 @@ export function InterviewScreen({
       void finish("finished");
     }, TIME_UP_GRACE_MS);
     return () => window.clearTimeout(timer);
-  }, [remaining, connection, interviewId, finish]);
+  }, [remaining, connection, interviewId, finish, adopt]);
 
   // Text mode opens the camera and microphone itself; the screen shows the same tracks.
   const openShown = useCallback(async (): Promise<LocalTracks> => {
@@ -347,7 +347,7 @@ export function InterviewScreen({
       onError(failure);
       setError(errorKey(failure));
     }
-  }, [interviewId, onError]);
+  }, [interviewId, onError, adopt]);
 
   // Text mode has no voice transcript: its questions and typed answers are written there instead.
   const typedMode = connection === "off";

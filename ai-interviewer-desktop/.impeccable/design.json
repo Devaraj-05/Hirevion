@@ -4,48 +4,190 @@
   "title": "Design System: Hirevion Candidate App",
   "extensions": {
     "colorMeta": {
-      "cool-paper": { "role": "neutral", "displayName": "Cool Paper", "canonical": "#f4f6f9", "tonalRamp": ["#1a1d22", "#33373e", "#50555e", "#717782", "#959ba6", "#bcc1ca", "#e1e5eb", "#f4f6f9"] },
-      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "#1d1d1f", "tonalRamp": ["#1d1d1f", "#38383b", "#505054", "#63636a", "#8e8e93", "#c7c7cc", "#e6e9ef", "#f5f5f7"] },
-      "surface": { "role": "neutral", "displayName": "Surface White", "canonical": "#ffffff", "tonalRamp": ["#1c1c1e", "#2a2a2d", "#38383b", "#63636a", "#c7c7cc", "#e1e5eb", "#eef1f5", "#ffffff"] },
+      "cool-paper": {
+        "role": "neutral",
+        "displayName": "Cool Paper",
+        "canonical": "#f4f6f9",
+        "tonalRamp": [
+          "#1a1d22",
+          "#33373e",
+          "#50555e",
+          "#717782",
+          "#959ba6",
+          "#bcc1ca",
+          "#e1e5eb",
+          "#f4f6f9"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#1d1d1f",
+        "tonalRamp": [
+          "#1d1d1f",
+          "#38383b",
+          "#505054",
+          "#63636a",
+          "#8e8e93",
+          "#c7c7cc",
+          "#e6e9ef",
+          "#f5f5f7"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Surface White",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#1c1c1e",
+          "#2a2a2d",
+          "#38383b",
+          "#63636a",
+          "#c7c7cc",
+          "#e1e5eb",
+          "#eef1f5",
+          "#ffffff"
+        ]
+      },
       "hairline": { "role": "neutral", "displayName": "Hairline", "canonical": "#e1e5eb" },
       "muted-ink": { "role": "neutral", "displayName": "Muted Ink", "canonical": "#63636a" },
-      "interviewer-blue": { "role": "primary", "displayName": "Interviewer Blue", "canonical": "#0068d6", "tonalRamp": ["#001a33", "#004a99", "#0058b8", "#0068d6", "#409cff", "#6ab2ff", "#a8d1ff", "#e6f1fd"] },
-      "candidate-violet": { "role": "secondary", "displayName": "Candidate Violet", "canonical": "#6e5ce6", "tonalRamp": ["#1a1438", "#221d3d", "#3f3393", "#5a48c9", "#6e5ce6", "#a598ff", "#cfc7ff", "#f1effd"] },
+      "interviewer-blue": {
+        "role": "primary",
+        "displayName": "Interviewer Blue",
+        "canonical": "#0068d6",
+        "tonalRamp": [
+          "#001a33",
+          "#004a99",
+          "#0058b8",
+          "#0068d6",
+          "#409cff",
+          "#6ab2ff",
+          "#a8d1ff",
+          "#e6f1fd"
+        ]
+      },
+      "candidate-violet": {
+        "role": "secondary",
+        "displayName": "Candidate Violet",
+        "canonical": "#6e5ce6",
+        "tonalRamp": [
+          "#1a1438",
+          "#221d3d",
+          "#3f3393",
+          "#5a48c9",
+          "#6e5ce6",
+          "#a598ff",
+          "#cfc7ff",
+          "#f1effd"
+        ]
+      },
       "orb-blue": { "role": "tertiary", "displayName": "Orb Blue Light", "canonical": "#4f86e8" },
-      "orb-violet": { "role": "tertiary", "displayName": "Orb Violet Light", "canonical": "#7b6de0" },
+      "orb-violet": {
+        "role": "tertiary",
+        "displayName": "Orb Violet Light",
+        "canonical": "#7b6de0"
+      },
       "orb-pearl": { "role": "tertiary", "displayName": "Orb Pearl", "canonical": "#eef3ff" },
-      "end-red": { "role": "tertiary", "displayName": "End Red", "canonical": "#c9241c", "tonalRamp": ["#3a1512", "#6e1410", "#b3261e", "#c9241c", "#d93a31", "#ff8a80", "#f8c4bf", "#fdecea"] },
+      "end-red": {
+        "role": "tertiary",
+        "displayName": "End Red",
+        "canonical": "#c9241c",
+        "tonalRamp": [
+          "#3a1512",
+          "#6e1410",
+          "#b3261e",
+          "#c9241c",
+          "#d93a31",
+          "#ff8a80",
+          "#f8c4bf",
+          "#fdecea"
+        ]
+      },
       "success": { "role": "neutral", "displayName": "Live Green", "canonical": "#1b7438" },
       "warning": { "role": "neutral", "displayName": "Low-Time Amber", "canonical": "#8a5300" },
       "danger": { "role": "neutral", "displayName": "Problem Red", "canonical": "#b3261e" },
       "camera-black": { "role": "neutral", "displayName": "Camera Black", "canonical": "#15171c" }
     },
     "typographyMeta": {
-      "display": { "displayName": "Display", "purpose": "Page headings on the interviews list and preparation screen." },
-      "headline": { "displayName": "Headline", "purpose": "A screen title with its one line of lead." },
+      "display": {
+        "displayName": "Display",
+        "purpose": "Page headings on the interviews list and preparation screen."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "A screen title with its one line of lead."
+      },
       "title": { "displayName": "Title", "purpose": "Step headings and interview cards." },
-      "bar-title": { "displayName": "Bar Title", "purpose": "The interview's name in the top bar, one truncated line." },
+      "bar-title": {
+        "displayName": "Bar Title",
+        "purpose": "The interview's name in the top bar, one truncated line."
+      },
       "body": { "displayName": "Body", "purpose": "Prose and leads." },
-      "transcript": { "displayName": "Transcript", "purpose": "Transcript bubbles, capped at 60ch." },
+      "transcript": {
+        "displayName": "Transcript",
+        "purpose": "Transcript bubbles, capped at 60ch."
+      },
       "question": { "displayName": "Question", "purpose": "The coding or notes prompt, max 70ch." },
-      "label": { "displayName": "Label", "purpose": "Pane titles, speaker names, chips; sentence case, muted." },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Pane titles, speaker names, chips; sentence case, muted."
+      },
       "clock": { "displayName": "Clock", "purpose": "The countdown, tabular figures." },
-      "wordmark": { "displayName": "Wordmark", "purpose": "\"AI INTERVIEW\" and the camera watermark; the only tracked capitals." }
+      "wordmark": {
+        "displayName": "Wordmark",
+        "purpose": "\"AI INTERVIEW\" and the camera watermark; the only tracked capitals."
+      }
     },
     "shadows": [
-      { "name": "rest", "value": "0 1px 2px rgb(0 0 0 / 0.04)", "purpose": "Panes on the stage, secondary buttons." },
-      { "name": "lift", "value": "0 1px 2px rgb(0 0 0 / 0.04), 0 12px 32px rgb(0 0 0 / 0.07)", "purpose": "Panels, camera tiles, floating pills." },
-      { "name": "orb-glow", "value": "inset 0 0 0 1px rgb(255 255 255 / 0.4), 0 26px 60px -30px color-mix(in srgb, var(--orb-a) 70%, transparent)", "purpose": "The orb only." },
-      { "name": "bar-fade", "value": "linear-gradient(color-mix(in srgb, var(--foreground) 5%, transparent), transparent) 12px", "purpose": "The top bar's lower edge, in place of a ruled line." }
+      {
+        "name": "rest",
+        "value": "0 1px 2px rgb(0 0 0 / 0.04)",
+        "purpose": "Panes on the stage, secondary buttons."
+      },
+      {
+        "name": "lift",
+        "value": "0 1px 2px rgb(0 0 0 / 0.04), 0 12px 32px rgb(0 0 0 / 0.07)",
+        "purpose": "Panels, camera tiles, floating pills."
+      },
+      {
+        "name": "orb-glow",
+        "value": "inset 0 0 0 1px rgb(255 255 255 / 0.4), 0 26px 60px -30px color-mix(in srgb, var(--orb-a) 70%, transparent)",
+        "purpose": "The orb only."
+      },
+      {
+        "name": "bar-fade",
+        "value": "linear-gradient(color-mix(in srgb, var(--foreground) 5%, transparent), transparent) 12px",
+        "purpose": "The top bar's lower edge, in place of a ruled line."
+      }
     ],
     "motion": [
-      { "name": "ease-settle", "value": "cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "Every entrance and layout change." },
-      { "name": "layout", "value": "420ms", "purpose": "Grid columns and orb size when the coding area opens." },
-      { "name": "entrance", "value": "320ms", "purpose": "Fade-in of screens and notices (6px rise)." },
+      {
+        "name": "ease-settle",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Every entrance and layout change."
+      },
+      {
+        "name": "layout",
+        "value": "420ms",
+        "purpose": "Grid columns and orb size when the coding area opens."
+      },
+      {
+        "name": "entrance",
+        "value": "320ms",
+        "purpose": "Fade-in of screens and notices (6px rise)."
+      },
       { "name": "line-in", "value": "260ms", "purpose": "A new transcript line (6px rise)." },
       { "name": "press", "value": "100-150ms, scale(0.97)", "purpose": "Button press feedback." },
-      { "name": "orb-rim", "value": "2.6s linear infinite", "purpose": "Thinking, connecting, reconnecting." },
-      { "name": "colour-shift", "value": "300-600ms ease", "purpose": "Orb light, labels, active transcript line, clock tone." }
+      {
+        "name": "orb-rim",
+        "value": "2.6s linear infinite",
+        "purpose": "Thinking, connecting, reconnecting."
+      },
+      {
+        "name": "colour-shift",
+        "value": "300-600ms ease",
+        "purpose": "Orb light, labels, active transcript line, clock tone."
+      }
     ],
     "breakpoints": [
       { "name": "compact", "value": "1279px" },
@@ -146,13 +288,41 @@
       "Light and dark themes from one token set; every system preference is honoured."
     ],
     "rules": [
-      { "name": "The Two Voices Rule", "body": "Blue is the interviewer, violet is the candidate. Violet appears only where the candidate is speaking or has just spoken; it never marks a button, a link, a focus ring or a status.", "section": "colors" },
-      { "name": "The Ink Action Rule", "body": "Inside the interview stage, action buttons are ink on paper, never blue, so blue keeps meaning \"the interviewer\". Outside the stage, the primary button is Interviewer Blue.", "section": "colors" },
-      { "name": "The One Red Rule", "body": "End interview is the only solid red on any screen. Danger text and washes say a problem; solid red says \"this ends it\".", "section": "colors" },
-      { "name": "The Words Too Rule", "body": "Every status dot sits beside the words for its state. Colour is never the only signal.", "section": "colors" },
-      { "name": "The Figures Hold Still Rule", "body": "Time and codes use tabular numerals so a ticking clock never shifts its neighbours.", "section": "typography" },
-      { "name": "The Mark Owns the Caps Rule", "body": "Uppercase tracking belongs to the wordmark and the confidential watermark. Section labels and captions are sentence case.", "section": "typography" },
-      { "name": "The Light Not Neon Rule", "body": "The orb is lit pearl: colours mixed toward `orb-pearl`, a highlight from the upper left, rings that widen with real sound. No saturated glows, no pulsing on a timer when nobody speaks.", "section": "elevation" }
+      {
+        "name": "The Two Voices Rule",
+        "body": "Blue is the interviewer, violet is the candidate. Violet appears only where the candidate is speaking or has just spoken; it never marks a button, a link, a focus ring or a status.",
+        "section": "colors"
+      },
+      {
+        "name": "The Ink Action Rule",
+        "body": "Inside the interview stage, action buttons are ink on paper, never blue, so blue keeps meaning \"the interviewer\". Outside the stage, the primary button is Interviewer Blue.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Red Rule",
+        "body": "End interview is the only solid red on any screen. Danger text and washes say a problem; solid red says \"this ends it\".",
+        "section": "colors"
+      },
+      {
+        "name": "The Words Too Rule",
+        "body": "Every status dot sits beside the words for its state. Colour is never the only signal.",
+        "section": "colors"
+      },
+      {
+        "name": "The Figures Hold Still Rule",
+        "body": "Time and codes use tabular numerals so a ticking clock never shifts its neighbours.",
+        "section": "typography"
+      },
+      {
+        "name": "The Mark Owns the Caps Rule",
+        "body": "Uppercase tracking belongs to the wordmark and the confidential watermark. Section labels and captions are sentence case.",
+        "section": "typography"
+      },
+      {
+        "name": "The Light Not Neon Rule",
+        "body": "The orb is lit pearl: colours mixed toward `orb-pearl`, a highlight from the upper left, rings that widen with real sound. No saturated glows, no pulsing on a timer when nobody speaks.",
+        "section": "elevation"
+      }
     ],
     "dos": [
       "**Do** keep blue for the interviewer and focus, and violet for the candidate's voice only (The Two Voices Rule).",
