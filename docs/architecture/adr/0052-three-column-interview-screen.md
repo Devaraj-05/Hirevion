@@ -68,3 +68,14 @@ ADR-0044's screen showed only the interviewer's words, at most 250 characters, w
 - **Phone upload:** the phone's upload grows by that layer, about 150–300 kbps.
 - **Spoken run:** the owner's spoken run is the check of the live transcript's timing on real Deepgram segments and of the orb's response to real audio. The unit tests cover merging, levels and states, and the desktop e2e (text mode, no LiveKit) covers the layout and the dialog.
 - **Gallery:** `#/gallery?state=…` (debug builds) shows every state with synthetic data and canvas-drawn camera feeds for review.
+
+## Amendment, 2026-11-24: the owner's reference image
+
+The product owner then supplied a reference image for the panel. It replaces the visual treatment above, and the structure and behaviour stay as decided.
+
+- **Top bar:** a floating card with the gradient waveform mark on a tile and "AI INTERVIEW". It has the name in bold, then the job and "Interview". The microphone, screen and session show as icons with dots; any that isn't working is also written. The time sits in a pill with a clock, and End Interview is a red pill with a stop mark.
+- **Three cards** on a soft blue-violet ground:
+  - **Coding Question:** a "Waiting for question…" pill, and a drawn laptop with "Coding question will appear here / Only when the AI asks a coding question". This replaces the "completely empty" pane.
+  - **The interviewer:** a vivid blue-to-violet sphere with a white waveform glyph inside three soft rings; it turns violet while the candidate speaks. A state pill ("AI Interviewer is speaking…") sits under it. Each speaker's run of lines is a tinted card with an avatar and a name: "AI Interviewer" in blue, "Candidate" in violet. A waveform strip moves with the same audio level.
+  - **The cameras:** each a card with its name and "Live", the picture inset, and a dark "CONFIDENTIAL • INTERVIEW SESSION" chip at its corner.
+- **No longer applied:** the earlier finish review's "colour only on the active line" and "light, not a vivid sphere". The owner's reference shows both voices tinted and a vivid orb.

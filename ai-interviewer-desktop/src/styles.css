@@ -220,6 +220,9 @@
     padding: 0 0.9rem;
     border-radius: 9999px;
     background: var(--pill-bg);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
     color: var(--muted-foreground);
     font-size: 0.85rem;
     white-space: nowrap;
