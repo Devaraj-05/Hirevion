@@ -345,6 +345,36 @@ describe("AssignDialog", () => {
     );
   });
 
+  it("checks the coding minutes and sends a valid time when coding is off", async () => {
+    vi.mocked(templatesApi.listTemplates).mockResolvedValue({ items: [], next_cursor: null });
+    vi.mocked(api.assignInterviews).mockResolvedValue({ created: [summary()], skipped: [] });
+    renderAdmin(
+      <AssignDialog
+        applicationIds={["a-1"]}
+        defaultTemplateId={null}
+        onDone={() => {}}
+        onCancel={() => {}}
+      />,
+    );
+    const coding = await screen.findByLabelText("Coding question");
+    await userEvent.selectOptions(coding, "on");
+    const minutes = screen.getByLabelText("Minutes");
+    await userEvent.clear(minutes);
+    await userEvent.type(minutes, "3");
+    await userEvent.click(screen.getByRole("button", { name: "Create and invite" }));
+    expect(await screen.findByText("Choose 5 to 45 whole minutes.")).toBeTruthy();
+    expect(api.assignInterviews).not.toHaveBeenCalled();
+    await userEvent.selectOptions(coding, "off");
+    await userEvent.click(screen.getByRole("button", { name: "Create and invite" }));
+    await waitFor(() =>
+      expect(api.assignInterviews).toHaveBeenCalledWith(
+        expect.objectContaining({
+          coding: { enabled: false, languages: ["python"], minutes: 20, difficulty: "medium" },
+        }),
+      ),
+    );
+  });
+
   it("says why a candidate was skipped for the window or the coding time", async () => {
     vi.mocked(templatesApi.listTemplates).mockResolvedValue({ items: [], next_cursor: null });
     vi.mocked(api.assignInterviews).mockResolvedValue({

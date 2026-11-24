@@ -293,6 +293,30 @@ def test_coding_comes_after_the_ladder_with_the_code_workspace() -> None:
     assert stages.index("coding") < stages.index("final_questions")
 
 
+def test_the_interviewer_says_the_time_the_coding_question_really_has() -> None:
+    """The policy allows 20 minutes but the library question only 10: the candidate hears 10."""
+    coding = library(
+        "Python",
+        "medium",
+        "Write a function that merges two sorted lists?",
+        type="coding",
+        coding={"languages": ["python"], "starter_code": {}},
+        time_limit=600,
+    )
+    state = make_state(
+        make_context(
+            questions=[coding],
+            question_count=2,
+            coding={"enabled": True, "languages": ["python"], "minutes": 20},
+        ),
+        minutes=60,
+    )
+    turns, _ = run(state, by_kind(state))
+    [turn] = [t for t in turns if t.asked is not None and t.asked.kind == "coding"]
+    assert turn.asked is not None and turn.asked.time_limit_seconds == 600
+    assert "10 minutes" in turn.text and "20 minutes" not in turn.text
+
+
 def _at_coding(minutes: int = 45) -> tuple[Orchestrator, InterviewState, datetime]:
     """An interview walked up to its coding question."""
     coding = library(
@@ -488,3 +512,27 @@ def test_the_coding_question_follows_the_recruiters_level_and_says_where_it_is()
     intro = phrasing.coding_intro(12)
     assert "left of your screen" in intro and "12 minutes" in intro
     assert "won't be run" in intro
+
+
+def test_the_coding_question_only_in_the_recruiters_languages_comes_first() -> None:
+    questions = [
+        library(
+            "Python",
+            "medium",
+            "Write merge_intervals in Python or SQL.",
+            type="coding",
+            coding={"languages": ["python", "sql"]},
+        ),
+        library(
+            "SQL",
+            "medium",
+            "Write a query for the ten best customers.",
+            type="coding",
+            coding={"languages": ["sql"]},
+        ),
+    ]
+    coding = {"enabled": True, "languages": ["sql"], "minutes": 12, "difficulty": "medium"}
+    state = make_state(make_context(coding=coding, questions=questions))
+    state.pool.sort(key=lambda q: q.languages != ["python", "sql"])
+    chosen = pick_coding(state)
+    assert chosen is not None and chosen.text == "Write a query for the ten best customers."

@@ -1959,7 +1959,8 @@
           "medium": "Medium",
           "hard": "Hard"
         },
-        "hint": "From the question library at this level, or written from the job when the library has none. The code is typed in a text box and reviewed after the interview; it's never run."
+        "hint": "From the question library at this level, or written from the job when the library has none. The code is typed in a text box and reviewed after the interview; it's never run.",
+        "minutesInvalid": "Choose 5 to 45 whole minutes."
       }
     },
     "evaluation": {

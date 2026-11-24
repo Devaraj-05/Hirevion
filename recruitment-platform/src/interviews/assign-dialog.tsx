@@ -90,12 +90,21 @@ export function AssignDialog({
     onError: problems.show,
   });
 
+  const minutesValue = Number(minutes);
+  // The API takes 5 to 45 whole minutes; a leftover typo never matters once coding is off.
+  const minutesInvalid =
+    codingMode === "on" &&
+    !(Number.isInteger(minutesValue) && minutesValue >= 5 && minutesValue <= 45);
+
   function codingChoice(): CodingChoice | null {
     if (codingMode === "template") return null;
+    if (codingMode === "off") {
+      return { enabled: false, languages: ["python"], minutes: 20, difficulty: level };
+    }
     return {
-      enabled: codingMode === "on",
+      enabled: true,
       languages: languages.length > 0 ? languages : ["python"],
-      minutes: Number(minutes) || 20,
+      minutes: minutesValue,
       difficulty: level,
     };
   }
@@ -214,11 +223,8 @@ export function AssignDialog({
               </div>
               {codingMode === "on" ? (
                 <>
-                  <div
-                    className="flex flex-wrap gap-x-4 gap-y-2"
-                    role="group"
-                    aria-label={t("coding.languagesLabel")}
-                  >
+                  <fieldset className="flex flex-wrap gap-x-4 gap-y-2">
+                    <legend className="sr-only">{t("coding.languagesLabel")}</legend>
                     {CODING_LANGUAGES.map((lang) => (
                       <div key={lang} className="flex items-center gap-2">
                         <Checkbox
@@ -239,7 +245,7 @@ export function AssignDialog({
                         </Label>
                       </div>
                     ))}
-                  </div>
+                  </fieldset>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="grid gap-1.5">
                       <Label htmlFor={`${id}-minutes`}>{t("coding.minutes")}</Label>
@@ -248,9 +254,17 @@ export function AssignDialog({
                         type="number"
                         min={5}
                         max={45}
+                        step={1}
                         value={minutes}
+                        aria-invalid={minutesInvalid || undefined}
+                        aria-describedby={minutesInvalid ? `${id}-minutes-error` : undefined}
                         onChange={(event) => setMinutes(event.target.value)}
                       />
+                      {minutesInvalid ? (
+                        <p id={`${id}-minutes-error`} className="text-destructive text-xs">
+                          {t("coding.minutesInvalid")}
+                        </p>
+                      ) : null}
                     </div>
                     <div className="grid gap-1.5">
                       <Label htmlFor={`${id}-level`}>{t("coding.level")}</Label>
@@ -283,7 +297,10 @@ export function AssignDialog({
               <Button type="button" variant="ghost" onClick={onCancel}>
                 {t("cancel")}
               </Button>
-              <Button type="submit" disabled={assign.isPending || !startsAt || !expiresAt}>
+              <Button
+                type="submit"
+                disabled={assign.isPending || !startsAt || !expiresAt || minutesInvalid}
+              >
                 {invite ? t("submitInvite") : t("submitSchedule")}
               </Button>
             </div>

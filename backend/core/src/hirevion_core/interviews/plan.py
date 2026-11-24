@@ -39,7 +39,7 @@ from hirevion_core.engine import phrasing
 from hirevion_core.engine.context import ContextBuilder, InterviewContext, LibraryQuestion
 from hirevion_core.engine.guardrails import safe_question, safe_statement
 from hirevion_core.engine.orchestrator import build_state
-from hirevion_core.engine.planner import concept_key, library_order, said, seed_for
+from hirevion_core.engine.planner import concept_key, library_order, said, seed_for, speaks
 from hirevion_core.engine.state import ResumeHook
 from hirevion_core.interviews.generation import candidate_text, job_text, prompt_block
 from hirevion_core.models import (
@@ -436,13 +436,15 @@ async def coding_item(
     languages = [str(lang).lower() for lang in coding.get("languages") or ["python"]]
     level = str(coding.get("difficulty") or "medium")
 
-    def offered(question: LibraryQuestion) -> bool:
-        spoken = {str(lang).lower() for lang in (question.coding or {}).get("languages", [])}
-        return question.type == "coding" and (not spoken or bool(spoken & set(languages)))
-
-    if any(offered(q) for q in inputs.context.pinned):
+    # The pool always takes the template's pinned coding question, and a library one only in the
+    # chosen languages (`speaks`), so the same rules decide whether one must be written.
+    if any(q.type == "coding" for q in inputs.context.pinned):
         return None
-    if any(offered(q) and q.difficulty == level for q in inputs.context.library):
+    wanted = set(languages)
+    if any(
+        q.type == "coding" and q.difficulty == level and speaks(q, wanted)
+        for q in inputs.context.library
+    ):
         return None
     minutes = int(coding.get("minutes") or 20)
     skills = [share.name for share in inputs.shares]
@@ -465,12 +467,20 @@ async def coding_item(
         {"role": "system", "content": _CODING_PROMPT},
         {"role": "user", "content": message},
     ]
-    written = (await ai.llm.complete(context, messages, WrittenCoding, tier="strong")).value
+    try:
+        written = (await ai.llm.complete(context, messages, WrittenCoding, tier="strong")).value
+    except Exception:
+        # The skill questions are already written: losing the coding question must not lose them.
+        log.warning("The coding question for %s couldn't be written", interview.id, exc_info=True)
+        return None
     text = safe_statement(written.text)
     if text is None:
         log.warning("The written coding question for %s failed the guard", interview.id)
         return None
-    skill = next((s for s in skills if s.casefold() == written.skill.casefold()), skills[0])
+    skill = next(
+        (s for s in skills if s.casefold() == written.skill.casefold()),
+        skills[0] if skills else written.skill,
+    )
     return item(
         f"plan:{n}",
         skill=skill,
@@ -483,7 +493,9 @@ async def coding_item(
         source_ref={
             "from": "jd",
             "starter_code": {
-                lang: code for lang, code in written.starter_code.items() if lang in languages
+                lang.lower(): code
+                for lang, code in written.starter_code.items()
+                if lang.lower() in wanted
             },
         },
         time_limit_seconds=minutes * 60,

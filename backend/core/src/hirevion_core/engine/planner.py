@@ -180,10 +180,7 @@ class QuestionPlanner:
         library = [q for q in context.library if (q.question_id, q.version) not in pinned_keys]
         for question in sorted(library, key=lambda q: library_order(seed, q)):
             if question.type == "coding":
-                offered = {
-                    str(lang).lower() for lang in (question.coding or {}).get("languages", [])
-                }
-                if coding.get("enabled") and (not languages or offered & languages):
+                if coding.get("enabled") and speaks(question, languages):
                     _add_once(pool, _from_library(question, question.skill_name, "library"))
                 continue
             if allowed and question.type not in allowed:
@@ -214,12 +211,16 @@ class QuestionPlanner:
                     pinned_keys
                 ):
                     continue
-                offered = {
-                    str(lang).lower() for lang in (question.coding or {}).get("languages", [])
-                }
-                if not languages or offered & languages:
+                if speaks(question, languages):
                     _add_once(pool, _from_library(question, question.skill_name, "library"))
         return pool
+
+
+def speaks(question: LibraryQuestion, languages: set[str]) -> bool:
+    """Whether a library coding question can be answered in one of `languages` (any question,
+    when none are set): the one rule for the pool and for the plan's written question (C8-11)."""
+    offered = {str(lang).lower() for lang in (question.coding or {}).get("languages", [])}
+    return not languages or bool(offered & languages)
 
 
 def _add_once(pool: list[PoolQuestion], question: PoolQuestion) -> None:
@@ -345,9 +346,18 @@ def pick_coding(state: InterviewState) -> PoolQuestion | None:
     level), then any."""
     coding = [q for q in state.pool if q.type == "coding" and not q.used]
     level = state.coding.difficulty
+    wanted = {lang.lower() for lang in state.coding.languages}
+
+    def fits(question: PoolQuestion) -> bool:
+        """Answerable only in the recruiter's languages, so its statement suits them."""
+        return not wanted or {lang.lower() for lang in question.languages} <= wanted
+
+    at_level = [q for q in coding if level and q.difficulty == level]
     choice = (
         next((q for q in coding if q.source == "pinned"), None)
-        or next((q for q in coding if level and q.difficulty == level), None)
+        or next((q for q in at_level if fits(q)), None)
+        or next(iter(at_level), None)
+        or next((q for q in coding if fits(q)), None)
         or next(iter(coding), None)
     )
     if choice is not None:

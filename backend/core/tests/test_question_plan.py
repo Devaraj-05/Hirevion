@@ -6,8 +6,11 @@ from __future__ import annotations
 
 import math
 from dataclasses import replace
+from types import SimpleNamespace
+from typing import Any
+from uuid import uuid4
 
-from hirevion_core.engine.planner import fresh_count, has_fresh, merge_plan, said
+from hirevion_core.engine.planner import fresh_count, has_fresh, merge_plan, said, speaks
 from hirevion_core.engine.state import ResumeHook
 from hirevion_core.interviews.plan import (
     _PROMPT,
@@ -16,7 +19,9 @@ from hirevion_core.interviews.plan import (
     SAME_SKILL_MAX,
     PlannedQuestion,
     SkillShare,
+    WrittenCoding,
     checked,
+    coding_item,
     distinct,
     item,
     lint,
@@ -290,3 +295,58 @@ def test_an_unasked_pinned_question_still_counts_as_something_to_ask() -> None:
     state = make_state(make_context(questions=[], pinned=[pinned], skills=(("Python", 100),)))
     state.plan_version = 1
     assert has_fresh(state, state.skills[0]) and fresh_count(state) == 1
+
+
+# --- C8-11: the coding question the plan writes -------------------------------------------------
+
+WRITTEN = WrittenCoding(
+    text="Write merge_intervals(rows) that merges overlapping [start, end] pairs. "
+    "Example: [[1, 3], [2, 6], [8, 9]] gives [[1, 6], [8, 9]].",
+    skill="Python",
+    concept="Merging intervals",
+    expected_concepts=["sort by start", "one pass"],
+    starter_code={"Python": "def merge_intervals(rows):\n    pass\n", "Rust": "fn merge() {}"},
+)
+INTERVIEW: Any = SimpleNamespace(id=uuid4(), organization_id=uuid4())
+
+
+def _ai(reply: Any) -> Any:
+    async def complete(_context: Any, _messages: Any, _schema: Any, **_: Any) -> Any:
+        if isinstance(reply, Exception):
+            raise reply
+        return SimpleNamespace(value=reply)
+
+    return SimpleNamespace(llm=SimpleNamespace(complete=complete))
+
+
+def _coding_inputs(*, shares: list[SkillShare] | None = None, questions: Any = ()) -> Any:
+    coding = {"enabled": True, "languages": ["python"], "minutes": 15, "difficulty": "medium"}
+    return SimpleNamespace(
+        context=SimpleNamespace(coding=coding, pinned=[], library=list(questions)),
+        shares=OWNER if shares is None else shares,
+        job="Backend engineer: Python services on PostgreSQL.",
+    )
+
+
+async def test_a_coding_question_that_cant_be_written_leaves_the_plan_alone() -> None:
+    """The provider failing (or an over-long answer) costs the coding question, never the plan."""
+    failing = _ai(RuntimeError("provider down"))
+    assert await coding_item(failing, INTERVIEW, _coding_inputs(), 7) is None
+
+
+async def test_a_written_coding_question_keeps_its_starter_code_without_skills() -> None:
+    written = await coding_item(_ai(WRITTEN), INTERVIEW, _coding_inputs(shares=[]), 7)
+    assert written is not None and written["skill"] == "Python"
+    starter = {"python": "def merge_intervals(rows):\n    pass\n"}
+    assert written["source_ref"]["starter_code"] == starter
+
+
+async def test_a_library_coding_question_without_languages_doesnt_stand_in() -> None:
+    """The pool leaves out a library coding question in none of the chosen languages, so the plan
+    mustn't count it as the coding question either."""
+    bare = library(
+        "Python", "medium", "Write a function that merges two sorted lists?", type="coding"
+    )
+    assert not speaks(bare, {"python"})
+    inputs = _coding_inputs(questions=[bare])
+    assert await coding_item(_ai(WRITTEN), INTERVIEW, inputs, 7) is not None

@@ -611,7 +611,8 @@ class Orchestrator:
             coding = self.coding.start(state) if limit is not None else None
             if coding is not None and limit is not None:
                 state.current_topic = coding.skill
-                turn.say.append(phrasing.coding_intro(max(1, round(limit / 60))))
+                allowed = min(limit, coding.time_limit_seconds or limit)
+                turn.say.append(phrasing.coding_intro(max(1, round(allowed / 60))))
                 asked = self._ask(
                     state,
                     turn,
@@ -621,7 +622,7 @@ class Orchestrator:
                     text=coding.text,
                     source=coding.source,
                     pool=coding,
-                    time_limit=min(limit, coding.time_limit_seconds or limit),
+                    time_limit=allowed,
                 )
                 self.coding.asked(state, asked.id)
                 return

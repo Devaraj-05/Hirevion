@@ -117,17 +117,30 @@ def safe_question(text: str | None) -> str | None:
 STATEMENT_MAX = 1600
 
 
+# A coding problem may well be about scores, ratings or percentages, so only what would hand
+# out or grade an answer is refused, not `_FORBIDDEN`'s spoken-feedback words.
+_STATEMENT_FORBIDDEN = re.compile(
+    r"\b(rubric|correct answer|right answer|the answer is|model answer|expected answer|"
+    r"you passed|you failed|well done|excellent answer|perfect answer|wrong answer)\b",
+    re.IGNORECASE,
+)
+_BOLD = re.compile(r"\*\*([^*\n]+)\*\*")
+_INLINE_CODE = re.compile(r"`([^`\n]+)`")
+_HEADING = re.compile(r"^[ \t]*#+[ \t]*", re.MULTILINE)
+
+
 def safe_statement(text: str | None) -> str | None:
     """A coding question's statement, when it is fit to show (C8-11): longer than a spoken
-    question and free to carry an example on its own line, but never markdown, a forbidden topic
-    or an instruction to the model."""
-    if not text:
+    question and free to carry an example on its own line. Bold, inline code and headings are
+    unwrapped to plain text; a code block (which could carry a solution), anything that gives or
+    grades an answer, or an instruction to the model refuses it."""
+    if not text or "```" in text:
         return None
-    cleaned = text.strip()
-    if not 40 <= len(cleaned) <= STATEMENT_MAX or "```" in cleaned:
+    cleaned = _HEADING.sub("", _INLINE_CODE.sub(r"\1", _BOLD.sub(r"\1", text))).strip()
+    if not 40 <= len(cleaned) <= STATEMENT_MAX:
         return None
     flat = " ".join(cleaned.split())
-    if _FORBIDDEN.search(flat) or mentions_manipulation(flat):
+    if _STATEMENT_FORBIDDEN.search(flat) or mentions_manipulation(flat):
         return None
     return cleaned
 
