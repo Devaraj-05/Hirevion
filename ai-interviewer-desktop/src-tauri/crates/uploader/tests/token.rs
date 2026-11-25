@@ -9,11 +9,11 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
-use common::{Fake, INTERVIEW, TempDir, fast_config, open_store, payload, segment};
+use common::{Fake, INTERVIEW, TempDir, drain_events, fast_config, open_store, payload, segment};
 use hv_api_client::{ApiClient, ApiError, Url};
 use hv_security::SoftwareKey;
 use hv_segment_store::Track;
-use hv_uploader::{RecordingSession, TokenFuture, Uploader};
+use hv_uploader::{RecordingSession, TokenFuture, UploadEvent, Uploader};
 
 /// A session whose token is always refused with `status` and `code`, counting the asks.
 struct Refused {
@@ -68,9 +68,10 @@ async fn an_interview_that_isnt_this_accounts_stops_after_one_ask() {
     let store = open_store(dir.path());
     fifty_segments(&store);
     let fake = Fake::start().await;
-    let session = refused(&fake.uri(), 404, "not-found");
+    let session = refused(&fake.uri(), 404, "interview-not-found");
     let uploader =
         Uploader::new(session.clone(), Arc::clone(&store), fast_config()).expect("uploader");
+    let mut events = uploader.subscribe();
 
     let drained = tokio::time::timeout(Duration::from_secs(5), uploader.drain(INTERVIEW))
         .await
@@ -84,6 +85,25 @@ async fn an_interview_that_isnt_this_accounts_stops_after_one_ask() {
     assert!(asked <= 2, "asked for a token {asked} times");
     let left = store.pending(INTERVIEW).expect("pending").len();
     assert_eq!(left, 50, "the segments stay for the account that owns them");
+    let told = drain_events(&mut events);
+    let stopped = UploadEvent::Stopped {
+        code: "interview-not-found".into(),
+    };
+    assert!(told.contains(&stopped), "the app is told why: {told:?}");
+}
+
+#[tokio::test]
+async fn a_passing_refusal_is_retried_not_final() {
+    // `dpop-invalid` after a clock jump: a live interview's upload must keep going.
+    let dir = TempDir::new();
+    let store = open_store(dir.path());
+    fifty_segments(&store);
+    let fake = Fake::start().await;
+    let session = refused(&fake.uri(), 401, "dpop-invalid");
+    let uploader =
+        Uploader::new(session.clone(), Arc::clone(&store), fast_config()).expect("uploader");
+    let waiting = tokio::time::timeout(Duration::from_millis(200), uploader.drain(INTERVIEW)).await;
+    assert!(waiting.is_err(), "still retrying");
 }
 
 #[tokio::test]

@@ -89,6 +89,9 @@ pub enum UploadEvent {
     },
     /// The recovery listing couldn't be fetched; everything pending is uploaded anyway.
     RecoveryFailed { code: String },
+    /// The interview's token is refused for good (`code`): the uploader stops, and its
+    /// segments stay on disk for a sign-in that may upload them.
+    Stopped { code: String },
 }
 
 /// What [`Uploader::recover`] found.
@@ -100,8 +103,9 @@ pub struct RecoverySummary {
     pub to_upload: usize,
 }
 
-/// Fatal uploader errors: the store failed, or the uploader couldn't be built. Network and
-/// server failures are retried, never returned.
+/// Why the uploader stopped: the store failed, the uploader couldn't be built, or the
+/// interview's token was refused for good (`Api`, after an [`UploadEvent::Stopped`]). Network
+/// failures and other server answers are retried, never returned.
 #[derive(Debug, thiserror::Error)]
 pub enum UploadError {
     #[error(transparent)]
@@ -125,17 +129,8 @@ enum Outcome {
 
 /// Why no token: wait (the interview's backoff), or stop (refused for good).
 enum TokenWait {
-    Later(Duration),
+    Later { code: String, delay: Duration },
     Stop(ApiError),
-}
-
-impl From<TokenWait> for Result<Outcome, UploadError> {
-    fn from(wait: TokenWait) -> Self {
-        match wait {
-            TokenWait::Later(delay) => Ok(Outcome::Retry(delay)),
-            TokenWait::Stop(error) => Err(UploadError::Api(error)),
-        }
-    }
 }
 
 /// Uploads one interview's segments from the [`SegmentStore`] (recordings contract):
@@ -154,9 +149,20 @@ pub struct Uploader {
     token_wait: Mutex<(u32, Option<Instant>)>,
 }
 
-/// A token refused for good: retrying can't help this sign-in.
+/// The session-token refusals that retrying can't change for this sign-in (candidate-auth
+/// contract): another account's or a deleted interview, one closed or expired, one taken on
+/// another device or with its reconnect spent. `interview-not-open` and `dpop-invalid` pass.
+const REFUSED_FOR_GOOD: &[&str] = &[
+    "interview-not-found",
+    "interview-not-available",
+    "interview-expired",
+    "interview-other-device",
+    "resume-limit-reached",
+];
+
 fn refused_for_good(error: &ApiError) -> bool {
-    matches!(error, ApiError::SignedOut) || matches!(error.status(), Some(401 | 403 | 404 | 410))
+    matches!(error, ApiError::SignedOut)
+        || REFUSED_FOR_GOOD.iter().any(|code| error.is_problem(code))
 }
 
 impl std::fmt::Debug for Uploader {
@@ -346,7 +352,7 @@ impl Uploader {
 
         let token = match self.token().await {
             Ok(token) => token,
-            Err(wait) => return wait.into(),
+            Err(wait) => return self.token_wait(&segment, wait),
         };
         let api = self.session.api();
         let ticket = match api::request_upload(api, &token, &segment).await {
@@ -417,7 +423,7 @@ impl Uploader {
     async fn ack(&self, segment: &Segment, segment_id: &str) -> Result<Outcome, UploadError> {
         let token = match self.token().await {
             Ok(token) => token,
-            Err(wait) => return wait.into(),
+            Err(wait) => return self.token_wait(segment, wait),
         };
         match api::acknowledge(self.session.api(), &token, segment_id, &segment.sha256).await {
             Ok(()) => {
@@ -456,7 +462,32 @@ impl Uploader {
                     backoff::jitter(),
                 );
                 *state = (state.0.saturating_add(1), Some(Instant::now() + delay));
-                Err(TokenWait::Later(delay))
+                Err(TokenWait::Later {
+                    code: error.code().to_owned(),
+                    delay,
+                })
+            }
+        }
+    }
+
+    /// Tells subscribers why the segment waits (`Retrying`) or why the uploader stops
+    /// (`Stopped`), then gives the step's answer.
+    fn token_wait(&self, segment: &Segment, wait: TokenWait) -> Result<Outcome, UploadError> {
+        match wait {
+            TokenWait::Later { code, delay } => {
+                self.emit(UploadEvent::Retrying {
+                    track: segment.track,
+                    seq: segment.seq,
+                    code,
+                    delay,
+                });
+                Ok(Outcome::Retry(delay))
+            }
+            TokenWait::Stop(error) => {
+                self.emit(UploadEvent::Stopped {
+                    code: error.code().to_owned(),
+                });
+                Err(UploadError::Api(error))
             }
         }
     }
