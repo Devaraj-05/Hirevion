@@ -16,6 +16,7 @@ import { useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
 import { routeAt } from "@/auth/manifest";
 import { can, type Session } from "@/auth/permissions";
+import { BrandMark } from "./brand-mark";
 import { CommandMenu } from "./command-menu";
 import { breadcrumbTrail } from "./nav";
 import { NotificationsButton } from "./notifications";
@@ -70,22 +71,23 @@ export function AppShell({ session, devTools, initialCollapsed, children }: AppS
       </a>
       <aside
         className={cn(
-          "sticky top-0 hidden h-dvh shrink-0 flex-col border-border border-r bg-surface md:flex",
+          "sticky top-0 hidden h-dvh shrink-0 flex-col md:flex",
           collapsed ? "w-16" : "w-60",
         )}
       >
         <div
           className={cn(
-            "flex h-14 items-center font-semibold",
+            "flex h-16 items-center gap-2.5 font-semibold text-[1.05rem] tracking-tight",
             collapsed ? "justify-center" : "px-5",
           )}
         >
+          <BrandMark />
           <span className={collapsed ? "sr-only" : undefined}>{app("name")}</span>
         </div>
-        <div className="flex-1 overflow-y-auto px-2 py-2">
+        <div className="flex-1 overflow-y-auto px-3 py-2">
           <Sidebar session={session} collapsed={collapsed} />
         </div>
-        <div className={cn("border-border border-t p-2", collapsed && "flex justify-center")}>
+        <div className={cn("p-3", collapsed && "flex justify-center")}>
           <IconButton
             label={collapsed ? t("expandSidebar") : t("collapseSidebar")}
             icon={collapsed ? <PanelLeftOpen aria-hidden /> : <PanelLeftClose aria-hidden />}
@@ -94,7 +96,7 @@ export function AppShell({ session, devTools, initialCollapsed, children }: AppS
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-border border-b bg-background px-4">
+        <header className="chrome sticky top-0 z-30 flex h-16 items-center gap-2 border-border/60 border-b px-6">
           <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
             <SheetTrigger asChild>
               <IconButton
@@ -131,8 +133,8 @@ export function AppShell({ session, devTools, initialCollapsed, children }: AppS
             <UserMenu session={session} devTools={devTools} />
           </div>
         </header>
-        <main id="main" tabIndex={-1} className="flex-1 px-6 py-6 outline-none">
-          {children}
+        <main id="main" tabIndex={-1} className="flex-1 outline-none">
+          <div className="mx-auto w-full max-w-[1440px] px-6 py-7 lg:px-8">{children}</div>
         </main>
       </div>
       <CommandMenu open={paletteOpen} onOpenChange={setPaletteOpen} session={session} />

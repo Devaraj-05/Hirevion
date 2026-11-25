@@ -26,14 +26,14 @@ export function KpiTile({
   return (
     <dl
       className={cn(
-        "grid gap-1 rounded-lg border border-border bg-surface p-4 shadow-sm",
+        "grid gap-1.5 rounded-2xl border border-border/70 bg-surface px-5 py-4 shadow-[var(--shadow-md)]",
         className,
       )}
     >
-      <dt className="text-sm text-muted-foreground">{label}</dt>
+      <dt className="text-[0.8rem] font-medium text-muted-foreground">{label}</dt>
       <dd
         className={cn(
-          "text-2xl font-semibold tabular-nums",
+          "text-[1.75rem] leading-none font-semibold tracking-tight tabular-nums",
           empty ? "text-muted-foreground" : "text-foreground",
         )}
       >

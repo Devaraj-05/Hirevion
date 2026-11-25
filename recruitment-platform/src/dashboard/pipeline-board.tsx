@@ -27,10 +27,12 @@ export function PipelineBoard({ columns, counts, onMove }: PipelineBoardProps) {
   const [dragged, setDragged] = useState<PipelineCard | null>(null);
   return (
     <section aria-labelledby={`${base}-title`}>
-      <h2 id={`${base}-title`} className="mb-3 font-semibold">
+      <h2 id={`${base}-title`} className="mb-3 font-semibold text-lg">
         {t("title")}
       </h2>
-      <ul className="grid auto-cols-[minmax(13rem,1fr)] grid-flow-col gap-3 overflow-x-auto pb-2">
+      {/* Columns keep one height and scroll on their own: a long column no longer stretches the
+          page past 3,000 px (owner's review, 2026-11-26). */}
+      <ul className="grid auto-cols-[minmax(15rem,1fr)] grid-flow-col gap-3 overflow-x-auto pb-2">
         {PIPELINE_STATUSES.map((status) => {
           const cards = columns[status] ?? [];
           const total = counts?.[status] ?? cards.length;
@@ -50,20 +52,20 @@ export function PipelineBoard({ columns, counts, onMove }: PipelineBoardProps) {
                   if (dragged && accepts) onMove?.(dragged, status);
                   setDragged(null);
                 }}
-                className={`flex h-full min-h-40 flex-col gap-2 rounded-lg border bg-surface-muted p-3 ${
-                  accepts ? "border-accent" : "border-border"
+                className={`flex h-full max-h-[34rem] min-h-40 flex-col gap-2.5 rounded-2xl border bg-surface-sunken/60 p-2.5 ${
+                  accepts ? "border-accent" : "border-transparent"
                 }`}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <h3 id={headingId} className="font-medium text-sm">
+                <div className="flex items-center justify-between gap-2 px-1.5 pt-1">
+                  <h3 id={headingId} className="font-semibold text-[0.85rem]">
                     {t(`status.${status}`)}
                   </h3>
                   <Badge>{format.number(total)}</Badge>
                 </div>
                 {cards.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">{t("empty")}</p>
+                  <p className="px-1.5 text-muted-foreground text-sm">{t("empty")}</p>
                 ) : (
-                  <ul className="flex flex-col gap-2">
+                  <ul className="-mx-1 flex min-h-0 flex-col gap-2 overflow-y-auto px-1 pb-1">
                     {cards.map((card) => {
                       const moves = onMove ? (card.moves ?? []) : [];
                       return (
@@ -72,7 +74,7 @@ export function PipelineBoard({ columns, counts, onMove }: PipelineBoardProps) {
                           draggable={moves.length > 0}
                           onDragStart={() => setDragged(card)}
                           onDragEnd={() => setDragged(null)}
-                          className="rounded-md border border-border bg-surface p-2 text-sm"
+                          className="rounded-xl border border-border/70 bg-surface p-3 text-sm shadow-[var(--shadow-sm)]"
                         >
                           {card.href ? (
                             <Link href={card.href} className="font-medium hover:underline">
@@ -81,10 +83,10 @@ export function PipelineBoard({ columns, counts, onMove }: PipelineBoardProps) {
                           ) : (
                             <p className="font-medium">{card.name}</p>
                           )}
-                          <p className="text-muted-foreground">{card.job}</p>
+                          <p className="truncate text-[0.8rem] text-muted-foreground">{card.job}</p>
                           {moves.length > 0 ? (
                             <NativeSelect
-                              className="mt-2"
+                              className="mt-2.5 h-8 text-xs"
                               aria-label={t("move", { name: card.name })}
                               value=""
                               onChange={(event) => {
