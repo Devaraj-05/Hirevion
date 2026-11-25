@@ -1,4 +1,11 @@
 //! The upload loop: one segment at a time, oldest first, each failure on its own backoff.
+//!
+//! The interview-session token is the interview's, not a segment's (2026-11-25): when it can't
+//! be had the whole interview waits one backoff, and when it is refused for good (another
+//! account's interview, a deleted one, a signed-out device) the uploader stops and leaves the
+//! segments on disk. Before, each segment asked again: the leftovers of three other accounts'
+//! interviews made about 12 token requests a second, until the API's per-IP limit refused the
+//! candidate's own interview too.
 
 use std::collections::{HashMap, HashSet};
 use std::future::Future;
@@ -116,6 +123,21 @@ enum Outcome {
     Retry(Duration),
 }
 
+/// Why no token: wait (the interview's backoff), or stop (refused for good).
+enum TokenWait {
+    Later(Duration),
+    Stop(ApiError),
+}
+
+impl From<TokenWait> for Result<Outcome, UploadError> {
+    fn from(wait: TokenWait) -> Self {
+        match wait {
+            TokenWait::Later(delay) => Ok(Outcome::Retry(delay)),
+            TokenWait::Stop(error) => Err(UploadError::Api(error)),
+        }
+    }
+}
+
 /// Uploads one interview's segments from the [`SegmentStore`] (recordings contract):
 /// upload URL → throttled PUT → hash-verified ack → delete the local copy.
 pub struct Uploader {
@@ -128,6 +150,13 @@ pub struct Uploader {
     events: broadcast::Sender<UploadEvent>,
     refused: Mutex<HashSet<(String, Track)>>,
     not_before: Mutex<HashMap<i64, Instant>>,
+    /// Failed token asks in a row, and when the next may be made.
+    token_wait: Mutex<(u32, Option<Instant>)>,
+}
+
+/// A token refused for good: retrying can't help this sign-in.
+fn refused_for_good(error: &ApiError) -> bool {
+    matches!(error, ApiError::SignedOut) || matches!(error.status(), Some(401 | 403 | 404 | 410))
 }
 
 impl std::fmt::Debug for Uploader {
@@ -157,6 +186,7 @@ impl Uploader {
             events: broadcast::channel(256).0,
             refused: Mutex::new(HashSet::new()),
             not_before: Mutex::new(HashMap::new()),
+            token_wait: Mutex::new((0, None)),
         })
     }
 
@@ -268,6 +298,11 @@ impl Uploader {
             return Ok(Step::Empty);
         }
         let now = Instant::now();
+        if let Some(until) = self.token_until()
+            && until > now
+        {
+            return Ok(Step::Wait(until));
+        }
         let mut earliest: Option<Instant> = None;
         for segment in pending {
             if self.is_refused(&segment) {
@@ -309,9 +344,9 @@ impl Uploader {
             _ => {}
         }
 
-        let token = match self.session.token().await {
+        let token = match self.token().await {
             Ok(token) => token,
-            Err(error) => return self.failed(&segment, error.code(), error.retry_after()),
+            Err(wait) => return wait.into(),
         };
         let api = self.session.api();
         let ticket = match api::request_upload(api, &token, &segment).await {
@@ -380,9 +415,9 @@ impl Uploader {
     }
 
     async fn ack(&self, segment: &Segment, segment_id: &str) -> Result<Outcome, UploadError> {
-        let token = match self.session.token().await {
+        let token = match self.token().await {
             Ok(token) => token,
-            Err(error) => return self.failed(segment, error.code(), error.retry_after()),
+            Err(wait) => return wait.into(),
         };
         match api::acknowledge(self.session.api(), &token, segment_id, &segment.sha256).await {
             Ok(()) => {
@@ -400,6 +435,40 @@ impl Uploader {
             }
             Err(error) => self.failed(segment, error.code(), error.retry_after()),
         }
+    }
+
+    /// The interview's token. `Err(TokenWait)` when it can't be had now (the interview waits a
+    /// backoff); an error when it is refused for good (the uploader stops).
+    async fn token(&self) -> Result<String, TokenWait> {
+        match self.session.token().await {
+            Ok(token) => {
+                *self.token_state() = (0, None);
+                Ok(token)
+            }
+            Err(error) if refused_for_good(&error) => Err(TokenWait::Stop(error)),
+            Err(error) => {
+                let mut state = self.token_state();
+                let delay = backoff::retry_delay(
+                    error.retry_after(),
+                    state.0,
+                    self.config.backoff_base,
+                    self.config.backoff_cap,
+                    backoff::jitter(),
+                );
+                *state = (state.0.saturating_add(1), Some(Instant::now() + delay));
+                Err(TokenWait::Later(delay))
+            }
+        }
+    }
+
+    fn token_until(&self) -> Option<Instant> {
+        self.token_state().1
+    }
+
+    fn token_state(&self) -> MutexGuard<'_, (u32, Option<Instant>)> {
+        self.token_wait
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
     }
 
     /// Counts a failed attempt and schedules the retry. An uploaded segment keeps its upload
