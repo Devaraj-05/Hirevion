@@ -6,19 +6,21 @@
 
 /*
  * The candidate app's own look (product owner, 2026-11-16): calm and Apple-like. It keeps the
- * design system's token names and components, and changes their values here: soft grey
- * canvas, white surfaces, one blue accent, the system font. Text and background pairs meet
- * WCAG 2.2 AA in both themes.
+ * design system's token names and components, and changes their values here. Since 2026-11-26
+ * every screen shares the interview screen's look (owner: "one theme for the entire desktop
+ * application"): its cool ground with soft blue and violet light, its floating cards, its
+ * blue-to-violet brand for the one primary action. Text and background pairs meet WCAG 2.2 AA
+ * in both themes.
  */
 :root,
 [data-theme="light"] {
   --font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --background: #f4f6f9;
+  --background: #f3f5fb;
   --foreground: #1d1d1f;
   --surface: #ffffff;
-  --surface-muted: #eef1f5;
-  --surface-sunken: #e6e9ef;
-  --border: #e1e5eb;
+  --surface-muted: #eef1f7;
+  --surface-sunken: #e7eaf2;
+  --border: #e0e4ee;
   --input: #c7c7cc;
   --muted-foreground: #63636a;
 
@@ -39,6 +41,10 @@
   /* The interview screen (C8-12, owner's reference 2026-11-24). */
   --brand-from: #2f8bff;
   --brand-to: #8b5cf6;
+  /* The primary action's fill: the brand, deep enough for white text (4.6:1 at its lightest). */
+  --brand-solid-from: #1f6fe0;
+  --brand-solid-to: #6a4ae0;
+  --brand-shadow: 0 1px 2px rgb(40 60 160 / 0.18), 0 8px 18px -10px rgb(70 70 200 / 0.55);
   --stage-bg: #f3f5fb;
   --stage-glow-a: rgb(110 150 255 / 0.22);
   --stage-glow-b: rgb(170 140 255 / 0.16);
@@ -73,14 +79,14 @@
 }
 
 [data-theme="dark"] {
-  --background: #0e0e10;
+  --background: #0c0e15;
   --foreground: #f5f5f7;
-  --surface: #1c1c1e;
-  --surface-muted: #2a2a2d;
-  --surface-sunken: #161618;
-  --border: #38383b;
-  --input: #505054;
-  --muted-foreground: #a6a6ad;
+  --surface: #171922;
+  --surface-muted: #20232e;
+  --surface-sunken: #12141c;
+  --border: #2a2e3b;
+  --input: #424758;
+  --muted-foreground: #a4a9b8;
 
   --accent: #409cff;
   --accent-hover: #6ab2ff;
@@ -97,6 +103,9 @@
 
   --brand-from: #4d9bff;
   --brand-to: #a07bff;
+  --brand-solid-from: #2a6fe0;
+  --brand-solid-to: #6d4ae0;
+  --brand-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 10px 22px -12px rgb(90 90 255 / 0.55);
   --stage-bg: #0c0e15;
   --stage-glow-a: rgb(70 100 220 / 0.22);
   --stage-glow-b: rgb(120 80 220 / 0.18);
@@ -127,7 +136,7 @@
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
   --shadow-md: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.45);
   --overlay: rgb(0 0 0 / 0.6);
-  --chrome: rgb(28 28 30 / 0.72);
+  --chrome: rgb(23 25 34 / 0.72);
 }
 
 @layer base {
@@ -172,14 +181,48 @@
 
   /* ---- The interview screen (C8-12; owner's reference image, 2026-11-24) --------------- */
 
+  /* The ground every screen stands on: cool, with soft blue and violet light. */
+  .app-ground,
   .stage {
-    display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
-    height: 100%;
     background:
       radial-gradient(55% 38% at 50% -6%, var(--stage-glow-a), transparent 70%),
       radial-gradient(40% 45% at 100% 105%, var(--stage-glow-b), transparent 70%),
       radial-gradient(38% 40% at 0% 100%, var(--stage-glow-a), transparent 70%), var(--stage-bg);
+  }
+
+  /* The bar over every screen but the interview: the interview's top bar, lighter. */
+  .app-bar {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 1rem;
+    min-width: 0;
+    height: 3.9rem;
+    margin: 1rem 1.25rem 0;
+    padding: 0 0.75rem 0 0.9rem;
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    background: var(--card-bg);
+    box-shadow: var(--card-shadow);
+  }
+  .app-bar-org {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--muted-foreground);
+    font-weight: 500;
+  }
+
+  .stage {
+    display: grid;
+    /* One column that never grows past the window: an implicit `auto` column let the top bar's
+       unbreakable content widen the whole screen at 125-150% Windows scaling (2026-11-26). */
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100%;
   }
 
   .card {
@@ -271,6 +314,15 @@
     color: var(--heading-ink);
     white-space: nowrap;
   }
+  /* The lighter bar over the other screens. */
+  .app-bar .brand-tile {
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 12px;
+  }
+  .app-bar .wordmark {
+    font-size: 1.05rem;
+  }
   .top-bar-rule {
     width: 1px;
     height: 2.1rem;
@@ -288,12 +340,16 @@
   }
   .top-bar-status {
     display: flex;
+    flex: none;
     align-items: center;
     gap: 0.9rem;
     height: 2.9rem;
     padding: 0 1rem;
     border-radius: 9999px;
     color: var(--muted-foreground);
+  }
+  .top-bar-status[data-attention] {
+    background: var(--danger-subtle);
   }
   .top-bar-status li {
     display: flex;
@@ -304,11 +360,21 @@
     position: relative;
     display: grid;
   }
-  /* A status that isn't working is also written: never colour alone. */
-  .status-word {
-    font-size: 0.85rem;
-    font-weight: 500;
-    white-space: nowrap;
+  .status-badge {
+    position: absolute;
+    right: -0.45rem;
+    bottom: -0.35rem;
+    display: grid;
+    place-items: center;
+    width: 0.85rem;
+    height: 0.85rem;
+    border-radius: 9999px;
+    background: var(--danger-solid);
+    box-shadow: 0 0 0 2px var(--surface);
+    color: var(--danger-solid-foreground);
+    font-size: 0.6rem;
+    font-weight: 800;
+    line-height: 1;
   }
   .top-bar-status li[data-health="problem"] {
     color: var(--danger);
@@ -323,6 +389,12 @@
     width: 0.45rem;
     height: 0.45rem;
     box-shadow: 0 0 0 2px var(--surface);
+  }
+  .top-bar-status .status-ring {
+    background: var(--card-bg);
+    box-shadow:
+      inset 0 0 0 1.5px var(--warning),
+      0 0 0 2px var(--surface);
   }
   .clock {
     display: inline-flex;
@@ -814,13 +886,18 @@
     min-height: 3.6rem;
     padding-bottom: 0.6rem;
   }
+  .camera-header .card-title {
+    flex: 1 1 auto;
+  }
   .camera-status {
     margin-left: auto;
     display: inline-flex;
+    flex: none;
     align-items: center;
     gap: 0.45rem;
-    font-size: 1rem;
+    font-size: 0.9rem;
     font-weight: 500;
+    white-space: nowrap;
   }
   .camera-frame {
     position: relative;

@@ -112,6 +112,17 @@ const LOOKS: Record<string, Look> = {
     lines: CONVERSATION,
     workspace: "notes",
   },
+  // The owner's screen of 2026-11-25: three checks down, which widened the bar past the window.
+  "services-down": {
+    voice: "speaking",
+    connection: "connected",
+    remaining: 1300,
+    lines: CONVERSATION,
+    phone: "missing",
+    services: { camera: "problem", microphone: "problem", screen: "problem" },
+    notice:
+      "Some of the checks that protect your interview didn't start. Keep going; we'll keep trying.",
+  },
   "phone-missing": {
     voice: "speaking",
     connection: "connected",

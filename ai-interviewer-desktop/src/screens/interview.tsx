@@ -1,4 +1,5 @@
 import { Label, Textarea } from "@hirevion/ui";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { type RemoteTrack, Room, RoomEvent, Track } from "livekit-client";
 import { CircleCheck } from "lucide-react";
@@ -6,6 +7,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslations } from "use-intl";
 import { type AudioRoom, isPhoneCamera, playInterviewerAudio } from "../interview/audio";
 import { reconcile } from "../interview/countdown";
+import { endInterview } from "../interview/ending";
 import { indicators, type ServicePart } from "../interview/health";
 import {
   livekitTracks,
@@ -24,7 +26,13 @@ import {
   upsert,
 } from "../interview/transcript";
 import { typedAnswers, workspaceOf } from "../interview/workspace";
-import { commands, type InterviewState, type StartResult } from "../native/commands";
+import {
+  CLOSE_REQUESTED_EVENT,
+  commands,
+  type InterviewState,
+  type StartResult,
+} from "../native/commands";
+import { holdCloseGuard, holdFullscreen } from "../native/hold";
 import { type LiveThirdEye, liveView } from "../third-eye/pairing";
 import { Notice, Panel, PillButton, ScreenTitle } from "../ui/kit";
 import { CodingConsole } from "./coding-console";
@@ -80,6 +88,7 @@ export function InterviewScreen({
   );
   const [error, setError] = useState<ErrorKey | null>(null);
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const [ending, setEnding] = useState(false);
   // Which parts of the monitoring and recording reported a problem; `null` until they first
   // all started.
   const [problems, setProblems] = useState<Set<ServicePart> | null>(null);
@@ -103,48 +112,58 @@ export function InterviewScreen({
     async (reason: "finished" | "candidate_ended") => {
       if (ended.current) return;
       ended.current = true;
-      await Promise.all([...flushers.current].map((flush) => flush().catch(() => undefined)));
+      setEnding(true);
       // Monitoring, the face module and the recording stop first, so their last events and
       // segments are saved while the interview is still open; the upload carries on after.
-      await services.current?.stop();
-      try {
-        await commands.complete(interviewId, reason);
-      } catch (failure) {
-        onError(failure);
-      }
-      await room.current?.disconnect();
+      // Every step has a time limit: a stuck one can't keep the candidate in (ending.ts).
+      await endInterview(
+        {
+          flush: () =>
+            Promise.all([...flushers.current].map((flush) => flush().catch(() => undefined))),
+          stopServices: async () => services.current?.stop(),
+          complete: () => commands.complete(interviewId, reason),
+          disconnect: async () => room.current?.disconnect(),
+        },
+        onError,
+      );
       onCompleted();
     },
     [interviewId, onCompleted, onError],
   );
 
   // Closing the window mid-interview ends it for good (one attempt, C8-9): ask first, as End
-  // Interview does. A crash or a killed app is a lost connection, which may rejoin once.
+  // Interview does. A crash or a killed app is a lost connection, which may rejoin once. The
+  // app holds the window and asks this page (src-tauri close_guard.rs); a reloaded or stuck
+  // page releases it, so the window can always be closed.
   useEffect(() => {
     let unlisten: (() => void) | undefined;
+    let release: (() => void) | undefined;
     let live = true;
-    void getCurrentWindow()
-      .onCloseRequested((event) => {
-        event.preventDefault();
-        setConfirmEnd(true);
-      })
+    void listen(CLOSE_REQUESTED_EVENT, () => {
+      // While the interview ends, the page doesn't answer: a second close then closes.
+      if (ended.current) return;
+      void commands.closeGuardAnswered().catch(() => undefined);
+      setConfirmEnd(true);
+    })
       .then((stop) => {
-        if (live) unlisten = stop;
-        else stop();
+        if (!live) {
+          stop();
+          return;
+        }
+        unlisten = stop;
+        // Held only once someone listens, so no close is held with nobody to ask.
+        release = holdCloseGuard();
       })
       .catch(() => undefined);
     return () => {
       live = false;
       unlisten?.();
+      release?.();
     };
   }, []);
 
   // Fullscreen for the whole interview (PRD §31); restored when it ends.
-  useEffect(() => {
-    const window = getCurrentWindow();
-    void window.setFullscreen(true).catch(() => undefined);
-    return () => void window.setFullscreen(false).catch(() => undefined);
-  }, []);
+  useEffect(() => holdFullscreen(), []);
 
   // The clock counts down locally; the agent's time moves it only when they disagree (C8-12).
   // Every server message that carries the time resyncs it, even an unchanged value (a paused
@@ -493,6 +512,7 @@ export function InterviewScreen({
       <EndDialog
         open={confirmEnd}
         onOpenChange={setConfirmEnd}
+        ending={ending}
         onEnd={() => void finish("candidate_ended")}
       />
     </>

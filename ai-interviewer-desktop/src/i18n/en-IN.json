@@ -343,7 +343,8 @@
       "title": "End the interview?",
       "body": "You can't come back to it. What you've answered so far will be submitted.",
       "continue": "Continue interview",
-      "end": "End interview"
+      "end": "End interview",
+      "ending": "Ending…"
     },
     "reconnectingNotice": "Your connection dropped. We're reconnecting you, and the interview carries on once it's back.",
     "barTitleRich": "<b>{name}</b> – {job} – Interview"

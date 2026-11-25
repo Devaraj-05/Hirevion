@@ -94,19 +94,16 @@ export function InterviewStage({
       key: "microphone",
       health: indicators.microphone,
       label: `${t("health.microphone")}: ${t(`health.${indicators.microphone}`)}`,
-      state: t(`health.${indicators.microphone}`),
     },
     {
       key: "screen",
       health: indicators.screen,
       label: `${t("health.screen")}: ${t(`health.${indicators.screen}`)}`,
-      state: t(`health.${indicators.screen}`),
     },
     {
       key: "session",
       health: sessionHealth,
       label: `${t("health.session")}: ${sessionWord}`,
-      state: sessionWord,
     },
   ];
 

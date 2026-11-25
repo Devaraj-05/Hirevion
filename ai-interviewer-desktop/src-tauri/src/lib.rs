@@ -88,6 +88,10 @@ pub fn run() {
         }))
         // Signed updates (SP-08c); driven only by the update_install command.
         .plugin(app::update::plugin())
+        // Closing mid-interview asks the page first; a reloaded page releases the window.
+        .manage(app::close_guard::CloseGuard::default())
+        .on_window_event(app::close_guard::on_window_event)
+        .on_page_load(app::close_guard::on_page_load)
         .setup(move |app| {
             let data_dir = app.path().app_local_data_dir()?;
             let version = app.package_info().version.to_string();
@@ -122,6 +126,8 @@ pub fn run() {
             crash::crash_report,
             app::interview::interview_request,
             app::interview::workspace_draft,
+            app::close_guard::close_guard_live,
+            app::close_guard::close_guard_answered,
             app::service_commands::services_start,
             app::service_commands::services_stop,
             app::service_commands::proctoring_set_devices,
@@ -155,6 +161,8 @@ pub fn run() {
         crash::crash_report,
         app::interview::interview_request,
         app::interview::workspace_draft,
+        app::close_guard::close_guard_live,
+        app::close_guard::close_guard_answered,
         app::service_commands::services_start,
         app::service_commands::services_stop,
         app::service_commands::proctoring_set_devices,

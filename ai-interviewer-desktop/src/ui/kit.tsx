@@ -11,7 +11,9 @@ type Tone = "neutral" | "success" | "warning" | "danger" | "accent";
 
 const PILL_SIZES = { md: "h-10 px-5 text-[0.95rem]", lg: "h-12 px-7 text-base" } as const;
 const PILL_VARIANTS = {
-  primary: "",
+  // The brand, as on the interview screen (one theme, 2026-11-26).
+  primary:
+    "bg-[image:linear-gradient(135deg,var(--brand-solid-from),var(--brand-solid-to))] text-white shadow-[var(--brand-shadow)] hover:brightness-110",
   secondary: "border-border bg-surface shadow-sm",
   quiet: "text-accent hover:bg-accent-subtle",
   danger: "",
@@ -47,7 +49,7 @@ export function Panel({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
       className={cn(
-        "rounded-[20px] border border-border/70 bg-surface shadow-[var(--shadow-md)]",
+        "rounded-[22px] border border-[var(--card-border)] bg-[var(--card-bg)] shadow-[var(--card-shadow)]",
         className,
       )}
       {...props}
@@ -69,7 +71,7 @@ export function ScreenTitle({
 }) {
   return (
     <div className={cn("grid gap-2", className)}>
-      <h1 id={id} className="font-semibold text-[1.75rem] leading-tight">
+      <h1 id={id} className="font-semibold text-[1.75rem] text-[var(--heading-ink)] leading-tight">
         {title}
       </h1>
       {lead ? <p className="max-w-[60ch] text-muted-foreground leading-relaxed">{lead}</p> : null}

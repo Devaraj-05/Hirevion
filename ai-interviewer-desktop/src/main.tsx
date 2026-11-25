@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import { installCrashReporting } from "./native/crash";
+import { ErrorBoundary } from "./ui/error-boundary";
 import "./styles.css";
 
 installCrashReporting();
@@ -12,6 +13,8 @@ if (!container) {
 }
 createRoot(container).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 );

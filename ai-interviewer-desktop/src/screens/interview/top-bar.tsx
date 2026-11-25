@@ -13,19 +13,30 @@ const TONES = {
   critical: "clock-critical",
 } as const;
 
-const DOTS: Record<Health, string> = {
-  starting: "bg-warning",
-  ok: "bg-success",
-  problem: "bg-danger",
-};
-
 export interface StatusItem {
   key: "microphone" | "screen" | "session";
   health: Health;
-  /** What the item says, e.g. "Microphone: working". */
+  /** What the item says, e.g. "Microphone: working": its tooltip and screen-reader text. */
   label: string;
-  /** Its state in a word or two, shown whenever it isn't working (never colour alone). */
-  state: string;
+}
+
+/** Each state has its own shape as well as its colour (never colour alone): a dot when it
+ * works, a ring while it starts, an exclamation badge when it needs attention. The words were
+ * written out until 2026-11-26, and two of them widened the bar past the window. */
+function StatusBadge({ health }: { health: Health }) {
+  if (health === "problem") {
+    return (
+      <span aria-hidden className="status-badge">
+        !
+      </span>
+    );
+  }
+  return (
+    <span
+      aria-hidden
+      className={cn("status-dot", health === "ok" ? "bg-success" : "status-ring")}
+    />
+  );
 }
 
 const ICONS = { microphone: Mic, screen: MonitorUp, session: Lock } as const;
@@ -77,23 +88,20 @@ export function TopBar({
             })
           : title}
       </h1>
-      <ul className="top-bar-status" aria-label={t("health.title")}>
-        {status.map(({ key, health, label, state }) => {
+      <ul
+        className="top-bar-status"
+        aria-label={t("health.title")}
+        data-attention={status.some(({ health }) => health === "problem") || undefined}
+      >
+        {status.map(({ key, health, label }) => {
           const Icon = ICONS[key];
           return (
             <li key={key} title={label} data-health={health}>
               <span className="status-icon">
-                <Icon aria-hidden className="size-4" strokeWidth={1.75} />
-                <span aria-hidden className={cn("status-dot", DOTS[health])} />
+                <Icon aria-hidden className="size-[1.05rem]" strokeWidth={1.75} />
+                <StatusBadge health={health} />
               </span>
-              {health === "ok" ? (
-                <span className="sr-only">{label}</span>
-              ) : (
-                <span className="status-word">
-                  <span className="sr-only">{label}</span>
-                  <span aria-hidden>{state}</span>
-                </span>
-              )}
+              <span className="sr-only">{label}</span>
             </li>
           );
         })}

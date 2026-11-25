@@ -10,6 +10,9 @@ import type { ProctoringEventDraft } from "../vision/types";
  * (master plan §6.4). A failed command rejects with a `CommandError`.
  */
 
+/** Sent by the app when the window is asked to close during a live interview. */
+export const CLOSE_REQUESTED_EVENT = "hv://close-requested";
+
 export interface CommandError {
   code: string;
   detail?: string | null;
@@ -114,6 +117,10 @@ export const commands = {
     invoke<SignInResult>("verify_code", { challengeId, code }),
   resendCode: (challengeId: string) => invoke<null>("resend_code", { challengeId }),
   signOut: () => invoke<null>("sign_out"),
+  /** Closing the window asks the page first while `live` (the app's close guard). */
+  closeGuardLive: (live: boolean) => invoke<null>("close_guard_live", { live }),
+  /** The page got `CLOSE_REQUESTED_EVENT` and is asking the candidate. */
+  closeGuardAnswered: () => invoke<null>("close_guard_answered"),
   profile: () => invoke<Profile>("profile"),
   nativeChecks: () => invoke<CheckResult[]>("native_checks"),
   screenCaptureProbe: () => invoke<CheckResult>("screen_capture_probe"),

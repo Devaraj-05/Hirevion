@@ -79,3 +79,29 @@ The product owner then supplied a reference image for the panel. It replaces the
   - **The interviewer:** a vivid blue-to-violet sphere with a white waveform glyph inside three soft rings; it turns violet while the candidate speaks. A state pill ("AI Interviewer is speaking…") sits under it. Each speaker's run of lines is a tinted card with an avatar and a name: "AI Interviewer" in blue, "Candidate" in violet. A waveform strip moves with the same audio level.
   - **The cameras:** each a card with its name and "Live", the picture inset, and a dark "CONFIDENTIAL • INTERVIEW SESSION" chip at its corner.
 - **No longer applied:** the earlier finish review's "colour only on the active line" and "light, not a vivid sphere". The owner's reference shows both voices tinted and a vivid orb.
+
+## Amendment, 2026-11-26: stability, fit and one theme
+
+The owner's run of 2026-11-25 turned white mid-interview, the window could not be closed and End
+Interview did nothing; at 125–150% Windows scaling the screen was wider than the window.
+
+- **The white screen** was the dev server reloading the page: it pre-bundles dependencies by
+  crawling imports, but not web workers', so it found MediaPipe only when the face module's
+  worker started mid-interview. `optimizeDeps.include` now lists the workers' and the recorder's
+  dependencies. A root error boundary replaces a blank window with Reload and Close app.
+- **Closing** moved from the page's `onCloseRequested` to the app (`close_guard.rs`): Tauri keeps
+  a page's JavaScript listeners after a reload, so every close went to a listener that no longer
+  existed. The app now asks the page only while the page holds the guard; a page load clears it,
+  and a page that doesn't answer within 3 s can't hold the window.
+- **Ending** gives each step a time limit (`ending.ts`), so a stuck recording or monitor can't keep
+  the candidate in; End shows "Ending…" meanwhile. A `complete` that times out still ends the
+  interview: the server completes it as "left early" after the reconnect window (ADR-0049).
+- **StrictMode's** mount, unmount and remount no longer switch fullscreen off and on, or the
+  close guard: both are held through `switchHolder`, which lets go only after a moment.
+- **Fit:** the stage's grid has one `minmax(0, 1fr)` column (an implicit `auto` column let the
+  bar's content widen the screen); the bar's statuses are icons with a shape per state (dot,
+  ring, "!" badge) and their words in the tooltip and for screen readers; camera headers never
+  wrap.
+- **One theme** for the whole app (owner): every screen stands on the interview's ground under a
+  floating bar with the mark, panels are its cards, and the primary action uses the brand's
+  blue-to-violet (white text at 4.6:1 or more).

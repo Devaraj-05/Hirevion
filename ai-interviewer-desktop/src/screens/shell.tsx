@@ -1,12 +1,14 @@
 import type { ReactNode } from "react";
 import { useTranslations } from "use-intl";
 import type { Profile } from "../native/commands";
+import { Wordmark } from "../ui/emblem";
 import { PillButton } from "../ui/kit";
 
 /**
  * The frame every screen sits in. The window itself never scrolls (a desktop app, product
  * owner, 2026-11-16): the bar stays put and a screen's content scrolls under it only when it
- * can't fit. `immersive` (the interview) hands the whole window to the screen.
+ * can't fit. `immersive` (the interview) hands the whole window to the screen. Every screen
+ * shares the interview's ground and its floating bar with the mark (one theme, 2026-11-26).
  */
 export function Shell({
   profile,
@@ -20,19 +22,28 @@ export function Shell({
   children: ReactNode;
 }) {
   const t = useTranslations("app");
+  const interview = useTranslations("interview");
   if (immersive) {
-    return <div className="h-full overflow-hidden bg-background text-foreground">{children}</div>;
+    return <div className="app-ground h-full overflow-hidden text-foreground">{children}</div>;
   }
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-background text-foreground">
-      <header className="chrome z-10 flex h-14 shrink-0 items-center justify-between border-border/70 border-b px-6">
-        <span className="font-semibold tracking-tight">
-          {profile?.organization.name ?? t("name")}
-        </span>
+    <div className="app-ground flex h-full flex-col overflow-hidden text-foreground">
+      <header className="app-bar">
+        <Wordmark label={interview("wordmark")} className="shrink-0" />
+        {profile ? (
+          <>
+            <span aria-hidden className="top-bar-rule h-7" />
+            <span className="app-bar-org">{profile.organization.name}</span>
+          </>
+        ) : (
+          <span className="sr-only">{t("name")}</span>
+        )}
         {profile && onSignOut ? (
-          <div className="flex items-center gap-2 text-[0.9rem]">
-            <span className="text-muted-foreground">{profile.candidate.email}</span>
-            <PillButton variant="quiet" className="h-8 px-3" onClick={onSignOut}>
+          <div className="ml-auto flex min-w-0 items-center gap-2 text-[0.9rem]">
+            <span className="truncate text-muted-foreground max-md:sr-only">
+              {profile.candidate.email}
+            </span>
+            <PillButton variant="quiet" className="h-9 shrink-0 px-4" onClick={onSignOut}>
               {t("signOut")}
             </PillButton>
           </div>
