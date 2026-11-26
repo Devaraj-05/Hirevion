@@ -158,3 +158,12 @@ class TestTheOtherSignals:
             Started("unusual_movement", 0.0)
         ]
         assert run(Watch(), every(0, 5, {"view_changed": True})) == [Started("view_changed", 0.0)]
+
+
+def test_a_kind_missing_from_a_frame_is_unknown_and_keeps_its_episode_open() -> None:
+    """A covered picture says nothing about the candidate: their absence goes on (review)."""
+    watch = Watch()
+    run(watch, [(0.0, {"left_view": False})])
+    assert run(watch, every(1, 11, {"left_view": True})) == [Started("left_view", 1.0)]
+    assert run(watch, every(11.5, 30, {})) == []  # unreadable for 18 s: no end
+    assert watch.last_seen("left_view") == 11.0

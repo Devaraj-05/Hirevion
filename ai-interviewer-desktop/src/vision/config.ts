@@ -110,6 +110,9 @@ export function firstThreshold(rule: SignalRule): { ms: number; level: Level } |
   return critical === undefined ? null : { ms: critical, level: "critical" };
 }
 
+/** How much wider the relaxed-gaze accommodation makes "looking away". */
+const RELAXED_GAZE_WIDER = 1.5;
+
 /** A transform of the config for one accommodation kind. */
 export type Accommodation = (config: VisionConfig) => VisionConfig;
 
@@ -129,14 +132,22 @@ function scaled(rule: SignalRule): SignalRule {
  * concern the camera; SP-15b adds its gaze rules to this registry.
  */
 export const ACCOMMODATIONS: Readonly<Record<string, Accommodation>> = {
+  // SP-15b: relaxed gaze also doubles gaze's time and widens how far counts as looking away.
   relaxed_gaze: (config) => ({
     ...config,
     signals: {
       ...config.signals,
       FACE_TOO_FAR: scaled(config.signals.FACE_TOO_FAR),
       FACE_TOO_CLOSE: scaled(config.signals.FACE_TOO_CLOSE),
+      GAZE_DEVIATION: scaled(config.signals.GAZE_DEVIATION),
     },
     face: { ...config.face, tooFarBelow: 0.1, tooCloseAbove: 0.75 },
+    gaze: {
+      ...config.gaze,
+      yaw: config.gaze.yaw * RELAXED_GAZE_WIDER,
+      pitchDown: config.gaze.pitchDown * RELAXED_GAZE_WIDER,
+      eye: config.gaze.eye * RELAXED_GAZE_WIDER,
+    },
   }),
 };
 

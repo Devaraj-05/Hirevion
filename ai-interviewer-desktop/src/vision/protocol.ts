@@ -27,6 +27,8 @@ export type ToWorker =
 export type FromWorker =
   | { type: "ready"; delegate: Delegate }
   | { type: "error"; message: string; fatal: boolean }
+  /** Something optional stopped (gaze): the face module carries on (review, 2026-11-26). */
+  | { type: "warning"; message: string }
   | {
       type: "result";
       t: number;

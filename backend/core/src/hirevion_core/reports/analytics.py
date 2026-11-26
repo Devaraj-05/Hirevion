@@ -129,7 +129,8 @@ def repeated_phrases(texts: Sequence[str]) -> list[tuple[str, int]]:
         for j in range(i):
             b, count_b = often[j]
             if count_a == count_b and _overlap(a, b):
-                group[root(i)] = root(j)
+                first, second = sorted((root(i), root(j)))
+                group[second] = first
     firsts = {root(i) for i in range(len(often))}
     return [often[i] for i in sorted(firsts)][:REPEAT_TOP]
 

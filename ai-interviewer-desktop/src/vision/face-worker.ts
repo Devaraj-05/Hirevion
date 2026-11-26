@@ -72,7 +72,7 @@ function readGaze(bitmap: ImageBitmap, t: number, faces: number): GazeReading | 
   } catch (error) {
     landmarker?.close();
     landmarker = null;
-    scope.postMessage({ type: "error", message: `gaze is off: ${String(error)}`, fatal: false });
+    scope.postMessage({ type: "warning", message: `gaze is off: ${String(error)}` });
     return undefined;
   }
 }
@@ -167,7 +167,7 @@ scope.onmessage = (event) => {
         delegate = loaded;
         const gazeOff = message.gaze ? await loadLandmarker() : null;
         scope.postMessage({ type: "ready", delegate });
-        if (gazeOff) scope.postMessage({ type: "error", message: gazeOff, fatal: false });
+        if (gazeOff) scope.postMessage({ type: "warning", message: gazeOff });
       },
       (error: unknown) => scope.postMessage({ type: "error", message: String(error), fatal: true }),
     );

@@ -106,7 +106,7 @@ describe("visionConfigFromPolicy", () => {
 });
 
 describe("accommodations", () => {
-  it("relaxed_gaze relaxes face distance only (master plan §6.4)", () => {
+  it("relaxed_gaze relaxes face distance and gaze (master plan §6.4, SP-15b)", () => {
     const relaxed = applyAccommodations(DEFAULT_VISION_CONFIG, ["relaxed_gaze"]);
     expect(relaxed.face.tooFarBelow).toBeLessThan(DEFAULT_VISION_CONFIG.face.tooFarBelow);
     expect(relaxed.face.tooCloseAbove).toBeGreaterThan(DEFAULT_VISION_CONFIG.face.tooCloseAbove);
@@ -117,6 +117,18 @@ describe("accommodations", () => {
     expect(relaxed.signals.CAMERA_OBSTRUCTED).toEqual(
       DEFAULT_VISION_CONFIG.signals.CAMERA_OBSTRUCTED,
     );
+    expect(relaxed.signals.GAZE_DEVIATION).toEqual({ warn_after_ms: 20_000 });
+    expect(relaxed.gaze.yaw).toBeGreaterThan(DEFAULT_VISION_CONFIG.gaze.yaw);
+    expect(relaxed.gaze.eye).toBeGreaterThan(DEFAULT_VISION_CONFIG.gaze.eye);
+    expect(relaxed.signals.PHONE_DETECTED).toEqual(DEFAULT_VISION_CONFIG.signals.PHONE_DETECTED);
+  });
+
+  it("reads which looks the policy checks", () => {
+    expect(visionConfigFromPolicy({ checks: ["face", "gaze"] }).watch).toEqual({
+      gaze: true,
+      phone: false,
+    });
+    expect(visionConfigFromPolicy({}).watch).toEqual({ gaze: false, phone: false });
   });
 
   it("ignores kinds that don't concern the camera, so new kinds need no caller change", () => {

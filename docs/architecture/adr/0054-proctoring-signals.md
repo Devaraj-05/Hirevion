@@ -34,7 +34,9 @@
 
 - **Weight while it lasts:**
   - Each hold reaches its warning tier, so an episode is a warning when it is first recorded and alerts live.
-  - While it stays open, the agent tells the server how long it has lasted every 10 s (`ProctorEngine.detection_progress`). A candidate away for a minute becomes critical then, not only once they are back.
+  - While it stays open, the agent tells the server every 10 s how long it has lasted, up to its latest sighting (`ProctorEngine.detection_progress`). A candidate away for a minute becomes critical then, not only once they are back.
+  - An unreadable frame leaves "out of view" unknown, neither present nor away, so covering the lens neither starts nor ends an absence.
+  - The scene and the pose are extra looks: one that fails doesn't cost the person and phone checks their frame, and a pose model that can't load only leaves hands unwatched.
   - A later regrade keeps what backed the event before (`both-cameras`).
 
 - **How each signal is measured:**
@@ -46,6 +48,7 @@
     - Motion is the mean absolute change between two looks, flagged at 0.06 or more.
     - The view is compared with the first still picture by normalised cross-correlation, which ignores lighting; below 0.5 the view has changed.
     - A flat picture (a covered lens or a dark room) is a changed view and is never readable, so it is never taken for the candidate leaving.
+    - The reference is the first still pair of looks, not the first frame, which may be the phone still being propped up.
     - After 30 s a new readable view becomes the reference, so one move is flagged once.
   - **Hands (`pose.py`):** MediaPipe Pose Landmarker Lite (Apache-2.0, bundled and pinned by hash). Only the wrists' visibility is read. It runs at most once a second, and only when someone is in the picture.
 - **Hold share and gaps:** a run must show the condition in at least 70% of its looks, not only last its hold. In the evaluation, two short false sightings one frame apart were most of the phone's false positives. A run tolerates a gap of 1 s, or 15% of its hold if longer: two missed looks in a row cost hands (held 15 s) a fifth of their episodes.
@@ -53,7 +56,7 @@
 
 ### Both cameras correlated (core rules)
 
-- An event from one camera carries the ids of the other camera's matching events within 10 s, in `details.server.corroborated_by`, with the reason `both-cameras`. The report reads this as "seen by both cameras". The matching pairs are:
+- An event from one camera carries the ids of the other camera's matching events within 10 s, in `details.server.corroborated_by`, with the reason `both-cameras`. The later of the two events carries it. The report reads this as "seen by both cameras". The matching pairs are:
   - `MULTIPLE_FACES` ↔ `UNEXPECTED_PERSON_DETECTED`;
   - `PHONE_DETECTED` ↔ `PHONE_DETECTED`;
   - `FACE_ABSENT` ↔ `CANDIDATE_LEFT_VIEW`.
@@ -66,8 +69,9 @@
   - **Direction:** judged against this candidate's resting pose (the median of the first 40 readings, about 10 s), because a webcam above the screen makes looking at the screen a slight downward look. Hysteresis is applied when coming back. The result is left, right, down or centre.
   - **Event:** `GAZE_DEVIATION` uses the engine's existing smoothing and thresholds. It warns from 10 s by default, gets no critical level (the server caps it anyway) and carries the main `direction`. It runs only when the session's policy checks `gaze`.
 - **The face module comes first:**
-  - A landmarker that can't load turns gaze off, and only says so after `ready`. An error before `ready` would have stopped the face module.
-  - A landmarker that throws turns gaze off without costing the face result its frame.
+  - A landmarker that can't load, or that throws, turns gaze off with a `warning`, not an `error`.
+  - The face signals carry on and the interview shows no vision problem; the phone check's failures are warnings too.
+- **The policy's checks reach the camera:** the Rust services pass the session's `checks` to the webview with its thresholds. `relaxed_gaze` doubles gaze's time and widens how far counts as looking away by half.
 - **A phone on the main camera:** the existing object worker (EfficientDet-Lite2) runs in its own worker once a second, for `cell phone` only, so it never holds up face detection. It is used only when the policy checks `phone`.
   - The face module reads the latest score while it is fresh (1.5 s).
   - `PHONE_DETECTED` from the camera needs a score of 0.5 held 2 s. The camera keeps a 2 s floor even though the server's tier says critical at once.
@@ -79,6 +83,7 @@
   - The interviewer agent turns on Deepgram's diarisation (`HV_STT_DIARIZE`, on by default).
   - The candidate's voice is the label with the most words over the first 20 words, not merely the first label heard, which could be the interviewer's voice leaking back.
   - Another label raises `ADDITIONAL_SPEAKER_DETECTED`, an audio server event, only when it persists: at least 2 transcripts and 8 words within a minute, and at most once a minute. Streaming diarisation can split one voice for a moment.
+  - It is raised only while the candidate's label is heard too. Deepgram numbers speakers per connection, and the plugin reconnects mid-interview, so a new label talking alone for a minute is the candidate relabelled and becomes theirs.
   - It records only the number of voices and words, never the words.
   - The core's `ProctorEngine.detected` now takes the event's source, and accepts each server-raised event only from its own source.
 - **Repetition:** the interview analytics add `repeated_phrases`: three-word phrases said at least three times within one answer segment, the top five. A chain of overlapping windows of one longer phrase counts once. The web analytics panel shows them as a signal.

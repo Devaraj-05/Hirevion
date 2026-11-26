@@ -182,11 +182,19 @@ class Watch:
         # Out of view means something only once the candidate has been in it.
         self._candidate_seen = False
 
+    def last_seen(self, kind: Kind) -> float | None:
+        """When the kind was last seen (its open episode's latest sighting)."""
+        return self._tracks[kind].last_seen
+
     def update(self, now: float, flags: Mapping[Kind, bool]) -> list[Started | Ended]:
+        """A kind missing from `flags` is unknown in this frame (a covered picture says nothing
+        about where the candidate is): its track stays as it was (review, 2026-11-26)."""
         happened: list[Started | Ended] = []
         if flags.get("left_view") is False:
             self._candidate_seen = True
         for kind in KINDS:
+            if kind not in flags:
+                continue
             track = self._tracks[kind]
             active = flags.get(kind, False) and (kind != "left_view" or self._candidate_seen)
             if track.since is not None:

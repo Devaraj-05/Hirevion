@@ -782,9 +782,11 @@ impl Services {
         let watcher = self.spawn_session_watcher(live, interview_id, uploader.clone());
         Ok(ProctoringRun {
             shared,
+            // The checks switch the camera's gaze and phone looks on (B4b-3, ADR-0054).
             policy: json!({
                 "thresholds": policy.thresholds,
                 "accommodations": policy.accommodations,
+                "checks": policy.checks,
             }),
             uploader,
             watcher,

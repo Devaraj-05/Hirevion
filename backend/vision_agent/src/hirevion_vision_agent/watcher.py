@@ -152,12 +152,23 @@ class ThirdEyeWatcher:
         found = await asyncio.to_thread(self._detector.detect, pixels)
         height, width = pixels.shape[0], pixels.shape[1]
         flags: dict[Kind, bool] = dict(seen(found, width, height))
-        flags.update(self._scene.update(now.timestamp(), pixels))
-        if not self._scene.readable:
+        # The scene and the pose are extra looks: one that fails mustn't cost the person and
+        # phone checks their frame (review, 2026-11-26).
+        try:
+            flags.update(self._scene.update(now.timestamp(), pixels))
+            readable = self._scene.readable
+        except Exception:
+            log.exception("The third eye's scene couldn't be measured")
+            readable = True
+        if not readable:
             # A covered or dark picture says nothing about where the candidate is.
             del flags["left_view"]
         people, _ = people_and_phones(found, width, height)
-        hands = await self._hands_visible(now, pixels, present=bool(people))
+        try:
+            hands = await self._hands_visible(now, pixels, present=bool(people))
+        except Exception:
+            log.exception("The third eye's pose couldn't be read")
+            hands = None
         flags["hands_out_of_view"] = hands is False
         for change in self._watch.update(now.timestamp(), flags):
             if isinstance(change, Started):
@@ -168,12 +179,16 @@ class ThirdEyeWatcher:
         await self._progress(now)
 
     async def _progress(self, now: datetime) -> None:
+        """Each open episode's length so far: up to its latest sighting, not to now (an episode
+        stays open a few seconds after the last one, and those mustn't count)."""
         for kind, event_id in list(self._open.items()):
             told = self._told.get(kind)
             if told is not None and (now - told).total_seconds() < PROGRESS_SECONDS:
                 continue
             self._told[kind] = now
-            lasted = int((now - self._since[kind]).total_seconds() * 1000)
+            last = self._watch.last_seen(kind)
+            until = datetime.fromtimestamp(last, UTC) if last is not None else now
+            lasted = max(0, int((until - self._since[kind]).total_seconds() * 1000))
             await self._recorder.detection_progress(
                 self._org, self._interview, event_id, duration_ms=lasted
             )

@@ -66,6 +66,7 @@ def test_at_most_once_a_minute() -> None:
     watch.heard("S1", "partition the table by month", at=50.0)
     assert watch.heard("S1", "and archive the old rows", at=60.0) is None
     later = 40.0 + COOLDOWN_SECONDS
+    watch.heard("S0", "I would cache the hot reads", at=later - 10)  # the candidate answers
     watch.heard("S2", "what about the cache layer", at=later - 5)
     assert watch.heard("S2", "use a write through cache", at=later) is not None
 
@@ -73,3 +74,12 @@ def test_at_most_once_a_minute() -> None:
 def test_no_speaker_label_tells_nothing() -> None:
     watch = warmed()
     assert watch.heard(None, "use an index on that column", at=30.0) is None
+
+
+def test_the_candidate_relabelled_after_a_reconnect_is_not_another_voice() -> None:
+    """Deepgram numbers speakers per connection; after a reconnect the candidate may be S1."""
+    watch = warmed()
+    assert watch.heard("S1", "so the index helps the reads", at=90.0) is None
+    assert watch.heard("S1", "and costs a little on writes", at=100.0) is None
+    assert watch.candidate == "S1"
+    assert watch.heard("S1", "and partitions help with archiving", at=110.0) is None

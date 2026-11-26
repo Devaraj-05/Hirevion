@@ -107,7 +107,16 @@ async def stop(task: asyncio.Task[None] | None) -> None:
 def prewarm(process: JobProcess) -> None:
     # The model loads once per worker process, not per interview.
     process.userdata["detector"] = MediaPipeDetector()
-    process.userdata["pose"] = MediaPipePose()
+    process.userdata["pose"] = load_pose()
+
+
+def load_pose() -> PoseEstimator | None:
+    """The pose model, or None: without it only the hands signal is missing (review)."""
+    try:
+        return MediaPipePose()
+    except Exception:
+        log.exception("The pose model didn't load: hands out of view won't be watched")
+        return None
 
 
 async def entrypoint(ctx: JobContext) -> None:
@@ -129,7 +138,9 @@ async def entrypoint(ctx: JobContext) -> None:
         ctx.shutdown(reason="another vision agent watches this interview")
         return
     detector: Detector = ctx.proc.userdata.get("detector") or MediaPipeDetector()
-    pose: PoseEstimator = ctx.proc.userdata.get("pose") or MediaPipePose()
+    pose: PoseEstimator | None = (
+        ctx.proc.userdata["pose"] if "pose" in ctx.proc.userdata else load_pose()
+    )
     watcher = ThirdEyeWatcher(
         organization_id, interview_id, detector, ProctorEngine(db, redis), storage, pose=pose
     )

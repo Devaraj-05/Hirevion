@@ -255,3 +255,23 @@ async def test_an_episode_that_goes_on_tells_the_server_how_long_it_has_lasted()
     watch = ThirdEyeWatcher(ORG, INTERVIEW, Detector([[PHONE]]), recorder, Uploads(), now=clock)
     await looks(watch, clock, 47)  # a phone for 23 s
     assert [lasted for _, lasted in recorder.progress_calls] == [12_000, 22_000]
+
+
+class BrokenPose(Pose):
+    def hands_visible(self, pixels: Any) -> bool | None:
+        raise RuntimeError("pose model broke")
+
+
+async def test_a_broken_pose_model_doesnt_stop_the_phone_check() -> None:
+    watch, clock, recorder = posed([[PERSON, PHONE]], BrokenPose(True))
+    await looks(watch, clock, 6)
+    assert [c["event"] for c in recorder.detected_calls] == ["PHONE_DETECTED"]
+
+
+async def test_progress_counts_up_to_the_last_sighting_not_the_clearing_seconds() -> None:
+    event_id = uuid4()
+    clock, recorder = Clock(), Recorder(event_id)
+    script = [[PHONE]] * 25 + [[]] * 20  # a phone for 12 s, then gone
+    watch = ThirdEyeWatcher(ORG, INTERVIEW, Detector(script), recorder, Uploads(), now=clock)
+    await looks(watch, clock, 34)  # into the 5 s it takes to clear
+    assert all(lasted <= 12_000 for _, lasted in recorder.progress_calls)

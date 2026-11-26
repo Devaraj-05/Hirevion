@@ -66,8 +66,10 @@ class Scene:
         self.readable = float(small.std()) >= MIN_SPREAD
         moving = self.motion >= MOVEMENT_THRESHOLD
         if self._reference is None:
-            # The first still, comparable picture is the view the interview started with.
-            if self.motion < STILL_BELOW and float(small.std()) >= MIN_SPREAD:
+            # The first still, comparable picture (two looks alike, not merely the first one,
+            # which may be the phone still being propped up) is the view the interview started
+            # with.
+            if previous is not None and self.motion < STILL_BELOW and self.readable:
                 self._reference = small
             self.match = None
             return {"unusual_movement": moving, "view_changed": False}

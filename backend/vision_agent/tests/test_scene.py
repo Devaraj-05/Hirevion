@@ -78,3 +78,13 @@ def test_a_moved_phone_shows_a_changed_view_until_the_new_view_settles() -> None
     # Still that way after REBASE_SECONDS: the new view becomes the reference.
     later = [scene.update(10 + Scene.REBASE_SECONDS + t * 0.5, OTHER_ROOM) for t in range(4)]
     assert not later[-1]["view_changed"]
+
+
+def test_the_reference_is_a_still_pair_not_the_first_frame() -> None:
+    """The first frame may be the phone still being propped up (review)."""
+    scene = Scene()
+    scene.update(0.0, OTHER_ROOM)  # being placed
+    scene.update(0.5, ROOM)  # settled: a big change, not still
+    for t in range(2, 12):
+        flags = scene.update(t * 0.5, ROOM)
+        assert not flags["view_changed"]

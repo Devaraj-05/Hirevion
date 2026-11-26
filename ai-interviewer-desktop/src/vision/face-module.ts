@@ -71,6 +71,11 @@ export interface FaceModuleOptions {
   /** Once a second. */
   onStats?: (stats: VisionStats) => void;
   onError?: (message: string) => void;
+  /**
+   * An optional look stopped (gaze, the phone check): the face signals still run, so this is
+   * not a problem with the camera's monitoring.
+   */
+  onWarning?: (message: string) => void;
   /** Monotonic time → server-time ISO for `started_at`; the local clock otherwise. */
   toServerIso?: ServerClock;
   createWorker?: () => WorkerLike;
@@ -140,7 +145,7 @@ export class FaceModule {
           options.source,
           (options.createObjectWorker ?? createObjectWorker)(),
           this.now,
-          (message) => this.options.onError?.(message),
+          (message) => this.options.onWarning?.(message),
         )
       : null;
     this.worker = (options.createWorker ?? createFaceWorker)();
@@ -154,6 +159,8 @@ export class FaceModule {
             this.begin();
             resolve();
           }
+        } else if (message.type === "warning") {
+          this.options.onWarning?.(message.message);
         } else if (message.type === "error") {
           this.busySince = null;
           if (this.delegate === null) {
