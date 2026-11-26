@@ -1,3 +1,5 @@
+import type { GazeDirection } from "./gaze";
+
 /**
  * Shared shapes of the on-device face module (SP-15a). Times are monotonic milliseconds
  * (`performance.now()` on the main thread) until an event is built, which converts them to
@@ -29,15 +31,24 @@ export interface FaceObservation {
   faces: FaceBox[];
   /** Null when the frame couldn't be measured. */
   frame: FrameStats | null;
+  /** SP-15b: where the one face looks, against the candidate's resting pose; null unknown. */
+  gaze?: GazeDirection | null;
+  /** SP-15b: the best phone score in the picture (0 to 1); null when not looked for. */
+  phone?: number | null;
 }
 
-/** The §56 signals the camera reports; "face present" is the normal state and has no event. */
+/**
+ * The §56 signals the camera reports ("face present" is the normal state and has no event),
+ * plus SP-15b's gaze (§57) and a phone in the picture.
+ */
 export const CAMERA_SIGNALS = [
   "FACE_ABSENT",
   "MULTIPLE_FACES",
   "FACE_TOO_FAR",
   "FACE_TOO_CLOSE",
   "CAMERA_OBSTRUCTED",
+  "GAZE_DEVIATION",
+  "PHONE_DETECTED",
 ] as const;
 
 export type CameraSignal = (typeof CAMERA_SIGNALS)[number];
@@ -89,6 +100,10 @@ export interface EpisodeDetails {
   face_height?: number;
   /** CAMERA_OBSTRUCTED: the frames' mean luma, 0 to 1. */
   mean_luma?: number;
+  /** GAZE_DEVIATION: the way the candidate looked most during the episode. */
+  direction?: Exclude<GazeDirection, "center">;
+  /** PHONE_DETECTED: the best phone score seen. */
+  best_phone?: number;
 }
 
 /** What a camera event's `details` carries: the episode's phase and level, and its measurements. */

@@ -1617,7 +1617,12 @@
         "TELEMETRY_GAP": "Gap in the app's reports",
         "EDITOR_PASTE": "Pasted into the editor",
         "EDITOR_FOCUS_CHANGE": "Left the editor",
-        "PROCESS_INVENTORY": "Apps running when monitoring started"
+        "PROCESS_INVENTORY": "Apps running when monitoring started",
+        "SECONDARY_SCREEN_DETECTED": "Another screen in the side camera",
+        "CANDIDATE_LEFT_VIEW": "Out of the side camera's view",
+        "HANDS_OUT_OF_VIEW": "Hands out of view",
+        "UNUSUAL_MOVEMENT": "Unusual movement",
+        "THIRD_EYE_VIEW_CHANGED": "Side camera moved"
       }
     },
     "settings": {
@@ -2208,6 +2213,9 @@
         "longPauses": "Waits over 10 s",
         "fillers": "Filler words",
         "fillersRate": "{rate} per 100 words",
+        "repeated": "Repeated phrases",
+        "repeatedNone": "None",
+        "repeatedItem": "“{phrase}” ×{count}",
         "fillersFound": "Heard: {list}.",
         "caveat": "These are signals for a reviewer, never proof of anything: a pause, a pace or a filler word doesn't show whether an answer was the candidate's own, and speech recognition can leave some filler words out.",
         "spoke": "{time} · {share}%"

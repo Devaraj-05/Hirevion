@@ -21,7 +21,15 @@ from hirevion_core.models import Interview, InterviewSession, ProctorEvent, Proc
 from hirevion_core.outbox import publish_event
 from hirevion_core.proctoring import evidence, nudges, observed
 from hirevion_core.proctoring.catalogue import EVENTS, RANK
-from hirevion_core.proctoring.rules import GAZE, Recent, Verdict, evaluate
+from hirevion_core.proctoring.rules import (
+    CAMERAS,
+    CROSS_CAMERA,
+    CROSS_CAMERA_SECONDS,
+    GAZE,
+    Recent,
+    Verdict,
+    evaluate,
+)
 
 log = logging.getLogger(__name__)
 
@@ -120,13 +128,20 @@ async def lock_session(
     return row
 
 
-async def history(
-    session: AsyncSession, proctor: ProctorSession, since: datetime
-) -> list[tuple[str, str, datetime, str]]:
-    """`(event, severity, started_at, id)` of this session's warnings and criticals since
-    `since`: what escalation and corroboration look at."""
+History = tuple[str, str, datetime, str, str]
+
+
+async def history(session: AsyncSession, proctor: ProctorSession, since: datetime) -> list[History]:
+    """`(event, severity, started_at, id, source)` of this session's warnings and criticals
+    since `since`: what escalation and corroboration look at."""
     rows = await session.execute(
-        select(ProctorEvent.event, ProctorEvent.severity, ProctorEvent.started_at, ProctorEvent.id)
+        select(
+            ProctorEvent.event,
+            ProctorEvent.severity,
+            ProctorEvent.started_at,
+            ProctorEvent.id,
+            ProctorEvent.source,
+        )
         .where(
             ProctorEvent.proctor_session_id == proctor.id,
             ProctorEvent.severity != "INFO",
@@ -134,29 +149,75 @@ async def history(
         )
         .order_by(ProctorEvent.started_at)
     )
-    return [(r.event, r.severity, r.started_at, str(r.id)) for r in rows]
+    return [(r.event, r.severity, r.started_at, str(r.id), r.source) for r in rows]
 
 
 def recent_for(
     policy: dict[str, Any],
-    rows: Sequence[tuple[str, str, datetime, str]],
+    rows: Sequence[History],
     event: str,
     started_at: datetime,
     exclude: str | None = None,
+    *,
+    source: str | None = None,
 ) -> Recent:
     window = timedelta(seconds=int((policy.get("escalation") or {}).get("window_seconds", 600)))
     near = timedelta(seconds=int((policy.get("gaze") or {}).get("corroboration_seconds", 30)))
     repeats = sum(
         1
-        for name, _, at, row_id in rows
+        for name, _, at, row_id, _ in rows
         if name == event and row_id != exclude and started_at - window < at <= started_at
     )
     corroborating = tuple(
         row_id
-        for name, _, at, row_id in rows
+        for name, _, at, row_id, _ in rows
         if name not in (event, GAZE) and abs(at - started_at) <= near
     )
-    return Recent(repeats, corroborating)
+    return Recent(repeats, corroborating, _cross_camera(rows, event, started_at, source, exclude))
+
+
+def _cross_camera(
+    rows: Sequence[History],
+    event: str,
+    started_at: datetime,
+    source: str | None,
+    exclude: str | None,
+) -> tuple[str, ...]:
+    """The other camera's events of the same kind near this one (CROSS_CAMERA)."""
+    kinds = CROSS_CAMERA.get(event)
+    if not kinds or source not in CAMERAS:
+        return ()
+    near = timedelta(seconds=CROSS_CAMERA_SECONDS)
+    return tuple(
+        row_id
+        for name, _, at, row_id, row_source in rows
+        if name in kinds
+        and row_id != exclude
+        and row_source in CAMERAS
+        and row_source != source
+        and abs(at - started_at) <= near
+    )
+
+
+# Reasons that record what backed an event; a later re-grade by duration keeps them.
+BACKING_REASONS = ("both-cameras", "corroborated")
+
+
+def regraded_note(previous: dict[str, Any] | None, verdict: Verdict) -> dict[str, Any]:
+    """The note for an event graded again (its episode went on or ended): the new verdict's
+    reasons, plus what backed it before (review, 2026-11-26: a longer episode kept losing its
+    "seen by both cameras")."""
+    old = previous or {}
+    note = server_note(verdict)
+    for reason in old.get("reasons") or []:
+        if reason in BACKING_REASONS and reason not in note["reasons"]:
+            note["reasons"].append(reason)
+    if old.get("corroborated_by") and not note.get("corroborated_by"):
+        note["corroborated_by"] = list(old["corroborated_by"])
+    for key in ("severity_hint", "category"):
+        if key in old and key not in note:
+            note[key] = old[key]
+    return note
 
 
 def server_note(
@@ -182,7 +243,7 @@ async def add_server_event(
     duration_ms: int | None = None,
     ongoing: bool = False,
     details: dict[str, Any] | None = None,
-    rows: Sequence[tuple[str, str, datetime, str]] = (),
+    rows: Sequence[History] = (),
     now: datetime,
     source: str | None = None,
 ) -> ProctorEvent:
@@ -193,7 +254,7 @@ async def add_server_event(
         policy,
         event,
         duration_ms=duration_ms,
-        recent=recent_for(policy, rows, event, started_at),
+        recent=recent_for(policy, rows, event, started_at, source=source or EVENTS[event].source),
     )
     row = ProctorEvent(
         organization_id=proctor.organization_id,

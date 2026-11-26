@@ -1,9 +1,10 @@
 // MediaPipe face detection off the UI thread (ADR-0007). See protocol.ts for the messages.
 // Each frame yields normalised face boxes plus luminance statistics from a 32x24 copy; pixels
 // never leave the worker. No eval: MediaPipe's WebAssembly needs only 'wasm-unsafe-eval'.
-import { FaceDetector, FilesetResolver } from "@mediapipe/tasks-vision";
+import { FaceDetector, FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
 import { toFaceBoxes } from "./detections";
 import { frameStats } from "./frame-stats";
+import { type GazeReading, readingFromLandmarks } from "./gaze";
 import type { Delegate, FromWorker, ToWorker } from "./protocol";
 
 // Vite's dev server refuses dynamic imports of files in public/, which is how MediaPipe loads
@@ -13,6 +14,9 @@ const WASM_PATH = import.meta.env.DEV
   ? "/node_modules/@mediapipe/tasks-vision/wasm"
   : "/mediapipe/wasm";
 const MODEL_PATH = "/models/blaze_face_short_range.tflite";
+// SP-15b's gaze: MediaPipe's face landmarker with eye blendshapes.
+const LANDMARKER_PATH = "/models/face_landmarker.task";
+const GAZE_EVERY_MS = 150;
 
 // The DOM typings describe `self` as a Window; in a dedicated worker it is the worker scope.
 const scope = self as unknown as {
@@ -27,6 +31,51 @@ let detector: FaceDetector | null = null;
 let delegate: Delegate = "GPU";
 let stats: OffscreenCanvasRenderingContext2D | null = null;
 let switching = false;
+let landmarker: FaceLandmarker | null = null;
+let lastGazeAt = Number.NEGATIVE_INFINITY;
+
+/**
+ * The landmarker for gaze, on the CPU (it is small). When it can't load, gaze is off and the
+ * reason is returned: it is reported only after `ready`, as a non-fatal error, since a failure
+ * before `ready` would stop the whole face module (review, 2026-11-26).
+ */
+async function loadLandmarker(): Promise<string | null> {
+  try {
+    const fileset = await FilesetResolver.forVisionTasks(WASM_PATH, true);
+    landmarker = await FaceLandmarker.createFromOptions(fileset, {
+      baseOptions: { modelAssetPath: LANDMARKER_PATH, delegate: "CPU" },
+      runningMode: "VIDEO",
+      numFaces: 1,
+      outputFaceBlendshapes: true,
+      canvas: new OffscreenCanvas(1, 1),
+    });
+    return null;
+  } catch (error) {
+    landmarker = null;
+    return `gaze is off: ${String(error)}`;
+  }
+}
+
+/**
+ * The one face's gaze reading, at most every GAZE_EVERY_MS; undefined when not looked at. A
+ * landmarker that throws turns gaze off for the rest of the session and never costs the face
+ * result its frame (review, 2026-11-26).
+ */
+function readGaze(bitmap: ImageBitmap, t: number, faces: number): GazeReading | null | undefined {
+  if (!landmarker || faces !== 1 || t - lastGazeAt < GAZE_EVERY_MS) return undefined;
+  lastGazeAt = t;
+  try {
+    const result = landmarker.detectForVideo(bitmap, t);
+    const landmarks = result.faceLandmarks[0];
+    const shapes = result.faceBlendshapes[0]?.categories ?? [];
+    return landmarks ? readingFromLandmarks(landmarks, shapes) : null;
+  } catch (error) {
+    landmarker?.close();
+    landmarker = null;
+    scope.postMessage({ type: "error", message: `gaze is off: ${String(error)}`, fatal: false });
+    return undefined;
+  }
+}
 
 async function create(wanted: Delegate, minDetectionConfidence: number): Promise<FaceDetector> {
   const fileset = await FilesetResolver.forVisionTasks(WASM_PATH, true);
@@ -92,11 +141,14 @@ function analyse(bitmap: ImageBitmap, t: number): void {
     const detecting = performance.now();
     const result = detector.detectForVideo(bitmap, t);
     const done = performance.now();
+    const faces = toFaceBoxes(result.detections, bitmap.width, bitmap.height);
+    const gaze = readGaze(bitmap, t, faces.length);
     scope.postMessage({
       type: "result",
       t,
-      faces: toFaceBoxes(result.detections, bitmap.width, bitmap.height),
+      faces,
       frame,
+      ...(gaze === undefined ? {} : { gaze }),
       inferenceMs: done - detecting,
       processingMs: done - started,
     });
@@ -111,9 +163,11 @@ scope.onmessage = (event) => {
   if (message.type === "init") {
     settings = message;
     load(message.delegate, message.minDetectionConfidence).then(
-      (loaded) => {
+      async (loaded) => {
         delegate = loaded;
+        const gazeOff = message.gaze ? await loadLandmarker() : null;
         scope.postMessage({ type: "ready", delegate });
+        if (gazeOff) scope.postMessage({ type: "error", message: gazeOff, fatal: false });
       },
       (error: unknown) => scope.postMessage({ type: "error", message: String(error), fatal: true }),
     );

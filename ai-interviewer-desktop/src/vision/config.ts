@@ -1,3 +1,4 @@
+import { DEFAULT_GAZE_RULES, type GazeRules } from "./gaze";
 import { CAMERA_SIGNALS, type CameraSignal, type Level } from "./types";
 
 /**
@@ -36,6 +37,14 @@ export interface VisionConfig {
   signals: Record<CameraSignal, SignalRule>;
   face: FaceRules;
   obstruction: ObstructionRules;
+  /**
+   * SP-15b's extra looks, on when the session's policy checks them (`gaze`, `phone`): the face
+   * landmarker for gaze, the object detector for a phone. Off for the system check.
+   */
+  watch: { gaze: boolean; phone: boolean };
+  gaze: GazeRules;
+  /** A phone counts from this score. */
+  phoneMinScore: number;
   /** A condition must be gone this long to end an episode, so a missed frame doesn't. */
   clearAfterMs: number;
   /**
@@ -46,6 +55,12 @@ export interface VisionConfig {
   /** With no frame for this long, open episodes end at the last frame. */
   maxGapMs: number;
 }
+
+/**
+ * The server's tier for a phone is "critical at once"; the camera still wants it held 2 s (as
+ * the third eye does), so one frame's false sighting isn't an event.
+ */
+export const MIN_PHONE_HOLD_MS = 2_000;
 
 /**
  * Master plan §6.12's table for absence, multiple faces and obstruction. Distance has no row:
@@ -59,7 +74,13 @@ export const DEFAULT_VISION_CONFIG: VisionConfig = {
     FACE_TOO_FAR: { warn_after_ms: 10_000 },
     FACE_TOO_CLOSE: { warn_after_ms: 10_000 },
     CAMERA_OBSTRUCTED: { critical_after_ms: 5_000 },
+    // §6.12: gaze warns when sustained past 10 s; a phone is critical once it has held.
+    GAZE_DEVIATION: { warn_after_ms: 10_000 },
+    PHONE_DETECTED: { critical_after_ms: MIN_PHONE_HOLD_MS },
   },
+  watch: { gaze: false, phone: false },
+  gaze: DEFAULT_GAZE_RULES,
+  phoneMinScore: 0.5,
   face: {
     minFaceHeight: 0.05,
     secondFaceEnter: 0.6,
@@ -133,6 +154,7 @@ export function applyAccommodations(config: VisionConfig, kinds: readonly string
 export interface VisionPolicy {
   thresholds?: Record<string, unknown>;
   accommodations?: readonly string[];
+  checks?: readonly string[];
 }
 
 /**
@@ -151,7 +173,19 @@ export function visionConfigFromPolicy(
       signals[signal] = mergeRule(signals[signal], override as Record<string, unknown>);
     }
   }
-  return applyAccommodations({ ...base, signals }, policy.accommodations ?? []);
+  signals.PHONE_DETECTED = atLeast(signals.PHONE_DETECTED, MIN_PHONE_HOLD_MS);
+  const checks = new Set(policy.checks ?? []);
+  const watch = { gaze: checks.has("gaze"), phone: checks.has("phone") };
+  return applyAccommodations({ ...base, signals, watch }, policy.accommodations ?? []);
+}
+
+/** The rule with each of its levels at no less than `ms`. */
+function atLeast(rule: SignalRule, ms: number): SignalRule {
+  return withoutUndefined({
+    warn_after_ms: rule.warn_after_ms === undefined ? undefined : Math.max(rule.warn_after_ms, ms),
+    critical_after_ms:
+      rule.critical_after_ms === undefined ? undefined : Math.max(rule.critical_after_ms, ms),
+  });
 }
 
 function mergeRule(rule: SignalRule, override: Record<string, unknown>): SignalRule {

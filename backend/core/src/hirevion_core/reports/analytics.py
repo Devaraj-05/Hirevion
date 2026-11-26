@@ -26,6 +26,10 @@ PACE_MIN_MS = 10_000
 # Faster than anyone speaks: the stored speech times are too short (answers stored as only their
 # last stretch of speech, before the agent's fix of 2026-11-21).
 PACE_MAX_WPM = 300
+# PRD §59 "repetition" (C7-2): three-word phrases the candidate says this often, the top few.
+REPEAT_WORDS = 3
+REPEAT_MIN_COUNT = 3
+REPEAT_TOP = 5
 # Hesitation sounds (PRD §59 "filler words"); a recogniser may leave some out. Phrases such as
 # "you know" or "i mean" are left out: they are as often plain words ("do you know the index").
 FILLERS = ("um", "umm", "uh", "uhh", "uhm", "er", "erm", "ah", "hmm")
@@ -65,6 +69,8 @@ class Speech:
     """The candidate's share of the time either side spoke."""
     pace_unreliable: bool = False
     """The stored speech times give an impossible pace, so none is shown."""
+    repeated_phrases: list[tuple[str, int]] = field(default_factory=list)
+    """Three-word phrases said at least three times, most first (PRD §59 "repetition")."""
 
 
 @dataclass(slots=True)
@@ -96,6 +102,44 @@ def _answer_waits(said: Sequence[Said]) -> list[tuple[Said, int]]:
     return waits
 
 
+def repeated_phrases(texts: Sequence[str]) -> list[tuple[str, int]]:
+    """Phrases of REPEAT_WORDS words said REPEAT_MIN_COUNT times or more, within one segment
+    each (never across two), most first then alphabetically."""
+    counts: dict[str, int] = {}
+    for text in texts:
+        words = [word.lower() for word in _WORD.findall(text)]
+        for index in range(len(words) - REPEAT_WORDS + 1):
+            phrase = " ".join(words[index : index + REPEAT_WORDS])
+            counts[phrase] = counts.get(phrase, 0) + 1
+    often = sorted(
+        ((phrase, count) for phrase, count in counts.items() if count >= REPEAT_MIN_COUNT),
+        key=lambda item: (-item[1], item[0]),
+    )
+    # A longer phrase said as often shows up as a chain of overlapping windows ("to be honest",
+    # "be honest with", "honest with you"): each chain of the same count is one entry, its
+    # alphabetically first window.
+    group = list(range(len(often)))
+
+    def root(index: int) -> int:
+        while group[index] != index:
+            index = group[index]
+        return index
+
+    for i, (a, count_a) in enumerate(often):
+        for j in range(i):
+            b, count_b = often[j]
+            if count_a == count_b and _overlap(a, b):
+                group[root(i)] = root(j)
+    firsts = {root(i) for i in range(len(often))}
+    return [often[i] for i in sorted(firsts)][:REPEAT_TOP]
+
+
+def _overlap(a: str, b: str) -> bool:
+    """Whether two phrases are neighbouring windows of one longer phrase."""
+    x, y = a.split(), b.split()
+    return x[1:] == y[:-1] or y[1:] == x[:-1]
+
+
 def speech(said: Sequence[Said]) -> Speech:
     stats = Speech()
     text: list[str] = []
@@ -122,6 +166,7 @@ def speech(said: Sequence[Said]) -> Speech:
     spoken = stats.candidate_ms + stats.ai_ms
     if spoken:
         stats.candidate_share = round(stats.candidate_ms / spoken, 2)
+    stats.repeated_phrases = repeated_phrases(text)
     return stats
 
 
@@ -263,6 +308,9 @@ def interview_analytics(data: InterviewData, *, proctoring: bool) -> dict[str, A
             "fillers_per_100_words": talk.fillers_per_100_words,
             "candidate_share": talk.candidate_share,
             "pace_unreliable": talk.pace_unreliable,
+            "repeated_phrases": [
+                {"phrase": phrase, "count": count} for phrase, count in talk.repeated_phrases
+            ],
         },
         "integrity": _integrity(data) if proctoring else None,
     }

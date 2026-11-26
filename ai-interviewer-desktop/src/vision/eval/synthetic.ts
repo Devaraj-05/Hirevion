@@ -28,6 +28,12 @@ export interface SyntheticOptions {
   spuriousSecondRate: number;
   /** The detector sees a face in an empty frame. */
   spuriousFaceRate: number;
+  /** SP-15b: the landmarker reads a look away as centred, or a centred look as away. */
+  gazeMissRate: number;
+  spuriousGazeRate: number;
+  /** SP-15b: the object detector misses a phone in view, or sees one that isn't there. */
+  phoneMissRate: number;
+  spuriousPhoneRate: number;
 }
 
 /** Imperfections a little worse than ADR-0007's fake-camera run, so the engine is exercised. */
@@ -38,6 +44,10 @@ export const SYNTHETIC_DEFAULTS: SyntheticOptions = {
   secondMissRate: 0.12,
   spuriousSecondRate: 0.02,
   spuriousFaceRate: 0.02,
+  gazeMissRate: 0.1,
+  spuriousGazeRate: 0.04,
+  phoneMissRate: 0.15,
+  spuriousPhoneRate: 0.01,
 };
 
 const between = (random: () => number, low: number, high: number) => low + (high - low) * random();
@@ -52,21 +62,39 @@ function face(random: () => number, height: number, x = 0.4): FaceBox {
   };
 }
 
-function frameFor(scene: Scene, random: () => number, options: SyntheticOptions) {
+function frameFor(
+  scene: Scene,
+  random: () => number,
+  options: SyntheticOptions,
+): Omit<FaceObservation, "t"> {
   const room: FrameStats = {
     meanLuma: between(random, 0.35, 0.5),
     stdLuma: between(random, 0.15, 0.25),
     edgeEnergy: between(random, 0.05, 0.1),
   };
   const missed = () => random() < options.missRate;
+  const glance = () =>
+    random() < options.spuriousGazeRate ? (random() < 0.5 ? "left" : "down") : "center";
+  const noPhone = () =>
+    random() < options.spuriousPhoneRate ? between(random, 0.5, 0.6) : between(random, 0, 0.3);
   switch (scene) {
     case "present": {
-      if (missed()) return { faces: [], frame: room };
+      if (missed()) return { faces: [], frame: room, phone: noPhone() };
       const faces = [face(random, 0.35)];
       if (random() < options.spuriousSecondRate) {
         faces.push({ ...face(random, 0.08, 0.05), score: between(random, 0.6, 0.7) });
       }
-      return { faces, frame: room };
+      return { faces, frame: room, gaze: glance(), phone: noPhone() };
+    }
+    case "GAZE_DEVIATION": {
+      if (missed()) return { faces: [], frame: room };
+      const away = random() < options.gazeMissRate ? "center" : "down";
+      return { faces: [face(random, 0.35)], frame: room, gaze: away, phone: noPhone() };
+    }
+    case "PHONE_DETECTED": {
+      const phone =
+        random() < options.phoneMissRate ? between(random, 0, 0.3) : between(random, 0.55, 0.9);
+      return { faces: [face(random, 0.35)], frame: room, gaze: "center", phone };
     }
     case "FACE_ABSENT":
       return random() < options.spuriousFaceRate
@@ -180,6 +208,30 @@ export function syntheticSet(seed = 7): LabelledTimeline[] {
         ["FACE_TOO_FAR", 15 * S],
         ["present", 10 * S],
         ["FACE_TOO_CLOSE", 16 * S],
+        ["present", 10 * S],
+      ],
+    ],
+    [
+      "glances",
+      [
+        ["present", 10 * S],
+        ["GAZE_DEVIATION", 4 * S],
+        ["present", 10 * S],
+        ["GAZE_DEVIATION", 15 * S],
+        ["present", 10 * S],
+        ["GAZE_DEVIATION", 25 * S],
+        ["present", 10 * S],
+      ],
+    ],
+    [
+      "phones",
+      [
+        ["present", 10 * S],
+        ["PHONE_DETECTED", 1 * S],
+        ["present", 10 * S],
+        ["PHONE_DETECTED", 4 * S],
+        ["present", 10 * S],
+        ["PHONE_DETECTED", 9 * S],
         ["present", 10 * S],
       ],
     ],

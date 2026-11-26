@@ -78,13 +78,13 @@ describe("visionConfigFromPolicy", () => {
   it("ignores unknown signals and values that aren't non-negative numbers", () => {
     const config = visionConfigFromPolicy({
       thresholds: {
-        GAZE_DEVIATION: { warn_after_ms: 10_000 },
+        HANDS_OUT_OF_VIEW: { warn_after_ms: 10_000 },
         FACE_ABSENT: { warn_after_ms: -1, critical_after_ms: "soon" },
         MULTIPLE_FACES: "often",
       },
     });
     expect(config.signals).toEqual(DEFAULT_VISION_CONFIG.signals);
-    expect(config.signals).not.toHaveProperty("GAZE_DEVIATION");
+    expect(config.signals).not.toHaveProperty("HANDS_OUT_OF_VIEW");
   });
 
   it("never changes the defaults it starts from", () => {

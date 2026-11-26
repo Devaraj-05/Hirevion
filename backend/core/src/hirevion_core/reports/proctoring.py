@@ -69,6 +69,8 @@ def explain(reasons: Iterable[str]) -> str:
             words.append("not checked at this level")
         elif kind == "corroborated":
             words.append("backed by other events")
+        elif kind == "both-cameras":
+            words.append("seen by both cameras")
         else:
             words.append(reason.replace("_", " "))
     return "; ".join(words)

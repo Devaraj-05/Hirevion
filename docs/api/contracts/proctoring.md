@@ -68,6 +68,7 @@ Body:
   - audio: `ADDITIONAL_SPEAKER_DETECTED`;
   - lifecycle: `CAMERA_RECONNECTED`, `MIC_RECONNECTED`, `SESSION_INTERRUPTED`, `SESSION_RESUMED`;
   - editor: `EDITOR_PASTE`, `EDITOR_FOCUS_CHANGE` (§48's other editor events go through the coding contract).
+  - raised only by the server's third-eye vision agent (C7-2, never accepted from a device): `SECONDARY_SCREEN_DETECTED`, `CANDIDATE_LEFT_VIEW`, `HANDS_OUT_OF_VIEW`, `UNUSUAL_MOVEMENT`, `THIRD_EYE_VIEW_CHANGED`. A camera or third-eye event the other camera also saw within 10 s carries `details.server.corroborated_by` with the reason `both-cameras`.
 - **No key logging:** no event ever carries what a key typed.
 
 ## Heartbeat — `POST /proctoring/heartbeat` (PRD §90)

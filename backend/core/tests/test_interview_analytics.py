@@ -126,3 +126,24 @@ def test_the_process_list_is_no_detection_and_dismissed_events_dont_count() -> N
     ]
     reviews = {4: SimpleNamespace(outcome="false_positive")}
     assert severity_counts(events, reviews) == {"INFO": 1, "WARNING": 0, "CRITICAL": 1}
+
+
+def test_phrases_the_candidate_keeps_repeating_are_counted() -> None:
+    """PRD §59 "repetition": three-word phrases said three times or more, most first; a signal,
+    never proof (C7-2, 2026-11-26)."""
+    answers = [
+        said(1, "ai", "Tell me about indexes.", 0, 3, Q1),
+        said(2, "candidate", "So basically the thing is, an index speeds up reads.", 4, 9, Q1),
+        said(3, "candidate", "The thing is, it costs writes. The thing is, space too.", 9, 14, Q1),
+        said(4, "ai", "And Redis?", 15, 16, Q2),
+        said(5, "candidate", "So basically it is a cache. So basically fast.", 17, 21, Q2),
+    ]
+    stats = speech(answers)
+    assert stats.repeated_phrases == [("the thing is", 3)]
+    assert speech(TRANSCRIPT).repeated_phrases == []
+
+
+def test_a_longer_phrase_said_again_and_again_is_one_entry() -> None:
+    honest = "To be honest with you, it depends."
+    answers = [said(i, "candidate", honest, i * 5, i * 5 + 4, Q1) for i in range(1, 5)]
+    assert speech(answers).repeated_phrases == [("be honest with", 4)]

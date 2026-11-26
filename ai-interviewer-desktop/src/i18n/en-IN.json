@@ -205,7 +205,9 @@
       "MULTIPLE_FACES": "We can see more than one person. Please make sure you're alone.",
       "FACE_TOO_FAR": "Please move a little closer to the camera.",
       "FACE_TOO_CLOSE": "Please move back from the camera a little.",
-      "CAMERA_OBSTRUCTED": "Your camera looks blocked. Please uncover it."
+      "CAMERA_OBSTRUCTED": "Your camera looks blocked. Please uncover it.",
+      "GAZE_DEVIATION": "Please keep your eyes on the interview screen.",
+      "PHONE_DETECTED": "Please put your phone away, out of the camera's view."
     },
     "status": {
       "fps": "Face detection: {fps} frames per second",

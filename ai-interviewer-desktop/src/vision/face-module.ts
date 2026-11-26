@@ -7,7 +7,9 @@ import {
   initialFrameRate,
   nextFrameRate,
 } from "./frame-rate";
+import { GazeBaseline, type GazeDirection, gazeDirection } from "./gaze";
 import { FpsMeter, type Summary, summarize } from "./metrics";
+import { createObjectWorker, type ObjectWorkerLike, PhoneWatch } from "./phone-watch";
 import type { Delegate, FromWorker, ToWorker } from "./protocol";
 import type { CameraEvent, CameraSignal, FaceObservation } from "./types";
 
@@ -72,9 +74,14 @@ export interface FaceModuleOptions {
   /** Monotonic time → server-time ISO for `started_at`; the local clock otherwise. */
   toServerIso?: ServerClock;
   createWorker?: () => WorkerLike;
+  /** SP-15b's phone check, when the config watches for phones. */
+  createObjectWorker?: () => ObjectWorkerLike;
   /** Monotonic milliseconds; `performance.now()` otherwise. */
   now?: () => number;
 }
+
+/** A gaze direction older than this is stale (the landmarker didn't run): no claim. */
+const GAZE_FRESH_MS = 500;
 
 /** A frame the worker hasn't answered after this long is given up. */
 const BUSY_TIMEOUT_MS = 2_000;
@@ -114,6 +121,10 @@ export class FaceModule {
   private framesAnalysed = 0;
   private framesSkipped = 0;
   private stopped = false;
+  private readonly config: VisionConfig;
+  private readonly phones: PhoneWatch | null;
+  private readonly baseline = new GazeBaseline();
+  private gaze: { direction: GazeDirection; at: number } | null = null;
 
   constructor(private readonly options: FaceModuleOptions) {
     this.now = options.now ?? (() => performance.now());
@@ -122,7 +133,16 @@ export class FaceModule {
     const engineOptions: ConstructorParameters<typeof SignalEngine>[1] = {};
     if (options.onEvent) engineOptions.onEvent = options.onEvent;
     if (options.toServerIso) engineOptions.toServerIso = options.toServerIso;
-    this.engine = new SignalEngine(options.config ?? DEFAULT_VISION_CONFIG, engineOptions);
+    this.config = options.config ?? DEFAULT_VISION_CONFIG;
+    this.engine = new SignalEngine(this.config, engineOptions);
+    this.phones = this.config.watch.phone
+      ? new PhoneWatch(
+          options.source,
+          (options.createObjectWorker ?? createObjectWorker)(),
+          this.now,
+          (message) => this.options.onError?.(message),
+        )
+      : null;
     this.worker = (options.createWorker ?? createFaceWorker)();
     this.ready = new Promise((resolve, reject) => {
       this.worker.onmessage = (event) => {
@@ -163,6 +183,7 @@ export class FaceModule {
       minDetectionConfidence: MIN_DETECTION_CONFIDENCE,
       statsWidth: 32,
       statsHeight: 24,
+      gaze: this.config.watch.gaze,
     });
   }
 
@@ -191,12 +212,14 @@ export class FaceModule {
     clearInterval(this.statsTimer);
     this.worker.onmessage = null;
     this.worker.terminate();
+    this.phones?.stop();
     this.engine.flush();
   }
 
   private begin(): void {
     if (this.stopped) return;
     this.schedule();
+    this.phones?.start();
     this.statsTimer = setInterval(() => this.options.onStats?.(this.stats()), STATS_INTERVAL_MS);
   }
 
@@ -244,9 +267,29 @@ export class FaceModule {
       t: message.t,
       faces: message.faces,
       frame: message.frame,
+      gaze: this.gazeOf(message, now),
+      phone: this.phones?.score() ?? null,
     };
     this.engine.push(observation);
     this.options.onObservation?.(observation);
+  }
+
+  /** The frame's gaze against the candidate's resting pose, or the latest fresh one. */
+  private gazeOf(message: Extract<FromWorker, { type: "result" }>, now: number) {
+    const reading = message.gaze;
+    if (reading && message.faces.length === 1) {
+      this.baseline.add(reading);
+      const rest = this.baseline.value();
+      if (rest) {
+        const away = this.gaze !== null && this.gaze.direction !== "center";
+        this.gaze = {
+          direction: gazeDirection(reading, rest, this.config.gaze, away),
+          at: now,
+        };
+      }
+    }
+    if (!this.gaze || now - this.gaze.at > GAZE_FRESH_MS) return null;
+    return this.gaze.direction;
   }
 
   private post(message: ToWorker, transfer: Transferable[] = []): void {

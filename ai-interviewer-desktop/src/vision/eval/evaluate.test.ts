@@ -130,6 +130,8 @@ describe("the synthetic labelled set", () => {
       "CAMERA_OBSTRUCTED",
       "FACE_TOO_FAR",
       "FACE_TOO_CLOSE",
+      "GAZE_DEVIATION",
+      "PHONE_DETECTED",
     ]) {
       expect(labels.some((label) => label.signal === signal)).toBe(true);
     }
@@ -138,7 +140,7 @@ describe("the synthetic labelled set", () => {
     expect(absences.some((label) => label.end_ms - label.start_ms > 30_000)).toBe(true);
   });
 
-  it("meets the exit targets for absent and multiple faces across seeds", () => {
+  it("meets the exit targets for every signal across seeds", () => {
     for (const seed of [1, 7, 42, 2026]) {
       const report = evaluate(syntheticSet(seed));
       expect(meetsTargets(report, EXIT_TARGETS)).toEqual({ ok: true, failures: [] });
@@ -173,7 +175,7 @@ describe("parseLabelledTimeline", () => {
     expect(() =>
       parseLabelledTimeline({
         ...valid,
-        labels: [{ signal: "GAZE_DEVIATION", start_ms: 0, end_ms: 1 }],
+        labels: [{ signal: "HANDS_OUT_OF_VIEW", start_ms: 0, end_ms: 1 }],
       }),
     ).toThrow(/signal/);
     expect(() =>

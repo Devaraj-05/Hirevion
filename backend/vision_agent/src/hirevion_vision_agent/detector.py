@@ -2,7 +2,8 @@
 
 MediaPipe's EfficientDet-Lite2 (int8, COCO labels, Apache-2.0): the same file as the desktop's
 placement check (ADR-0042), bundled here and checked by hash. Only `person` and `cell phone`
-are kept. It runs on the CPU (about 0.2 s a frame on an i5); the agent calls it in a thread.
+are kept, plus `laptop` and `tv` for a secondary screen (C7-2). It runs on the CPU (about 0.2 s a
+frame on an i5); the agent calls it in a thread.
 """
 
 from __future__ import annotations
@@ -20,7 +21,7 @@ from hirevion_vision_agent.watch import Detection
 
 MODEL = Path(__file__).parent / "models" / "efficientdet_lite2.tflite"
 MODEL_SHA256 = "b3f50554cb0ea559e90328845f7d9ba4d13c8bff372914d24e06bc8bb72fa896"
-LABELS = ["person", "cell phone"]
+LABELS = ["person", "cell phone", "laptop", "tv"]
 MIN_SCORE = 0.3
 
 Pixels = NDArray[np.uint8]

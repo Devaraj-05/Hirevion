@@ -213,6 +213,11 @@ class AnalyticsSkill(BaseModel):
     score: float | None
 
 
+class RepeatedPhrase(BaseModel):
+    phrase: str
+    count: int
+
+
 class AnalyticsSpeech(BaseModel):
     """PRD §59's measures: signals for a reviewer, never proof (§57)."""
 
@@ -230,6 +235,8 @@ class AnalyticsSpeech(BaseModel):
     """The stored speech times give an impossible pace (over 300 words a minute), so
     `words_per_minute` is null: answers stored before 2026-11-21's agent fix kept only their last
     stretch of speech."""
+    repeated_phrases: list[RepeatedPhrase] = []
+    """Three-word phrases said three times or more, most first (PRD §59 "repetition")."""
 
 
 class AnalyticsEvent(BaseModel):

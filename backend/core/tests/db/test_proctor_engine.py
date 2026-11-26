@@ -757,3 +757,69 @@ async def test_once_the_session_is_pinned_the_briefing_shows_its_app_rules(
     async with app_db.tenant(world.org) as session:
         interview = await session.get_one(Interview, world.interview)
         assert (await briefing(session, interview)).app_rules == pinned
+
+
+# C7-2 (2026-11-26): the two cameras correlated, and a second voice in the candidate's audio.
+
+
+async def test_a_second_person_both_cameras_saw_carries_the_other_cameras_event(
+    world: World, app_db: Database
+) -> None:
+    await world.open()
+    await world.send(item(1, "MULTIPLE_FACES", at=10, duration_ms=4_000))
+    (camera,) = await rows(app_db, world)
+    event_id = await world.engine.detected(
+        world.org,
+        world.interview,
+        event="UNEXPECTED_PERSON_DETECTED",
+        started_at=T0 + timedelta(seconds=14),
+        duration_ms=3_000,
+        details={"people": 2},
+        snapshot=snapshot("both"),
+    )
+    found = {row.id: row for row in await rows(app_db, world)}
+    server = found[event_id].details["server"]
+    assert server["corroborated_by"] == [str(camera.id)]
+    assert "both-cameras" in server["reasons"]
+
+
+async def test_a_new_third_eye_signal_is_recorded_with_its_measures(
+    world: World, app_db: Database
+) -> None:
+    await world.open()
+    event_id = await world.engine.detected(
+        world.org,
+        world.interview,
+        event="THIRD_EYE_VIEW_CHANGED",
+        started_at=T0 + timedelta(seconds=30),
+        duration_ms=5_000,
+        details={"people": 1, "phones": 0, "view_match": 0.21},
+        snapshot=snapshot("moved"),
+    )
+    (event,) = await rows(app_db, world)
+    assert event.id == event_id
+    assert (event.source, event.severity) == ("third_eye", "WARNING")
+    assert event.details["third_eye"]["view_match"] == 0.21
+
+
+async def test_another_voice_is_an_audio_event_without_a_picture(
+    world: World, app_db: Database
+) -> None:
+    await world.open()
+    event_id = await world.engine.detected(
+        world.org,
+        world.interview,
+        event="ADDITIONAL_SPEAKER_DETECTED",
+        started_at=T0 + timedelta(seconds=40),
+        duration_ms=0,
+        details={"speakers": 2, "words": 6},
+        snapshot=None,
+        source="audio",
+        ongoing=False,
+    )
+    (event,) = await rows(app_db, world)
+    assert event.id == event_id
+    assert (event.origin, event.source, event.ongoing) == ("server", "audio", False)
+    assert event.details["audio"] == {"speakers": 2, "words": 6}
+    assert event.details["reason"] == "speaker_diarization"
+    assert await evidence_of(app_db, world, event_id) == []

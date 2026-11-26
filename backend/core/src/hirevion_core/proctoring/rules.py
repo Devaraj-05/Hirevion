@@ -40,6 +40,12 @@ DEFAULT_TIERS: dict[str, Tier] = {
     "UNEXPECTED_WINDOW": (3_000, None),
     "EDITOR_FOCUS_CHANGE": (3_000, None),
     "THIRD_EYE_DISCONNECTED": (10_000, None),
+    # PRD §53 on the third eye (C7-2): leaving the desk warns from 10 s and is critical from a
+    # minute; hands out of view and unusual movement only warn. Each warns from the vision
+    # agent's hold, so an episode alerts when it is first recorded.
+    "CANDIDATE_LEFT_VIEW": (10_000, 60_000),
+    "HANDS_OUT_OF_VIEW": (15_000, None),
+    "UNUSUAL_MOVEMENT": (4_000, None),
 }
 REQUIRED_THIRD_EYE_TIER: Tier = (10_000, 60_000)
 DEFAULT_FIXED: dict[str, str] = {
@@ -60,6 +66,8 @@ DEFAULT_FIXED: dict[str, str] = {
     "SESSION_RESUMED": "INFO",
     "EDITOR_PASTE": "INFO",
     "PROCESS_INVENTORY": "INFO",
+    "SECONDARY_SCREEN_DETECTED": "WARNING",
+    "THIRD_EYE_VIEW_CHANGED": "WARNING",
 }
 # Warnings of these kinds that keep recurring become critical (the policy can change the list,
 # the count and the window). Gaze is deliberately absent.
@@ -81,6 +89,18 @@ DEFAULT_ESCALATION: dict[str, Any] = {
 }
 DEFAULT_GAZE: dict[str, Any] = {"critical_when_corroborated": False, "corroboration_seconds": 30}
 GAZE = "GAZE_DEVIATION"
+# What both cameras can see (master plan §6.12, "correlates the two cameras"): an episode the
+# other camera saw at about the same time backs this one. It records the backing, and changes no
+# weight: two detectors agreeing is stronger evidence, still not proof.
+CROSS_CAMERA: dict[str, frozenset[str]] = {
+    "MULTIPLE_FACES": frozenset({"UNEXPECTED_PERSON_DETECTED"}),
+    "UNEXPECTED_PERSON_DETECTED": frozenset({"MULTIPLE_FACES", "UNEXPECTED_PERSON_DETECTED"}),
+    "PHONE_DETECTED": frozenset({"PHONE_DETECTED"}),
+    "FACE_ABSENT": frozenset({"CANDIDATE_LEFT_VIEW"}),
+    "CANDIDATE_LEFT_VIEW": frozenset({"FACE_ABSENT"}),
+}
+CROSS_CAMERA_SECONDS = 10
+CAMERAS = ("camera", "third_eye")
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,6 +111,8 @@ class Recent:
     """Events of the same name at WARNING or above inside the escalation window."""
     corroborating: tuple[str, ...] = ()
     """Ids of other events (not gaze) at WARNING or above near this one in time."""
+    cross_camera: tuple[str, ...] = ()
+    """Ids of the other camera's events of the same kind (CROSS_CAMERA) near this one."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -153,6 +175,9 @@ def evaluate(
         reasons.append(f"repeated:{recent.repeats + 1} in {escalation.get('window_seconds')}s")
 
     corroborated: tuple[str, ...] = ()
+    if recent.cross_camera:
+        corroborated = recent.cross_camera
+        reasons.append("both-cameras")
     if event == GAZE:
         corroborated = recent.corroborating
         if severity == "CRITICAL":

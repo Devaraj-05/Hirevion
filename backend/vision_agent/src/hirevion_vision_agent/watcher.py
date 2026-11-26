@@ -19,6 +19,8 @@ from uuid import UUID
 from hirevion_core.proctoring.service import Snapshot
 from hirevion_core.storage.paths import BlobPath, interview_blob
 from hirevion_vision_agent.detector import Detector, Pixels, jpeg
+from hirevion_vision_agent.pose import PoseEstimator
+from hirevion_vision_agent.scene import Scene
 from hirevion_vision_agent.watch import (
     EVENTS,
     Detection,
@@ -27,12 +29,18 @@ from hirevion_vision_agent.watch import (
     Started,
     Watch,
     people_and_phones,
+    screens,
     seen,
 )
 
 log = logging.getLogger(__name__)
 
 INTERVAL_SECONDS = 0.5
+# The pose model is the heavier one: it runs at most once a second, and only with someone there.
+POSE_EVERY_SECONDS = 1.0
+# An open episode tells the server how long it has lasted this often, so one that keeps going
+# (the candidate away for minutes) becomes critical while it happens, not only once it is over.
+PROGRESS_SECONDS = 10.0
 
 
 class Recorder(Protocol):
@@ -54,6 +62,10 @@ class Recorder(Protocol):
         self, organization_id: UUID, interview_id: UUID, event_id: UUID, *, duration_ms: int
     ) -> None: ...
 
+    async def detection_progress(
+        self, organization_id: UUID, interview_id: UUID, event_id: UUID, *, duration_ms: int
+    ) -> None: ...
+
 
 class Uploads(Protocol):
     async def put(self, path: BlobPath, data: bytes, content_type: str) -> None: ...
@@ -70,6 +82,9 @@ def summary(found: list[Detection], width: int, height: int) -> dict[str, Any]:
         details["best_person"] = round(max(d.score for d in people), 2)
     if phones:
         details["best_phone"] = round(max(d.score for d in phones), 2)
+    shown = screens(found, width, height)
+    if shown:
+        details["screens"] = len(shown)
     return details
 
 
@@ -84,6 +99,7 @@ class ThirdEyeWatcher:
         *,
         now: Callable[[], datetime] = lambda: datetime.now(UTC),
         interval: float = INTERVAL_SECONDS,
+        pose: PoseEstimator | None = None,
     ) -> None:
         self._org = organization_id
         self._interview = interview_id
@@ -93,7 +109,14 @@ class ThirdEyeWatcher:
         self._now = now
         self._interval = interval
         self._watch = Watch()
+        self._scene = Scene()
+        self._pose = pose
+        self._posed_at: datetime | None = None
+        self._hands: bool | None = None
         self._open: dict[Kind, UUID] = {}
+        # Each open episode's start and when the server last heard how long it has lasted.
+        self._since: dict[Kind, datetime] = {}
+        self._told: dict[Kind, datetime] = {}
 
     async def watch(
         self, frames: AsyncIterator[Any], convert: Callable[[Any], Pixels] = lambda raw: raw
@@ -128,11 +151,53 @@ class ThirdEyeWatcher:
         now = self._now()
         found = await asyncio.to_thread(self._detector.detect, pixels)
         height, width = pixels.shape[0], pixels.shape[1]
-        for change in self._watch.update(now.timestamp(), seen(found, width, height)):
+        flags: dict[Kind, bool] = dict(seen(found, width, height))
+        flags.update(self._scene.update(now.timestamp(), pixels))
+        if not self._scene.readable:
+            # A covered or dark picture says nothing about where the candidate is.
+            del flags["left_view"]
+        people, _ = people_and_phones(found, width, height)
+        hands = await self._hands_visible(now, pixels, present=bool(people))
+        flags["hands_out_of_view"] = hands is False
+        for change in self._watch.update(now.timestamp(), flags):
             if isinstance(change, Started):
-                await self._started(change, now, pixels, summary(found, width, height))
+                details = {**summary(found, width, height), **self._measures(change.kind, hands)}
+                await self._started(change, now, pixels, details)
             else:
                 await self._ended(change)
+        await self._progress(now)
+
+    async def _progress(self, now: datetime) -> None:
+        for kind, event_id in list(self._open.items()):
+            told = self._told.get(kind)
+            if told is not None and (now - told).total_seconds() < PROGRESS_SECONDS:
+                continue
+            self._told[kind] = now
+            lasted = int((now - self._since[kind]).total_seconds() * 1000)
+            await self._recorder.detection_progress(
+                self._org, self._interview, event_id, duration_ms=lasted
+            )
+
+    async def _hands_visible(self, now: datetime, pixels: Pixels, *, present: bool) -> bool | None:
+        """The pose's answer, refreshed at most once a second; None with nobody there."""
+        if self._pose is None or not present:
+            self._hands, self._posed_at = None, None
+            return None
+        due = self._posed_at is None or (now - self._posed_at).total_seconds() >= POSE_EVERY_SECONDS
+        if due:
+            self._hands = await asyncio.to_thread(self._pose.hands_visible, pixels)
+            self._posed_at = now
+        return self._hands
+
+    def _measures(self, kind: Kind, hands: bool | None) -> dict[str, Any]:
+        """What backs the scene and pose signals: numbers only."""
+        if kind == "hands_out_of_view":
+            return {"hands_visible": hands}
+        if kind == "unusual_movement":
+            return {"motion": round(self._scene.motion, 3)}
+        if kind == "view_changed" and self._scene.match is not None:
+            return {"view_match": round(self._scene.match, 2)}
+        return {}
 
     async def _started(
         self, change: Started, now: datetime, pixels: Pixels, details: dict[str, Any]
@@ -158,9 +223,13 @@ class ThirdEyeWatcher:
             await self._uploads.delete(path)
             return
         self._open[change.kind] = event_id
+        self._since[change.kind] = started_at
+        self._told[change.kind] = now
 
     async def _ended(self, change: Ended) -> None:
         event_id = self._open.pop(change.kind, None)
+        self._since.pop(change.kind, None)
+        self._told.pop(change.kind, None)
         log.info("Third eye of interview %s: %s over", self._interview, EVENTS[change.kind])
         if event_id is None:
             return

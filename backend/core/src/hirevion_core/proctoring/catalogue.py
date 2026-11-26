@@ -88,6 +88,13 @@ EVENTS: dict[str, EventKind] = _kinds(
     # Only the server raises these (from LiveKit, heartbeats and upload continuity).
     EventKind("THIRD_EYE_DISCONNECTED", "third_eye", client=False),
     EventKind("THIRD_EYE_RECONNECTED", "third_eye", client=False),
+    # What the vision agent sees on the third eye besides a person and a phone (PRD §53, C7-2).
+    EventKind("SECONDARY_SCREEN_DETECTED", "third_eye", "displays", client=False),
+    EventKind("CANDIDATE_LEFT_VIEW", "third_eye", "face", client=False),
+    EventKind("HANDS_OUT_OF_VIEW", "third_eye", "third_eye", client=False),
+    EventKind("UNUSUAL_MOVEMENT", "third_eye", "third_eye", client=False),
+    # The phone moved or turned away defeats the third eye itself: checked whenever it is on.
+    EventKind("THIRD_EYE_VIEW_CHANGED", "third_eye", client=False),
     EventKind("TELEMETRY_GAP", "interview", client=False),
 )
 CLIENT_EVENTS = frozenset(name for name, kind in EVENTS.items() if kind.client)

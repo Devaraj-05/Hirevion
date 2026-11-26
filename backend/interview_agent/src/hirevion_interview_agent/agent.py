@@ -44,7 +44,11 @@ from livekit.agents import (
     room_io,
 )
 from livekit.agents.metrics import EOUMetrics, LLMMetrics, TTSMetrics
-from livekit.agents.voice.events import AgentStateChangedEvent, UserStateChangedEvent
+from livekit.agents.voice.events import (
+    AgentStateChangedEvent,
+    UserInputTranscribedEvent,
+    UserStateChangedEvent,
+)
 from livekit.plugins import deepgram
 from redis.asyncio import Redis
 
@@ -54,6 +58,7 @@ from hirevion_core.db.session import create_database
 from hirevion_core.engine.phrasing import keyterms, pronounce
 from hirevion_core.interview_session.conductor import Conductor
 from hirevion_core.interview_session.media import candidate_identity
+from hirevion_core.proctoring.service import ProctorEngine
 from hirevion_core.settings import load_core_settings
 
 from .acks import Acknowledgements, acknowledges
@@ -72,6 +77,7 @@ from .lock import AgentLock
 from .priority import favour_live_audio
 from .settings import AgentSettings
 from .turns import SpeechWindow
+from .voices import Heard, VoiceWatch
 from .warm import IDLE_RUNNERS, INITIALIZE_TIMEOUT_SECONDS, prewarm
 
 logger = logging.getLogger("hirevion.interview_agent")
@@ -300,6 +306,7 @@ async def entrypoint(ctx: JobContext) -> None:
             api_key=deepgram_key,
             keyterm=keyterms(state),
             mip_opt_out=True,
+            enable_diarization=settings.hv_stt_diarize,
         ),
         tts=voice,
         turn_handling={
@@ -330,6 +337,33 @@ async def entrypoint(ctx: JobContext) -> None:
             if turn.speech_id not in written:
                 written.add(turn.speech_id)
                 write_turn(metrics_file, turn)
+
+    voices = VoiceWatch()
+    proctor = ProctorEngine(db, redis)
+
+    async def another_voice(heard: Heard) -> None:
+        try:
+            await proctor.detected(
+                organization_id,
+                interview_id,
+                event="ADDITIONAL_SPEAKER_DETECTED",
+                started_at=datetime.fromtimestamp(heard.at, UTC),
+                duration_ms=0,
+                details={"speakers": heard.speakers, "words": heard.words},
+                snapshot=None,
+                source="audio",
+                ongoing=False,
+            )
+        except Exception:
+            logger.exception("Another voice in interview %s couldn't be recorded", interview_id)
+
+    @session.on("user_input_transcribed")
+    def on_transcribed(event: UserInputTranscribedEvent) -> None:
+        if not event.is_final:
+            return
+        heard = voices.heard(event.speaker_id, event.transcript, at=event.created_at)
+        if heard is not None:
+            speaker.background(another_voice(heard))
 
     session.on("user_state_changed", speaker.user_state)
     session.on("agent_state_changed", speaker.agent_state)

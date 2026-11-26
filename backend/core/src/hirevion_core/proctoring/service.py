@@ -45,6 +45,7 @@ from hirevion_core.proctoring.store import (
     MERGE_WINDOW,
     OPEN,
     Change,
+    History,
     Pending,
     add_server_event,
     finish,
@@ -52,6 +53,7 @@ from hirevion_core.proctoring.store import (
     lock_session,
     plan_followups,
     recent_for,
+    regraded_note,
     server_note,
     status_json,
 )
@@ -145,7 +147,22 @@ class Snapshot:
 
 
 # What the third eye's vision agent may report (C7-1).
-VISION_EVENTS = ("PHONE_DETECTED", "UNEXPECTED_PERSON_DETECTED")
+VISION_EVENTS = (
+    "PHONE_DETECTED",
+    "UNEXPECTED_PERSON_DETECTED",
+    "SECONDARY_SCREEN_DETECTED",
+    "CANDIDATE_LEFT_VIEW",
+    "HANDS_OUT_OF_VIEW",
+    "UNUSUAL_MOVEMENT",
+    "THIRD_EYE_VIEW_CHANGED",
+)
+# What the server's agents raise themselves, and the source each comes from: the vision agent
+# on the third eye, and the interviewer agent hearing a second voice (C7-2, PRD §59).
+SERVER_DETECTED: dict[str, str] = {
+    **dict.fromkeys(VISION_EVENTS, "third_eye"),
+    "ADDITIONAL_SPEAKER_DETECTED": "audio",
+}
+REASONS = {"third_eye": "third_eye_vision", "audio": "speaker_diarization"}
 
 
 class ProctorEngine:
@@ -299,12 +316,14 @@ class ProctorEngine:
         session: AsyncSession,
         proctor: ProctorSession,
         n: Normalised,
-        rows: list[tuple[str, str, datetime, str]],
+        rows: list[History],
         now: datetime,
     ) -> Change | None:
         policy = proctor.policy
         target = await self._target(session, proctor, n)
-        recent = recent_for(policy, rows, n.event, n.started_at, str(target.id) if target else None)
+        recent = recent_for(
+            policy, rows, n.event, n.started_at, str(target.id) if target else None, source=n.source
+        )
         unchanged = False
         if target is None:
             verdict = evaluate(
@@ -410,7 +429,7 @@ class ProctorEngine:
         await plan_followups(session, proctor, change, now)
         rows[:] = [r for r in rows if r[3] != str(row.id)]
         if row.severity != "INFO":
-            rows.append((row.event, row.severity, row.started_at, str(row.id)))
+            rows.append((row.event, row.severity, row.started_at, str(row.id), row.source))
         return change
 
     @staticmethod
@@ -612,13 +631,17 @@ class ProctorEngine:
         duration_ms: int,
         details: dict[str, Any],
         snapshot: Snapshot | None,
+        source: str = "third_eye",
+        ongoing: bool = True,
     ) -> UUID | None:
-        """An episode the third eye's vision agent saw (C7-1; PRD §53): a server event from the
-        third eye, still ongoing, with the frame that started it as a screenshot. It goes through
-        the rules like any other, so severity, the candidate's nudge, the AI's reminder and the
-        live alert follow the policy. None when proctoring is off or the session isn't open."""
-        if event not in VISION_EVENTS:
-            raise ValueError(f"the vision agent doesn't report {event!r}")
+        """An episode one of the server's agents saw: by default the third eye's vision agent
+        (C7-1; PRD §53), a third-eye event still ongoing with the frame that started it as a
+        screenshot; or a second voice the interviewer agent heard (C7-2), an audio event over at
+        once. It goes through the rules like any other, so severity, the candidate's nudge, the
+        AI's reminder and the live alert follow the policy. None when proctoring is off or the
+        session isn't open."""
+        if SERVER_DETECTED.get(event) != source:
+            raise ValueError(f"the server's agents don't report {event!r} from {source!r}")
         now = self._clock()
         pending = Pending()
         async with self._db.tenant(organization_id) as session:
@@ -639,11 +662,11 @@ class ProctorEngine:
                 event=event,
                 started_at=started_at,
                 duration_ms=max(0, duration_ms),
-                ongoing=True,
-                details={"reason": "third_eye_vision", "third_eye": details},
+                ongoing=ongoing,
+                details={"reason": REASONS[source], source: details},
                 rows=rows,
                 now=now,
-                source="third_eye",
+                source=source,
             )
             if snapshot is not None:
                 session.add(
@@ -671,6 +694,24 @@ class ProctorEngine:
     ) -> None:
         """The vision agent's episode is over: the event closes with its length (a longer one
         may also become more severe)."""
+        await self._regrade(organization_id, interview_id, event_id, duration_ms, ended=True)
+
+    async def detection_progress(
+        self, organization_id: UUID, interview_id: UUID, event_id: UUID, *, duration_ms: int
+    ) -> None:
+        """The vision agent's episode goes on: it may become more severe while it lasts (the
+        candidate away for a minute is critical then, not only once they are back)."""
+        await self._regrade(organization_id, interview_id, event_id, duration_ms, ended=False)
+
+    async def _regrade(
+        self,
+        organization_id: UUID,
+        interview_id: UUID,
+        event_id: UUID,
+        duration_ms: int,
+        *,
+        ended: bool,
+    ) -> None:
         now = self._clock()
         pending = Pending()
         async with self._db.tenant(organization_id) as session:
@@ -681,12 +722,19 @@ class ProctorEngine:
             before = row.severity
             length = max(row.duration_ms or 0, duration_ms)
             verdict = evaluate(proctor.policy, row.event, duration_ms=length)
-            row.duration_ms, row.ongoing = length, False
+            row.duration_ms = length
+            if ended:
+                row.ongoing = False
             change = Change(row, "updated", severity_before=before)
             if RANK[verdict.severity] > RANK[before]:
                 row.severity = verdict.severity
-                row.details = {**row.details, "server": server_note(verdict)}
+                row.details = {
+                    **row.details,
+                    "server": regraded_note(row.details.get("server"), verdict),
+                }
                 await plan_followups(session, proctor, change, now)
+            elif not ended:
+                return
             pending.changes.append(change)
         await finish(self._redis, organization_id, interview_id, pending, None)
 
@@ -836,7 +884,7 @@ class ProctorEngine:
         proctor: ProctorSession,
         state: dict[str, Any],
         pending: Pending,
-        rows: list[tuple[str, str, datetime, str]],
+        rows: list[History],
         now: datetime,
     ) -> None:
         policy = proctor.policy
@@ -965,7 +1013,7 @@ class ProctorEngine:
         proctor: ProctorSession,
         state: dict[str, Any],
         pending: Pending,
-        rows: list[tuple[str, str, datetime, str]],
+        rows: list[History],
         now: datetime,
     ) -> None:
         """The candidate dropped out of the interview: end what was open, and expect nothing."""
@@ -989,7 +1037,7 @@ class ProctorEngine:
         proctor: ProctorSession,
         state: dict[str, Any],
         pending: Pending,
-        rows: list[tuple[str, str, datetime, str]],
+        rows: list[History],
         now: datetime,
     ) -> None:
         observed.reset(state)
@@ -1032,7 +1080,7 @@ class ProctorEngine:
         proctor: ProctorSession,
         state: dict[str, Any],
         pending: Pending,
-        rows: list[tuple[str, str, datetime, str]],
+        rows: list[History],
         now: datetime,
     ) -> None:
         await self._close_open(session, proctor, state, pending, now)

@@ -49,6 +49,7 @@ class Recorder:
         self.answer = answer if answer is not None else uuid4()
         self.detected_calls: list[dict[str, Any]] = []
         self.ended_calls: list[tuple[UUID, int]] = []
+        self.progress_calls: list[tuple[UUID, int]] = []
 
     async def detected(
         self, organization_id: UUID, interview_id: UUID, **fields: Any
@@ -60,6 +61,11 @@ class Recorder:
         self, organization_id: UUID, interview_id: UUID, event_id: UUID, *, duration_ms: int
     ) -> None:
         self.ended_calls.append((event_id, duration_ms))
+
+    async def detection_progress(
+        self, organization_id: UUID, interview_id: UUID, event_id: UUID, *, duration_ms: int
+    ) -> None:
+        self.progress_calls.append((event_id, duration_ms))
 
 
 class Uploads:
@@ -163,3 +169,89 @@ async def test_only_the_frames_it_looks_at_are_converted() -> None:
 
     await watch.watch(frames_every(clock, 0.1, 30), convert=convert)
     assert 5 <= len(converted) <= 7
+
+
+PERSON = Detection("person", 0.9, 10, 5, 50, 60)
+LAPTOP = Detection("laptop", 0.8, 40, 40, 30, 20)
+MONITOR = Detection("tv", 0.8, 90, 10, 30, 20)
+# A picture with something in it (a covered or black one says nothing about the candidate).
+ROOM = (
+    np.kron(np.random.default_rng(3).random((9, 16)) * 255, np.ones((8, 8)))
+    .astype(np.uint8)[:, :, None]
+    .repeat(3, axis=2)
+)
+
+
+class Pose:
+    def __init__(self, visible: bool | None) -> None:
+        self.visible = visible
+        self.calls = 0
+
+    def hands_visible(self, pixels: Any) -> bool | None:
+        self.calls += 1
+        return self.visible
+
+    def close(self) -> None:
+        return None
+
+
+def posed(script: list[list[Detection]], pose: Pose) -> tuple[ThirdEyeWatcher, Clock, Recorder]:
+    clock, recorder = Clock(), Recorder()
+    watch = ThirdEyeWatcher(
+        ORG, INTERVIEW, Detector(script), recorder, Uploads(), now=clock, pose=pose
+    )
+    return watch, clock, recorder
+
+
+async def looks(watch: ThirdEyeWatcher, clock: Clock, count: int, frame: Any = FRAME) -> None:
+    for _ in range(count):
+        await watch.frame(frame)
+        clock.now += timedelta(seconds=0.5)
+
+
+async def test_a_monitor_beside_the_candidates_laptop_is_a_secondary_screen() -> None:
+    watch, clock, recorder = posed([[PERSON, LAPTOP, MONITOR]], Pose(True))
+    await looks(watch, clock, 11)  # 5 s
+    (call,) = recorder.detected_calls
+    assert call["event"] == "SECONDARY_SCREEN_DETECTED"
+    assert call["details"]["screens"] == 2
+
+
+async def test_hands_out_of_view_for_15_s_are_recorded_and_pose_runs_once_a_second() -> None:
+    pose = Pose(False)
+    watch, clock, recorder = posed([[PERSON]], pose)
+    await looks(watch, clock, 33)  # 16 s
+    (call,) = recorder.detected_calls
+    assert call["event"] == "HANDS_OUT_OF_VIEW"
+    assert call["details"]["hands_visible"] is False
+    assert 16 <= pose.calls <= 18
+
+
+async def test_no_pose_when_nobody_is_in_the_picture() -> None:
+    pose = Pose(False)
+    watch, _, _ = posed([[]], pose)
+    await looks(watch, Clock(), 10)
+    assert pose.calls == 0
+
+
+async def test_the_candidate_leaving_the_desk_is_recorded_after_being_seen() -> None:
+    watch, clock, recorder = posed([[PERSON]] * 4 + [[]] * 40, Pose(True))
+    await looks(watch, clock, 26, ROOM)  # 2 s with them, then 11 s without
+    (call,) = recorder.detected_calls
+    assert call["event"] == "CANDIDATE_LEFT_VIEW"
+    assert call["started_at"] == T0 + timedelta(seconds=2)
+
+
+async def test_a_covered_lens_is_not_the_candidate_leaving() -> None:
+    watch, clock, recorder = posed([[PERSON]] * 4 + [[]] * 40, Pose(True))
+    await looks(watch, clock, 4, ROOM)
+    await looks(watch, clock, 30)  # black: nobody seen, but nothing readable either
+    assert [c["event"] for c in recorder.detected_calls] == ["THIRD_EYE_VIEW_CHANGED"]
+
+
+async def test_an_episode_that_goes_on_tells_the_server_how_long_it_has_lasted() -> None:
+    event_id = uuid4()
+    clock, recorder = Clock(), Recorder(event_id)
+    watch = ThirdEyeWatcher(ORG, INTERVIEW, Detector([[PHONE]]), recorder, Uploads(), now=clock)
+    await looks(watch, clock, 47)  # a phone for 23 s
+    assert [lasted for _, lasted in recorder.progress_calls] == [12_000, 22_000]

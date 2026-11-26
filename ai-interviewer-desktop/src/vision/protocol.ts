@@ -1,3 +1,4 @@
+import type { GazeReading } from "./gaze";
 import type { FaceBox, FrameStats } from "./types";
 
 /** MediaPipe's delegates: GPU (WebGL on an OffscreenCanvas) first, CPU (WebAssembly) as fallback. */
@@ -17,6 +18,8 @@ export type ToWorker =
       /** The size the frame is shrunk to for its luminance statistics. */
       statsWidth: number;
       statsHeight: number;
+      /** SP-15b: also run the face landmarker for gaze (with one face, at most ~7 times a second). */
+      gaze?: boolean;
     }
   | { type: "frame"; bitmap: ImageBitmap; t: number };
 
@@ -29,6 +32,8 @@ export type FromWorker =
       t: number;
       faces: FaceBox[];
       frame: FrameStats | null;
+      /** SP-15b: the one face's head turn and eye direction, when the landmarker ran. */
+      gaze?: GazeReading | null;
       /** Detection alone, and detection plus the luminance statistics. */
       inferenceMs: number;
       processingMs: number;

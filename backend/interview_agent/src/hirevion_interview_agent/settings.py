@@ -22,6 +22,8 @@ class AgentSettings(BaseSettings):
 
     hv_stt_model: str = "nova-3"
     hv_stt_language: str = "en"
+    # Deepgram labels each transcript's speaker, so a second voice can be flagged (C7-2).
+    hv_stt_diarize: bool = True
     hv_tts_voice: str = "aura-2-thalia-en"
 
     hv_turn_detection: TurnDetection = "vad"

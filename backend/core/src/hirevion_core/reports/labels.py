@@ -38,6 +38,11 @@ EVENT_LABELS: dict[str, str] = {
     "THIRD_EYE_DISCONNECTED": "Third-eye camera disconnected",
     "THIRD_EYE_RECONNECTED": "Third-eye camera reconnected",
     "TELEMETRY_GAP": "Monitoring data missing",
+    "SECONDARY_SCREEN_DETECTED": "Another screen in the side camera's view",
+    "CANDIDATE_LEFT_VIEW": "Candidate out of the side camera's view",
+    "HANDS_OUT_OF_VIEW": "Hands out of the side camera's view",
+    "UNUSUAL_MOVEMENT": "Unusual movement in the side camera's view",
+    "THIRD_EYE_VIEW_CHANGED": "Side camera moved or turned away",
 }
 
 # PRD §68's sections an event belongs to; every event is in exactly one.
@@ -45,7 +50,13 @@ EVENT_SECTIONS: dict[str, tuple[str, ...]] = {
     "camera_status": ("CAMERA_DISCONNECTED", "CAMERA_RECONNECTED"),
     "microphone_status": ("MIC_DISCONNECTED", "MIC_RECONNECTED", "ADDITIONAL_SPEAKER_DETECTED"),
     "screen_status": ("SCREEN_CAPTURE_STOPPED", "EXTERNAL_DISPLAY_CHANGE"),
-    "third_eye_status": ("THIRD_EYE_DISCONNECTED", "THIRD_EYE_RECONNECTED"),
+    "third_eye_status": (
+        "THIRD_EYE_DISCONNECTED",
+        "THIRD_EYE_RECONNECTED",
+        "THIRD_EYE_VIEW_CHANGED",
+        "HANDS_OUT_OF_VIEW",
+        "UNUSUAL_MOVEMENT",
+    ),
     "application_events": (
         "APPLICATION_FOCUS_CHANGE",
         "WINDOW_MINIMIZED",
@@ -70,9 +81,10 @@ EVENT_SECTIONS: dict[str, tuple[str, ...]] = {
         "FACE_TOO_CLOSE",
         "CAMERA_OBSTRUCTED",
         "UNEXPECTED_PERSON_DETECTED",
+        "CANDIDATE_LEFT_VIEW",
     ),
     "gaze_events": ("GAZE_DEVIATION",),
-    "object_events": ("PHONE_DETECTED",),
+    "object_events": ("PHONE_DETECTED", "SECONDARY_SCREEN_DETECTED"),
     "session_summary": ("SESSION_INTERRUPTED", "SESSION_RESUMED", "TELEMETRY_GAP"),
 }
 SECTION_OF_EVENT = {

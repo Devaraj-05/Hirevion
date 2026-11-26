@@ -37,6 +37,7 @@ from hirevion_core.proctoring.service import ProctorEngine
 from hirevion_core.settings import load_core_settings
 from hirevion_core.storage.service import StorageService, load_storage_settings
 from hirevion_vision_agent.detector import Detector, MediaPipeDetector, rgb_from_frame
+from hirevion_vision_agent.pose import MediaPipePose, PoseEstimator
 from hirevion_vision_agent.settings import load_settings
 from hirevion_vision_agent.watcher import ThirdEyeWatcher
 
@@ -106,6 +107,7 @@ async def stop(task: asyncio.Task[None] | None) -> None:
 def prewarm(process: JobProcess) -> None:
     # The model loads once per worker process, not per interview.
     process.userdata["detector"] = MediaPipeDetector()
+    process.userdata["pose"] = MediaPipePose()
 
 
 async def entrypoint(ctx: JobContext) -> None:
@@ -127,8 +129,9 @@ async def entrypoint(ctx: JobContext) -> None:
         ctx.shutdown(reason="another vision agent watches this interview")
         return
     detector: Detector = ctx.proc.userdata.get("detector") or MediaPipeDetector()
+    pose: PoseEstimator = ctx.proc.userdata.get("pose") or MediaPipePose()
     watcher = ThirdEyeWatcher(
-        organization_id, interview_id, detector, ProctorEngine(db, redis), storage
+        organization_id, interview_id, detector, ProctorEngine(db, redis), storage, pose=pose
     )
     current: list[asyncio.Task[None]] = []
 

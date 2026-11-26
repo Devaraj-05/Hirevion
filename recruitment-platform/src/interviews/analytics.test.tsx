@@ -98,6 +98,7 @@ const ANALYTICS: api.InterviewAnalytics = {
     fillers_per_100_words: 1,
     candidate_share: 0.4,
     pace_unreliable: false,
+    repeated_phrases: [{ phrase: "the thing is", count: 4 }],
   },
   integrity: {
     counts: { INFO: 1, WARNING: 0, CRITICAL: 2 },
@@ -184,6 +185,7 @@ describe("InterviewAnalyticsPanel", () => {
     expect(screen.getByText("Hidden until you've scored every question.")).toBeInTheDocument();
     // What isn't a score shows: speech and timing.
     expect(screen.getByText("150 words a minute")).toBeInTheDocument();
+    expect(screen.getByText("“the thing is” ×4")).toBeInTheDocument();
   });
 
   it("draws the proctoring events on the timeline and groups the processes", async () => {

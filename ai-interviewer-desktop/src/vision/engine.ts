@@ -43,6 +43,8 @@ interface Sample {
   faces: number;
   faceHeight: number | null;
   meanLuma: number | null;
+  direction: "left" | "right" | "down" | null;
+  phone: number | null;
 }
 
 interface Tracker {
@@ -65,6 +67,11 @@ interface Tracker {
   heightFrames: number;
   lumaSum: number;
   lumaFrames: number;
+  /** GAZE_DEVIATION: frames per direction. */
+  left: number;
+  right: number;
+  down: number;
+  bestPhone: number;
 }
 
 export interface EngineState {
@@ -93,6 +100,10 @@ const EMPTY_EPISODE = {
   heightFrames: 0,
   lumaSum: 0,
   lumaFrames: 0,
+  left: 0,
+  right: 0,
+  down: 0,
+  bestPhone: 0,
 } as const satisfies Omit<Tracker, "window">;
 
 function allIdle(): Record<CameraSignal, Tracker> {
@@ -103,6 +114,8 @@ function allIdle(): Record<CameraSignal, Tracker> {
     FACE_TOO_FAR: idle,
     FACE_TOO_CLOSE: idle,
     CAMERA_OBSTRUCTED: idle,
+    GAZE_DEVIATION: idle,
+    PHONE_DETECTED: idle,
   };
 }
 
@@ -171,6 +184,8 @@ function sampleOf(reading: FrameReading, signal: CameraSignal, t: number): Sampl
     faces: reading.faces,
     faceHeight: reading.faceHeight,
     meanLuma: reading.meanLuma,
+    direction: reading.direction,
+    phone: reading.phone,
   };
 }
 
@@ -252,6 +267,8 @@ function count(tracker: Tracker, sample: Sample): Tracker {
     next.lumaSum += sample.meanLuma;
     next.lumaFrames += 1;
   }
+  if (sample.direction !== null) next[sample.direction] += 1;
+  if (sample.phone !== null) next.bestPhone = Math.max(next.bestPhone, sample.phone);
   return next;
 }
 
@@ -271,6 +288,12 @@ function episodeEvent(
     details.face_height = tracker.heightSum / tracker.heightFrames;
   } else if (signal === "CAMERA_OBSTRUCTED" && tracker.lumaFrames > 0) {
     details.mean_luma = tracker.lumaSum / tracker.lumaFrames;
+  } else if (signal === "GAZE_DEVIATION") {
+    const ways = (["left", "right", "down"] as const).filter((way) => tracker[way] > 0);
+    const most = ways.sort((a, b) => tracker[b] - tracker[a])[0];
+    if (most) details.direction = most;
+  } else if (signal === "PHONE_DETECTED" && tracker.bestPhone > 0) {
+    details.best_phone = Math.round(tracker.bestPhone * 100) / 100;
   }
   return {
     signal,

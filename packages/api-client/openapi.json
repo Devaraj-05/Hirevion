@@ -725,6 +725,14 @@
             "title": "Pace Unreliable",
             "type": "boolean"
           },
+          "repeated_phrases": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/RepeatedPhrase"
+            },
+            "title": "Repeated Phrases",
+            "type": "array"
+          },
           "words": {
             "title": "Words",
             "type": "integer"
@@ -13317,6 +13325,24 @@
           "text"
         ],
         "title": "ReleasedItem",
+        "type": "object"
+      },
+      "RepeatedPhrase": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "phrase": {
+            "title": "Phrase",
+            "type": "string"
+          }
+        },
+        "required": [
+          "phrase",
+          "count"
+        ],
+        "title": "RepeatedPhrase",
         "type": "object"
       },
       "ReportDocument": {

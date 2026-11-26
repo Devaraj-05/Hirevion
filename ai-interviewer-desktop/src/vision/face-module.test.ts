@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { DEFAULT_VISION_CONFIG } from "./config";
 import { type FaceModule, type FaceModuleOptions, startFaceModule } from "./face-module";
 import type { FromWorker, ToWorker } from "./protocol";
 import type { CameraEvent, FaceBox } from "./types";
@@ -185,5 +186,95 @@ describe("the face module", () => {
     const sent = worker.frames().length;
     await vi.advanceTimersByTimeAsync(1_000);
     expect(worker.frames()).toHaveLength(sent);
+  });
+});
+
+describe("SP-15b's gaze and phone checks", () => {
+  let module: FaceModule | null = null;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000_000);
+  });
+
+  afterEach(() => {
+    module?.stop();
+    module = null;
+    vi.useRealTimers();
+  });
+
+  const AHEAD = { yaw: 0, pitch: 0.4, eyeX: 0, eyeY: 0 };
+  const DOWN = { yaw: 0, pitch: 0.6, eyeX: 0, eyeY: 0.7 };
+
+  function answerWithGaze(reading: typeof AHEAD): void {
+    const frame = worker.frames().at(-1);
+    if (frame?.type !== "frame") throw new Error("no frame to answer");
+    worker.reply({
+      type: "result",
+      t: frame.t,
+      faces: ONE,
+      frame: SCENE,
+      gaze: reading,
+      inferenceMs: 9,
+      processingMs: 10,
+    });
+  }
+
+  async function runGaze(ms: number, reading: typeof AHEAD) {
+    for (let elapsed = 0; elapsed < ms; elapsed += 10) {
+      const before = worker.frames().length;
+      await vi.advanceTimersByTimeAsync(10);
+      if (worker.frames().length > before) answerWithGaze(reading);
+    }
+  }
+
+  const config = (watch: { gaze: boolean; phone: boolean }) => ({
+    ...DEFAULT_VISION_CONFIG,
+    watch,
+  });
+
+  it("asks the worker for gaze only when the policy checks it", async () => {
+    module = await start({ config: config({ gaze: true, phone: false }) });
+    expect(worker.sent[0]).toMatchObject({ type: "init", gaze: true });
+    module.stop();
+    module = await start();
+    expect(worker.sent[0]).toMatchObject({ type: "init", gaze: false });
+  });
+
+  it("judges gaze against the candidate's resting pose, then reports a long look down", async () => {
+    const events: CameraEvent[] = [];
+    const seen: Array<string | null | undefined> = [];
+    module = await start({
+      config: config({ gaze: true, phone: false }),
+      onEvent: (event) => events.push(event),
+      onObservation: (observation) => seen.push(observation.gaze),
+    });
+    await runGaze(5_000, AHEAD); // the resting pose fills in
+    expect(seen.at(-1)).toBe("center");
+    await runGaze(11_000, DOWN);
+    const started = events.find((event) => event.event === "GAZE_DEVIATION");
+    expect(started?.details).toMatchObject({ phase: "started", direction: "down" });
+  });
+
+  it("starts the phone check beside the face module when the policy checks phones", async () => {
+    const objectWorker = {
+      posted: [] as unknown[],
+      onmessage: null,
+      terminated: false,
+      postMessage(message: unknown) {
+        this.posted.push(message);
+      },
+      terminate() {
+        this.terminated = true;
+      },
+    };
+    module = await start({
+      config: config({ gaze: false, phone: true }),
+      createObjectWorker: () => objectWorker,
+    });
+    await vi.advanceTimersByTimeAsync(1_050);
+    expect(objectWorker.posted).toHaveLength(1);
+    module.stop();
+    expect(objectWorker.terminated).toBe(true);
   });
 });

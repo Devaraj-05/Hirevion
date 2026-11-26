@@ -3959,6 +3959,11 @@ export interface components {
             median_response_ms: number | null;
             /** Pace Unreliable */
             pace_unreliable: boolean;
+            /**
+             * Repeated Phrases
+             * @default []
+             */
+            repeated_phrases: components["schemas"]["RepeatedPhrase"][];
             /** Words */
             words: number;
             /** Words Per Minute */
@@ -8405,6 +8410,13 @@ export interface components {
             text: string;
             /** Title */
             title: string;
+        };
+        /** RepeatedPhrase */
+        RepeatedPhrase: {
+            /** Count */
+            count: number;
+            /** Phrase */
+            phrase: string;
         };
         /**
          * ReportDocument

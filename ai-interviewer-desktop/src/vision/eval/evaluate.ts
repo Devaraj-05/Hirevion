@@ -55,6 +55,9 @@ export interface Target {
 export const EXIT_TARGETS: Partial<Record<CameraSignal, Target>> = {
   FACE_ABSENT: { precision: 0.9, recall: 0.9 },
   MULTIPLE_FACES: { precision: 0.9, recall: 0.9 },
+  // SP-15b (C7-2, 2026-11-26): the same bar for gaze and a phone on the main camera.
+  GAZE_DEVIATION: { precision: 0.9, recall: 0.9 },
+  PHONE_DETECTED: { precision: 0.9, recall: 0.9 },
 };
 
 /** A label this close to the threshold (either side) may fairly be reported or not. */

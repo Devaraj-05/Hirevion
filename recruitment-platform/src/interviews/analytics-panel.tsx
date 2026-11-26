@@ -482,6 +482,7 @@ function SpeechCard({ speech }: { speech: InterviewAnalytics["speech"] }) {
   const interviewer = splitDuration(speech.ai_ms);
   const share = speech.candidate_share;
   const fillers = Object.entries(speech.fillers).sort((a, b) => b[1] - a[1]);
+  const repeated = speech.repeated_phrases ?? [];
   const stats: [string, string][] = [
     [t("words"), format.number(speech.words)],
     [
@@ -508,6 +509,14 @@ function SpeechCard({ speech }: { speech: InterviewAnalytics["speech"] }) {
         : t("fillersRate", {
             rate: format.number(speech.fillers_per_100_words, { maximumFractionDigits: 1 }),
           }),
+    ],
+    [
+      t("repeated"),
+      repeated.length === 0
+        ? t("repeatedNone")
+        : repeated
+            .map((item) => t("repeatedItem", { phrase: item.phrase, count: item.count }))
+            .join(", "),
     ],
   ];
   return (
